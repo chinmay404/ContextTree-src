@@ -1,11 +1,12 @@
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "./api/auth/[...nextauth]/route"
+"use client"
+
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ArrowRight, LogIn } from "lucide-react"
 
-export default async function Home() {
-  const session = await getServerSession(authOptions)
+export default function Home() {
+  const { data: session } = useSession()
 
   return (
     <div className="flex flex-col min-h-screen">

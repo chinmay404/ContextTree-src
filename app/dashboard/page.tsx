@@ -1,15 +1,31 @@
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "../api/auth/[...nextauth]/route"
-import { redirect } from "next/navigation"
+"use client"
+
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { UserNav } from "@/components/user-nav"
 
-export default async function DashboardPage() {
-  const session = await getServerSession(authOptions)
+export default function DashboardPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
 
-  if (!session) {
-    redirect("/login")
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login")
+    } else if (status === "authenticated") {
+      setIsLoading(false)
+    }
+  }, [status, router])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   return (
@@ -19,12 +35,12 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold">Conversation Canvas</h1>
           </div>
-          <UserNav user={session.user} />
+          <UserNav user={session?.user || { name: "", email: "", image: "" }} />
         </div>
       </header>
 
       <main className="flex-1 container py-10">
-        <h1 className="text-3xl font-bold mb-6">Welcome, {session.user?.name}</h1>
+        <h1 className="text-3xl font-bold mb-6">Welcome, {session?.user?.name}</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-card border border-border rounded-lg p-6">
