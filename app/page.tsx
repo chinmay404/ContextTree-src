@@ -7,6 +7,10 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { ReactFlowProvider } from "reactflow"
 import { useEffect } from "react"
 
+// Update imports to include session hooks
+import { useSession } from "next-auth/react"
+import { redirect } from "next/navigation"
+
 // Error handler component to catch ResizeObserver errors
 function ErrorHandler({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -24,7 +28,23 @@ function ErrorHandler({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+// Update the Home component to check for session
 export default function Home() {
+  const { status } = useSession({
+    required: true,
+    onUnauthenticated() {
+      redirect("/auth/signin")
+    },
+  })
+
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <ErrorHandler>
