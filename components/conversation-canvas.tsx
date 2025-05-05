@@ -26,6 +26,7 @@ const initialNodes = [
       isEditing: false,
       expanded: true,
       style: { width: 250 },
+      model: "gpt-4",
     },
   },
 ]
@@ -61,6 +62,7 @@ export default function ConversationCanvas() {
   const [showConnectionMode, setShowConnectionMode] = useState(false)
   const [connectionSource, setConnectionSource] = useState<string | null>(null)
   const [chatPanelCollapsed, setChatPanelCollapsed] = useState(false)
+  const [activeNodeModel, setActiveNodeModel] = useState("gpt-4")
 
   useEffect(() => {
     // Sync nodes and edges with the active conversation
@@ -77,6 +79,7 @@ export default function ConversationCanvas() {
     if (activeNodeData) {
       setNodeName(activeNodeData.label)
       setMessages(activeNodeData.messages)
+      setActiveNodeModel(activeNodeData.model || "gpt-4")
     }
   }, [activeNode, nodes])
 
@@ -207,6 +210,59 @@ export default function ConversationCanvas() {
 
   const onNodeNameChange = (name: string) => {
     onLabelChange(activeNode, name)
+  }
+
+  const onModelChange = useCallback(
+    (nodeId: string, model: string) => {
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === nodeId) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                model: model,
+              },
+            }
+          }
+          return node
+        }),
+      )
+
+      // Update in conversation data
+      setConversations((prevConversations) =>
+        prevConversations.map((conv) => {
+          if (conv.id === activeConversation) {
+            return {
+              ...conv,
+              nodes: conv.nodes.map((node) => {
+                if (node.id === nodeId) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      model: model,
+                    },
+                  }
+                }
+                return node
+              }),
+            }
+          }
+          return conv
+        }),
+      )
+
+      // Update active node model if this is the active node
+      if (nodeId === activeNode) {
+        setActiveNodeModel(model)
+      }
+    },
+    [setNodes, activeConversation, setConversations, activeNode],
+  )
+
+  const onActiveNodeModelChange = (model: string) => {
+    onModelChange(activeNode, model)
   }
 
   const onSendMessage = useCallback(
@@ -406,8 +462,12 @@ export default function ConversationCanvas() {
     [setNodes, activeConversation, setConversations],
   )
 
-  const onImageNodeDelete = useCallback(
+  const onNodeDelete = useCallback(
     (nodeId: string) => {
+      // Get connected edges
+      const connectedEdges = edges.filter((edge) => edge.source === nodeId || edge.target === nodeId)
+
+      // Remove the node and its connected edges
       setNodes((nds) => nds.filter((node) => node.id !== nodeId))
       setEdges((edgs) => edgs.filter((edge) => edge.source !== nodeId && edge.target !== nodeId))
 
@@ -424,8 +484,34 @@ export default function ConversationCanvas() {
           return conv
         }),
       )
+
+      // If the deleted node is the active node, select another node
+      if (nodeId === activeNode) {
+        const remainingNodes = nodes.filter((node) => node.id !== nodeId)
+        if (remainingNodes.length > 0) {
+          setActiveNode(remainingNodes[0].id)
+        }
+      }
+
+      toast({
+        title: "Node deleted",
+        description: "The node and its connections have been removed.",
+      })
     },
-    [setNodes, setEdges, activeConversation, setConversations],
+    [nodes, edges, setNodes, setEdges, activeConversation, setConversations, activeNode, toast],
+  )
+
+  const onActiveNodeDelete = useCallback(() => {
+    if (activeNode) {
+      onNodeDelete(activeNode)
+    }
+  }, [activeNode, onNodeDelete])
+
+  const onImageNodeDelete = useCallback(
+    (nodeId: string) => {
+      onNodeDelete(nodeId)
+    },
+    [onNodeDelete],
   )
 
   const onImageUpload = (file: File) => {
@@ -437,7 +523,7 @@ export default function ConversationCanvas() {
         const id = uuidv4()
 
         const newNode = {
-          id: id,
+          id,
           type: "imageNode",
           position: {
             x: 100,
@@ -498,6 +584,9 @@ export default function ConversationCanvas() {
         onResize,
         style: { width: 220 },
         onStartConnection: startConnectionMode,
+        onDelete: onNodeDelete,
+        model: "gpt-4",
+        onModelChange,
       },
     }
 
@@ -538,6 +627,9 @@ export default function ConversationCanvas() {
         onResize,
         style: { width: 220 },
         onStartConnection: startConnectionMode,
+        onDelete: onNodeDelete,
+        model: "gpt-4",
+        onModelChange,
       },
     }
 
@@ -717,6 +809,7 @@ export default function ConversationCanvas() {
             isEditing: false,
             expanded: true,
             style: { width: 220 },
+            model: "gpt-4",
           },
         },
       ],
@@ -838,6 +931,9 @@ export default function ConversationCanvas() {
             onCreateBranchNode={createBranchNodeFromChat}
             isCollapsed={chatPanelCollapsed}
             setIsCollapsed={setChatPanelCollapsed}
+            onDeleteNode={onActiveNodeDelete}
+            model={activeNodeModel}
+            onModelChange={onActiveNodeModelChange}
           />
         </div>
       </div>

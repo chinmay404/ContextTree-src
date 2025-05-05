@@ -17,10 +17,14 @@ import {
   GitBranch,
   Maximize2,
   Minimize2,
+  Trash2,
+  MessageSquare,
 } from "lucide-react"
 import { format } from "date-fns"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "@/components/ui/use-toast"
+import { availableModels } from "@/lib/types"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ChatPanelProps {
   messages: Message[]
@@ -30,6 +34,9 @@ interface ChatPanelProps {
   onCreateBranchNode?: (content: string) => void
   isCollapsed?: boolean
   setIsCollapsed?: (collapsed: boolean) => void
+  onDeleteNode?: () => void
+  model?: string
+  onModelChange?: (model: string) => void
 }
 
 export default function ChatPanel({
@@ -40,6 +47,9 @@ export default function ChatPanel({
   onCreateBranchNode,
   isCollapsed: propIsCollapsed,
   setIsCollapsed: propSetIsCollapsed,
+  onDeleteNode,
+  model = "gpt-4",
+  onModelChange,
 }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState("")
   const [isEditingName, setIsEditingName] = useState(false)
@@ -118,6 +128,18 @@ export default function ChatPanel({
     setIsExpanded(!isExpanded)
   }
 
+  const handleDeleteNode = () => {
+    if (onDeleteNode) {
+      onDeleteNode()
+    }
+  }
+
+  const handleModelChange = (value: string) => {
+    if (onModelChange) {
+      onModelChange(value)
+    }
+  }
+
   const startResize = (e: React.MouseEvent) => {
     e.preventDefault()
     setIsResizing(true)
@@ -175,8 +197,11 @@ export default function ChatPanel({
     }
   }
 
+  // Get the selected model name
+  const selectedModel = availableModels.find((m) => m.id === model)?.name || "GPT-4"
+
   return (
-    <div
+    <motion.div
       ref={panelRef}
       className={`relative flex flex-col h-full border-l border-border transition-all duration-300 ${
         isCollapsed ? "w-12" : ""
@@ -187,8 +212,16 @@ export default function ChatPanel({
         height: isExpanded ? "100vh" : "",
         paddingTop: isExpanded ? "60px" : "",
       }}
+      initial={isCollapsed ? { width: "48px" } : { width: `${panelWidth}px` }}
+      animate={isCollapsed ? { width: "48px" } : isExpanded ? { width: "70vw" } : { width: `${panelWidth}px` }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
-      <div className="p-4 border-b border-border bg-card/50 flex items-center">
+      <motion.div
+        className="p-4 border-b border-border bg-card/50 flex items-center"
+        initial={{ opacity: 0.8 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
+      >
         <Button variant="ghost" size="icon" className="h-8 w-8 mr-2" onClick={toggleCollapse}>
           {isCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </Button>
@@ -224,15 +257,22 @@ export default function ChatPanel({
               </div>
             ) : (
               <>
-                <h2 className="text-lg font-semibold flex-1">{nodeName}</h2>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditingName(true)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
+                <h2 className="text-lg font-semibold flex-1 tracking-tight">{nodeName}</h2>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditingName(true)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  {onDeleteNode && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={handleDeleteNode}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </>
             )}
           </div>
         )}
-      </div>
+      </motion.div>
 
       {isExpanded && (
         <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={toggleExpand}>
@@ -241,44 +281,74 @@ export default function ChatPanel({
       )}
 
       {!isCollapsed && (
-        <>
-          <div
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="px-4 py-3 border-b border-border bg-muted/30"
+          >
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">AI Model</label>
+            <Select value={model} onValueChange={handleModelChange}>
+              <SelectTrigger className="h-9 text-sm bg-background/60 backdrop-blur-sm">
+                <SelectValue placeholder="Select model" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableModels.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.name} <span className="text-xs text-muted-foreground ml-1">({model.provider})</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </motion.div>
+
+          <motion.div
             className={`flex-1 overflow-auto p-4 space-y-4 custom-scrollbar ${
               isExpanded ? "max-h-[calc(100vh-180px)]" : ""
             }`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
           >
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                <div className="bg-primary/10 p-3 rounded-full mb-4">
-                  <Bot className="h-6 w-6 text-primary" />
+              <motion.div
+                className="flex flex-col items-center justify-center h-full text-center p-6"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, type: "spring" }}
+              >
+                <div className="bg-primary/10 p-4 rounded-full mb-4">
+                  <MessageSquare className="h-8 w-8 text-primary" />
                 </div>
-                <p className="text-muted-foreground text-sm mb-2">No messages yet</p>
-                <p className="text-muted-foreground text-xs max-w-xs">
+                <p className="text-lg font-medium mb-2">No messages yet</p>
+                <p className="text-muted-foreground text-sm max-w-xs">
                   Start a conversation by typing a message below. This will be part of your conversation node.
                 </p>
-              </div>
+              </motion.div>
             ) : (
-              messages.map((message) => (
+              messages.map((message, index) => (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
                   className={`flex flex-col ${message.sender === "user" ? "items-end" : "items-start"}`}
                 >
                   <div className="flex items-end gap-2">
                     {message.sender !== "user" && (
                       <div className="bg-primary/10 p-1.5 rounded-full">
-                        <Bot className="h-3 5 w-3.5 text-primary" />
+                        <Bot className="h-3.5 w-3.5 text-primary" />
                       </div>
                     )}
                     <div
-                      className={`max-w-[80%] rounded-lg p-3 ${
+                      className={`max-w-[85%] rounded-2xl p-3.5 ${
                         message.sender === "user"
                           ? "bg-primary text-primary-foreground"
-                          : "bg-card border border-border"
+                          : "bg-card border border-border shadow-sm"
                       }`}
                     >
-                      <p className="text-sm">{message.content}</p>
+                      <p className="text-sm leading-relaxed">{message.content}</p>
                     </div>
                     {message.sender === "user" && (
                       <div className="bg-primary/10 p-1.5 rounded-full">
@@ -286,25 +356,35 @@ export default function ChatPanel({
                       </div>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground mt-1 px-2">
+                  <span className="text-xs text-muted-foreground mt-1.5 px-2">
                     {format(new Date(message.timestamp), "h:mm a")}
                   </span>
                 </motion.div>
               ))
             )}
             <div ref={messagesEndRef} />
-          </div>
+          </motion.div>
 
-          <div className="p-4 border-t border-border bg-card/50">
+          <motion.div
+            className="p-4 border-t border-border bg-card/50"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
             {commandFeedback?.active && (
-              <div className="px-4 py-2 mb-2 bg-muted/50 border border-border rounded-md flex items-center gap-2">
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="px-4 py-2 mb-3 bg-orange-500/10 border border-orange-500/20 rounded-md flex items-center gap-2"
+              >
                 <GitBranch className="h-4 w-4 text-orange-500" />
                 <span className="text-sm font-medium">Creating branch node with content:</span>
                 <span className="text-sm text-muted-foreground truncate">
                   {commandFeedback.content.substring(0, 30)}
                   {commandFeedback.content.length > 30 ? "..." : ""}
                 </span>
-              </div>
+              </motion.div>
             )}
             <form onSubmit={handleSubmit} className="flex flex-col gap-2">
               <div className="flex gap-2">
@@ -312,19 +392,20 @@ export default function ChatPanel({
                   value={inputValue}
                   onChange={handleInputChange}
                   placeholder="Type your message..."
-                  className="flex-1"
+                  className="flex-1 bg-background/60 backdrop-blur-sm border-muted-foreground/20 focus-visible:ring-primary/30"
                 />
-                <Button type="submit" size="icon" className="bg-primary text-primary-foreground">
+                <Button type="submit" size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Tip: Type <span className="font-mono bg-muted px-1 rounded">/branch Your content</span> to create a new
-                branch node
+              <p className="text-xs text-muted-foreground mt-1">
+                Tip: Type{" "}
+                <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">/branch Your content</span> to
+                create a new branch node
               </p>
             </form>
-          </div>
-        </>
+          </motion.div>
+        </AnimatePresence>
       )}
 
       {/* Resize handle */}
@@ -334,6 +415,6 @@ export default function ChatPanel({
           onMouseDown={startResize}
         />
       )}
-    </div>
+    </motion.div>
   )
 }

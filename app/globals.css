@@ -112,4 +112,30 @@
   .react-flow__background-pattern {
     @apply dark:!text-muted/20;
   }
+
+  /* Typography enhancements */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Chat panel styling */
+  .chat-bubble-user {
+    border-radius: 18px 18px 0 18px;
+  }
+
+  .chat-bubble-ai {
+    border-radius: 18px 18px 18px 0;
+  }
+
+  .glass-panel {
+    @apply bg-background/80 backdrop-blur-md border border-border/50;
+  }
+
+  .message-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }

@@ -4,12 +4,14 @@ import type React from "react"
 import { memo, useState, useRef, useEffect, useCallback } from "react"
 import { Handle, Position, type NodeProps } from "reactflow"
 import type { Message } from "@/lib/types"
-import { GitBranch, Edit, Check, ChevronDown, ChevronUp, Settings, MoreHorizontal, Link2 } from "lucide-react"
+import { GitBranch, Edit, Check, ChevronDown, ChevronUp, Settings, MoreHorizontal, Link2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { motion, AnimatePresence } from "framer-motion"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { debounce } from "lodash"
+import { availableModels } from "@/lib/types"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface BranchNodeData {
   label: string
@@ -27,6 +29,9 @@ interface BranchNodeData {
   }
   onCustomize?: () => void
   onStartConnection?: (id: string) => void
+  onDelete?: (id: string) => void
+  model?: string
+  onModelChange?: (id: string, model: string) => void
 }
 
 function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
@@ -41,6 +46,9 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
     style = { width: 220 },
     onCustomize,
     onStartConnection,
+    onDelete,
+    model = "gpt-4",
+    onModelChange,
   } = data
 
   const [isEditing, setIsEditing] = useState(false)
@@ -84,6 +92,19 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
     e.stopPropagation()
     if (onToggleExpand) {
       onToggleExpand(id, !expanded)
+    }
+  }
+
+  const handleModelChange = (value: string) => {
+    if (onModelChange) {
+      onModelChange(id, value)
+    }
+  }
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onDelete) {
+      onDelete(id)
     }
   }
 
@@ -183,6 +204,9 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
     }
   }, [data.messages, expanded, id, onToggleExpand])
 
+  // Get the selected model name
+  const selectedModel = availableModels.find((m) => m.id === model)?.name || "GPT-4"
+
   return (
     <motion.div
       ref={nodeRef}
@@ -241,6 +265,22 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
         </div>
       </div>
 
+      {/* Model selector */}
+      <div className="mb-2" onClick={(e) => e.stopPropagation()}>
+        <Select value={model} onValueChange={handleModelChange}>
+          <SelectTrigger className="h-7 text-xs">
+            <SelectValue placeholder="Select model" />
+          </SelectTrigger>
+          <SelectContent>
+            {availableModels.map((model) => (
+              <SelectItem key={model.id} value={model.id} className="text-xs">
+                {model.name} ({model.provider})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="mt-2 border-t border-border pt-2">
         <div className="flex items-center justify-between mb-1">
           <Button variant="ghost" size="sm" className="h-6 px-2 text-xs rounded-md" onClick={toggleExpand}>
@@ -273,6 +313,10 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
               <DropdownMenuItem onClick={startEditing}>
                 <Edit className="h-3.5 w-3.5 mr-2" />
                 Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
