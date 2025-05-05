@@ -10,9 +10,6 @@ export type Conversation = {
   name: string
   nodes: any[]
   edges: any[]
-  userId?: string
-  createdAt?: Date
-  updatedAt?: Date
 }
 
 export type AIModel = {
