@@ -1,29 +1,32 @@
 "use client"
-
-import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { UserNav } from "@/components/user-nav"
+import { Loader2 } from "lucide-react"
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login")
-    } else if (status === "authenticated") {
-      setIsLoading(false)
-    }
-  }, [status, router])
-
-  if (isLoading) {
+  // If not authenticated, the middleware will handle the redirect
+  if (status === "loading") {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <Loader2 className="h-12 w-12 animate-spin" />
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
+    router.push("/login?callbackUrl=/dashboard")
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Not authenticated. Redirecting to login...</p>
+        </div>
       </div>
     )
   }
