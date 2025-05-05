@@ -1,0 +1,339 @@
+"use client"
+
+import type React from "react"
+import { useState, useRef, useEffect } from "react"
+import type { Message } from "@/lib/types"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Send,
+  Edit,
+  Check,
+  X,
+  User,
+  Bot,
+  ChevronLeft,
+  ChevronRight,
+  GitBranch,
+  Maximize2,
+  Minimize2,
+} from "lucide-react"
+import { format } from "date-fns"
+import { motion } from "framer-motion"
+import { toast } from "@/components/ui/use-toast"
+
+interface ChatPanelProps {
+  messages: Message[]
+  onSendMessage: (content: string) => void
+  nodeName: string
+  onNodeNameChange: (name: string) => void
+  onCreateBranchNode?: (content: string) => void
+  isCollapsed?: boolean
+  setIsCollapsed?: (collapsed: boolean) => void
+}
+
+export default function ChatPanel({
+  messages,
+  onSendMessage,
+  nodeName,
+  onNodeNameChange,
+  onCreateBranchNode,
+  isCollapsed: propIsCollapsed,
+  setIsCollapsed: propSetIsCollapsed,
+}: ChatPanelProps) {
+  const [inputValue, setInputValue] = useState("")
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState(nodeName)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [panelWidth, setPanelWidth] = useState(320) // Default width
+  const [isResizing, setIsResizing] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const resizeStartXRef = useRef(0)
+  const resizeStartWidthRef = useRef(0)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const resizeFrameRef = useRef<number | null>(null)
+  const [commandFeedback, setCommandFeedback] = useState<{
+    active: boolean
+    command: string
+    content: string
+  } | null>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  useEffect(() => {
+    setEditedName(nodeName)
+  }, [nodeName])
+
+  // Use props for collapsed state if provided
+  useEffect(() => {
+    if (propIsCollapsed !== undefined) {
+      setIsCollapsed(propIsCollapsed)
+    }
+  }, [propIsCollapsed])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (inputValue.trim()) {
+      // Check if the input starts with "/branch"
+      if (inputValue.startsWith("/branch ")) {
+        const branchContent = inputValue.substring(8).trim()
+
+        if (branchContent && onCreateBranchNode) {
+          onCreateBranchNode(branchContent)
+          toast({
+            title: "Branch node created",
+            description: `Created a new branch node with content: "${branchContent.substring(0, 30)}${branchContent.length > 30 ? "..." : ""}"`,
+          })
+          setInputValue("")
+          return
+        }
+      }
+
+      onSendMessage(inputValue)
+      setInputValue("")
+    }
+  }
+
+  const handleSaveName = () => {
+    if (editedName.trim()) {
+      onNodeNameChange(editedName)
+    }
+    setIsEditingName(false)
+  }
+
+  // Scroll to bottom when messages change or when a new node is selected
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages, nodeName])
+
+  const toggleCollapse = () => {
+    const newCollapsedState = !isCollapsed
+    setIsCollapsed(newCollapsedState)
+    if (propSetIsCollapsed) {
+      propSetIsCollapsed(newCollapsedState)
+    }
+  }
+
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded)
+  }
+
+  const startResize = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+    resizeStartXRef.current = e.clientX
+    resizeStartWidthRef.current = panelWidth
+
+    document.addEventListener("mousemove", handleResize)
+    document.addEventListener("mouseup", stopResize)
+  }
+
+  const handleResize = (e: MouseEvent) => {
+    if (!isResizing) return
+
+    // Cancel any pending animation frame
+    if (resizeFrameRef.current !== null) {
+      cancelAnimationFrame(resizeFrameRef.current)
+    }
+
+    // Use requestAnimationFrame to avoid layout thrashing
+    resizeFrameRef.current = requestAnimationFrame(() => {
+      const newWidth = Math.max(280, Math.min(500, resizeStartWidthRef.current - (e.clientX - resizeStartXRef.current)))
+      setPanelWidth(newWidth)
+    })
+  }
+
+  const stopResize = () => {
+    setIsResizing(false)
+    document.removeEventListener("mousemove", handleResize)
+    document.removeEventListener("mouseup", stopResize)
+  }
+
+  useEffect(() => {
+    return () => {
+      document.removeEventListener("mousemove", handleResize)
+      document.removeEventListener("mouseup", stopResize)
+      if (resizeFrameRef.current !== null) {
+        cancelAnimationFrame(resizeFrameRef.current)
+      }
+    }
+  }, [])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setInputValue(value)
+
+    // Check for command patterns
+    if (value.startsWith("/branch ")) {
+      setCommandFeedback({
+        active: true,
+        command: "/branch",
+        content: value.substring(8).trim(),
+      })
+    } else {
+      setCommandFeedback(null)
+    }
+  }
+
+  return (
+    <div
+      ref={panelRef}
+      className={`relative flex flex-col h-full border-l border-border transition-all duration-300 ${
+        isCollapsed ? "w-12" : ""
+      } ${isExpanded ? "fixed right-0 top-0 h-screen z-50 w-[70vw] backdrop-blur-md bg-background/90 shadow-xl" : ""}`}
+      style={{
+        width: isCollapsed ? "48px" : isExpanded ? "70vw" : `${panelWidth}px`,
+        marginTop: isExpanded ? "0" : "",
+        height: isExpanded ? "100vh" : "",
+        paddingTop: isExpanded ? "60px" : "",
+      }}
+    >
+      <div className="p-4 border-b border-border bg-card/50 flex items-center">
+        <Button variant="ghost" size="icon" className="h-8 w-8 mr-2" onClick={toggleCollapse}>
+          {isCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </Button>
+
+        {!isCollapsed && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 mr-2"
+            onClick={toggleExpand}
+            aria-label={isExpanded ? "Collapse panel" : "Expand panel"}
+          >
+            {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
+        )}
+
+        {!isCollapsed && (
+          <div className="flex items-center justify-between flex-1">
+            {isEditingName ? (
+              <div className="flex items-center gap-2 flex-1">
+                <Input
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  className="h-8 text-sm"
+                  autoFocus
+                />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSaveName}>
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditingName(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-lg font-semibold flex-1">{nodeName}</h2>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditingName(true)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {isExpanded && (
+        <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={toggleExpand}>
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+
+      {!isCollapsed && (
+        <>
+          <div
+            className={`flex-1 overflow-auto p-4 space-y-4 custom-scrollbar ${
+              isExpanded ? "max-h-[calc(100vh-180px)]" : ""
+            }`}
+          >
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                <div className="bg-primary/10 p-3 rounded-full mb-4">
+                  <Bot className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-muted-foreground text-sm mb-2">No messages yet</p>
+                <p className="text-muted-foreground text-xs max-w-xs">
+                  Start a conversation by typing a message below. This will be part of your conversation node.
+                </p>
+              </div>
+            ) : (
+              messages.map((message) => (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex flex-col ${message.sender === "user" ? "items-end" : "items-start"}`}
+                >
+                  <div className="flex items-end gap-2">
+                    {message.sender !== "user" && (
+                      <div className="bg-primary/10 p-1.5 rounded-full">
+                        <Bot className="h-3 5 w-3.5 text-primary" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-lg p-3 ${
+                        message.sender === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-card border border-border"
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                    </div>
+                    {message.sender === "user" && (
+                      <div className="bg-primary/10 p-1.5 rounded-full">
+                        <User className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground mt-1 px-2">
+                    {format(new Date(message.timestamp), "h:mm a")}
+                  </span>
+                </motion.div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="p-4 border-t border-border bg-card/50">
+            {commandFeedback?.active && (
+              <div className="px-4 py-2 mb-2 bg-muted/50 border border-border rounded-md flex items-center gap-2">
+                <GitBranch className="h-4 w-4 text-orange-500" />
+                <span className="text-sm font-medium">Creating branch node with content:</span>
+                <span className="text-sm text-muted-foreground truncate">
+                  {commandFeedback.content.substring(0, 30)}
+                  {commandFeedback.content.length > 30 ? "..." : ""}
+                </span>
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Input
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  placeholder="Type your message..."
+                  className="flex-1"
+                />
+                <Button type="submit" size="icon" className="bg-primary text-primary-foreground">
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tip: Type <span className="font-mono bg-muted px-1 rounded">/branch Your content</span> to create a new
+                branch node
+              </p>
+            </form>
+          </div>
+        </>
+      )}
+
+      {/* Resize handle */}
+      {!isCollapsed && (
+        <div
+          className="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-primary/20 active:bg-primary/40 transition-colors"
+          onMouseDown={startResize}
+        />
+      )}
+    </div>
+  )
+}
