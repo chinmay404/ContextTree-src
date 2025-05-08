@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useCallback, useRef } from "react"
+import { useCallback, useRef, useState, useEffect } from "react"
 import ReactFlow, {
   Background,
   Controls,
@@ -16,6 +16,8 @@ import ReactFlow, {
 import type { Conversation } from "@/lib/types"
 import EdgeControls from "./edge-controls"
 import { useTheme } from "next-themes"
+import { motion, AnimatePresence } from "framer-motion"
+import { X } from "lucide-react"
 
 interface FlowCanvasProps {
   nodes: Node[]
@@ -35,6 +37,7 @@ interface FlowCanvasProps {
   setReactFlowInstance: any
   showConnectionMode?: boolean
   connectionSource?: string | null
+  onConnect?: (params: Connection) => void
 }
 
 export default function FlowCanvas({
@@ -55,74 +58,48 @@ export default function FlowCanvas({
   setReactFlowInstance,
   showConnectionMode = false,
   connectionSource = null,
+  onConnect,
 }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const { theme } = useTheme()
+  const [hoverNode, setHoverNode] = useState<Node | null>(null)
+  const [showNodePreview, setShowNodePreview] = useState(false)
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
+  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
+  const [reactFlowInstanceInternal, setReactFlowInstanceInternal] = useState<any>(null)
+  const [nodeDimensions, setNodeDimensions] = useState<Record<string, { width: number; height: number }>>({})
 
-  const onInit: OnInit = (reactFlowInstance) => {
-    setReactFlowInstance(reactFlowInstance)
+  const onInit: OnInit = (instance) => {
+    setReactFlowInstanceInternal(instance)
+    setReactFlowInstance(instance)
   }
 
-  const onConnect = useCallback(
+  const handleConnect = useCallback(
     (params: Connection) => {
-      const newEdge = {
-        ...params,
-        id: `e${params.source}-${params.target}`,
-        type: "custom",
-        animated: true,
-        style: { stroke: "#3b82f6" },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: "#3b82f6",
-        },
-        data: {
-          label: "Connection",
-        },
+      if (onConnect) {
+        onConnect(params)
+      } else {
+        const newEdges = addEdge(
+          {
+            ...params,
+            type: "custom",
+            animated: true,
+            style: { stroke: "#3b82f6" },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: "#3b82f6",
+            },
+            data: {
+              label: "Connection",
+            },
+          },
+          edges,
+        )
+        onEdgesChange(newEdges)
       }
-
-      const newEdges = addEdge(newEdge, edges)
-      onEdgesChange(newEdges)
-
-      // Update conversation edges
-      setConversations((prevConversations) => {
-        return prevConversations.map((conv) => {
-          if (conv.id === activeConversation) {
-            return {
-              ...conv,
-              edges: [...(conv.edges || []), newEdge],
-            }
-          }
-          return conv
-        })
-      })
     },
-    [edges, onEdgesChange, activeConversation, setConversations],
-  )
-
-  // Save node positions when they change
-  const onNodeDragStop = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      setConversations((prevConversations) =>
-        prevConversations.map((conv) => {
-          if (conv.id === activeConversation) {
-            return {
-              ...conv,
-              nodes: conv.nodes.map((n) => {
-                if (n.id === node.id) {
-                  return {
-                    ...n,
-                    position: node.position,
-                  }
-                }
-                return n
-              }),
-            }
-          }
-          return conv
-        }),
-      )
-    },
-    [activeConversation, setConversations],
+    [edges, onEdgesChange, onConnect],
   )
 
   const handleEdgeClick = (edge: Edge) => {
@@ -193,6 +170,96 @@ export default function FlowCanvas({
     [activeConversation, setConversations, setSelectedEdge],
   )
 
+  // Handle node dimensions change
+  const handleNodeDimensionsChange = useCallback((nodeId: string, dimensions: { width: number; height: number }) => {
+    setNodeDimensions((prev) => ({
+      ...prev,
+      [nodeId]: dimensions,
+    }))
+  }, [])
+
+  // Update node data with the dimensions change handler
+  useEffect(() => {
+    const updatedNodes = nodes.map((node) => {
+      if (!node.data.onDimensionsChange) {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            onDimensionsChange: handleNodeDimensionsChange,
+          },
+        }
+      }
+      return node
+    })
+
+    if (JSON.stringify(nodes) !== JSON.stringify(updatedNodes)) {
+      onNodesChange(updatedNodes)
+    }
+  }, [nodes, handleNodeDimensionsChange, onNodesChange])
+
+  // Handle node hover for preview
+  const onNodeMouseEnter = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current)
+      }
+
+      // Set a timeout to show the preview after 2 seconds
+      hoverTimerRef.current = setTimeout(() => {
+        setHoverNode(node)
+        setShowNodePreview(true)
+
+        // Position the preview beside the node in the canvas
+        if (reactFlowInstanceInternal) {
+          const dimensions = nodeDimensions[node.id] || { width: 220, height: 150 }
+
+          const nodePosition = reactFlowInstanceInternal.project({
+            x: node.position.x + dimensions.width + 10, // Position it to the right of the node
+            y: node.position.y, // Align with the top of the node
+          })
+
+          setPreviewPosition({
+            x: nodePosition.x,
+            y: nodePosition.y,
+          })
+        }
+      }, 2000) // 2 seconds delay
+    },
+    [reactFlowInstanceInternal, nodeDimensions],
+  )
+
+  const onNodeMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current)
+      hoverTimerRef.current = null
+    }
+    setShowNodePreview(false)
+  }, [])
+
+  // Close preview when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (previewRef.current && !previewRef.current.contains(event.target as Node)) {
+        setShowNodePreview(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current)
+      }
+    }
+  }, [])
+
   return (
     <div ref={reactFlowWrapper} className="flex-1 h-full w-full relative">
       {showConnectionMode && (
@@ -208,7 +275,7 @@ export default function FlowCanvas({
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        onConnect={handleConnect}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
@@ -218,11 +285,20 @@ export default function FlowCanvas({
         onEdgeClick={(_, edge) => handleEdgeClick(edge)}
         deleteKeyCode="Delete"
         onEdgesDelete={onEdgeDelete}
-        onNodeDragStop={onNodeDragStop}
         className={theme === "dark" ? "bg-background" : "bg-slate-50"}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-        proOptions={{ hideAttribution: true }}
+        proOptions={{
+          hideAttribution: true,
+          smooth: true,
+        }}
         onInit={onInit}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
+        nodesDraggable={true}
+        nodesConnectable={true}
+        snapToGrid={true}
+        snapGrid={[15, 15]}
+        elevateNodesOnSelect={true}
       >
         <Background color={theme === "dark" ? "#333" : "#aaa"} gap={16} size={1} variant="dots" />
         <Controls className="m-4" />
@@ -241,6 +317,66 @@ export default function FlowCanvas({
           </Panel>
         )}
       </ReactFlow>
+
+      {/* Node Preview Popup */}
+      <AnimatePresence>
+        {showNodePreview && hoverNode && (
+          <motion.div
+            ref={previewRef}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            className="absolute z-50 bg-background/95 backdrop-blur-md border border-border rounded-lg shadow-lg p-4 max-h-[400px] overflow-hidden node-preview"
+            style={{
+              position: "absolute",
+              left: `${previewPosition.x}px`,
+              top: `${previewPosition.y}px`,
+              width: "300px",
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-base">{hoverNode.data?.label || "Node Preview"}</h3>
+              <button
+                onClick={() => setShowNodePreview(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[320px] overflow-y-auto preview-scrollbar pr-1">
+              {hoverNode.data?.messages && hoverNode.data.messages.length > 0 ? (
+                hoverNode.data.messages.map((message: any, index: number) => (
+                  <div
+                    key={message.id || index}
+                    className={`p-3 rounded-lg ${
+                      message.sender === "user"
+                        ? "bg-primary/10 border border-primary/20"
+                        : "bg-card border border-border"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <div
+                        className={`w-2 h-2 rounded-full ${message.sender === "user" ? "bg-primary" : "bg-green-500"}`}
+                      ></div>
+                      <span className="text-xs font-medium">{message.sender === "user" ? "User" : "AI"}</span>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <p className="text-sm">{message.content}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-muted-foreground py-6">
+                  <p>No messages in this node</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

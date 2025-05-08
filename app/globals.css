@@ -76,41 +76,21 @@
     @apply bg-muted-foreground/50;
   }
 
-  /* ReactFlow custom styling */
-  .react-flow__controls {
-    @apply !bg-background/80 !border !border-border !shadow-md !backdrop-blur-sm !rounded-md !p-1;
+  .preview-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
   }
 
-  .react-flow__controls-button {
-    @apply !border-0 !bg-transparent !text-foreground !w-7 !h-7 !rounded-md hover:!bg-muted;
+  .preview-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
   }
 
-  .react-flow__panel {
-    @apply !bg-transparent;
+  .preview-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
   }
 
-  .react-flow__attribution {
-    @apply !bg-transparent !text-muted-foreground;
-  }
-
-  .react-flow__node {
-    @apply !transition-shadow !duration-200;
-  }
-
-  .react-flow__handle {
-    @apply !transition-all !duration-200;
-  }
-
-  .react-flow__handle:hover {
-    @apply !scale-125;
-  }
-
-  .react-flow__background {
-    @apply dark:!bg-background;
-  }
-
-  .react-flow__background-pattern {
-    @apply dark:!text-muted/20;
+  .preview-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
   }
 
   /* Typography enhancements */
@@ -138,4 +118,64 @@
   .message-transition {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  .node-preview {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(var(--border), 0.2);
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* ReactFlow custom styling */
+.react-flow__controls {
+  background-color: rgba(var(--background), 0.8);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(8px);
+  border-radius: 0.375rem;
+  padding: 0.25rem;
+}
+
+.react-flow__controls-button {
+  border: none;
+  background-color: transparent;
+  color: hsl(var(--foreground));
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+}
+
+.react-flow__controls-button:hover {
+  background-color: hsl(var(--muted));
+}
+
+.react-flow__panel {
+  background-color: transparent;
+}
+
+.react-flow__attribution {
+  background-color: transparent;
+  color: hsl(var(--muted-foreground));
+}
+
+.react-flow__node {
+  transition-property: box-shadow;
+  transition-duration: 200ms;
+}
+
+.react-flow__handle {
+  transition-property: all;
+  transition-duration: 200ms;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.25);
+}
+
+.dark .react-flow__background {
+  background-color: hsl(var(--background));
+}
+
+.dark .react-flow__background-pattern {
+  color: rgba(var(--muted), 0.2);
 }

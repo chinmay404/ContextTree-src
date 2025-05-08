@@ -43,6 +43,17 @@ const edgeTypes = {
   custom: CustomEdge,
 }
 
+// Default React Flow options for smooth interactions
+const defaultEdgeOptions = {
+  animated: true,
+  type: "custom",
+  style: { stroke: "#3b82f6" },
+  markerEnd: {
+    type: MarkerType.ArrowClosed,
+    color: "#3b82f6",
+  },
+}
+
 export default function ConversationCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
@@ -63,6 +74,10 @@ export default function ConversationCanvas() {
   const [connectionSource, setConnectionSource] = useState<string | null>(null)
   const [chatPanelCollapsed, setChatPanelCollapsed] = useState(false)
   const [activeNodeModel, setActiveNodeModel] = useState("gpt-4")
+  const [branchPoints, setBranchPoints] = useState<Record<string, string>>({})
+  const [connectionPoints, setConnectionPoints] = useState<
+    Record<string, { nodeId: string; type: string; direction: "incoming" | "outgoing" }>
+  >({})
 
   useEffect(() => {
     // Sync nodes and edges with the active conversation
@@ -119,14 +134,35 @@ export default function ConversationCanvas() {
             }),
           )
 
+          // If the active node is involved in this connection, add a connection point
+          if (connectionSource === activeNode || nodeId === activeNode) {
+            // Get the last message ID to attach the connection point to
+            if (messages.length > 0) {
+              const lastMessageId = messages[messages.length - 1].id
+              const targetNodeData = nodes.find(
+                (n) => n.id === (connectionSource === activeNode ? nodeId : connectionSource),
+              )
+              const nodeType = targetNodeData?.type || "unknown"
+
+              setConnectionPoints((prev) => ({
+                ...prev,
+                [lastMessageId]: {
+                  nodeId: connectionSource === activeNode ? nodeId : connectionSource,
+                  type: nodeType,
+                  direction: connectionSource === activeNode ? "outgoing" : "incoming",
+                },
+              }))
+
+              toast({
+                title: "Connection created",
+                description: `Node "${targetNodeData?.data?.label || "Unknown"}" has been connected to this conversation.`,
+              })
+            }
+          }
+
           // Exit connection mode
           setShowConnectionMode(false)
           setConnectionSource(null)
-
-          toast({
-            title: "Connection created",
-            description: "Nodes have been connected successfully.",
-          })
         }
       } else {
         // Normal node click behavior
@@ -146,7 +182,71 @@ export default function ConversationCanvas() {
       setConversations,
       toast,
       setChatPanelCollapsed,
+      activeNode,
+      messages,
+      nodes,
     ],
+  )
+
+  // Handle edge creation through the ReactFlow onConnect callback
+  const onConnect = useCallback(
+    (params) => {
+      const newEdge = {
+        ...params,
+        id: `e${params.source}-${params.target}`,
+        type: "custom",
+        animated: true,
+        style: { stroke: "#3b82f6" },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: "#3b82f6",
+        },
+        data: {
+          label: "Connection",
+        },
+      }
+
+      setEdges((eds) => [...eds, newEdge])
+
+      // Update conversation edges
+      setConversations((prevConversations) =>
+        prevConversations.map((conv) => {
+          if (conv.id === activeConversation) {
+            return {
+              ...conv,
+              edges: [...(conv.edges || []), newEdge],
+            }
+          }
+          return conv
+        }),
+      )
+
+      // If the active node is involved in this connection, add a connection point
+      if (params.source === activeNode || params.target === activeNode) {
+        // Get the last message ID to attach the connection point to
+        if (messages.length > 0) {
+          const lastMessageId = messages[messages.length - 1].id
+          const connectedNodeId = params.source === activeNode ? params.target : params.source
+          const targetNodeData = nodes.find((n) => n.id === connectedNodeId)
+          const nodeType = targetNodeData?.type || "unknown"
+
+          setConnectionPoints((prev) => ({
+            ...prev,
+            [lastMessageId]: {
+              nodeId: connectedNodeId,
+              type: nodeType,
+              direction: params.source === activeNode ? "outgoing" : "incoming",
+            },
+          }))
+
+          toast({
+            title: "Connection created",
+            description: `Node "${targetNodeData?.data?.label || "Unknown"}" has been connected to this conversation.`,
+          })
+        }
+      }
+    },
+    [activeNode, messages, nodes, setEdges, activeConversation, setConversations, toast],
   )
 
   const startConnectionMode = (nodeId: string) => {
@@ -493,6 +593,28 @@ export default function ConversationCanvas() {
         }
       }
 
+      // Remove any branch points that point to this node
+      setBranchPoints((prev) => {
+        const newBranchPoints = { ...prev }
+        Object.keys(newBranchPoints).forEach((messageId) => {
+          if (newBranchPoints[messageId] === nodeId) {
+            delete newBranchPoints[messageId]
+          }
+        })
+        return newBranchPoints
+      })
+
+      // Remove any connection points that point to this node
+      setConnectionPoints((prev) => {
+        const newConnectionPoints = { ...prev }
+        Object.keys(newConnectionPoints).forEach((messageId) => {
+          if (newConnectionPoints[messageId].nodeId === nodeId) {
+            delete newConnectionPoints[messageId]
+          }
+        })
+        return newConnectionPoints
+      })
+
       toast({
         title: "Node deleted",
         description: "The node and its connections have been removed.",
@@ -587,6 +709,7 @@ export default function ConversationCanvas() {
         onDelete: onNodeDelete,
         model: "gpt-4",
         onModelChange,
+        onDimensionsChange: () => {}, // Add this to avoid errors
       },
     }
 
@@ -630,6 +753,7 @@ export default function ConversationCanvas() {
         onDelete: onNodeDelete,
         model: "gpt-4",
         onModelChange,
+        onDimensionsChange: () => {}, // Add this to avoid errors
       },
     }
 
@@ -681,6 +805,19 @@ export default function ConversationCanvas() {
           return conv
         }),
       )
+
+      // If the source node is the active node, add a connection point
+      if (sourceNodeId === activeNode && messages.length > 0) {
+        const lastMessageId = messages[messages.length - 1].id
+        setConnectionPoints((prev) => ({
+          ...prev,
+          [lastMessageId]: {
+            nodeId: id,
+            type: "branchNode",
+            direction: "outgoing",
+          },
+        }))
+      }
     }
 
     return id
@@ -738,11 +875,39 @@ export default function ConversationCanvas() {
             return conv
           }),
         )
+
+        // Add the branch point to track where this branch was created from
+        if (messages.length > 0) {
+          const lastMessageId = messages[messages.length - 1].id
+          setBranchPoints((prev) => ({
+            ...prev,
+            [lastMessageId]: branchId,
+          }))
+        }
       }
 
       return branchId
     },
-    [activeNode, setNodes, activeConversation, setConversations],
+    [activeNode, setNodes, activeConversation, setConversations, messages, createBranchNode],
+  )
+
+  const navigateToNode = useCallback(
+    (nodeId: string) => {
+      // Set the active node to the target node
+      setActiveNode(nodeId)
+
+      // Ensure the chat panel is visible
+      setChatPanelCollapsed(false)
+
+      // Center the view on the node
+      if (reactFlowInstance) {
+        const node = nodes.find((n) => n.id === nodeId)
+        if (node) {
+          reactFlowInstance.setCenter(node.position.x, node.position.y, { duration: 800 })
+        }
+      }
+    },
+    [nodes, reactFlowInstance, setChatPanelCollapsed],
   )
 
   const createMultipleBranches = (count: number) => {
@@ -856,8 +1021,8 @@ export default function ConversationCanvas() {
 
   const onSave = () => {
     if (reactFlowInstance) {
-      const flow = reactFlowInstance.toObject()
-      localStorage.setItem("flow-conversation", JSON.stringify(flow))
+      const flowData = reactFlowInstance.toObject()
+      localStorage.setItem("flow-conversation", JSON.stringify(flowData))
       toast({
         title: "Canvas saved",
         description: "The current canvas state has been saved to local storage.",
@@ -922,6 +1087,7 @@ export default function ConversationCanvas() {
             setReactFlowInstance={setReactFlowInstance}
             showConnectionMode={showConnectionMode}
             connectionSource={connectionSource}
+            onConnect={onConnect}
           />
           <ChatPanel
             messages={messages}
@@ -934,6 +1100,9 @@ export default function ConversationCanvas() {
             onDeleteNode={onActiveNodeDelete}
             model={activeNodeModel}
             onModelChange={onActiveNodeModelChange}
+            branchPoints={branchPoints}
+            connectionPoints={connectionPoints}
+            onNavigateToNode={navigateToNode}
           />
         </div>
       </div>

@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { memo, useState, useRef, useEffect, useCallback } from "react"
-import { Handle, Position, type NodeProps } from "reactflow"
+import { Handle, Position, type NodeProps, useUpdateNodeInternals } from "reactflow"
 import { motion } from "framer-motion"
 import { ImageIcon, Trash2, Move, ZoomIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -17,10 +17,11 @@ interface ImageNodeData {
     width: number
     height: number
   }
+  onDimensionsChange?: (id: string, dimensions: { width: number; height: number }) => void
 }
 
 function ImageNode({ id, data, selected }: NodeProps<ImageNodeData>) {
-  const { imageUrl, onDelete, onResize, style = { width: 200, height: 150 } } = data
+  const { imageUrl, onDelete, onResize, style = { width: 200, height: 150 }, onDimensionsChange } = data
 
   const [isResizing, setIsResizing] = useState(false)
   const [nodeWidth, setNodeWidth] = useState(style.width || 200)
@@ -30,6 +31,7 @@ function ImageNode({ id, data, selected }: NodeProps<ImageNodeData>) {
   const startPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const startSizeRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 })
   const resizeFrameRef = useRef<number | null>(null)
+  const updateNodeInternals = useUpdateNodeInternals()
 
   useEffect(() => {
     setNodeWidth(style.width || 200)
@@ -119,6 +121,17 @@ function ImageNode({ id, data, selected }: NodeProps<ImageNodeData>) {
     window.addEventListener("error", handleError)
     return () => window.removeEventListener("error", handleError)
   }, [])
+
+  // Update node dimensions for preview positioning
+  useEffect(() => {
+    if (nodeRef.current && onDimensionsChange) {
+      const { width, height } = nodeRef.current.getBoundingClientRect()
+      if (width && height && width > 0 && height > 0) {
+        onDimensionsChange(id, { width, height })
+        updateNodeInternals(id)
+      }
+    }
+  }, [nodeWidth, nodeHeight, id, onDimensionsChange, updateNodeInternals])
 
   return (
     <motion.div

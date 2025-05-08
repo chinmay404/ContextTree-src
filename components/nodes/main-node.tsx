@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { memo, useState, useRef, useEffect, useCallback } from "react"
-import { Handle, Position, type NodeProps } from "reactflow"
+import { Handle, Position, type NodeProps, useUpdateNodeInternals } from "reactflow"
 import type { Message } from "@/lib/types"
 import {
   MessageSquare,
@@ -43,6 +43,7 @@ interface MainNodeData {
   onDelete?: (id: string) => void
   model?: string
   onModelChange?: (id: string, model: string) => void
+  onDimensionsChange?: (id: string, dimensions: { width: number; height: number }) => void
 }
 
 function MainNode({ id, data, selected }: NodeProps<MainNodeData>) {
@@ -60,6 +61,7 @@ function MainNode({ id, data, selected }: NodeProps<MainNodeData>) {
     onDelete,
     model = "gpt-4",
     onModelChange,
+    onDimensionsChange,
   } = data
 
   const [isEditing, setIsEditing] = useState(false)
@@ -70,6 +72,7 @@ function MainNode({ id, data, selected }: NodeProps<MainNodeData>) {
   const startXRef = useRef<number>(0)
   const startWidthRef = useRef<number>(0)
   const resizeFrameRef = useRef<number | null>(null)
+  const updateNodeInternals = useUpdateNodeInternals()
 
   useEffect(() => {
     setNodeWidth(style.width || 220)
@@ -210,6 +213,17 @@ function MainNode({ id, data, selected }: NodeProps<MainNodeData>) {
     window.addEventListener("error", handleError)
     return () => window.removeEventListener("error", handleError)
   }, [])
+
+  // Update node dimensions for preview positioning
+  useEffect(() => {
+    if (nodeRef.current && onDimensionsChange) {
+      const { width, height } = nodeRef.current.getBoundingClientRect()
+      if (width && height && width > 0 && height > 0) {
+        onDimensionsChange(id, { width, height })
+        updateNodeInternals(id)
+      }
+    }
+  }, [nodeWidth, id, onDimensionsChange, updateNodeInternals])
 
   // Get the selected model name
   const selectedModel = availableModels.find((m) => m.id === model)?.name || "GPT-4"

@@ -19,6 +19,10 @@ import {
   Minimize2,
   Trash2,
   MessageSquare,
+  CornerDownRight,
+  Link,
+  ArrowRight,
+  ArrowLeft,
 } from "lucide-react"
 import { format } from "date-fns"
 import { motion, AnimatePresence } from "framer-motion"
@@ -37,6 +41,9 @@ interface ChatPanelProps {
   onDeleteNode?: () => void
   model?: string
   onModelChange?: (model: string) => void
+  branchPoints?: Record<string, string> // Map of message IDs to branch node IDs
+  connectionPoints?: Record<string, { nodeId: string; type: string; direction: "incoming" | "outgoing" }> // Map of message IDs to connection info
+  onNavigateToNode?: (nodeId: string) => void // Function to navigate to a node
 }
 
 export default function ChatPanel({
@@ -50,6 +57,9 @@ export default function ChatPanel({
   onDeleteNode,
   model = "gpt-4",
   onModelChange,
+  branchPoints = {},
+  connectionPoints = {},
+  onNavigateToNode,
 }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState("")
   const [isEditingName, setIsEditingName] = useState(false)
@@ -68,6 +78,7 @@ export default function ChatPanel({
     content: string
   } | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [createdBranchId, setCreatedBranchId] = useState<string | null>(null)
 
   useEffect(() => {
     setEditedName(nodeName)
@@ -89,11 +100,16 @@ export default function ChatPanel({
         const branchContent = inputValue.substring(8).trim()
 
         if (branchContent && onCreateBranchNode) {
-          onCreateBranchNode(branchContent)
-          toast({
-            title: "Branch node created",
-            description: `Created a new branch node with content: "${branchContent.substring(0, 30)}${branchContent.length > 30 ? "..." : ""}"`,
-          })
+          const branchId = onCreateBranchNode(branchContent)
+          if (branchId) {
+            setCreatedBranchId(branchId)
+            toast({
+              title: "Branch node created",
+              description: `Created a new branch node with content: "${branchContent.substring(0, 30)}${
+                branchContent.length > 30 ? "..." : ""
+              }"`,
+            })
+          }
           setInputValue("")
           return
         }
@@ -197,8 +213,28 @@ export default function ChatPanel({
     }
   }
 
+  const handleNavigateToNode = (nodeId: string) => {
+    if (onNavigateToNode) {
+      onNavigateToNode(nodeId)
+    }
+  }
+
   // Get the selected model name
   const selectedModel = availableModels.find((m) => m.id === model)?.name || "GPT-4"
+
+  // Helper function to get node type display name
+  const getNodeTypeName = (type: string) => {
+    switch (type) {
+      case "mainNode":
+        return "Main Node"
+      case "branchNode":
+        return "Branch Node"
+      case "imageNode":
+        return "Image"
+      default:
+        return "Node"
+    }
+  }
 
   return (
     <motion.div
@@ -328,38 +364,98 @@ export default function ChatPanel({
               </motion.div>
             ) : (
               messages.map((message, index) => (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className={`flex flex-col ${message.sender === "user" ? "items-end" : "items-start"}`}
-                >
-                  <div className="flex items-end gap-2">
-                    {message.sender !== "user" && (
-                      <div className="bg-primary/10 p-1.5 rounded-full">
-                        <Bot className="h-3.5 w-3.5 text-primary" />
+                <div key={message.id}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className={`flex flex-col ${message.sender === "user" ? "items-end" : "items-start"}`}
+                  >
+                    <div className="flex items-end gap-2">
+                      {message.sender !== "user" && (
+                        <div className="bg-primary/10 p-1.5 rounded-full">
+                          <Bot className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                      )}
+                      <div
+                        className={`max-w-[85%] rounded-2xl p-3.5 ${
+                          message.sender === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-card border border-border shadow-sm"
+                        }`}
+                      >
+                        <p className="text-sm leading-relaxed">{message.content}</p>
                       </div>
-                    )}
-                    <div
-                      className={`max-w-[85%] rounded-2xl p-3.5 ${
-                        message.sender === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-card border border-border shadow-sm"
-                      }`}
-                    >
-                      <p className="text-sm leading-relaxed">{message.content}</p>
+                      {message.sender === "user" && (
+                        <div className="bg-primary/10 p-1.5 rounded-full">
+                          <User className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                      )}
                     </div>
-                    {message.sender === "user" && (
-                      <div className="bg-primary/10 p-1.5 rounded-full">
-                        <User className="h-3.5 w-3.5 text-primary" />
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground mt-1.5 px-2">
-                    {format(new Date(message.timestamp), "h:mm a")}
-                  </span>
-                </motion.div>
+                    <span className="text-xs text-muted-foreground mt-1.5 px-2">
+                      {format(new Date(message.timestamp), "h:mm a")}
+                    </span>
+                  </motion.div>
+
+                  {/* Branch indicator */}
+                  {branchPoints[message.id] && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                      className={`flex my-2 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`flex items-center gap-1.5 h-7 px-2 py-1 text-xs rounded-md border border-dashed ${
+                          message.sender === "user"
+                            ? "border-primary/30 text-primary"
+                            : "border-orange-500/30 text-orange-500"
+                        }`}
+                        onClick={() => handleNavigateToNode(branchPoints[message.id])}
+                      >
+                        <GitBranch className="h-3 w-3" />
+                        <span>Branch created</span>
+                        <CornerDownRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </motion.div>
+                  )}
+
+                  {/* Connection indicator */}
+                  {connectionPoints[message.id] && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                      className={`flex my-2 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`flex items-center gap-1.5 h-7 px-2 py-1 text-xs rounded-md border border-dashed ${
+                          connectionPoints[message.id].type === "mainNode"
+                            ? "border-primary/30 text-primary"
+                            : connectionPoints[message.id].type === "branchNode"
+                              ? "border-orange-500/30 text-orange-500"
+                              : "border-blue-500/30 text-blue-500"
+                        }`}
+                        onClick={() => handleNavigateToNode(connectionPoints[message.id].nodeId)}
+                      >
+                        <Link className="h-3 w-3" />
+                        <span>
+                          {connectionPoints[message.id].direction === "outgoing" ? "Connected to" : "Connected from"}{" "}
+                          {getNodeTypeName(connectionPoints[message.id].type)}
+                        </span>
+                        {connectionPoints[message.id].direction === "outgoing" ? (
+                          <ArrowRight className="h-3 w-3 ml-1" />
+                        ) : (
+                          <ArrowLeft className="h-3 w-3 ml-1" />
+                        )}
+                      </Button>
+                    </motion.div>
+                  )}
+                </div>
               ))
             )}
             <div ref={messagesEndRef} />

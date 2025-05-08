@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { memo, useState, useRef, useEffect, useCallback } from "react"
-import { Handle, Position, type NodeProps } from "reactflow"
+import { Handle, Position, type NodeProps, useUpdateNodeInternals } from "reactflow"
 import type { Message } from "@/lib/types"
 import { GitBranch, Edit, Check, ChevronDown, ChevronUp, Settings, MoreHorizontal, Link2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,7 @@ interface BranchNodeData {
   onDelete?: (id: string) => void
   model?: string
   onModelChange?: (id: string, model: string) => void
+  onDimensionsChange?: (id: string, dimensions: { width: number; height: number }) => void
 }
 
 function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
@@ -49,6 +50,7 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
     onDelete,
     model = "gpt-4",
     onModelChange,
+    onDimensionsChange,
   } = data
 
   const [isEditing, setIsEditing] = useState(false)
@@ -59,6 +61,7 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
   const startXRef = useRef<number>(0)
   const startWidthRef = useRef<number>(0)
   const resizeFrameRef = useRef<number | null>(null)
+  const updateNodeInternals = useUpdateNodeInternals()
 
   useEffect(() => {
     setNodeWidth(style.width || 220)
@@ -203,6 +206,17 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
       }
     }
   }, [data.messages, expanded, id, onToggleExpand])
+
+  // Update node dimensions for preview positioning
+  useEffect(() => {
+    if (nodeRef.current && onDimensionsChange) {
+      const { width, height } = nodeRef.current.getBoundingClientRect()
+      if (width && height && width > 0 && height > 0) {
+        onDimensionsChange(id, { width, height })
+        updateNodeInternals(id)
+      }
+    }
+  }, [nodeWidth, id, onDimensionsChange, updateNodeInternals])
 
   // Get the selected model name
   const selectedModel = availableModels.find((m) => m.id === model)?.name || "GPT-4"
