@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { useNodesState, useEdgesState, MarkerType } from "reactflow"
 import "reactflow/dist/style.css"
 import Navbar from "@/components/navbar"
@@ -78,6 +78,7 @@ export default function ConversationCanvas() {
   const [connectionPoints, setConnectionPoints] = useState<
     Record<string, { nodeId: string; type: string; direction: "incoming" | "outgoing" }>
   >({})
+  const lastViewportRef = useRef({ x: 0, y: 0, zoom: 1 })
 
   useEffect(() => {
     // Sync nodes and edges with the active conversation
@@ -97,6 +98,11 @@ export default function ConversationCanvas() {
       setActiveNodeModel(activeNodeData.model || "gpt-4")
     }
   }, [activeNode, nodes])
+
+  // Save viewport state when it changes
+  const onViewportChange = useCallback((viewport) => {
+    lastViewportRef.current = viewport
+  }, [])
 
   const onNodeClick = useCallback(
     (nodeId: string) => {
@@ -644,13 +650,21 @@ export default function ConversationCanvas() {
         const imageUrl = event.target.result as string
         const id = uuidv4()
 
+        // Calculate position based on viewport center
+        let position = { x: 100, y: 100 }
+        if (reactFlowInstance) {
+          const viewport = reactFlowInstance.getViewport()
+          const center = reactFlowInstance.screenToFlowPosition({
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2,
+          })
+          position = { x: center.x, y: center.y }
+        }
+
         const newNode = {
           id,
           type: "imageNode",
-          position: {
-            x: 100,
-            y: 100,
-          },
+          position,
           data: {
             imageUrl: imageUrl,
             onDelete: onImageNodeDelete,
@@ -662,6 +676,7 @@ export default function ConversationCanvas() {
           },
         }
 
+        // Add the new node while preserving existing nodes
         setNodes((nds) => [...nds, newNode])
 
         // Update conversation nodes
@@ -689,7 +704,17 @@ export default function ConversationCanvas() {
 
   const createMainNode = () => {
     const id = uuidv4()
-    const position = reactFlowInstance ? reactFlowInstance.project({ x: 100, y: 100 }) : { x: 250, y: 100 }
+
+    // Calculate position based on viewport center
+    let position = { x: 250, y: 100 }
+    if (reactFlowInstance) {
+      const viewport = reactFlowInstance.getViewport()
+      const center = reactFlowInstance.screenToFlowPosition({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      })
+      position = { x: center.x, y: center.y }
+    }
 
     const newNode = {
       id,
@@ -713,6 +738,7 @@ export default function ConversationCanvas() {
       },
     }
 
+    // Add the new node while preserving existing nodes
     setNodes((nds) => [...nds, newNode])
 
     // Update conversation nodes
@@ -728,12 +754,85 @@ export default function ConversationCanvas() {
       }),
     )
 
+    // If a node is active, add a notification message about the new node
+    if (activeNode) {
+      const newMessage = {
+        id: uuidv4(),
+        sender: "ai",
+        content: `A new main node "${newNode.data.label}" has been created.`,
+        timestamp: Date.now(),
+      }
+
+      // Update messages in the active node
+      setMessages((prevMessages) => [...prevMessages, newMessage])
+
+      // Update the active node with the new message
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === activeNode) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                messages: [...node.data.messages, newMessage],
+              },
+            }
+          }
+          return node
+        }),
+      )
+
+      // Update in conversation data
+      setConversations((prevConversations) =>
+        prevConversations.map((conv) => {
+          if (conv.id === activeConversation) {
+            return {
+              ...conv,
+              nodes: conv.nodes.map((node) => {
+                if (node.id === activeNode) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      messages: [...node.data.messages, newMessage],
+                    },
+                  }
+                }
+                return node
+              }),
+            }
+          }
+          return conv
+        }),
+      )
+    }
+
     return id
   }
 
   const createBranchNode = (sourceNodeId?: string) => {
     const id = uuidv4()
-    const position = reactFlowInstance ? reactFlowInstance.project({ x: 100, y: 100 }) : { x: 250, y: 200 }
+
+    // Calculate position based on viewport center or relative to source node
+    let position = { x: 250, y: 200 }
+
+    if (sourceNodeId) {
+      // If we have a source node, position the branch node to the right of it
+      const sourceNode = nodes.find((node) => node.id === sourceNodeId)
+      if (sourceNode) {
+        position = {
+          x: sourceNode.position.x + 300,
+          y: sourceNode.position.y + 50,
+        }
+      }
+    } else if (reactFlowInstance) {
+      // Otherwise use the center of the viewport
+      const center = reactFlowInstance.screenToFlowPosition({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      })
+      position = { x: center.x, y: center.y }
+    }
 
     const newNode = {
       id,
@@ -757,6 +856,7 @@ export default function ConversationCanvas() {
       },
     }
 
+    // Add the new node while preserving existing nodes
     setNodes((nds) => [...nds, newNode])
 
     // Update conversation nodes
@@ -806,18 +906,120 @@ export default function ConversationCanvas() {
         }),
       )
 
-      // If the source node is the active node, add a connection point
-      if (sourceNodeId === activeNode && messages.length > 0) {
-        const lastMessageId = messages[messages.length - 1].id
+      // If the source node is the active node, add a notification message
+      if (sourceNodeId === activeNode && activeNode !== id) {
+        const newMessage = {
+          id: uuidv4(),
+          sender: "ai",
+          content: `Branch node "${newNode.data.label}" has been created from this node.`,
+          timestamp: Date.now(),
+        }
+
+        // Update messages in the active node
+        setMessages((prevMessages) => [...prevMessages, newMessage])
+
+        // Update the active node with the new message
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id === activeNode) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  messages: [...node.data.messages, newMessage],
+                },
+              }
+            }
+            return node
+          }),
+        )
+
+        // Update in conversation data
+        setConversations((prevConversations) =>
+          prevConversations.map((conv) => {
+            if (conv.id === activeConversation) {
+              return {
+                ...conv,
+                nodes: conv.nodes.map((node) => {
+                  if (node.id === activeNode) {
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        messages: [...node.data.messages, newMessage],
+                      },
+                    }
+                  }
+                  return node
+                }),
+              }
+            }
+            return conv
+          }),
+        )
+
+        // Add the connection point to track this branch
         setConnectionPoints((prev) => ({
           ...prev,
-          [lastMessageId]: {
+          [newMessage.id]: {
             nodeId: id,
             type: "branchNode",
             direction: "outgoing",
           },
         }))
       }
+    } else if (activeNode) {
+      // If we're creating a standalone branch node (not connected to anything)
+      // but we have an active node, still add a message about the creation
+      const newMessage = {
+        id: uuidv4(),
+        sender: "ai",
+        content: `A new standalone branch node "${newNode.data.label}" has been created.`,
+        timestamp: Date.now(),
+      }
+
+      // Update messages in the active node
+      setMessages((prevMessages) => [...prevMessages, newMessage])
+
+      // Update the active node with the new message
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === activeNode) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                messages: [...node.data.messages, newMessage],
+              },
+            }
+          }
+          return node
+        }),
+      )
+
+      // Update in conversation data
+      setConversations((prevConversations) =>
+        prevConversations.map((conv) => {
+          if (conv.id === activeConversation) {
+            return {
+              ...conv,
+              nodes: conv.nodes.map((node) => {
+                if (node.id === activeNode) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      messages: [...node.data.messages, newMessage],
+                    },
+                  }
+                }
+                return node
+              }),
+            }
+          }
+          return conv
+        }),
+      )
     }
 
     return id
@@ -888,7 +1090,7 @@ export default function ConversationCanvas() {
 
       return branchId
     },
-    [activeNode, setNodes, activeConversation, setConversations, messages, createBranchNode],
+    [activeNode, setNodes, activeConversation, setConversations, messages],
   )
 
   const navigateToNode = useCallback(
@@ -916,7 +1118,79 @@ export default function ConversationCanvas() {
 
     for (let i = 0; i < count; i++) {
       const id = createBranchNode(sourceNodeId)
-      createdNodes.push(id)
+
+      if (id) {
+        createdNodes.push(id)
+
+        // Add a system message in the chat for each created branch
+        const newMessage = {
+          id: uuidv4(),
+          sender: "ai",
+          content: `Branch ${branchCount + i} has been created from this node.`,
+          timestamp: Date.now(),
+        }
+
+        // Update messages in the active node
+        setMessages((prevMessages) => [...prevMessages, newMessage])
+
+        // Update the active node with the new message
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id === activeNode) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  messages: [...node.data.messages, newMessage],
+                },
+              }
+            }
+            return node
+          }),
+        )
+
+        // Update in conversation data
+        setConversations((prevConversations) =>
+          prevConversations.map((conv) => {
+            if (conv.id === activeConversation) {
+              return {
+                ...conv,
+                nodes: conv.nodes.map((node) => {
+                  if (node.id === activeNode) {
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        messages: [...node.data.messages, newMessage],
+                      },
+                    }
+                  }
+                  return node
+                }),
+              }
+            }
+            return conv
+          }),
+        )
+
+        // Add the connection point to track this branch
+        setConnectionPoints((prev) => ({
+          ...prev,
+          [newMessage.id]: {
+            nodeId: id,
+            type: "branchNode",
+            direction: "outgoing",
+          },
+        }))
+      }
+    }
+
+    // Show a toast notification
+    if (createdNodes.length > 0) {
+      toast({
+        title: `${createdNodes.length} branch nodes created`,
+        description: "New branch nodes have been connected to the current node.",
+      })
     }
 
     return createdNodes
@@ -924,7 +1198,16 @@ export default function ConversationCanvas() {
 
   const createImageNode = () => {
     const id = uuidv4()
-    const position = reactFlowInstance ? reactFlowInstance.project({ x: 100, y: 100 }) : { x: 250, y: 200 }
+
+    // Calculate position based on viewport center
+    let position = { x: 250, y: 200 }
+    if (reactFlowInstance) {
+      const center = reactFlowInstance.screenToFlowPosition({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      })
+      position = { x: center.x, y: center.y }
+    }
 
     const newNode = {
       id,
@@ -941,6 +1224,7 @@ export default function ConversationCanvas() {
       },
     }
 
+    // Add the new node while preserving existing nodes
     setNodes((nds) => [...nds, newNode])
 
     // Update conversation nodes
@@ -955,6 +1239,69 @@ export default function ConversationCanvas() {
         return conv
       }),
     )
+
+    // If a node is active, add a notification message about the new image node
+    if (activeNode) {
+      const newMessage = {
+        id: uuidv4(),
+        sender: "ai",
+        content: `A new image node has been created.`,
+        timestamp: Date.now(),
+      }
+
+      // Update messages in the active node
+      setMessages((prevMessages) => [...prevMessages, newMessage])
+
+      // Update the active node with the new message
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === activeNode) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                messages: [...node.data.messages, newMessage],
+              },
+            }
+          }
+          return node
+        }),
+      )
+
+      // Update in conversation data
+      setConversations((prevConversations) =>
+        prevConversations.map((conv) => {
+          if (conv.id === activeConversation) {
+            return {
+              ...conv,
+              nodes: conv.nodes.map((node) => {
+                if (node.id === activeNode) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      messages: [...node.data.messages, newMessage],
+                    },
+                  }
+                }
+                return node
+              }),
+            }
+          }
+          return conv
+        }),
+      )
+
+      // Add the connection point to track this node
+      setConnectionPoints((prev) => ({
+        ...prev,
+        [newMessage.id]: {
+          nodeId: id,
+          type: "imageNode",
+          direction: "outgoing",
+        },
+      }))
+    }
 
     return id
   }
@@ -1032,8 +1379,8 @@ export default function ConversationCanvas() {
 
   const onExport = () => {
     if (reactFlowInstance) {
-      const flow = reactFlowInstance.toObject()
-      const json = JSON.stringify(flow, null, 2)
+      const flowData = reactFlowInstance.toObject()
+      const json = JSON.stringify(flowData, null, 2)
       const blob = new Blob([json], { type: "application/json" })
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
@@ -1088,6 +1435,7 @@ export default function ConversationCanvas() {
             showConnectionMode={showConnectionMode}
             connectionSource={connectionSource}
             onConnect={onConnect}
+            onViewportChange={onViewportChange}
           />
           <ChatPanel
             messages={messages}

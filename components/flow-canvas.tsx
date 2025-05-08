@@ -12,6 +12,7 @@ import ReactFlow, {
   type Edge,
   type Node,
   type OnInit,
+  type Viewport,
 } from "reactflow"
 import type { Conversation } from "@/lib/types"
 import EdgeControls from "./edge-controls"
@@ -38,6 +39,7 @@ interface FlowCanvasProps {
   showConnectionMode?: boolean
   connectionSource?: string | null
   onConnect?: (params: Connection) => void
+  onViewportChange?: (viewport: Viewport) => void
 }
 
 export default function FlowCanvas({
@@ -59,6 +61,7 @@ export default function FlowCanvas({
   showConnectionMode = false,
   connectionSource = null,
   onConnect,
+  onViewportChange,
 }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const { theme } = useTheme()
@@ -100,6 +103,42 @@ export default function FlowCanvas({
       }
     },
     [edges, onEdgesChange, onConnect],
+  )
+
+  // Handle viewport changes
+  const handleViewportChange = useCallback(
+    (viewport: Viewport) => {
+      if (onViewportChange) {
+        onViewportChange(viewport)
+      }
+    },
+    [onViewportChange],
+  )
+
+  // Save node positions when they change
+  const onNodeDragStop = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      setConversations((prevConversations) =>
+        prevConversations.map((conv) => {
+          if (conv.id === activeConversation) {
+            return {
+              ...conv,
+              nodes: conv.nodes.map((n) => {
+                if (n.id === node.id) {
+                  return {
+                    ...n,
+                    position: node.position,
+                  }
+                }
+                return n
+              }),
+            }
+          }
+          return conv
+        }),
+      )
+    },
+    [activeConversation, setConversations],
   )
 
   const handleEdgeClick = (edge: Edge) => {
@@ -285,6 +324,7 @@ export default function FlowCanvas({
         onEdgeClick={(_, edge) => handleEdgeClick(edge)}
         deleteKeyCode="Delete"
         onEdgesDelete={onEdgeDelete}
+        onNodeDragStop={onNodeDragStop}
         className={theme === "dark" ? "bg-background" : "bg-slate-50"}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         proOptions={{
@@ -299,6 +339,7 @@ export default function FlowCanvas({
         snapToGrid={true}
         snapGrid={[15, 15]}
         elevateNodesOnSelect={true}
+        onMove={handleViewportChange}
       >
         <Background color={theme === "dark" ? "#333" : "#aaa"} gap={16} size={1} variant="dots" />
         <Controls className="m-4" />
