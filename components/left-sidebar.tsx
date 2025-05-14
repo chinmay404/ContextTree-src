@@ -24,7 +24,7 @@ import {
   Trash,
   Copy,
   LayoutTemplate,
-  Layers,
+  Network,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
@@ -56,7 +56,7 @@ export default function LeftSidebar({
 }: LeftSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [branchCount, setBranchCount] = useState(2)
-  const [newConversationName, setNewConversationName] = useState("New Conversation")
+  const [newConversationName, setNewConversationName] = useState("New Context")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(264) // Default width
   const [isResizing, setIsResizing] = useState(false)
@@ -125,8 +125,8 @@ export default function LeftSidebar({
     >
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className={`flex items-center gap-2 ${isCollapsed ? "hidden" : "flex"}`}>
-          <Layers className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold text-sm">Canvas Tools</h2>
+          <Network className="h-5 w-5 text-primary" />
+          <h2 className="font-semibold text-sm">Node Tools</h2>
         </div>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleCollapse}>
           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -225,7 +225,7 @@ export default function LeftSidebar({
 
       <div className="mt-4 border-t border-border p-3 flex-1 flex flex-col overflow-hidden">
         <div className={`flex items-center justify-between mb-2 ${isCollapsed ? "hidden" : "flex"}`}>
-          <h3 className="text-sm font-medium">Conversations</h3>
+          <h3 className="text-sm font-medium">Contexts</h3>
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -234,14 +234,14 @@ export default function LeftSidebar({
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create New Conversation</DialogTitle>
-                <DialogDescription>Enter a name for your new conversation.</DialogDescription>
+                <DialogTitle>Create New Context</DialogTitle>
+                <DialogDescription>Enter a name for your new context tree.</DialogDescription>
               </DialogHeader>
               <div className="py-4">
                 <Input
                   value={newConversationName}
                   onChange={(e) => setNewConversationName(e.target.value)}
-                  placeholder="Conversation name"
+                  placeholder="Context name"
                 />
               </div>
               <DialogFooter>
@@ -249,7 +249,7 @@ export default function LeftSidebar({
                   onClick={() => {
                     if (newConversationName.trim()) {
                       onCreateNewConversation(newConversationName)
-                      setNewConversationName("New Conversation")
+                      setNewConversationName("New Context")
                     }
                   }}
                 >
@@ -312,7 +312,7 @@ export default function LeftSidebar({
                     <LayoutTemplate className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Conversations</TooltipContent>
+                <TooltipContent side="right">Contexts</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>

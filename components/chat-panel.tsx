@@ -29,7 +29,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "@/components/ui/use-toast"
 import { availableModels } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import NodeNotes from "@/components/node-notes"
+import ThinkingAnimationComponent from "./thinking-animation"
 
+// Update the ChatPanelProps interface to include isThinking
 interface ChatPanelProps {
   messages: Message[]
   onSendMessage: (content: string) => void
@@ -44,8 +47,30 @@ interface ChatPanelProps {
   branchPoints?: Record<string, string> // Map of message IDs to branch node IDs
   connectionPoints?: Record<string, { nodeId: string; type: string; direction: "incoming" | "outgoing" }> // Map of message IDs to connection info
   onNavigateToNode?: (nodeId: string) => void // Function to navigate to a node
+  nodeNotes?: Record<string, string>
+  onSaveNote?: (nodeId: string, note: string) => void
+  activeNodeId?: string
+  nodes?: any[] // Add nodes array to access parent information
+  isThinking?: boolean // Add isThinking prop
 }
 
+interface NodeParentInfo {
+  id: string
+  label: string
+  type: string
+}
+
+function ThinkingAnimation() {
+  return (
+    <div className="flex gap-1">
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+    </div>
+  )
+}
+
+// Update the function parameters to include isThinking
 export default function ChatPanel({
   messages,
   onSendMessage,
@@ -60,6 +85,11 @@ export default function ChatPanel({
   branchPoints = {},
   connectionPoints = {},
   onNavigateToNode,
+  nodeNotes = {},
+  onSaveNote,
+  activeNodeId,
+  nodes,
+  isThinking = false,
 }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState("")
   const [isEditingName, setIsEditingName] = useState(false)
@@ -79,6 +109,7 @@ export default function ChatPanel({
   } | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
   const [createdBranchId, setCreatedBranchId] = useState<string | null>(null)
+  // Add isThinking state
 
   useEffect(() => {
     setEditedName(nodeName)
@@ -91,6 +122,15 @@ export default function ChatPanel({
     }
   }, [propIsCollapsed])
 
+  // Add this useEffect to ensure the model stays in sync
+  useEffect(() => {
+    // This ensures that when the model prop changes, the UI reflects it
+    if (model) {
+      // No need to call handleModelChange here, just ensure the UI shows the correct model
+    }
+  }, [model])
+
+  // Update the handleSubmit function to include the API call
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -115,6 +155,7 @@ export default function ChatPanel({
         }
       }
 
+      // Send the user message
       onSendMessage(inputValue)
       setInputValue("")
     }
@@ -322,22 +363,75 @@ export default function ChatPanel({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="px-4 py-3 border-b border-border bg-muted/30"
+            className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between"
           >
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">AI Model</label>
-            <Select value={model} onValueChange={handleModelChange}>
-              <SelectTrigger className="h-9 text-sm bg-background/60 backdrop-blur-sm">
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableModels.map((model) => (
-                  <SelectItem key={model.id} value={model.id}>
-                    {model.name} <span className="text-xs text-muted-foreground ml-1">({model.provider})</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex-1">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">AI Model</label>
+              <Select value={model} onValueChange={handleModelChange}>
+                <SelectTrigger className="h-9 text-sm bg-background/60 backdrop-blur-sm">
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableModels.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name} <span className="text-xs text-muted-foreground ml-1">({model.provider})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {activeNodeId && onSaveNote && (
+              <div className="ml-3">
+                <NodeNotes nodeId={activeNodeId} notes={nodeNotes} onSaveNote={onSaveNote} />
+              </div>
+            )}
           </motion.div>
+
+          {/* Add a section to display parent nodes in the chat panel */}
+          {/* Add this after the model selector section */}
+          {!isCollapsed && activeNodeId && (
+            <AnimatePresence>
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="px-4 py-2 border-t border-border bg-muted/10"
+              >
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground">Parent Nodes</label>
+                </div>
+
+                {nodes?.find((n) => n.id === activeNodeId)?.data?.parents?.length > 0 ? (
+                  <div className="mt-2 space-y-1.5">
+                    {nodes
+                      ?.find((n) => n.id === activeNodeId)
+                      ?.data?.parents.map((parent: NodeParentInfo) => (
+                        <Button
+                          key={parent.id}
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start text-xs h-7 gap-1.5"
+                          onClick={() => onNavigateToNode && onNavigateToNode(parent.id)}
+                        >
+                          <div
+                            className={`w-2 h-2 rounded-full ${
+                              parent.type === "mainNode"
+                                ? "bg-primary"
+                                : parent.type === "branchNode"
+                                  ? "bg-orange-500"
+                                  : "bg-blue-500"
+                            }`}
+                          ></div>
+                          <span className="truncate">{parent.label}</span>
+                        </Button>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="py-2 text-center text-xs text-muted-foreground">No parent nodes</div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          )}
 
           <motion.div
             className={`flex-1 overflow-auto p-4 space-y-4 custom-scrollbar ${
@@ -457,6 +551,22 @@ export default function ChatPanel({
                   )}
                 </div>
               ))
+            )}
+            {isThinking && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-start"
+              >
+                <div className="flex items-end gap-2">
+                  <div className="bg-primary/10 p-1.5 rounded-full">
+                    <Bot className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div className="bg-card border border-border shadow-sm rounded-2xl p-3.5">
+                    <ThinkingAnimationComponent />
+                  </div>
+                </div>
+              </motion.div>
             )}
             <div ref={messagesEndRef} />
           </motion.div>

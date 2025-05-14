@@ -40,6 +40,13 @@ interface FlowCanvasProps {
   connectionSource?: string | null
   onConnect?: (params: Connection) => void
   onViewportChange?: (viewport: Viewport) => void
+  onEdgeDelete?: (edges: Edge[]) => void
+}
+
+interface NodeParentInfo {
+  id: string
+  label: string
+  type: "mainNode" | "branchNode" | "unknown"
 }
 
 export default function FlowCanvas({
@@ -62,6 +69,7 @@ export default function FlowCanvas({
   connectionSource = null,
   onConnect,
   onViewportChange,
+  onEdgeDelete,
 }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const { theme } = useTheme()
@@ -190,23 +198,27 @@ export default function FlowCanvas({
     )
   }
 
-  const onEdgeDelete = useCallback(
+  const handleEdgesDelete = useCallback(
     (edges: Edge[]) => {
-      // Update conversation edges
-      setConversations((prevConversations) => {
-        return prevConversations.map((conv) => {
-          if (conv.id === activeConversation) {
-            return {
-              ...conv,
-              edges: conv.edges?.filter((e) => !edges.some((deletedEdge) => deletedEdge.id === e.id)),
+      if (onEdgeDelete) {
+        onEdgeDelete(edges)
+      } else {
+        // Update conversation edges
+        setConversations((prevConversations) => {
+          return prevConversations.map((conv) => {
+            if (conv.id === activeConversation) {
+              return {
+                ...conv,
+                edges: conv.edges?.filter((e) => !edges.some((deletedEdge) => deletedEdge.id === e.id)),
+              }
             }
-          }
-          return conv
+            return conv
+          })
         })
-      })
-      setSelectedEdge(null)
+        setSelectedEdge(null)
+      }
     },
-    [activeConversation, setConversations, setSelectedEdge],
+    [activeConversation, setConversations, setSelectedEdge, onEdgeDelete],
   )
 
   // Handle node dimensions change
@@ -323,7 +335,7 @@ export default function FlowCanvas({
         maxZoom={2}
         onEdgeClick={(_, edge) => handleEdgeClick(edge)}
         deleteKeyCode="Delete"
-        onEdgesDelete={onEdgeDelete}
+        onEdgesDelete={handleEdgesDelete}
         onNodeDragStop={onNodeDragStop}
         className={theme === "dark" ? "bg-background" : "bg-slate-50"}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
@@ -385,6 +397,29 @@ export default function FlowCanvas({
                 <X size={16} />
               </button>
             </div>
+
+            {/* Add parent nodes information */}
+            {hoverNode.data?.parents && hoverNode.data.parents.length > 0 && (
+              <div className="mb-3 border-b border-border pb-2">
+                <h4 className="text-xs font-medium text-muted-foreground mb-1">Parent Nodes:</h4>
+                <div className="space-y-1">
+                  {hoverNode.data.parents.map((parent: NodeParentInfo) => (
+                    <div key={parent.id} className="flex items-center gap-1 text-xs">
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          parent.type === "mainNode"
+                            ? "bg-primary"
+                            : parent.type === "branchNode"
+                              ? "bg-orange-500"
+                              : "bg-blue-500"
+                        }`}
+                      ></div>
+                      <span className="truncate">{parent.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3 max-h-[320px] overflow-y-auto preview-scrollbar pr-1">
               {hoverNode.data?.messages && hoverNode.data.messages.length > 0 ? (

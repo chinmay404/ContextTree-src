@@ -24,6 +24,10 @@ import { toast } from "@/components/ui/use-toast"
 import { availableModels } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+interface NodeParentInfo {
+  id: string
+}
+
 interface MainNodeData {
   label: string
   messages: Message[]
@@ -44,6 +48,7 @@ interface MainNodeData {
   model?: string
   onModelChange?: (id: string, model: string) => void
   onDimensionsChange?: (id: string, dimensions: { width: number; height: number }) => void
+  parents?: NodeParentInfo[] // Add parents array
 }
 
 function MainNode({ id, data, selected }: NodeProps<MainNodeData>) {

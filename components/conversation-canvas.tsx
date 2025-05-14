@@ -14,6 +14,12 @@ import CustomEdge from "@/components/edges/custom-edge"
 import { useToast } from "@/components/ui/use-toast"
 import { v4 as uuidv4 } from "uuid"
 import type { Message, Conversation } from "@/lib/types"
+import type { Edge } from "reactflow"
+import ConnectionHistory from "@/components/connection-history"
+import type { NodeParentInfo } from "@/lib/types"
+// Add import for the API service at the top
+import { getChatResponse } from "@/lib/api-service"
+import { getMockResponse } from "@/lib/mock-response"
 
 const initialNodes = [
   {
@@ -27,6 +33,7 @@ const initialNodes = [
       expanded: true,
       style: { width: 250 },
       model: "gpt-4",
+      parents: [],
     },
   },
 ]
@@ -54,7 +61,7 @@ const defaultEdgeOptions = {
   },
 }
 
-export default function ConversationCanvas() {
+export default function ContextTree() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [selectedEdge, setSelectedEdge] = useState(null)
@@ -64,7 +71,7 @@ export default function ConversationCanvas() {
     { id: uuidv4(), sender: "ai", content: "Hello!", timestamp: Date.now() },
   ])
   const [conversations, setConversations] = useState<Conversation[]>([
-    { id: uuidv4(), name: "New Conversation", nodes: initialNodes, edges: initialEdges },
+    { id: uuidv4(), name: "New Context", nodes: initialNodes, edges: initialEdges },
   ])
   const [activeConversation, setActiveConversation] = useState(conversations[0].id)
   const [branchCount, setBranchCount] = useState(1)
@@ -79,6 +86,22 @@ export default function ConversationCanvas() {
     Record<string, { nodeId: string; type: string; direction: "incoming" | "outgoing" }>
   >({})
   const lastViewportRef = useRef({ x: 0, y: 0, zoom: 1 })
+  const [connectionEvents, setConnectionEvents] = useState<
+    Array<{
+      id: string
+      timestamp: number
+      type: "connect" | "disconnect"
+      sourceId: string
+      targetId: string
+      sourceType: string
+      targetType: string
+      sourceLabel: string
+      targetLabel: string
+    }>
+  >([])
+  const [nodeNotes, setNodeNotes] = useState<Record<string, string>>({})
+  // Add the chatThinking state
+  const [chatThinking, setChatThinking] = useState(false)
 
   useEffect(() => {
     // Sync nodes and edges with the active conversation
@@ -227,32 +250,189 @@ export default function ConversationCanvas() {
         }),
       )
 
-      // If the active node is involved in this connection, add a connection point
-      if (params.source === activeNode || params.target === activeNode) {
-        // Get the last message ID to attach the connection point to
-        if (messages.length > 0) {
-          const lastMessageId = messages[messages.length - 1].id
-          const connectedNodeId = params.source === activeNode ? params.target : params.source
-          const targetNodeData = nodes.find((n) => n.id === connectedNodeId)
-          const nodeType = targetNodeData?.type || "unknown"
+      // Update parent relationships
+      const sourceNode = nodes.find((n) => n.id === params.source)
+      const targetNode = nodes.find((n) => n.id === params.target)
 
-          setConnectionPoints((prev) => ({
-            ...prev,
-            [lastMessageId]: {
-              nodeId: connectedNodeId,
-              type: nodeType,
-              direction: params.source === activeNode ? "outgoing" : "incoming",
-            },
-          }))
-
-          toast({
-            title: "Connection created",
-            description: `Node "${targetNodeData?.data?.label || "Unknown"}" has been connected to this conversation.`,
-          })
+      if (sourceNode && targetNode) {
+        // Create parent info for the source node
+        const parentInfo: NodeParentInfo = {
+          id: sourceNode.id,
+          type: sourceNode.type,
+          label: sourceNode.data.label,
         }
+
+        // Update the target node's parents array
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id === params.target) {
+              // Create a new parents array that includes the source node and avoids duplicates
+              const existingParents = node.data.parents || []
+              const parentExists = existingParents.some((p) => p.id === parentInfo.id)
+
+              const updatedParents = parentExists ? existingParents : [...existingParents, parentInfo]
+
+              // Also include all parents of the source node to maintain the full ancestry
+              if (sourceNode.data.parents && Array.isArray(sourceNode.data.parents)) {
+                sourceNode.data.parents.forEach((parentNode) => {
+                  const exists = updatedParents.some((p) => p.id === parentNode.id)
+                  if (!exists) {
+                    updatedParents.push(parentNode)
+                  }
+                })
+              }
+
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  parents: updatedParents,
+                },
+              }
+            }
+            return node
+          }),
+        )
+
+        // Update in conversation data
+        setConversations((prevConversations) =>
+          prevConversations.map((conv) => {
+            if (conv.id === activeConversation) {
+              return {
+                ...conv,
+                nodes: conv.nodes.map((node) => {
+                  if (node.id === params.target) {
+                    // Create a new parents array that includes the source node and avoids duplicates
+                    const existingParents = node.data.parents || []
+                    const parentExists = existingParents.some((p) => p.id === parentInfo.id)
+
+                    const updatedParents = parentExists ? existingParents : [...existingParents, parentInfo]
+
+                    // Also include all parents of the source node to maintain the full ancestry
+                    if (sourceNode.data.parents && Array.isArray(sourceNode.data.parents)) {
+                      sourceNode.data.parents.forEach((parentNode) => {
+                        const exists = updatedParents.some((p) => p.id === parentNode.id)
+                        if (!exists) {
+                          updatedParents.push(parentNode)
+                        }
+                      })
+                    }
+
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        parents: updatedParents,
+                      },
+                    }
+                  }
+                  return node
+                }),
+              }
+            }
+            return conv
+          }),
+        )
       }
+
+      // If the active node is involved in this connection, add a connection message and point
+      if (params.source === activeNode || params.target === activeNode) {
+        const connectedNodeId = params.source === activeNode ? params.target : params.source
+        const targetNodeData = nodes.find((n) => n.id === connectedNodeId)
+        const nodeType = targetNodeData?.type || "unknown"
+        const nodeLabel = targetNodeData?.data?.label || "Unknown"
+        const direction = params.source === activeNode ? "outgoing" : "incoming"
+
+        // Create a connection notification message
+        const newMessage = {
+          id: uuidv4(),
+          sender: "ai",
+          content:
+            direction === "outgoing"
+              ? `Connected to ${nodeType === "mainNode" ? "Main Node" : nodeType === "branchNode" ? "Branch Node" : "Image Node"} "${nodeLabel}".`
+              : `Connected from ${nodeType === "mainNode" ? "Main Node" : nodeType === "branchNode" ? "Branch Node" : "Image Node"} "${nodeLabel}".`,
+          timestamp: Date.now(),
+        }
+
+        // Update messages in the active node
+        setMessages((prevMessages) => [...prevMessages, newMessage])
+
+        // Update the active node with the new message
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id === activeNode) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  messages: [...node.data.messages, newMessage],
+                },
+              }
+            }
+            return node
+          }),
+        )
+
+        // Update in conversation data
+        setConversations((prevConversations) =>
+          prevConversations.map((conv) => {
+            if (conv.id === activeConversation) {
+              return {
+                ...conv,
+                nodes: conv.nodes.map((node) => {
+                  if (node.id === activeNode) {
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        messages: [...node.data.messages, newMessage],
+                      },
+                    }
+                  }
+                  return node
+                }),
+              }
+            }
+            return conv
+          }),
+        )
+
+        // Add the connection point to the message
+        setConnectionPoints((prev) => ({
+          ...prev,
+          [newMessage.id]: {
+            nodeId: connectedNodeId,
+            type: nodeType,
+            direction: direction,
+          },
+        }))
+
+        toast({
+          title: "Connection created",
+          description: `Node "${nodeLabel}" has been connected to this conversation.`,
+        })
+      }
+
+      // Add to connection history
+      const sourceNodeData = nodes.find((n) => n.id === params.source)
+      const targetNodeData = nodes.find((n) => n.id === params.target)
+
+      setConnectionEvents((prev) => [
+        {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          type: "connect",
+          sourceId: params.source,
+          targetId: params.target,
+          sourceType: sourceNodeData?.type || "unknown",
+          targetType: targetNodeData?.type || "unknown",
+          sourceLabel: sourceNodeData?.data?.label || "Unknown",
+          targetLabel: targetNodeData?.data?.label || "Unknown",
+        },
+        ...prev,
+      ])
     },
-    [activeNode, messages, nodes, setEdges, activeConversation, setConversations, toast],
+    [activeNode, messages, nodes, setEdges, activeConversation, setConversations, toast, setMessages, setNodes],
   )
 
   const startConnectionMode = (nodeId: string) => {
@@ -371,17 +551,20 @@ export default function ConversationCanvas() {
     onModelChange(activeNode, model)
   }
 
+  // Update the onSendMessage function to include the API call with fallback
   const onSendMessage = useCallback(
-    (content: string) => {
-      const newMessage = {
+    async (content: string) => {
+      // Create and add the user message
+      const newUserMessage = {
         id: uuidv4(),
         sender: "user",
         content: content,
         timestamp: Date.now(),
       }
 
-      setMessages((prevMessages) => [...prevMessages, newMessage])
+      setMessages((prevMessages) => [...prevMessages, newUserMessage])
 
+      // Update the active node with the new user message
       setNodes((nds) =>
         nds.map((node) => {
           if (node.id === activeNode) {
@@ -389,7 +572,7 @@ export default function ConversationCanvas() {
               ...node,
               data: {
                 ...node.data,
-                messages: [...node.data.messages, newMessage],
+                messages: [...node.data.messages, newUserMessage],
               },
             }
           }
@@ -409,7 +592,7 @@ export default function ConversationCanvas() {
                     ...node,
                     data: {
                       ...node.data,
-                      messages: [...node.data.messages, newMessage],
+                      messages: [...node.data.messages, newUserMessage],
                     },
                   }
                 }
@@ -420,8 +603,82 @@ export default function ConversationCanvas() {
           return conv
         }),
       )
+
+      // Get the current node's data
+      const currentNode = nodes.find((node) => node.id === activeNode)
+      if (!currentNode) return
+
+      // Get parent node IDs
+      const parentNodeIds = currentNode.data.parents ? currentNode.data.parents.map((p) => p.id) : []
+
+      // Set thinking state to true (we'll pass this down to ChatPanel)
+      setChatThinking(true)
+
+      let apiResponse: string
+
+      try {
+        // Call the API to get a response
+        apiResponse = await getChatResponse(content, activeNode, currentNode.data.model || "gpt-4", parentNodeIds)
+      } catch (error) {
+        console.error("Error in API call:", error)
+        // Use the mock response as fallback
+        apiResponse = getMockResponse(content)
+      } finally {
+        // Create and add the AI response message
+        const newAiMessage = {
+          id: uuidv4(),
+          sender: "ai",
+          content: apiResponse || "Sorry, I couldn't generate a response at this time.",
+          timestamp: Date.now(),
+        }
+
+        setMessages((prevMessages) => [...prevMessages, newAiMessage])
+
+        // Update the active node with the new AI message
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id === activeNode) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  messages: [...node.data.messages, newAiMessage],
+                },
+              }
+            }
+            return node
+          }),
+        )
+
+        // Update in conversation data
+        setConversations((prevConversations) =>
+          prevConversations.map((conv) => {
+            if (conv.id === activeConversation) {
+              return {
+                ...conv,
+                nodes: conv.nodes.map((node) => {
+                  if (node.id === activeNode) {
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        messages: [...node.data.messages, newAiMessage],
+                      },
+                    }
+                  }
+                  return node
+                }),
+              }
+            }
+            return conv
+          }),
+        )
+
+        // Set thinking state back to false
+        setChatThinking(false)
+      }
     },
-    [activeNode, setNodes, activeConversation, setConversations, setMessages],
+    [activeNode, setNodes, activeConversation, setConversations, setMessages, nodes],
   )
 
   const handleToggleExpand = useCallback(
@@ -673,6 +930,7 @@ export default function ConversationCanvas() {
               width: 200,
               height: 150,
             },
+            parents: [],
           },
         }
 
@@ -702,6 +960,7 @@ export default function ConversationCanvas() {
     reader.readAsDataURL(file)
   }
 
+  // Update the createMainNode function to include parents array
   const createMainNode = () => {
     const id = uuidv4()
 
@@ -735,6 +994,7 @@ export default function ConversationCanvas() {
         model: "gpt-4",
         onModelChange,
         onDimensionsChange: () => {}, // Add this to avoid errors
+        parents: [], // Initialize empty parents array
       },
     }
 
@@ -754,75 +1014,38 @@ export default function ConversationCanvas() {
       }),
     )
 
-    // If a node is active, add a notification message about the new node
-    if (activeNode) {
-      const newMessage = {
-        id: uuidv4(),
-        sender: "ai",
-        content: `A new main node "${newNode.data.label}" has been created.`,
-        timestamp: Date.now(),
-      }
-
-      // Update messages in the active node
-      setMessages((prevMessages) => [...prevMessages, newMessage])
-
-      // Update the active node with the new message
-      setNodes((nds) =>
-        nds.map((node) => {
-          if (node.id === activeNode) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                messages: [...node.data.messages, newMessage],
-              },
-            }
-          }
-          return node
-        }),
-      )
-
-      // Update in conversation data
-      setConversations((prevConversations) =>
-        prevConversations.map((conv) => {
-          if (conv.id === activeConversation) {
-            return {
-              ...conv,
-              nodes: conv.nodes.map((node) => {
-                if (node.id === activeNode) {
-                  return {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      messages: [...node.data.messages, newMessage],
-                    },
-                  }
-                }
-                return node
-              }),
-            }
-          }
-          return conv
-        }),
-      )
-    }
-
     return id
   }
 
+  // Update the createBranchNode function to include parents array and track parent node
   const createBranchNode = (sourceNodeId?: string) => {
     const id = uuidv4()
 
     // Calculate position based on viewport center or relative to source node
     let position = { x: 250, y: 200 }
 
+    // Initialize parents array
+    const parents: NodeParentInfo[] = []
+
+    // If we have a source node, add it to parents and position relative to it
     if (sourceNodeId) {
-      // If we have a source node, position the branch node to the right of it
       const sourceNode = nodes.find((node) => node.id === sourceNodeId)
       if (sourceNode) {
         position = {
           x: sourceNode.position.x + 300,
           y: sourceNode.position.y + 50,
+        }
+
+        // Add source node to parents
+        parents.push({
+          id: sourceNodeId,
+          type: sourceNode.type,
+          label: sourceNode.data.label,
+        })
+
+        // Also include all parents of the source node to maintain the full ancestry
+        if (sourceNode.data.parents && Array.isArray(sourceNode.data.parents)) {
+          parents.push(...sourceNode.data.parents)
         }
       }
     } else if (reactFlowInstance) {
@@ -853,6 +1076,7 @@ export default function ConversationCanvas() {
         model: "gpt-4",
         onModelChange,
         onDimensionsChange: () => {}, // Add this to avoid errors
+        parents: parents, // Set parents array
       },
     }
 
@@ -906,120 +1130,21 @@ export default function ConversationCanvas() {
         }),
       )
 
-      // If the source node is the active node, add a notification message
+      // If the source node is the active node, add a connection point
       if (sourceNodeId === activeNode && activeNode !== id) {
-        const newMessage = {
-          id: uuidv4(),
-          sender: "ai",
-          content: `Branch node "${newNode.data.label}" has been created from this node.`,
-          timestamp: Date.now(),
-        }
-
-        // Update messages in the active node
-        setMessages((prevMessages) => [...prevMessages, newMessage])
-
-        // Update the active node with the new message
-        setNodes((nds) =>
-          nds.map((node) => {
-            if (node.id === activeNode) {
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  messages: [...node.data.messages, newMessage],
-                },
-              }
-            }
-            return node
-          }),
-        )
-
-        // Update in conversation data
-        setConversations((prevConversations) =>
-          prevConversations.map((conv) => {
-            if (conv.id === activeConversation) {
-              return {
-                ...conv,
-                nodes: conv.nodes.map((node) => {
-                  if (node.id === activeNode) {
-                    return {
-                      ...node,
-                      data: {
-                        ...node.data,
-                        messages: [...node.data.messages, newMessage],
-                      },
-                    }
-                  }
-                  return node
-                }),
-              }
-            }
-            return conv
-          }),
-        )
-
         // Add the connection point to track this branch
-        setConnectionPoints((prev) => ({
-          ...prev,
-          [newMessage.id]: {
-            nodeId: id,
-            type: "branchNode",
-            direction: "outgoing",
-          },
-        }))
+        const lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : null
+        if (lastMessageId) {
+          setConnectionPoints((prev) => ({
+            ...prev,
+            [lastMessageId]: {
+              nodeId: id,
+              type: "branchNode",
+              direction: "outgoing",
+            },
+          }))
+        }
       }
-    } else if (activeNode) {
-      // If we're creating a standalone branch node (not connected to anything)
-      // but we have an active node, still add a message about the creation
-      const newMessage = {
-        id: uuidv4(),
-        sender: "ai",
-        content: `A new standalone branch node "${newNode.data.label}" has been created.`,
-        timestamp: Date.now(),
-      }
-
-      // Update messages in the active node
-      setMessages((prevMessages) => [...prevMessages, newMessage])
-
-      // Update the active node with the new message
-      setNodes((nds) =>
-        nds.map((node) => {
-          if (node.id === activeNode) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                messages: [...node.data.messages, newMessage],
-              },
-            }
-          }
-          return node
-        }),
-      )
-
-      // Update in conversation data
-      setConversations((prevConversations) =>
-        prevConversations.map((conv) => {
-          if (conv.id === activeConversation) {
-            return {
-              ...conv,
-              nodes: conv.nodes.map((node) => {
-                if (node.id === activeNode) {
-                  return {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      messages: [...node.data.messages, newMessage],
-                    },
-                  }
-                }
-                return node
-              }),
-            }
-          }
-          return conv
-        }),
-      )
     }
 
     return id
@@ -1122,66 +1247,18 @@ export default function ConversationCanvas() {
       if (id) {
         createdNodes.push(id)
 
-        // Add a system message in the chat for each created branch
-        const newMessage = {
-          id: uuidv4(),
-          sender: "ai",
-          content: `Branch ${branchCount + i} has been created from this node.`,
-          timestamp: Date.now(),
+        // Add a connection point to track this branch
+        const lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : null
+        if (lastMessageId) {
+          setConnectionPoints((prev) => ({
+            ...prev,
+            [lastMessageId]: {
+              nodeId: id,
+              type: "branchNode",
+              direction: "outgoing",
+            },
+          }))
         }
-
-        // Update messages in the active node
-        setMessages((prevMessages) => [...prevMessages, newMessage])
-
-        // Update the active node with the new message
-        setNodes((nds) =>
-          nds.map((node) => {
-            if (node.id === activeNode) {
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  messages: [...node.data.messages, newMessage],
-                },
-              }
-            }
-            return node
-          }),
-        )
-
-        // Update in conversation data
-        setConversations((prevConversations) =>
-          prevConversations.map((conv) => {
-            if (conv.id === activeConversation) {
-              return {
-                ...conv,
-                nodes: conv.nodes.map((node) => {
-                  if (node.id === activeNode) {
-                    return {
-                      ...node,
-                      data: {
-                        ...node.data,
-                        messages: [...node.data.messages, newMessage],
-                      },
-                    }
-                  }
-                  return node
-                }),
-              }
-            }
-            return conv
-          }),
-        )
-
-        // Add the connection point to track this branch
-        setConnectionPoints((prev) => ({
-          ...prev,
-          [newMessage.id]: {
-            nodeId: id,
-            type: "branchNode",
-            direction: "outgoing",
-          },
-        }))
       }
     }
 
@@ -1196,6 +1273,7 @@ export default function ConversationCanvas() {
     return createdNodes
   }
 
+  // Update the createImageNode function to include parents array
   const createImageNode = () => {
     const id = uuidv4()
 
@@ -1221,6 +1299,7 @@ export default function ConversationCanvas() {
           width: 200,
           height: 150,
         },
+        parents: [], // Initialize empty parents array
       },
     }
 
@@ -1240,72 +1319,10 @@ export default function ConversationCanvas() {
       }),
     )
 
-    // If a node is active, add a notification message about the new image node
-    if (activeNode) {
-      const newMessage = {
-        id: uuidv4(),
-        sender: "ai",
-        content: `A new image node has been created.`,
-        timestamp: Date.now(),
-      }
-
-      // Update messages in the active node
-      setMessages((prevMessages) => [...prevMessages, newMessage])
-
-      // Update the active node with the new message
-      setNodes((nds) =>
-        nds.map((node) => {
-          if (node.id === activeNode) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                messages: [...node.data.messages, newMessage],
-              },
-            }
-          }
-          return node
-        }),
-      )
-
-      // Update in conversation data
-      setConversations((prevConversations) =>
-        prevConversations.map((conv) => {
-          if (conv.id === activeConversation) {
-            return {
-              ...conv,
-              nodes: conv.nodes.map((node) => {
-                if (node.id === activeNode) {
-                  return {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      messages: [...node.data.messages, newMessage],
-                    },
-                  }
-                }
-                return node
-              }),
-            }
-          }
-          return conv
-        }),
-      )
-
-      // Add the connection point to track this node
-      setConnectionPoints((prev) => ({
-        ...prev,
-        [newMessage.id]: {
-          nodeId: id,
-          type: "imageNode",
-          direction: "outgoing",
-        },
-      }))
-    }
-
     return id
   }
 
+  // Update the createNewConversation function to initialize parents array for the first node
   const createNewConversation = (name: string) => {
     const newConversation = {
       id: uuidv4(),
@@ -1322,6 +1339,7 @@ export default function ConversationCanvas() {
             expanded: true,
             style: { width: 220 },
             model: "gpt-4",
+            parents: [], // Initialize empty parents array
           },
         },
       ],
@@ -1385,13 +1403,136 @@ export default function ConversationCanvas() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url
-      link.download = "conversation-canvas.json"
+      link.download = "context-tree.json"
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
     }
   }
+
+  const saveNodeNote = (nodeId: string, note: string) => {
+    setNodeNotes((prev) => ({
+      ...prev,
+      [nodeId]: note,
+    }))
+
+    toast({
+      title: "Note saved",
+      description: "Your note for this node has been saved.",
+    })
+  }
+
+  const handleEdgeRemoval = useCallback(
+    (edge: Edge) => {
+      // Check if the active node is involved in this edge
+      if (edge.source === activeNode || edge.target === activeNode) {
+        const connectedNodeId = edge.source === activeNode ? edge.target : edge.source
+        const targetNodeData = nodes.find((n) => n.id === connectedNodeId)
+        const nodeType = targetNodeData?.type || "unknown"
+        const nodeLabel = targetNodeData?.data?.label || "Unknown"
+        const direction = edge.source === activeNode ? "outgoing" : "incoming"
+
+        // Create a disconnection notification message
+        const newMessage = {
+          id: uuidv4(),
+          sender: "ai",
+          content:
+            direction === "outgoing"
+              ? `Disconnected from ${nodeType === "mainNode" ? "Main Node" : nodeType === "branchNode" ? "Branch Node" : "Image Node"} "${nodeLabel}".`
+              : `Disconnected from ${nodeType === "mainNode" ? "Main Node" : nodeType === "branchNode" ? "Branch Node" : "Image Node"} "${nodeLabel}".`,
+          timestamp: Date.now(),
+        }
+
+        // Update messages in the active node
+        setMessages((prevMessages) => [...prevMessages, newMessage])
+
+        // Update the active node with the new message
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id === activeNode) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  messages: [...node.data.messages, newMessage],
+                },
+              }
+            }
+            return node
+          }),
+        )
+
+        // Update in conversation data
+        setConversations((prevConversations) =>
+          prevConversations.map((conv) => {
+            if (conv.id === activeConversation) {
+              return {
+                ...conv,
+                nodes: conv.nodes.map((node) => {
+                  if (node.id === activeNode) {
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        messages: [...node.data.messages, newMessage],
+                      },
+                    }
+                  }
+                  return node
+                }),
+              }
+            }
+            return conv
+          }),
+        )
+      }
+
+      // Add to connection history
+      const sourceNodeData = nodes.find((n) => n.id === edge.source)
+      const targetNodeData = nodes.find((n) => n.id === edge.target)
+
+      setConnectionEvents((prev) => [
+        {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          type: "disconnect",
+          sourceId: edge.source,
+          targetId: edge.target,
+          sourceType: sourceNodeData?.type || "unknown",
+          targetType: targetNodeData?.type || "unknown",
+          sourceLabel: sourceNodeData?.data?.label || "Unknown",
+          targetLabel: targetNodeData?.data?.label || "Unknown",
+        },
+        ...prev,
+      ])
+    },
+    [activeNode, nodes, setNodes, setMessages, activeConversation, setConversations],
+  )
+
+  const onEdgeDelete = useCallback(
+    (edges: Edge[]) => {
+      // For each edge being deleted, add a disconnection message
+      edges.forEach((edge) => {
+        handleEdgeRemoval(edge)
+      })
+
+      // Update conversation edges
+      setConversations((prevConversations) => {
+        return prevConversations.map((conv) => {
+          if (conv.id === activeConversation) {
+            return {
+              ...conv,
+              edges: conv.edges?.filter((e) => !edges.some((deletedEdge) => deletedEdge.id === e.id)),
+            }
+          }
+          return conv
+        })
+      })
+      setSelectedEdge(null)
+    },
+    [activeConversation, setConversations, setSelectedEdge, handleEdgeRemoval],
+  )
 
   return (
     <div className="flex flex-col h-screen">
@@ -1436,7 +1577,11 @@ export default function ConversationCanvas() {
             connectionSource={connectionSource}
             onConnect={onConnect}
             onViewportChange={onViewportChange}
+            onEdgeDelete={onEdgeDelete}
           />
+          <div className="absolute bottom-4 left-[280px] z-10 w-64">
+            <ConnectionHistory connectionEvents={connectionEvents} onNavigateToNode={navigateToNode} />
+          </div>
           <ChatPanel
             messages={messages}
             onSendMessage={onSendMessage}
@@ -1451,6 +1596,11 @@ export default function ConversationCanvas() {
             branchPoints={branchPoints}
             connectionPoints={connectionPoints}
             onNavigateToNode={navigateToNode}
+            nodeNotes={nodeNotes}
+            onSaveNote={saveNodeNote}
+            activeNodeId={activeNode}
+            nodes={nodes} // Pass the nodes array
+            thinking={chatThinking}
           />
         </div>
       </div>

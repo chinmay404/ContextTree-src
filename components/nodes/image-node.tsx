@@ -9,6 +9,11 @@ import { ImageIcon, Trash2, Move, ZoomIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { debounce } from "lodash"
 
+interface NodeParentInfo {
+  id: string
+}
+
+// Update the ImageNodeData interface to include parents
 interface ImageNodeData {
   imageUrl: string
   onDelete?: (id: string) => void
@@ -18,6 +23,7 @@ interface ImageNodeData {
     height: number
   }
   onDimensionsChange?: (id: string, dimensions: { width: number; height: number }) => void
+  parents?: NodeParentInfo[] // Add parents array
 }
 
 function ImageNode({ id, data, selected }: NodeProps<ImageNodeData>) {

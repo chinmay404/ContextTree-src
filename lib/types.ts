@@ -12,6 +12,12 @@ export type Conversation = {
   edges: any[]
 }
 
+export type NodeParentInfo = {
+  id: string
+  type: string
+  label: string
+}
+
 export type AIModel = {
   id: string
   name: string

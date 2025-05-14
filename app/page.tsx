@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import ConversationCanvas from "@/components/conversation-canvas"
+import ContextTree from "@/components/conversation-canvas"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ReactFlowProvider } from "reactflow"
 import { useEffect } from "react"
@@ -30,7 +30,7 @@ export default function Home() {
       <ErrorHandler>
         <ReactFlowProvider>
           <main className="flex min-h-screen flex-col">
-            <ConversationCanvas />
+            <ContextTree />
           </main>
         </ReactFlowProvider>
       </ErrorHandler>

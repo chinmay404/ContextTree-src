@@ -13,6 +13,13 @@ import { debounce } from "lodash"
 import { availableModels } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+// Define the NodeParentInfo interface
+interface NodeParentInfo {
+  id: string
+  type: string
+}
+
+// Update the BranchNodeData interface to include parents
 interface BranchNodeData {
   label: string
   messages: Message[]
@@ -33,6 +40,7 @@ interface BranchNodeData {
   model?: string
   onModelChange?: (id: string, model: string) => void
   onDimensionsChange?: (id: string, dimensions: { width: number; height: number }) => void
+  parents?: NodeParentInfo[] // Add parents array
 }
 
 function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
@@ -55,7 +63,7 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
 
   const [isEditing, setIsEditing] = useState(false)
   const [editedLabel, setEditedLabel] = useState(label)
-  const [isResizing, setIsResizing] = useState(false)
+  const [isResizing, setIsResizing] = useState(isResizing)
   const [nodeWidth, setNodeWidth] = useState(style.width || 220)
   const nodeRef = useRef<HTMLDivElement>(null)
   const startXRef = useRef<number>(0)
