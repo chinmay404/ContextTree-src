@@ -23,6 +23,8 @@ import {
   Link,
   ArrowRight,
   ArrowLeft,
+  Moon,
+  Sun,
 } from "lucide-react"
 import { format } from "date-fns"
 import { motion, AnimatePresence } from "framer-motion"
@@ -30,9 +32,10 @@ import { toast } from "@/components/ui/use-toast"
 import { availableModels } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import NodeNotes from "@/components/node-notes"
-import ThinkingAnimationComponent from "./thinking-animation"
+import ThinkingAnimation from "./thinking-animation"
+import { useTheme } from "next-themes"
+import KeyboardShortcuts from "@/components/keyboard-shortcuts"
 
-// Update the ChatPanelProps interface to include isThinking
 interface ChatPanelProps {
   messages: Message[]
   onSendMessage: (content: string) => void
@@ -44,14 +47,14 @@ interface ChatPanelProps {
   onDeleteNode?: () => void
   model?: string
   onModelChange?: (model: string) => void
-  branchPoints?: Record<string, string> // Map of message IDs to branch node IDs
-  connectionPoints?: Record<string, { nodeId: string; type: string; direction: "incoming" | "outgoing" }> // Map of message IDs to connection info
-  onNavigateToNode?: (nodeId: string) => void // Function to navigate to a node
+  branchPoints?: Record<string, string>
+  connectionPoints?: Record<string, { nodeId: string; type: string; direction: "incoming" | "outgoing" }>
+  onNavigateToNode?: (nodeId: string) => void
   nodeNotes?: Record<string, string>
   onSaveNote?: (nodeId: string, note: string) => void
   activeNodeId?: string
-  nodes?: any[] // Add nodes array to access parent information
-  isThinking?: boolean // Add isThinking prop
+  nodes?: any[]
+  thinking?: boolean
 }
 
 interface NodeParentInfo {
@@ -60,17 +63,6 @@ interface NodeParentInfo {
   type: string
 }
 
-function ThinkingAnimation() {
-  return (
-    <div className="flex gap-1">
-      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-    </div>
-  )
-}
-
-// Update the function parameters to include isThinking
 export default function ChatPanel({
   messages,
   onSendMessage,
@@ -89,13 +81,13 @@ export default function ChatPanel({
   onSaveNote,
   activeNodeId,
   nodes,
-  isThinking = false,
+  thinking = false,
 }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState("")
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(nodeName)
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [panelWidth, setPanelWidth] = useState(320) // Default width
+  const [panelWidth, setPanelWidth] = useState(320)
   const [isResizing, setIsResizing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const resizeStartXRef = useRef(0)
@@ -109,33 +101,49 @@ export default function ChatPanel({
   } | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
   const [createdBranchId, setCreatedBranchId] = useState<string | null>(null)
-  // Add isThinking state
+  const [readingMode, setReadingMode] = useState(false)
+  const { theme, setTheme } = useTheme()
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setEditedName(nodeName)
   }, [nodeName])
 
-  // Use props for collapsed state if provided
   useEffect(() => {
     if (propIsCollapsed !== undefined) {
       setIsCollapsed(propIsCollapsed)
     }
   }, [propIsCollapsed])
 
-  // Add this useEffect to ensure the model stays in sync
+  // Add keyboard shortcut for full-screen toggle
   useEffect(() => {
-    // This ensures that when the model prop changes, the UI reflects it
-    if (model) {
-      // No need to call handleModelChange here, just ensure the UI shows the correct model
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle full-screen with F key or Escape to exit
+      if (e.key === "f" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        setIsExpanded((prev) => !prev)
+      } else if (e.key === "Escape" && isExpanded) {
+        setIsExpanded(false)
+      }
     }
-  }, [model])
 
-  // Update the handleSubmit function to include the API call
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isExpanded])
+
+  // Focus input when entering full-screen mode
+  useEffect(() => {
+    if (isExpanded && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 300)
+    }
+  }, [isExpanded])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
     if (inputValue.trim()) {
-      // Check if the input starts with "/branch"
       if (inputValue.startsWith("/branch ")) {
         const branchContent = inputValue.substring(8).trim()
 
@@ -155,7 +163,6 @@ export default function ChatPanel({
         }
       }
 
-      // Send the user message
       onSendMessage(inputValue)
       setInputValue("")
     }
@@ -168,7 +175,6 @@ export default function ChatPanel({
     setIsEditingName(false)
   }
 
-  // Scroll to bottom when messages change or when a new node is selected
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, nodeName])
@@ -183,6 +189,11 @@ export default function ChatPanel({
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded)
+    setReadingMode(false) // Reset reading mode when toggling expand
+  }
+
+  const toggleReadingMode = () => {
+    setReadingMode(!readingMode)
   }
 
   const handleDeleteNode = () => {
@@ -210,12 +221,10 @@ export default function ChatPanel({
   const handleResize = (e: MouseEvent) => {
     if (!isResizing) return
 
-    // Cancel any pending animation frame
     if (resizeFrameRef.current !== null) {
       cancelAnimationFrame(resizeFrameRef.current)
     }
 
-    // Use requestAnimationFrame to avoid layout thrashing
     resizeFrameRef.current = requestAnimationFrame(() => {
       const newWidth = Math.max(280, Math.min(500, resizeStartWidthRef.current - (e.clientX - resizeStartXRef.current)))
       setPanelWidth(newWidth)
@@ -242,7 +251,6 @@ export default function ChatPanel({
     const value = e.target.value
     setInputValue(value)
 
-    // Check for command patterns
     if (value.startsWith("/branch ")) {
       setCommandFeedback({
         active: true,
@@ -260,10 +268,8 @@ export default function ChatPanel({
     }
   }
 
-  // Get the selected model name
   const selectedModel = availableModels.find((m) => m.id === model)?.name || "GPT-4"
 
-  // Helper function to get node type display name
   const getNodeTypeName = (type: string) => {
     switch (type) {
       case "mainNode":
@@ -277,119 +283,173 @@ export default function ChatPanel({
     }
   }
 
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark")
+  }
+
   return (
     <motion.div
       ref={panelRef}
       className={`relative flex flex-col h-full border-l border-border transition-all duration-300 ${
         isCollapsed ? "w-12" : ""
-      } ${isExpanded ? "fixed right-0 top-0 h-screen z-50 w-[70vw] backdrop-blur-md bg-background/90 shadow-xl" : ""}`}
+      } ${isExpanded ? "fixed right-0 top-0 h-screen z-50 w-full backdrop-blur-md bg-background/95 shadow-xl" : ""}`}
       style={{
-        width: isCollapsed ? "48px" : isExpanded ? "70vw" : `${panelWidth}px`,
+        width: isCollapsed ? "48px" : isExpanded ? "100%" : `${panelWidth}px`,
         marginTop: isExpanded ? "0" : "",
         height: isExpanded ? "100vh" : "",
-        paddingTop: isExpanded ? "60px" : "",
+        paddingTop: isExpanded ? "0" : "",
       }}
       initial={isCollapsed ? { width: "48px" } : { width: `${panelWidth}px` }}
-      animate={isCollapsed ? { width: "48px" } : isExpanded ? { width: "70vw" } : { width: `${panelWidth}px` }}
+      animate={isCollapsed ? { width: "48px" } : isExpanded ? { width: "100%" } : { width: `${panelWidth}px` }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
-      <motion.div
-        className="p-4 border-b border-border bg-card/50 flex items-center"
-        initial={{ opacity: 0.8 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.2 }}
-      >
-        <Button variant="ghost" size="icon" className="h-8 w-8 mr-2" onClick={toggleCollapse}>
-          {isCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </Button>
-
-        {!isCollapsed && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 mr-2"
-            onClick={toggleExpand}
-            aria-label={isExpanded ? "Collapse panel" : "Expand panel"}
-          >
-            {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+      {/* Header for normal mode */}
+      {!isExpanded && (
+        <motion.div
+          className="p-4 border-b border-border bg-card/50 flex items-center"
+          initial={{ opacity: 0.8 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          <Button variant="ghost" size="icon" className="h-8 w-8 mr-2" onClick={toggleCollapse}>
+            {isCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </Button>
-        )}
 
-        {!isCollapsed && (
-          <div className="flex items-center justify-between flex-1">
-            {isEditingName ? (
-              <div className="flex items-center gap-2 flex-1">
-                <Input
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  className="h-8 text-sm"
-                  autoFocus
-                />
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSaveName}>
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditingName(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <>
-                <h2 className="text-lg font-semibold flex-1 tracking-tight">{nodeName}</h2>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditingName(true)}>
-                    <Edit className="h-4 w-4" />
+          {!isCollapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 mr-2"
+              onClick={toggleExpand}
+              aria-label={isExpanded ? "Exit full-screen" : "Enter full-screen"}
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+          )}
+
+          {!isCollapsed && (
+            <div className="flex items-center justify-between flex-1">
+              {isEditingName ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <Input
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSaveName}>
+                    <Check className="h-4 w-4" />
                   </Button>
-                  {onDeleteNode && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={handleDeleteNode}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditingName(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-              </>
+              ) : (
+                <>
+                  <h2 className="text-lg font-semibold flex-1 tracking-tight">{nodeName}</h2>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditingName(true)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    {onDeleteNode && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive"
+                        onClick={handleDeleteNode}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* Enhanced full-screen header */}
+      {isExpanded && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`sticky top-0 z-10 w-full flex items-center justify-between p-4 border-b border-border ${
+            readingMode ? "bg-background/80 backdrop-blur-md" : "bg-card/95 backdrop-blur-md"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              onClick={toggleExpand}
+              aria-label="Exit full-screen"
+            >
+              <Minimize2 className="h-5 w-5" />
+            </Button>
+            <h2 className="text-xl font-semibold tracking-tight">{nodeName}</h2>
+            {model && (
+              <div className="hidden md:flex items-center ml-2">
+                <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                  {selectedModel}
+                </span>
+              </div>
             )}
           </div>
-        )}
-      </motion.div>
 
-      {isExpanded && (
-        <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={toggleExpand}>
-          <X className="h-4 w-4" />
-        </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-8 text-xs ${readingMode ? "bg-primary/10 text-primary" : ""}`}
+              onClick={toggleReadingMode}
+            >
+              {readingMode ? "Edit Mode" : "Reading Mode"}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <div className="hidden md:flex items-center">
+              <KeyboardShortcuts />
+            </div>
+          </div>
+        </motion.div>
       )}
 
       {!isCollapsed && (
         <AnimatePresence>
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between"
-          >
-            <div className="flex-1">
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">AI Model</label>
-              <Select value={model} onValueChange={handleModelChange}>
-                <SelectTrigger className="h-9 text-sm bg-background/60 backdrop-blur-sm">
-                  <SelectValue placeholder="Select model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableModels.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      {model.name} <span className="text-xs text-muted-foreground ml-1">({model.provider})</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {activeNodeId && onSaveNote && (
-              <div className="ml-3">
-                <NodeNotes nodeId={activeNodeId} notes={nodeNotes} onSaveNote={onSaveNote} />
+          {!isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between"
+            >
+              <div className="flex-1">
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">AI Model</label>
+                <Select value={model} onValueChange={handleModelChange}>
+                  <SelectTrigger className="h-9 text-sm bg-background/60 backdrop-blur-sm">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableModels.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.name} <span className="text-xs text-muted-foreground ml-1">({model.provider})</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-          </motion.div>
+              {activeNodeId && onSaveNote && (
+                <div className="ml-3">
+                  <NodeNotes nodeId={activeNodeId} notes={nodeNotes} onSaveNote={onSaveNote} />
+                </div>
+              )}
+            </motion.div>
+          )}
 
-          {/* Add a section to display parent nodes in the chat panel */}
-          {/* Add this after the model selector section */}
-          {!isCollapsed && activeNodeId && (
+          {!isCollapsed && !isExpanded && activeNodeId && (
             <AnimatePresence>
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -433,10 +493,15 @@ export default function ChatPanel({
             </AnimatePresence>
           )}
 
+          {/* Enhanced messages container for full-screen mode */}
           <motion.div
-            className={`flex-1 overflow-auto p-4 space-y-4 custom-scrollbar ${
-              isExpanded ? "max-h-[calc(100vh-180px)]" : ""
-            }`}
+            className={`flex-1 overflow-auto ${
+              isExpanded
+                ? readingMode
+                  ? "px-4 md:px-0 py-8 max-w-3xl mx-auto"
+                  : "p-6 md:p-8 max-w-4xl mx-auto"
+                : "p-4"
+            } space-y-4 custom-scrollbar ${isExpanded ? "max-h-[calc(100vh-140px)]" : ""}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.1 }}
@@ -472,13 +537,19 @@ export default function ChatPanel({
                         </div>
                       )}
                       <div
-                        className={`max-w-[85%] rounded-2xl p-3.5 ${
-                          message.sender === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-card border border-border shadow-sm"
+                        className={`${
+                          isExpanded
+                            ? message.sender === "user"
+                              ? "bg-primary text-primary-foreground max-w-[85%] md:max-w-[75%] rounded-2xl p-4"
+                              : "bg-card border border-border shadow-sm max-w-[85%] md:max-w-[75%] rounded-2xl p-4"
+                            : message.sender === "user"
+                              ? "bg-primary text-primary-foreground max-w-[85%] rounded-2xl p-3.5"
+                              : "bg-card border border-border shadow-sm max-w-[85%] rounded-2xl p-3.5"
                         }`}
                       >
-                        <p className="text-sm leading-relaxed">{message.content}</p>
+                        <p className={`${isExpanded ? "text-base leading-relaxed" : "text-sm leading-relaxed"}`}>
+                          {message.content}
+                        </p>
                       </div>
                       {message.sender === "user" && (
                         <div className="bg-primary/10 p-1.5 rounded-full">
@@ -486,7 +557,7 @@ export default function ChatPanel({
                         </div>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground mt-1.5 px-2">
+                    <span className={`text-xs text-muted-foreground mt-1.5 px-2 ${isExpanded ? "opacity-70" : ""}`}>
                       {format(new Date(message.timestamp), "h:mm a")}
                     </span>
                   </motion.div>
@@ -552,7 +623,7 @@ export default function ChatPanel({
                 </div>
               ))
             )}
-            {isThinking && (
+            {thinking && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -563,7 +634,7 @@ export default function ChatPanel({
                     <Bot className="h-3.5 w-3.5 text-primary" />
                   </div>
                   <div className="bg-card border border-border shadow-sm rounded-2xl p-3.5">
-                    <ThinkingAnimationComponent />
+                    <ThinkingAnimation />
                   </div>
                 </div>
               </motion.div>
@@ -571,8 +642,15 @@ export default function ChatPanel({
             <div ref={messagesEndRef} />
           </motion.div>
 
+          {/* Enhanced input area for full-screen mode */}
           <motion.div
-            className="p-4 border-t border-border bg-card/50"
+            className={`${
+              isExpanded
+                ? readingMode
+                  ? "hidden"
+                  : "sticky bottom-0 p-6 border-t border-border bg-background/95 backdrop-blur-md max-w-4xl mx-auto w-full"
+                : "p-4 border-t border-border bg-card/50"
+            }`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
@@ -595,13 +673,32 @@ export default function ChatPanel({
             <form onSubmit={handleSubmit} className="flex flex-col gap-2">
               <div className="flex gap-2">
                 <Input
+                  ref={inputRef}
                   value={inputValue}
                   onChange={handleInputChange}
                   placeholder="Type your message..."
-                  className="flex-1 bg-background/60 backdrop-blur-sm border-muted-foreground/20 focus-visible:ring-primary/30"
+                  className={`flex-1 ${
+                    isExpanded
+                      ? "bg-background border-muted-foreground/20 focus-visible:ring-primary/30 h-12 text-base"
+                      : "bg-background/60 backdrop-blur-sm border-muted-foreground/20 focus-visible:ring-primary/30"
+                  }`}
                 />
-                <Button type="submit" size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  <Send className="h-4 w-4" />
+                <Button
+                  type="submit"
+                  size={isExpanded ? "default" : "icon"}
+                  className={`${
+                    isExpanded
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90 px-6"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  }`}
+                >
+                  {isExpanded ? (
+                    <span className="flex items-center gap-2">
+                      <Send className="h-4 w-4" /> Send
+                    </span>
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -615,7 +712,7 @@ export default function ChatPanel({
       )}
 
       {/* Resize handle */}
-      {!isCollapsed && (
+      {!isCollapsed && !isExpanded && (
         <div
           className="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-primary/20 active:bg-primary/40 transition-colors"
           onMouseDown={startResize}

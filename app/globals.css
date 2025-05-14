@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import "./reading-mode.css";
 
 @layer base {
   :root {
@@ -55,6 +56,14 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Improved typography for better readability */
+  p,
+  li,
+  blockquote {
+    @apply text-balance;
   }
 }
 
@@ -123,6 +132,24 @@
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     border: 1px solid rgba(var(--border), 0.2);
     backdrop-filter: blur(8px);
+  }
+
+  /* Full-screen mode enhancements */
+  .fullscreen-mode {
+    @apply max-w-3xl mx-auto;
+    font-size: 1.125rem;
+    line-height: 1.7;
+  }
+
+  .fullscreen-mode p {
+    @apply my-4;
+  }
+
+  /* Reading mode styles */
+  .reading-container {
+    max-width: 70ch;
+    margin: 0 auto;
+    padding: 0 1rem;
   }
 }
 
