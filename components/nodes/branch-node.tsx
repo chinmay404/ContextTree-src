@@ -63,7 +63,7 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
 
   const [isEditing, setIsEditing] = useState(false)
   const [editedLabel, setEditedLabel] = useState(label)
-  const [isResizing, setIsResizing] = useState(isResizing)
+  const [isResizing, setIsResizing] = useState(false)
   const [nodeWidth, setNodeWidth] = useState(style.width || 220)
   const nodeRef = useRef<HTMLDivElement>(null)
   const startXRef = useRef<number>(0)
