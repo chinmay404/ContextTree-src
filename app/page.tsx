@@ -1,39 +1,29 @@
-"use client"
+import type { Metadata } from "next"
+import Navbar from "@/components/landing/navbar"
+import Hero from "@/components/landing/hero"
+import ProblemSection from "@/components/landing/problem-section"
+import SolutionSection from "@/components/landing/solution-section"
+import Features from "@/components/landing/features"
+import CTA from "@/components/landing/cta"
+import EnhancedFooter from "@/components/landing/enhanced-footer"
 
-import type React from "react"
-
-import ContextTree from "@/components/conversation-canvas"
-import { ThemeProvider } from "@/components/theme-provider"
-import { ReactFlowProvider } from "reactflow"
-import { useEffect } from "react"
-
-// Error handler component to catch ResizeObserver errors
-function ErrorHandler({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      if (event.message.includes("ResizeObserver")) {
-        // Prevent the error from being displayed in the console
-        event.preventDefault()
-      }
-    }
-
-    window.addEventListener("error", handleError)
-    return () => window.removeEventListener("error", handleError)
-  }, [])
-
-  return <>{children}</>
+export const metadata: Metadata = {
+  title: "ContextTree - Keep Every Thread in Sight",
+  description: "An interactive, node-based canvas that preserves your main chat while you explore side-conversations.",
 }
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <ErrorHandler>
-        <ReactFlowProvider>
-          <main className="flex min-h-screen flex-col">
-            <ContextTree />
-          </main>
-        </ReactFlowProvider>
-      </ErrorHandler>
-    </ThemeProvider>
+    <>
+      <Navbar />
+      <main>
+        <Hero />
+        <ProblemSection />
+        <SolutionSection />
+        <Features />
+        <CTA />
+      </main>
+      <EnhancedFooter />
+    </>
   )
 }
