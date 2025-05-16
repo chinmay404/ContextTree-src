@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { GitBranch, MessageSquare } from "lucide-react"
+import { ArrowRight, Sparkles } from "lucide-react"
 import AnimateInView from "./animate-in-view"
 
 export default function Hero() {
@@ -37,7 +37,7 @@ export default function Hero() {
 
           <AnimateInView animation="fadeLeft">
             <motion.div
-              className="bg-muted/80 backdrop-blur-sm rounded-xl p-8 shadow-lg border border-border/40 relative overflow-hidden"
+              className="relative rounded-xl overflow-hidden shadow-xl border border-border/20"
               onMouseEnter={() => setHovered(true)}
               onMouseLeave={() => setHovered(false)}
               animate={{
@@ -45,180 +45,124 @@ export default function Hero() {
               }}
               transition={{ duration: 0.3 }}
             >
-              <div className="relative h-[320px] md:h-[400px] w-full bg-background/60 rounded-lg border border-border/30 overflow-hidden flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="relative w-[320px] h-[280px]">
-                    {/* Main node - center */}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 p-3 rounded-lg border border-primary/30 bg-primary/5 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-primary/10 z-10">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="bg-primary/10 p-1.5 rounded-md">
-                          <MessageSquare className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                        <div className="font-medium text-sm flex-1">Main Conversation</div>
-                      </div>
-                      <div className="text-xs text-muted-foreground line-clamp-2">
-                        This is where your main conversation thread lives. Keep it focused while exploring branches.
-                      </div>
-                    </div>
+              {/* Abstract flowing background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-background via-muted to-background z-0 overflow-hidden">
+                <div className="absolute inset-0 opacity-10">
+                  <svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+                      </linearGradient>
+                      <linearGradient id="gradient2" x1="100%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.2" />
+                        <stop offset="100%" stopColor="#FF8A3D" stopOpacity="0.1" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d="M0,500 C150,400 350,300 500,500 C650,700 850,600 1000,500 L1000,1000 L0,1000 Z"
+                      fill="url(#gradient1)"
+                    />
+                    <path
+                      d="M0,600 C200,500 300,800 500,700 C700,600 800,800 1000,700 L1000,1000 L0,1000 Z"
+                      fill="url(#gradient2)"
+                    />
+                  </svg>
+                </div>
+              </div>
 
-                    {/* Branch node 1 - right */}
-                    <div className="absolute top-1/2 right-0 transform -translate-y-1/2 w-40 p-3 rounded-lg border-2 border-primary bg-primary/10 shadow-md transition-all duration-300 hover:shadow-lg hover:bg-primary/15 z-10">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="bg-primary/20 p-1.5 rounded-md">
-                          <GitBranch className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                        <div className="font-medium text-sm flex-1">Active Branch</div>
-                      </div>
-                      <div className="text-xs text-foreground line-clamp-2">
-                        Explore this tangent without losing your place.
-                      </div>
-                    </div>
-
-                    {/* Branch node 2 - top */}
-                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-36 p-3 rounded-lg border border-border/60 bg-card/80 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-card z-10">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="bg-orange-500/10 p-1.5 rounded-md">
-                          <GitBranch className="h-3.5 w-3.5 text-orange-500" />
-                        </div>
-                        <div className="font-medium text-sm flex-1">Branch 2</div>
-                      </div>
-                    </div>
-
-                    {/* Branch node 3 - bottom */}
-                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-36 p-3 rounded-lg border border-border/60 bg-card/80 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-card z-10">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="bg-orange-500/10 p-1.5 rounded-md">
-                          <GitBranch className="h-3.5 w-3.5 text-orange-500" />
-                        </div>
-                        <div className="font-medium text-sm flex-1">Branch 3</div>
-                      </div>
-                    </div>
-
-                    {/* Additional nodes */}
-                    {/* Top left node */}
-                    <div className="absolute top-[40px] left-[30px] w-32 p-2 rounded-lg border border-border/60 bg-card/80 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-card z-10">
+              {/* Content container */}
+              <div className="relative z-10 p-8 h-[320px] md:h-[400px] flex items-center justify-center">
+                <div className="w-full max-w-md">
+                  {/* Main conversation panel */}
+                  <div className="relative bg-background/80 backdrop-blur-md rounded-lg border border-border/40 shadow-lg p-4 mb-6 transition-all duration-300 hover:shadow-xl">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <div className="bg-blue-500/10 p-1.5 rounded-md">
-                          <GitBranch className="h-3 w-3 text-blue-500" />
-                        </div>
-                        <div className="font-medium text-xs flex-1">Sub-branch A</div>
+                        <div className="h-2 w-2 rounded-full bg-primary"></div>
+                        <h3 className="font-medium text-sm">Main Conversation</h3>
+                      </div>
+                      <div className="text-xs text-muted-foreground">Active</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="bg-muted/50 rounded p-2 text-xs">
+                        How can I implement a recursive algorithm for tree traversal?
+                      </div>
+                      <div className="bg-primary/10 rounded p-2 text-xs ml-4 border-l-2 border-primary/30">
+                        I'll explain recursive tree traversal with examples for in-order, pre-order, and post-order
+                        approaches...
                       </div>
                     </div>
 
-                    {/* Bottom left node */}
-                    <div className="absolute bottom-[40px] left-[30px] w-32 p-2 rounded-lg border border-border/60 bg-card/80 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-card z-10">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-green-500/10 p-1.5 rounded-md">
-                          <GitBranch className="h-3 w-3 text-green-500" />
-                        </div>
-                        <div className="font-medium text-xs flex-1">Sub-branch B</div>
-                      </div>
+                    {/* Branch indicators */}
+                    <div className="absolute -right-2 top-1/3 transform translate-x-full flex flex-col gap-2">
+                      <motion.div
+                        className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-white cursor-pointer shadow-md"
+                        whileHover={{ scale: 1.1 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Sparkles className="h-4 w-4" />
+                      </motion.div>
+                      <div className="h-2 w-2 rounded-full bg-orange-500/80 shadow-sm"></div>
+                      <div className="h-2 w-2 rounded-full bg-blue-500/80 shadow-sm"></div>
                     </div>
-
-                    {/* Top right node */}
-                    <div className="absolute top-[40px] right-[30px] w-32 p-2 rounded-lg border border-border/60 bg-card/80 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-card z-10">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-purple-500/10 p-1.5 rounded-md">
-                          <GitBranch className="h-3 w-3 text-purple-500" />
-                        </div>
-                        <div className="font-medium text-xs flex-1">Sub-branch C</div>
-                      </div>
-                    </div>
-
-                    {/* Bottom right node */}
-                    <div className="absolute bottom-[40px] right-[30px] w-32 p-2 rounded-lg border border-border/60 bg-card/80 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-card z-10">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-yellow-500/10 p-1.5 rounded-md">
-                          <GitBranch className="h-3 w-3 text-yellow-500" />
-                        </div>
-                        <div className="font-medium text-xs flex-1">Sub-branch D</div>
-                      </div>
-                    </div>
-
-                    {/* Small connector nodes */}
-                    <div className="absolute top-[100px] left-[100px] w-6 h-6 rounded-full border border-border/60 bg-blue-100 dark:bg-blue-900/30 shadow-sm z-10"></div>
-                    <div className="absolute bottom-[100px] left-[100px] w-6 h-6 rounded-full border border-border/60 bg-green-100 dark:bg-green-900/30 shadow-sm z-10"></div>
-                    <div className="absolute top-[100px] right-[100px] w-6 h-6 rounded-full border border-border/60 bg-purple-100 dark:bg-purple-900/30 shadow-sm z-10"></div>
-                    <div className="absolute bottom-[100px] right-[100px] w-6 h-6 rounded-full border border-border/60 bg-yellow-100 dark:bg-yellow-900/30 shadow-sm z-10"></div>
-
-                    {/* Connection lines */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }}>
-                      {/* Main to Branch 1 (right) */}
-                      <path
-                        d="M160,140 L280,140"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth="2"
-                        fill="none"
-                        strokeDasharray="5,5"
-                      />
-
-                      {/* Main to Branch 2 (top) */}
-                      <path d="M160,120 L160,40" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
-
-                      {/* Main to Branch 3 (bottom) */}
-                      <path d="M160,160 L160,240" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
-
-                      {/* Main to Top Left */}
-                      <path d="M160,120 Q100,100 80,60" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
-
-                      {/* Main to Bottom Left */}
-                      <path d="M160,160 Q100,180 80,220" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
-
-                      {/* Main to Top Right */}
-                      <path d="M160,120 Q220,100 240,60" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
-
-                      {/* Main to Bottom Right */}
-                      <path d="M160,160 Q220,180 240,220" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
-
-                      {/* Connector lines */}
-                      <path d="M80,60 Q90,80 100,100" stroke="hsl(var(--border))" strokeWidth="1" fill="none" />
-
-                      <path d="M80,220 Q90,200 100,180" stroke="hsl(var(--border))" strokeWidth="1" fill="none" />
-
-                      <path d="M240,60 Q230,80 220,100" stroke="hsl(var(--border))" strokeWidth="1" fill="none" />
-
-                      <path d="M240,220 Q230,200 220,180" stroke="hsl(var(--border))" strokeWidth="1" fill="none" />
-
-                      {/* Background grid lines */}
-                      <path
-                        d="M40,40 L280,40 L280,240 L40,240 L40,40"
-                        stroke="hsl(var(--border))"
-                        strokeWidth="0.5"
-                        strokeOpacity="0.3"
-                        fill="none"
-                        strokeDasharray="4,4"
-                      />
-
-                      <path
-                        d="M40,140 L280,140"
-                        stroke="hsl(var(--border))"
-                        strokeWidth="0.5"
-                        strokeOpacity="0.3"
-                        fill="none"
-                        strokeDasharray="4,4"
-                      />
-
-                      <path
-                        d="M160,40 L160,240"
-                        stroke="hsl(var(--border))"
-                        strokeWidth="0.5"
-                        strokeOpacity="0.3"
-                        fill="none"
-                        strokeDasharray="4,4"
-                      />
-                    </svg>
                   </div>
+
+                  {/* Branch conversation preview */}
+                  <motion.div
+                    className="bg-primary/5 backdrop-blur-sm rounded-lg border border-primary/20 shadow-md p-4 ml-12 relative transition-all duration-300 hover:shadow-lg hover:bg-primary/10"
+                    initial={{ opacity: 0.8, y: 10 }}
+                    animate={{
+                      opacity: hovered ? 1 : 0.8,
+                      y: hovered ? 0 : 10,
+                    }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="absolute -left-12 top-1/2 transform -translate-y-1/2">
+                      <svg width="12" height="40" viewBox="0 0 12 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                          d="M1 0V30C1 35.5228 5.47715 40 11 40H12"
+                          stroke="hsl(var(--primary))"
+                          strokeWidth="2"
+                          strokeDasharray="4 4"
+                        />
+                      </svg>
+                    </div>
+
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-primary"></div>
+                        <h3 className="font-medium text-sm">Branch Exploration</h3>
+                      </div>
+                      <div className="text-xs text-primary">Active Branch</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="bg-muted/50 rounded p-2 text-xs">
+                        Can you explain the time complexity differences between traversal methods?
+                      </div>
+                      <div className="bg-primary/10 rounded p-2 text-xs border-l-2 border-primary/30">
+                        <div className="flex items-center gap-1 text-primary/80 mb-1">
+                          <Sparkles className="h-3 w-3" />
+                          <span className="text-[10px] font-medium">Exploring in depth</span>
+                        </div>
+                        The time complexity for all traversal methods is O(n) as each node is visited exactly once...
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex justify-end">
+                      <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-primary">
+                        Return to Main <ArrowRight className="ml-1 h-3 w-3" />
+                      </Button>
+                    </div>
+                  </motion.div>
                 </div>
               </div>
 
               {/* Decorative elements */}
-              <div className="absolute -z-10 top-1/2 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl opacity-70"></div>
-              <div className="absolute -z-10 bottom-0 right-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl opacity-70"></div>
+              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full blur-xl"></div>
+              <div className="absolute bottom-0 left-0 w-40 h-40 bg-orange-500/5 rounded-full blur-xl"></div>
             </motion.div>
-
-            {/* Decorative elements */}
-            <div className="absolute -z-10 top-1/2 right-1/2 w-72 h-72 bg-primary/5 rounded-full blur-3xl"></div>
-            <div className="absolute -z-10 bottom-0 right-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl"></div>
           </AnimateInView>
         </div>
       </div>

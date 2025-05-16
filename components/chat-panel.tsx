@@ -290,7 +290,7 @@ export default function ChatPanel({
   return (
     <motion.div
       ref={panelRef}
-      className={`relative flex flex-col h-full border-l border-border transition-all duration-300 ${
+      className={`relative flex flex-col h-full border-l border-border/60 transition-all duration-300 ${
         isCollapsed ? "w-12" : ""
       } ${isExpanded ? "fixed right-0 top-0 h-screen z-50 w-full backdrop-blur-md bg-background/95 shadow-xl" : ""}`}
       style={{
@@ -306,7 +306,7 @@ export default function ChatPanel({
       {/* Header for normal mode */}
       {!isExpanded && (
         <motion.div
-          className="p-4 border-b border-border bg-card/50 flex items-center"
+          className="p-4 border-b border-border/60 bg-gradient-to-r from-card/80 to-background/80 backdrop-blur-sm flex items-center"
           initial={{ opacity: 0.8 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
@@ -429,12 +429,12 @@ export default function ChatPanel({
               <div className="flex-1">
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">AI Model</label>
                 <Select value={model} onValueChange={handleModelChange}>
-                  <SelectTrigger className="h-9 text-sm bg-background/60 backdrop-blur-sm">
+                  <SelectTrigger className="h-9 text-sm bg-background/70 backdrop-blur-sm border-border/60 shadow-sm hover:shadow transition-shadow duration-200">
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="border-border/60 shadow-md">
                     {availableModels.map((model) => (
-                      <SelectItem key={model.id} value={model.id}>
+                      <SelectItem key={model.id} value={model.id} className="focus:bg-primary/10">
                         {model.name} <span className="text-xs text-muted-foreground ml-1">({model.provider})</span>
                       </SelectItem>
                     ))}
@@ -501,7 +501,7 @@ export default function ChatPanel({
                   ? "px-4 md:px-0 py-8 max-w-3xl mx-auto"
                   : "p-6 md:p-8 max-w-4xl mx-auto"
                 : "p-4"
-            } space-y-4 custom-scrollbar ${isExpanded ? "max-h-[calc(100vh-140px)]" : ""}`}
+            } space-y-5 custom-scrollbar ${isExpanded ? "max-h-[calc(100vh-140px)]" : ""}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.1 }}
@@ -528,11 +528,11 @@ export default function ChatPanel({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className={`flex flex-col ${message.sender === "user" ? "items-end" : "items-start"}`}
+                    className={`flex flex-col group ${message.sender === "user" ? "items-end" : "items-start"}`}
                   >
-                    <div className="flex items-end gap-2">
+                    <div className="flex items-end gap-2 relative">
                       {message.sender !== "user" && (
-                        <div className="bg-primary/10 p-1.5 rounded-full">
+                        <div className="bg-primary/15 p-1.5 rounded-full shadow-sm">
                           <Bot className="h-3.5 w-3.5 text-primary" />
                         </div>
                       )}
@@ -540,19 +540,59 @@ export default function ChatPanel({
                         className={`${
                           isExpanded
                             ? message.sender === "user"
-                              ? "bg-primary text-primary-foreground max-w-[85%] md:max-w-[75%] rounded-2xl p-4"
-                              : "bg-card border border-border shadow-sm max-w-[85%] md:max-w-[75%] rounded-2xl p-4"
+                              ? "bg-primary text-primary-foreground max-w-[85%] md:max-w-[75%] rounded-2xl p-4 shadow-sm"
+                              : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] md:max-w-[75%] rounded-2xl p-4 hover:shadow-md transition-shadow duration-200"
                             : message.sender === "user"
-                              ? "bg-primary text-primary-foreground max-w-[85%] rounded-2xl p-3.5"
-                              : "bg-card border border-border shadow-sm max-w-[85%] rounded-2xl p-3.5"
-                        }`}
+                              ? "bg-primary text-primary-foreground max-w-[85%] rounded-2xl p-3.5 shadow-sm"
+                              : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] rounded-2xl p-3.5 hover:shadow-md transition-shadow duration-200"
+                        } relative`}
                       >
                         <p className={`${isExpanded ? "text-base leading-relaxed" : "text-sm leading-relaxed"}`}>
                           {message.content}
                         </p>
+
+                        {/* Add plus icon for creating new node from message */}
+                        {onCreateBranchNode && message.sender === "user" && (
+                          <div
+                            className="absolute -right-3 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onCreateBranchNode(message.content)
+                              toast({
+                                title: "Branch created",
+                                description: "New branch node created from this message",
+                              })
+                            }}
+                            title="Create branch from this message"
+                          >
+                            <div className="bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200">
+                              <GitBranch className="h-3.5 w-3.5" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Add plus icon for creating new node from AI message */}
+                        {onCreateBranchNode && message.sender === "ai" && (
+                          <div
+                            className="absolute -left-3 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onCreateBranchNode(message.content)
+                              toast({
+                                title: "Branch created",
+                                description: "New branch node created from this message",
+                              })
+                            }}
+                            title="Create branch from this message"
+                          >
+                            <div className="bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200">
+                              <GitBranch className="h-3.5 w-3.5" />
+                            </div>
+                          </div>
+                        )}
                       </div>
                       {message.sender === "user" && (
-                        <div className="bg-primary/10 p-1.5 rounded-full">
+                        <div className="bg-primary/15 p-1.5 rounded-full shadow-sm">
                           <User className="h-3.5 w-3.5 text-primary" />
                         </div>
                       )}
@@ -648,8 +688,8 @@ export default function ChatPanel({
               isExpanded
                 ? readingMode
                   ? "hidden"
-                  : "sticky bottom-0 p-6 border-t border-border bg-background/95 backdrop-blur-md max-w-4xl mx-auto w-full"
-                : "p-4 border-t border-border bg-card/50"
+                  : "sticky bottom-0 p-6 border-t border-border/60 bg-gradient-to-r from-background/95 to-card/95 backdrop-blur-md max-w-4xl mx-auto w-full shadow-sm"
+                : "p-4 border-t border-border/60 bg-gradient-to-b from-background/80 to-card/80 backdrop-blur-sm"
             }`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -679,8 +719,8 @@ export default function ChatPanel({
                   placeholder="Type your message..."
                   className={`flex-1 ${
                     isExpanded
-                      ? "bg-background border-muted-foreground/20 focus-visible:ring-primary/30 h-12 text-base"
-                      : "bg-background/60 backdrop-blur-sm border-muted-foreground/20 focus-visible:ring-primary/30"
+                      ? "bg-background/80 border-muted-foreground/20 focus-visible:ring-primary/30 h-12 text-base shadow-sm"
+                      : "bg-background/70 backdrop-blur-sm border-muted-foreground/20 focus-visible:ring-primary/30 shadow-sm hover:shadow transition-shadow duration-200"
                   }`}
                 />
                 <Button
@@ -688,8 +728,8 @@ export default function ChatPanel({
                   size={isExpanded ? "default" : "icon"}
                   className={`${
                     isExpanded
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90 px-6"
-                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90 px-6 shadow-sm hover:shadow transition-shadow duration-200"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow transition-shadow duration-200"
                   }`}
                 >
                   {isExpanded ? (
