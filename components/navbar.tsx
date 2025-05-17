@@ -28,6 +28,7 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import { ThemeToggle } from "./theme-toggle"
 import { motion } from "framer-motion"
+import { signOut, useSession } from "next-auth/react"
 
 interface NavbarProps {
   onSave: () => void
@@ -46,6 +47,7 @@ export default function Navbar({
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const { data: session } = useSession()
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -62,6 +64,10 @@ export default function Navbar({
       // Reset the input
       e.target.value = ""
     }
+  }
+
+  const handleSignOut = async () => {
+    await signOut({ callbackUrl: "/" })
   }
 
   return (
@@ -134,17 +140,33 @@ export default function Navbar({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full overflow-hidden border border-border">
-              <img src="/diverse-avatars.png" alt="Profile" className="h-full w-full object-cover" />
+              {session?.user?.image ? (
+                <img
+                  src={session.user.image || "/placeholder.svg"}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <User className="h-4 w-4" />
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <div className="flex items-center p-2">
               <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
-                <img src="/diverse-avatars.png" alt="Profile" className="h-full w-full object-cover" />
+                {session?.user?.image ? (
+                  <img
+                    src={session.user.image || "/placeholder.svg"}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <User className="h-4 w-4" />
+                )}
               </div>
               <div>
-                <p className="text-sm font-medium">User Name</p>
-                <p className="text-xs text-muted-foreground">user@example.com</p>
+                <p className="text-sm font-medium">{session?.user?.name || "User"}</p>
+                <p className="text-xs text-muted-foreground">{session?.user?.email || "user@example.com"}</p>
               </div>
             </div>
             <DropdownMenuSeparator />
@@ -152,7 +174,7 @@ export default function Navbar({
               <User className="h-4 w-4 mr-2" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSignOut}>
               <LogOut className="h-4 w-4 mr-2" />
               <span>Sign out</span>
             </DropdownMenuItem>
@@ -201,11 +223,19 @@ export default function Navbar({
           <div className="flex flex-col gap-2">
             <div className="flex items-center p-2 bg-muted/50 rounded-md">
               <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
-                <img src="/diverse-avatars.png" alt="Profile" className="h-full w-full object-cover" />
+                {session?.user?.image ? (
+                  <img
+                    src={session.user.image || "/placeholder.svg"}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <User className="h-4 w-4" />
+                )}
               </div>
               <div>
-                <p className="text-sm font-medium">User Name</p>
-                <p className="text-xs text-muted-foreground">user@example.com</p>
+                <p className="text-sm font-medium">{session?.user?.name || "User"}</p>
+                <p className="text-xs text-muted-foreground">{session?.user?.email || "user@example.com"}</p>
               </div>
             </div>
 
@@ -239,6 +269,16 @@ export default function Navbar({
             <Button variant="ghost" size="sm" className="flex items-center justify-start gap-2">
               <Settings className="h-4 w-4" />
               <span>Settings</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              className="flex items-center justify-start gap-2 text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign out</span>
             </Button>
           </div>
         </motion.div>

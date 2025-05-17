@@ -3,20 +3,13 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Network, LogOut, User } from "lucide-react"
+import { Network } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useSession, signOut } from "next-auth/react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { useSession } from "next-auth/react"
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -56,66 +49,21 @@ export default function Navbar() {
 
           <div className="flex items-center gap-4">
             <ThemeToggle />
-
-            {status === "loading" ? (
-              <div className="h-9 w-20 bg-muted animate-pulse rounded-md"></div>
-            ) : session ? (
-              <div className="flex items-center gap-4">
-                <Link href="/canvas">
-                  <Button size="sm">Go to Canvas</Button>
-                </Link>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full overflow-hidden">
-                      {session.user?.image ? (
-                        <img
-                          src={session.user.image || "/placeholder.svg"}
-                          alt={session.user.name || "User"}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <User className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <div className="flex items-center p-2">
-                      <div className="w-8 h-8 rounded-full overflow-hidden mr-2 bg-muted flex items-center justify-center">
-                        {session.user?.image ? (
-                          <img
-                            src={session.user.image || "/placeholder.svg"}
-                            alt={session.user.name || "User"}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <User className="h-4 w-4" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{session.user?.name || "User"}</p>
-                        <p className="text-xs text-muted-foreground">{session.user?.email}</p>
-                      </div>
-                    </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/" })}>
-                      <LogOut className="h-4 w-4 mr-2" />
-                      <span>Sign out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+            {session ? (
+              <Link href="/canvas">
+                <Button size="sm">Go to Canvas</Button>
+              </Link>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link href="/auth/signin">
+              <>
+                <Link href="/auth/login">
                   <Button variant="outline" size="sm" className="hidden sm:flex">
                     Sign In
                   </Button>
                 </Link>
                 <Link href="/auth/signup">
-                  <Button size="sm">Sign Up</Button>
+                  <Button size="sm">Try It Now</Button>
                 </Link>
-              </div>
+              </>
             )}
           </div>
         </div>

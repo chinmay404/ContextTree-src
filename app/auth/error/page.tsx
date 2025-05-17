@@ -1,64 +1,73 @@
 "use client"
 
 import { useSearchParams } from "next/navigation"
-import Link from "next/link"
-import { Network } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
-export default function AuthError() {
+export default function AuthErrorPage() {
   const searchParams = useSearchParams()
   const error = searchParams.get("error")
 
+  let errorMessage = "An unknown error occurred during authentication."
+  let errorDescription = "Please try again or contact support if the problem persists."
+
   // Map error codes to user-friendly messages
-  const getErrorMessage = (errorCode: string | null) => {
-    switch (errorCode) {
-      case "Configuration":
-        return "There is a problem with the server configuration. Please contact support."
-      case "AccessDenied":
-        return "You do not have permission to sign in."
-      case "Verification":
-        return "The verification link may have expired or already been used."
-      case "OAuthSignin":
-      case "OAuthCallback":
-      case "OAuthCreateAccount":
-      case "EmailCreateAccount":
-      case "Callback":
-      case "OAuthAccountNotLinked":
-      case "EmailSignin":
-      case "CredentialsSignin":
-        return "There was a problem with your sign in attempt. Please try again."
-      case "SessionRequired":
-        return "You must be signed in to access this page."
-      default:
-        return "An unexpected error occurred. Please try again later."
-    }
+  switch (error) {
+    case "Configuration":
+      errorMessage = "Server configuration error"
+      errorDescription = "There is a problem with the server configuration. Please contact support."
+      break
+    case "AccessDenied":
+      errorMessage = "Access denied"
+      errorDescription = "You do not have permission to sign in."
+      break
+    case "Verification":
+      errorMessage = "Verification error"
+      errorDescription = "The verification link may have expired or already been used."
+      break
+    case "OAuthSignin":
+    case "OAuthCallback":
+    case "OAuthCreateAccount":
+    case "EmailCreateAccount":
+    case "Callback":
+    case "OAuthAccountNotLinked":
+    case "EmailSignin":
+    case "CredentialsSignin":
+      errorMessage = "Sign in error"
+      errorDescription = "There was a problem signing you in. Please try again with different credentials."
+      break
+    case "SessionRequired":
+      errorMessage = "Authentication required"
+      errorDescription = "You must be signed in to access this page."
+      break
+    default:
+      // Use default error message
+      break
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <Link href="/" className="absolute top-8 left-8 flex items-center gap-2">
-        <Network className="h-6 w-6 text-primary" />
-        <span className="font-semibold text-lg tracking-tight">ContextTree</span>
-      </Link>
-
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Authentication Error</CardTitle>
-          <CardDescription className="text-center">There was a problem with your authentication</CardDescription>
+    <div className="container flex items-center justify-center min-h-screen">
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-destructive">{errorMessage}</CardTitle>
+          <CardDescription>{errorDescription}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="bg-destructive/15 text-destructive p-4 rounded-md">
-            <p className="font-medium">Error: {error || "Unknown"}</p>
-            <p className="mt-2">{getErrorMessage(error)}</p>
-          </div>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">You can try the following:</p>
+          <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+            <li>Check your credentials and try again</li>
+            <li>Use a different authentication method</li>
+            <li>Clear your browser cookies and try again</li>
+            <li>Contact support if the issue persists</li>
+          </ul>
         </CardContent>
-        <CardFooter className="flex justify-center gap-4">
-          <Button asChild variant="outline">
+        <CardFooter className="flex justify-between">
+          <Button variant="outline" asChild>
             <Link href="/">Return Home</Link>
           </Button>
           <Button asChild>
-            <Link href="/auth/signin">Try Again</Link>
+            <Link href="/auth/login">Try Again</Link>
           </Button>
         </CardFooter>
       </Card>

@@ -6,6 +6,7 @@ import ContextTree from "@/components/conversation-canvas"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ReactFlowProvider } from "reactflow"
 import { useEffect } from "react"
+import { useSession } from "next-auth/react"
 
 // Error handler component to catch ResizeObserver errors
 function ErrorHandler({ children }: { children: React.ReactNode }) {
@@ -25,6 +26,21 @@ function ErrorHandler({ children }: { children: React.ReactNode }) {
 }
 
 export default function CanvasPage() {
+  const { status } = useSession({
+    required: true,
+  })
+
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-sm text-muted-foreground">Loading your canvas...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <ErrorHandler>
