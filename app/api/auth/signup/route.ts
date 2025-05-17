@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { hash } from "bcrypt"
+import bcryptjs from "bcryptjs" // Changed from bcrypt to bcryptjs
 import { v4 as uuidv4 } from "uuid"
 
 // In a real app, you would use a database
@@ -20,8 +20,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User already exists" }, { status: 409 })
     }
 
-    // Hash password
-    const hashedPassword = await hash(password, 10)
+    // Hash password with bcryptjs (10 rounds is standard)
+    const hashedPassword = await bcryptjs.hash(password, 10)
 
     // Create user
     const userId = uuidv4()

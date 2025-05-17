@@ -1,10 +1,10 @@
 import NextAuth from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { compare } from "bcrypt"
+import bcryptjs from "bcryptjs" // Changed from bcrypt to bcryptjs
 
-// This would typically connect to your database
-// For this example, we'll use a simple in-memory store
+// In a real app, you would fetch this from your database
+// For this example, we'll use the same in-memory store from signup
 const users = new Map()
 
 export const authOptions = {
@@ -24,14 +24,14 @@ export const authOptions = {
           return null
         }
 
-        // In a real app, you would query your database
         const user = users.get(credentials.email)
 
         if (!user) {
           return null
         }
 
-        const isPasswordValid = await compare(credentials.password, user.password)
+        // Use bcryptjs to compare passwords
+        const isPasswordValid = await bcryptjs.compare(credentials.password, user.password)
 
         if (!isPasswordValid) {
           return null
@@ -39,35 +39,35 @@ export const authOptions = {
 
         return {
           id: user.id,
-          email: user.email,
           name: user.name,
+          email: user.email,
         }
       },
     }),
   ],
   pages: {
     signIn: "/auth/signin",
-    signUp: "/auth/signup",
     error: "/auth/error",
   },
+  session: {
+    strategy: "jwt",
+  },
   callbacks: {
-    async session({ session, token }) {
-      if (session?.user) {
-        session.user.id = token.sub
-      }
-      return session
-    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
       }
       return token
     },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id
+      }
+      return session
+    },
   },
   debug: process.env.NODE_ENV === "development",
-  secret: process.env.NEXTAUTH_SECRET,
 }
 
 const handler = NextAuth(authOptions)
-
 export { handler as GET, handler as POST }
