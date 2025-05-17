@@ -10,64 +10,33 @@ export default function AuthErrorPage() {
   const error = searchParams.get("error")
 
   let errorMessage = "An unknown error occurred during authentication."
-  let errorDescription = "Please try again or contact support if the problem persists."
 
-  // Map error codes to user-friendly messages
-  switch (error) {
-    case "Configuration":
-      errorMessage = "Server configuration error"
-      errorDescription = "There is a problem with the server configuration. Please contact support."
-      break
-    case "AccessDenied":
-      errorMessage = "Access denied"
-      errorDescription = "You do not have permission to sign in."
-      break
-    case "Verification":
-      errorMessage = "Verification error"
-      errorDescription = "The verification link may have expired or already been used."
-      break
-    case "OAuthSignin":
-    case "OAuthCallback":
-    case "OAuthCreateAccount":
-    case "EmailCreateAccount":
-    case "Callback":
-    case "OAuthAccountNotLinked":
-    case "EmailSignin":
-    case "CredentialsSignin":
-      errorMessage = "Sign in error"
-      errorDescription = "There was a problem signing you in. Please try again with different credentials."
-      break
-    case "SessionRequired":
-      errorMessage = "Authentication required"
-      errorDescription = "You must be signed in to access this page."
-      break
-    default:
-      // Use default error message
-      break
+  if (error === "OAuthAccountNotLinked") {
+    errorMessage = "This email is already associated with another account. Please sign in using a different method."
+  } else if (error === "AccessDenied") {
+    errorMessage = "Access denied. You do not have permission to access this resource."
+  } else if (error === "Verification") {
+    errorMessage = "The verification link is invalid or has expired."
+  } else if (error === "Configuration") {
+    errorMessage = "There is a problem with the server configuration. Please contact support."
   }
 
   return (
-    <div className="container flex items-center justify-center min-h-screen">
-      <Card className="w-full max-w-md mx-auto">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-destructive">{errorMessage}</CardTitle>
-          <CardDescription>{errorDescription}</CardDescription>
+          <CardTitle>Authentication Error</CardTitle>
+          <CardDescription>There was a problem with your authentication</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">You can try the following:</p>
-          <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-            <li>Check your credentials and try again</li>
-            <li>Use a different authentication method</li>
-            <li>Clear your browser cookies and try again</li>
-            <li>Contact support if the issue persists</li>
-          </ul>
+          <p className="text-sm text-muted-foreground">{errorMessage}</p>
         </CardContent>
         <CardFooter className="flex justify-between">
           <Button variant="outline" asChild>
-            <Link href="/">Return Home</Link>
+            <Link href="/auth/login">Back to Login</Link>
           </Button>
           <Button asChild>
-            <Link href="/auth/login">Try Again</Link>
+            <Link href="/">Go to Home</Link>
           </Button>
         </CardFooter>
       </Card>

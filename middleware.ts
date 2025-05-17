@@ -1,27 +1,26 @@
 import { NextResponse } from "next/server"
-import { getToken } from "next-auth/jwt"
 import type { NextRequest } from "next/server"
+import { getToken } from "next-auth/jwt"
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request })
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   const isAuthenticated = !!token
 
-  // Path the user is trying to access
-  const path = request.nextUrl.pathname
+  // Define protected routes that require authentication
+  const isProtectedRoute = request.nextUrl.pathname.startsWith("/canvas")
 
-  // Public paths that don't require authentication
-  const isPublicPath = path === "/" || path.startsWith("/auth/") || path.startsWith("/api/auth/")
+  // Define auth routes (login, signup, etc.)
+  const isAuthRoute = request.nextUrl.pathname.startsWith("/auth")
 
-  // Protected paths that require authentication
-  const isProtectedPath = path === "/canvas" || path.startsWith("/canvas/")
-
-  // If trying to access a protected path without being authenticated
-  if (isProtectedPath && !isAuthenticated) {
-    return NextResponse.redirect(new URL("/auth/login", request.url))
+  // If trying to access a protected route without being authenticated
+  if (isProtectedRoute && !isAuthenticated) {
+    const url = new URL("/auth/login", request.url)
+    url.searchParams.set("callbackUrl", request.nextUrl.pathname)
+    return NextResponse.redirect(url)
   }
 
-  // If trying to access auth pages while already authenticated
-  if (isPublicPath && path.startsWith("/auth/") && isAuthenticated) {
+  // If trying to access auth routes while already authenticated
+  if (isAuthRoute && isAuthenticated) {
     return NextResponse.redirect(new URL("/canvas", request.url))
   }
 
@@ -30,5 +29,5 @@ export async function middleware(request: NextRequest) {
 
 // Configure which paths the middleware runs on
 export const config = {
-  matcher: ["/", "/canvas", "/canvas/:path*", "/auth/:path*"],
+  matcher: ["/canvas/:path*", "/auth/:path*"],
 }
