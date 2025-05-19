@@ -5,36 +5,40 @@ import { getToken } from "next-auth/jwt"
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Exclude Next.js API routes
-  if (pathname.startsWith("/_next") || pathname.startsWith("/api/auth") || pathname.includes(".") || pathname === "/") {
-    return NextResponse.next()
-  }
-
-  // Check if the path is for authentication
-  const isAuthPage = pathname.startsWith("/auth")
-
-  // Get the token
+  // Get the token from the request
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
   })
 
+  // Log for debugging
+  console.log(`Middleware checking path: ${pathname}, authenticated: ${!!token}`)
+
+  // Define protected routes
+  const protectedRoutes = ["/canvas"]
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
+
+  // Define auth routes
+  const authRoutes = ["/auth/login", "/auth/register"]
+  const isAuthRoute = authRoutes.some((route) => pathname === route)
+
   // Redirect logic
-  if (!token && !isAuthPage && pathname !== "/") {
-    // Redirect to login if not authenticated and trying to access protected route
+  if (isProtectedRoute && !token) {
+    // Redirect to login if trying to access protected route without auth
     const url = new URL("/auth/login", request.url)
     url.searchParams.set("callbackUrl", encodeURI(request.url))
     return NextResponse.redirect(url)
   }
 
-  if (token && isAuthPage) {
-    // Redirect to canvas if already authenticated and trying to access auth pages
+  if (isAuthRoute && token) {
+    // Redirect to canvas if already authenticated
     return NextResponse.redirect(new URL("/canvas", request.url))
   }
 
   return NextResponse.next()
 }
 
+// Configure which paths the middleware runs on
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/canvas/:path*", "/auth/login", "/auth/register"],
 }

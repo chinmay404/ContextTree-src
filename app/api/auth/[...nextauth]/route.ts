@@ -3,19 +3,22 @@ import GoogleProvider from "next-auth/providers/google"
 import { MongoDBAdapter } from "@auth/mongodb-adapter"
 import clientPromise from "@/lib/mongodb"
 
+// Determine the base URL for callbacks
+const baseUrl =
+  process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+
+console.log("NextAuth Base URL:", baseUrl)
+console.log("Google Client ID set:", !!process.env.GOOGLE_CLIENT_ID)
+console.log("Google Client Secret set:", !!process.env.GOOGLE_CLIENT_SECRET)
+console.log("NextAuth Secret set:", !!process.env.NEXTAUTH_SECRET)
+console.log("MongoDB URI set:", !!process.env.MONGODB_URI)
+
 export const authOptions = {
   adapter: MongoDBAdapter(clientPromise),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code",
-        },
-      },
     }),
   ],
   session: {
@@ -28,31 +31,33 @@ export const authOptions = {
     error: "/auth/error",
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
+    async jwt({ token, user, account }) {
+      // Initial sign in
+      if (account && user) {
+        return {
+          ...token,
+          accessToken: account.access_token,
+          id: user.id,
+        }
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id
+        // @ts-ignore
+        session.accessToken = token.accessToken
       }
       return session
     },
-    // Improved redirect callback
     async redirect({ url, baseUrl }) {
-      // If the URL is absolute and on the same origin, allow it
-      if (url.startsWith(baseUrl)) return url
+      console.log("Redirect Callback:", { url, baseUrl })
 
-      // If it's a relative URL, prepend the base URL
-      if (url.startsWith("/")) return `${baseUrl}${url}`
-
-      // Default to the base URL for safety
-      return baseUrl
+      // Always redirect to canvas after successful login
+      return `${baseUrl}/canvas`
     },
   },
-  debug: process.env.NODE_ENV === "development",
+  debug: true,
 }
 
 const handler = NextAuth(authOptions)
