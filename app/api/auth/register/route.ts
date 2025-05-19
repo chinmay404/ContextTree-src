@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { hash } from "bcrypt"
+import bcryptjs from "bcryptjs" // Changed from bcrypt to bcryptjs
 import { connectToDatabase } from "@/lib/db"
 
 export async function POST(request: Request) {
@@ -20,8 +20,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "User with this email already exists" }, { status: 409 })
     }
 
-    // Hash password
-    const hashedPassword = await hash(password, 10)
+    // Hash password - using bcryptjs instead of bcrypt
+    const hashedPassword = await bcryptjs.hash(password, 10)
 
     // Create user
     const result = await db.collection("users").insertOne({

@@ -2,7 +2,7 @@ import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 import { MongoDBAdapter } from "@auth/mongodb-adapter"
-import { compare } from "bcrypt"
+import bcryptjs from "bcryptjs" // Changed from bcrypt to bcryptjs
 import clientPromise from "@/lib/mongodb"
 import { connectToDatabase } from "@/lib/db"
 
@@ -31,7 +31,8 @@ export const authOptions = {
           return null
         }
 
-        const isPasswordValid = await compare(credentials.password, user.password)
+        // Using bcryptjs.compare instead of bcrypt.compare
+        const isPasswordValid = await bcryptjs.compare(credentials.password, user.password)
 
         if (!isPasswordValid) {
           return null
