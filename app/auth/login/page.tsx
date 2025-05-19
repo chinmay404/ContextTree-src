@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { signIn } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -12,20 +12,46 @@ import Link from "next/link"
 export default function LoginPage() {
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
 
   // Get error message from URL if it exists
-  const error = searchParams.get("error")
-  const errorMessage =
-    error === "Callback"
-      ? "There was an issue with the Google sign-in. Please try again."
-      : error
-        ? "An authentication error occurred. Please try again."
-        : ""
+  useEffect(() => {
+    const error = searchParams.get("error")
+    if (error) {
+      switch (error) {
+        case "Callback":
+          setErrorMessage(
+            "There was an issue with the Google sign-in. Please try again or contact support if the issue persists.",
+          )
+          break
+        case "OAuthSignin":
+          setErrorMessage("The OAuth sign-in process failed. Please try again.")
+          break
+        case "OAuthCallback":
+          setErrorMessage("The OAuth callback failed. Please check your configuration.")
+          break
+        case "OAuthCreateAccount":
+          setErrorMessage("There was an error creating your account. Please try again.")
+          break
+        case "EmailCreateAccount":
+          setErrorMessage("There was an error creating your account. Please try again.")
+          break
+        case "AccessDenied":
+          setErrorMessage("Access denied. You may not have permission to sign in.")
+          break
+        default:
+          setErrorMessage(`An authentication error occurred: ${error}. Please try again.`)
+      }
+    }
+  }, [searchParams])
 
   const handleGoogleSignIn = () => {
     setIsLoading(true)
     // Explicitly set the callbackUrl to /canvas
-    signIn("google", { callbackUrl: "/canvas" })
+    signIn("google", {
+      callbackUrl: "/canvas",
+      redirect: true,
+    })
   }
 
   return (
@@ -47,7 +73,7 @@ export default function LoginPage() {
 
           <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
             {isLoading ? (
-              <span className="flex items-center">
+              <span className="flex items-center justify-center">
                 <svg
                   className="animate-spin -ml-1 mr-3 h-4 w-4 text-primary"
                   xmlns="http://www.w3.org/2000/svg"

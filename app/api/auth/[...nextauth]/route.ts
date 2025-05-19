@@ -9,6 +9,13 @@ export const authOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
+        },
+      },
     }),
   ],
   session: {
@@ -33,12 +40,15 @@ export const authOptions = {
       }
       return session
     },
-    // Add a redirect callback to handle the redirect after sign in
+    // Improved redirect callback
     async redirect({ url, baseUrl }) {
-      // Allows relative callback URLs
+      // If the URL is absolute and on the same origin, allow it
+      if (url.startsWith(baseUrl)) return url
+
+      // If it's a relative URL, prepend the base URL
       if (url.startsWith("/")) return `${baseUrl}${url}`
-      // Allows callback URLs on the same origin
-      else if (new URL(url).origin === baseUrl) return url
+
+      // Default to the base URL for safety
       return baseUrl
     },
   },
