@@ -1,10 +1,7 @@
 import NextAuth from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 import { MongoDBAdapter } from "@auth/mongodb-adapter"
-import bcryptjs from "bcryptjs" // Changed from bcrypt to bcryptjs
 import clientPromise from "@/lib/mongodb"
-import { connectToDatabase } from "@/lib/db"
 
 export const authOptions = {
   adapter: MongoDBAdapter(clientPromise),
@@ -13,39 +10,7 @@ export const authOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null
-        }
-
-        const { db } = await connectToDatabase()
-        const user = await db.collection("users").findOne({ email: credentials.email })
-
-        if (!user) {
-          return null
-        }
-
-        // Using bcryptjs.compare instead of bcrypt.compare
-        const isPasswordValid = await bcryptjs.compare(credentials.password, user.password)
-
-        if (!isPasswordValid) {
-          return null
-        }
-
-        return {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        }
-      },
-    }),
+    // Credentials provider removed as requested
   ],
   session: {
     strategy: "jwt",
@@ -54,7 +19,6 @@ export const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: "/auth/login",
-    signUp: "/auth/register",
     error: "/auth/error",
   },
   callbacks: {
@@ -70,7 +34,16 @@ export const authOptions = {
       }
       return session
     },
+    // Add a redirect callback to handle the redirect after sign in
+    async redirect({ url, baseUrl }) {
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url
+      return baseUrl
+    },
   },
+  debug: process.env.NODE_ENV === "development",
 }
 
 const handler = NextAuth(authOptions)
