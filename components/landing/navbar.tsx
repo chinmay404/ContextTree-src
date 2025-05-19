@@ -6,11 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Network, Menu, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ThemeToggle } from "../theme-toggle"
-import { useSession } from "next-auth/react"
+import { useSession, signIn } from "next-auth/react"
 
 export default function LandingNavbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { data: session } = useSession()
+
+  const handleSignIn = () => {
+    signIn("google", { callbackUrl: "/canvas" })
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -44,14 +48,7 @@ export default function LandingNavbar() {
               <Link href="/canvas">Go to Canvas</Link>
             </Button>
           ) : (
-            <>
-              <Button variant="ghost" asChild>
-                <Link href="/auth/login">Sign In</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/auth/register">Sign Up</Link>
-              </Button>
-            </>
+            <Button onClick={handleSignIn}>Sign in with Google</Button>
           )}
         </div>
 
@@ -117,14 +114,15 @@ export default function LandingNavbar() {
                   <Link href="/canvas">Go to Canvas</Link>
                 </Button>
               ) : (
-                <div className="flex flex-col gap-2">
-                  <Button variant="outline" asChild className="w-full" onClick={() => setMobileMenuOpen(false)}>
-                    <Link href="/auth/login">Sign In</Link>
-                  </Button>
-                  <Button asChild className="w-full" onClick={() => setMobileMenuOpen(false)}>
-                    <Link href="/auth/register">Sign Up</Link>
-                  </Button>
-                </div>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setMobileMenuOpen(false)
+                    handleSignIn()
+                  }}
+                >
+                  Sign in with Google
+                </Button>
               )}
             </div>
           </motion.div>

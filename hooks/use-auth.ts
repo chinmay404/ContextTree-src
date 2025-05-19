@@ -11,15 +11,6 @@ export function useAuth() {
   const isLoading = status === "loading"
   const user = session?.user
 
-  const login = async (email: string, password: string) => {
-    const result = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    })
-    return result
-  }
-
   const loginWithGoogle = () => {
     signIn("google", { callbackUrl: "/canvas" })
   }
@@ -38,7 +29,6 @@ export function useAuth() {
     user,
     isAuthenticated,
     isLoading,
-    login,
     loginWithGoogle,
     logout,
     requireAuth,

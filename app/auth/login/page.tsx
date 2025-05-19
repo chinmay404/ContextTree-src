@@ -2,14 +2,14 @@
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Network } from "lucide-react"
+import Link from "next/link"
 
 export default function LoginPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
 
@@ -87,6 +87,18 @@ export default function LoginPage() {
               </span>
             )}
           </Button>
+
+          <div className="text-center text-sm text-muted-foreground mt-4">
+            By continuing, you agree to our{" "}
+            <Link href="#" className="text-primary hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="#" className="text-primary hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </div>
         </CardContent>
       </Card>
     </div>
