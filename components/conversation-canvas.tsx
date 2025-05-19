@@ -20,9 +20,6 @@ import type { NodeParentInfo } from "@/lib/types"
 // Add import for the API service at the top
 import { getChatResponse } from "@/lib/api-service"
 import { getMockResponse } from "@/lib/mock-response"
-// Add the useSession import
-import { useSession } from "next-auth/react"
-import { getUserSessionId } from "@/lib/session-utils"
 
 const initialNodes = [
   {
@@ -64,9 +61,7 @@ const defaultEdgeOptions = {
   },
 }
 
-// In the ContextTree component, add the session
 export default function ContextTree() {
-  const { data: session } = useSession()
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [selectedEdge, setSelectedEdge] = useState(null)
@@ -1327,7 +1322,7 @@ export default function ContextTree() {
     return id
   }
 
-  // Update the createNewConversation function to include parents array for the first node
+  // Update the createNewConversation function to initialize parents array for the first node
   const createNewConversation = (name: string) => {
     const newConversation = {
       id: uuidv4(),
@@ -1389,16 +1384,10 @@ export default function ContextTree() {
     setActiveConversation(newConversation.id)
   }
 
-  // Update the onSave function to include the user ID
   const onSave = () => {
     if (reactFlowInstance) {
       const flowData = reactFlowInstance.toObject()
-      const userId = session?.user?.id || getUserSessionId()
-      localStorage.setItem(`flow-conversation-${userId}`, JSON.stringify(flowData))
-
-      // Also save the conversations data
-      localStorage.setItem(`conversations-${userId}`, JSON.stringify(conversations))
-
+      localStorage.setItem("flow-conversation", JSON.stringify(flowData))
       toast({
         title: "Canvas saved",
         description: "The current canvas state has been saved to local storage.",
@@ -1406,7 +1395,6 @@ export default function ContextTree() {
     }
   }
 
-  // Add a function to export the current canvas
   const onExport = () => {
     if (reactFlowInstance) {
       const flowData = reactFlowInstance.toObject()
@@ -1422,54 +1410,6 @@ export default function ContextTree() {
       URL.revokeObjectURL(url)
     }
   }
-
-  // Add a function to load user-specific conversations
-  useEffect(() => {
-    const userId = session?.user?.id || getUserSessionId()
-
-    // Try to load conversations first
-    const savedConversations = localStorage.getItem(`conversations-${userId}`)
-    if (savedConversations) {
-      try {
-        const parsedConversations = JSON.parse(savedConversations)
-        if (Array.isArray(parsedConversations) && parsedConversations.length > 0) {
-          setConversations(parsedConversations)
-          setActiveConversation(parsedConversations[0].id)
-          return
-        }
-      } catch (error) {
-        console.error("Error loading saved conversations:", error)
-      }
-    }
-
-    // If no conversations, try to load flow data
-    const savedData = localStorage.getItem(`flow-conversation-${userId}`)
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData)
-        if (parsedData.nodes && parsedData.edges) {
-          setConversations((prevConversations) => {
-            // Check if we already have conversations
-            if (prevConversations.length > 0) {
-              return prevConversations
-            }
-
-            // Create a new conversation from the saved data
-            return [
-              {
-                id: uuidv4(),
-                name: "Loaded Conversation",
-                nodes: parsedData.nodes,
-                edges: parsedData.edges,
-              },
-            ]
-          })
-        }
-      } catch (error) {
-        console.error("Error loading saved flow data:", error)
-      }
-    }
-  }, [session?.user?.id, setConversations])
 
   const saveNodeNote = (nodeId: string, note: string) => {
     setNodeNotes((prev) => ({

@@ -1,56 +1,135 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
-import { Network } from "lucide-react"
-import { ThemeToggle } from "@/components/theme-toggle"
-import UserProfile from "@/components/auth/user-profile"
+import { Button } from "@/components/ui/button"
+import { Network, Menu, X } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { ThemeToggle } from "../theme-toggle"
+import { useSession } from "next-auth/react"
 
-export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10)
-    }
-
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+export default function LandingNavbar() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { data: session } = useSession()
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-background/95 backdrop-blur-md shadow-sm" : "bg-transparent"
-      }`}
-    >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center gap-2">
-              <Network className="h-6 w-6 text-primary" />
-              <span className="font-semibold text-lg tracking-tight">ContextTree</span>
-            </Link>
-          </div>
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Network className="h-6 w-6 text-primary" />
+          <span className="text-xl font-semibold tracking-tight">ContextTree</span>
+        </div>
 
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link href="#features" className="text-sm font-medium hover:text-primary transition-colors">
-              Features
-            </Link>
-            <Link href="#demo" className="text-sm font-medium hover:text-primary transition-colors">
-              Demo
-            </Link>
-            <Link href="#pricing" className="text-sm font-medium hover:text-primary transition-colors">
-              Pricing
-            </Link>
-          </nav>
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center gap-6">
+          <Link href="/#features" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+            Features
+          </Link>
+          <Link href="/#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+            How It Works
+          </Link>
+          <Link href="/#pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+            Pricing
+          </Link>
+          <Link href="/blog" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+            Blog
+          </Link>
+        </nav>
 
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <UserProfile />
-          </div>
+        {/* Desktop CTA */}
+        <div className="hidden md:flex items-center gap-4">
+          <ThemeToggle />
+          {session ? (
+            <Button asChild>
+              <Link href="/canvas">Go to Canvas</Link>
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="/auth/login">Sign In</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/auth/register">Sign Up</Link>
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* Mobile Menu Button */}
+        <div className="flex md:hidden items-center gap-4">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle Menu"
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </Button>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="md:hidden border-t border-border/40"
+          >
+            <div className="container py-4 flex flex-col gap-4">
+              <Link
+                href="/#features"
+                className="px-4 py-2 text-sm font-medium hover:bg-muted rounded-md"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Features
+              </Link>
+              <Link
+                href="/#how-it-works"
+                className="px-4 py-2 text-sm font-medium hover:bg-muted rounded-md"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                How It Works
+              </Link>
+              <Link
+                href="/#pricing"
+                className="px-4 py-2 text-sm font-medium hover:bg-muted rounded-md"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Pricing
+              </Link>
+              <Link
+                href="/blog"
+                className="px-4 py-2 text-sm font-medium hover:bg-muted rounded-md"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Blog
+              </Link>
+
+              <div className="h-px w-full bg-border/60 my-2"></div>
+
+              {session ? (
+                <Button asChild className="w-full" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/canvas">Go to Canvas</Link>
+                </Button>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Button variant="outline" asChild className="w-full" onClick={() => setMobileMenuOpen(false)}>
+                    <Link href="/auth/login">Sign In</Link>
+                  </Button>
+                  <Button asChild className="w-full" onClick={() => setMobileMenuOpen(false)}>
+                    <Link href="/auth/register">Sign Up</Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   )
 }

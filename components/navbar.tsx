@@ -5,7 +5,7 @@ import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import type React from "react"
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Save, ImageIcon, Download, Settings, Menu, X, Network, Zap, Share2, Link2Off } from "lucide-react"
+import { Save, ImageIcon, Download, Settings, Menu, X, Network, Zap, Share2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,7 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import { ThemeToggle } from "./theme-toggle"
 import { motion } from "framer-motion"
-import UserProfile from "@/components/auth/user-profile"
+import UserMenu from "./user-menu"
 
 interface NavbarProps {
   onSave: () => void
@@ -71,7 +71,7 @@ export default function Navbar({
             className="h-6 w-6 rounded-full bg-yellow-600/50 hover:bg-yellow-600"
             onClick={onCancelConnectionMode}
           >
-            <Link2Off className="h-3.5 w-3.5" />
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       )}
@@ -119,7 +119,7 @@ export default function Navbar({
 
         <div className="h-5 w-px bg-border mx-1"></div>
 
-        <UserProfile />
+        <UserMenu />
 
         <div className="h-5 w-px bg-border mx-1"></div>
 
@@ -161,7 +161,7 @@ export default function Navbar({
           className="absolute top-full right-0 left-0 bg-background border-b border-border shadow-md p-4 z-50 md:hidden"
         >
           <div className="flex flex-col gap-2">
-            <UserProfile />
+            <UserMenu />
 
             <div className="h-px w-full bg-border my-2"></div>
 

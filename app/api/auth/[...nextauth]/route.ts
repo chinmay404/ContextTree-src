@@ -1,14 +1,13 @@
 import NextAuth from "next-auth"
-import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { compare } from "bcryptjs"
-import { PrismaAdapter } from "@auth/prisma-adapter"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import GoogleProvider from "next-auth/providers/google"
+import { MongoDBAdapter } from "@auth/mongodb-adapter"
+import { compare } from "bcrypt"
+import clientPromise from "@/lib/mongodb"
+import { connectToDatabase } from "@/lib/db"
 
 export const authOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: MongoDBAdapter(clientPromise),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -25,11 +24,10 @@ export const authOptions = {
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        })
+        const { db } = await connectToDatabase()
+        const user = await db.collection("users").findOne({ email: credentials.email })
 
-        if (!user || !user.password) {
+        if (!user) {
           return null
         }
 
@@ -40,36 +38,38 @@ export const authOptions = {
         }
 
         return {
-          id: user.id,
-          email: user.email,
+          id: user._id.toString(),
           name: user.name,
+          email: user.email,
+          image: user.image,
         }
       },
     }),
   ],
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET,
   pages: {
-    signIn: "/auth/signin",
-    signUp: "/auth/signup",
+    signIn: "/auth/login",
+    signUp: "/auth/register",
     error: "/auth/error",
   },
   callbacks: {
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.sub
-      }
-      return session
-    },
     async jwt({ token, user }) {
       if (user) {
-        token.sub = user.id
+        token.id = user.id
       }
       return token
     },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id
+      }
+      return session
+    },
   },
-  session: {
-    strategy: "jwt",
-  },
-  secret: process.env.NEXTAUTH_SECRET,
 }
 
 const handler = NextAuth(authOptions)

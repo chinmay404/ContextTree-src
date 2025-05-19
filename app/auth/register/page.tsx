@@ -9,11 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Network, AlertCircle } from "lucide-react"
+import { Network } from "lucide-react"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
 
-export default function SignUp() {
+export default function RegisterPage() {
   const router = useRouter()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -45,7 +45,7 @@ export default function SignUp() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to register")
+        throw new Error(data.message || "Something went wrong")
       }
 
       // Sign in the user after successful registration
@@ -68,22 +68,18 @@ export default function SignUp() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-2">
-            <div className="flex items-center gap-2">
-              <Network className="h-6 w-6 text-primary" />
-              <span className="font-semibold text-lg">ContextTree</span>
-            </div>
+            <Network className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Create an Account</CardTitle>
+          <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
           <CardDescription>Enter your information to create an account</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
+            <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -124,7 +120,7 @@ export default function SignUp() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating account..." : "Sign Up"}
+              {isLoading ? "Creating account..." : "Create account"}
             </Button>
           </form>
           <div className="relative">
@@ -132,7 +128,7 @@ export default function SignUp() {
               <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
             </div>
           </div>
           <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
@@ -158,12 +154,12 @@ export default function SignUp() {
           </Button>
         </CardContent>
         <CardFooter className="flex justify-center">
-          <p className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/auth/signin" className="text-primary hover:underline">
+            <Link href="/auth/login" className="text-primary hover:underline">
               Sign in
             </Link>
-          </p>
+          </div>
         </CardFooter>
       </Card>
     </div>
