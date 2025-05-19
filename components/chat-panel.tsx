@@ -35,6 +35,10 @@ import NodeNotes from "@/components/node-notes"
 import ThinkingAnimation from "./thinking-animation"
 import { useTheme } from "next-themes"
 import KeyboardShortcuts from "@/components/keyboard-shortcuts"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
+import { vscDarkPlus, vs } from "react-syntax-highlighter/dist/esm/styles/prism"
 
 interface ChatPanelProps {
   messages: Message[]
@@ -501,7 +505,7 @@ export default function ChatPanel({
                   ? "px-4 md:px-0 py-8 max-w-3xl mx-auto"
                   : "p-6 md:p-8 max-w-4xl mx-auto"
                 : "p-4"
-            } space-y-5 custom-scrollbar ${isExpanded ? "max-h-[calc(100vh-140px)]" : ""}`}
+            } space-y-8 custom-scrollbar ${isExpanded ? "max-h-[calc(100vh-140px)]" : ""}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.1 }}
@@ -523,7 +527,7 @@ export default function ChatPanel({
               </motion.div>
             ) : (
               messages.map((message, index) => (
-                <div key={message.id}>
+                <div key={message.id} className="mb-8">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -547,9 +551,78 @@ export default function ChatPanel({
                               : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] rounded-2xl p-3.5 hover:shadow-md transition-shadow duration-200"
                         } relative`}
                       >
-                        <p className={`${isExpanded ? "text-base leading-relaxed" : "text-sm leading-relaxed"}`}>
-                          {message.content}
-                        </p>
+                        {message.sender === "user" ? (
+                          <p className={`${isExpanded ? "text-base leading-relaxed" : "text-sm leading-relaxed"}`}>
+                            {message.content}
+                          </p>
+                        ) : (
+                          <div className={`${isExpanded ? "text-base" : "text-sm"} markdown-content`}>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                code({ node, inline, className, children, ...props }) {
+                                  const match = /language-(\w+)/.exec(className || "")
+                                  return !inline && match ? (
+                                    <SyntaxHighlighter
+                                      style={theme === "dark" ? vscDarkPlus : vs}
+                                      language={match[1]}
+                                      PreTag="div"
+                                      {...props}
+                                    >
+                                      {String(children).replace(/\n$/, "")}
+                                    </SyntaxHighlighter>
+                                  ) : (
+                                    <code
+                                      className={`${className} bg-muted px-1 py-0.5 rounded text-sm font-mono`}
+                                      {...props}
+                                    >
+                                      {children}
+                                    </code>
+                                  )
+                                },
+                                p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
+                                ul: ({ children }) => <ul className="mb-4 list-disc pl-6 last:mb-0">{children}</ul>,
+                                ol: ({ children }) => <ol className="mb-4 list-decimal pl-6 last:mb-0">{children}</ol>,
+                                li: ({ children }) => <li className="mb-1">{children}</li>,
+                                h1: ({ children }) => <h1 className="text-xl font-bold mb-4 mt-6">{children}</h1>,
+                                h2: ({ children }) => <h2 className="text-lg font-bold mb-3 mt-5">{children}</h2>,
+                                h3: ({ children }) => <h3 className="text-md font-bold mb-2 mt-4">{children}</h3>,
+                                a: ({ href, children }) => (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary underline"
+                                  >
+                                    {children}
+                                  </a>
+                                ),
+                                blockquote: ({ children }) => (
+                                  <blockquote className="border-l-4 border-muted-foreground/30 pl-4 italic my-4">
+                                    {children}
+                                  </blockquote>
+                                ),
+                                hr: () => <hr className="my-4 border-border" />,
+                                table: ({ children }) => (
+                                  <div className="overflow-x-auto my-4">
+                                    <table className="min-w-full divide-y divide-border">{children}</table>
+                                  </div>
+                                ),
+                                thead: ({ children }) => <thead className="bg-muted/50">{children}</thead>,
+                                tbody: ({ children }) => <tbody className="divide-y divide-border">{children}</tbody>,
+                                tr: ({ children }) => <tr>{children}</tr>,
+                                th: ({ children }) => (
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                    {children}
+                                  </th>
+                                ),
+                                td: ({ children }) => <td className="px-3 py-2 whitespace-nowrap">{children}</td>,
+                              }}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
+                          </div>
+                        )}
 
                         {/* Add plus icon for creating new node from message */}
                         {onCreateBranchNode && message.sender === "user" && (

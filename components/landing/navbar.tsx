@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { Network } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useSession } from "next-auth/react"
+import UserProfile from "@/components/auth/user-profile"
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
-  const { data: session } = useSession()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -49,22 +47,7 @@ export default function Navbar() {
 
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            {session ? (
-              <Link href="/canvas">
-                <Button size="sm">Go to Canvas</Button>
-              </Link>
-            ) : (
-              <>
-                <Link href="/auth/login">
-                  <Button variant="outline" size="sm" className="hidden sm:flex">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link href="/auth/signup">
-                  <Button size="sm">Try It Now</Button>
-                </Link>
-              </>
-            )}
+            <UserProfile />
           </div>
         </div>
       </div>

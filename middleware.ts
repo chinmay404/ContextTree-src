@@ -1,33 +1,29 @@
 import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
+import type { NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-  const isAuthenticated = !!token
+  const isAuthPage = request.nextUrl.pathname.startsWith("/auth")
 
-  // Define protected routes that require authentication
-  const isProtectedRoute = request.nextUrl.pathname.startsWith("/canvas")
-
-  // Define auth routes (login, signup, etc.)
-  const isAuthRoute = request.nextUrl.pathname.startsWith("/auth")
-
-  // If trying to access a protected route without being authenticated
-  if (isProtectedRoute && !isAuthenticated) {
-    const url = new URL("/auth/login", request.url)
-    url.searchParams.set("callbackUrl", request.nextUrl.pathname)
-    return NextResponse.redirect(url)
+  // Redirect authenticated users away from auth pages
+  if (isAuthPage && token) {
+    return NextResponse.redirect(new URL("/canvas", request.url))
   }
 
-  // If trying to access auth routes while already authenticated
-  if (isAuthRoute && isAuthenticated) {
-    return NextResponse.redirect(new URL("/canvas", request.url))
+  // Protect the canvas page
+  if (request.nextUrl.pathname.startsWith("/canvas") && !token) {
+    return NextResponse.redirect(new URL("/auth/signin", request.url))
+  }
+
+  // Protect profile and settings pages
+  if ((request.nextUrl.pathname === "/profile" || request.nextUrl.pathname === "/settings") && !token) {
+    return NextResponse.redirect(new URL("/auth/signin", request.url))
   }
 
   return NextResponse.next()
 }
 
-// Configure which paths the middleware runs on
 export const config = {
-  matcher: ["/canvas/:path*", "/auth/:path*"],
+  matcher: ["/canvas/:path*", "/auth/:path*", "/profile", "/settings"],
 }

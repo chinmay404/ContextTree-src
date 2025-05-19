@@ -5,20 +5,7 @@ import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import type React from "react"
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import {
-  Save,
-  ImageIcon,
-  Download,
-  Settings,
-  Menu,
-  X,
-  Network,
-  Zap,
-  Share2,
-  Link2Off,
-  User,
-  LogOut,
-} from "lucide-react"
+import { Save, ImageIcon, Download, Settings, Menu, X, Network, Zap, Share2, Link2Off } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +15,7 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import { ThemeToggle } from "./theme-toggle"
 import { motion } from "framer-motion"
-import { signOut, useSession } from "next-auth/react"
+import UserProfile from "@/components/auth/user-profile"
 
 interface NavbarProps {
   onSave: () => void
@@ -47,7 +34,6 @@ export default function Navbar({
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const { data: session } = useSession()
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -64,10 +50,6 @@ export default function Navbar({
       // Reset the input
       e.target.value = ""
     }
-  }
-
-  const handleSignOut = async () => {
-    await signOut({ callbackUrl: "/" })
   }
 
   return (
@@ -137,49 +119,7 @@ export default function Navbar({
 
         <div className="h-5 w-px bg-border mx-1"></div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full overflow-hidden border border-border">
-              {session?.user?.image ? (
-                <img
-                  src={session.user.image || "/placeholder.svg"}
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <User className="h-4 w-4" />
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <div className="flex items-center p-2">
-              <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
-                {session?.user?.image ? (
-                  <img
-                    src={session.user.image || "/placeholder.svg"}
-                    alt="Profile"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <User className="h-4 w-4" />
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-medium">{session?.user?.name || "User"}</p>
-                <p className="text-xs text-muted-foreground">{session?.user?.email || "user@example.com"}</p>
-              </div>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="h-4 w-4 mr-2" />
-              <span>Profile</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleSignOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              <span>Sign out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <UserProfile />
 
         <div className="h-5 w-px bg-border mx-1"></div>
 
@@ -221,23 +161,7 @@ export default function Navbar({
           className="absolute top-full right-0 left-0 bg-background border-b border-border shadow-md p-4 z-50 md:hidden"
         >
           <div className="flex flex-col gap-2">
-            <div className="flex items-center p-2 bg-muted/50 rounded-md">
-              <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
-                {session?.user?.image ? (
-                  <img
-                    src={session.user.image || "/placeholder.svg"}
-                    alt="Profile"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <User className="h-4 w-4" />
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-medium">{session?.user?.name || "User"}</p>
-                <p className="text-xs text-muted-foreground">{session?.user?.email || "user@example.com"}</p>
-              </div>
-            </div>
+            <UserProfile />
 
             <div className="h-px w-full bg-border my-2"></div>
 
@@ -269,16 +193,6 @@ export default function Navbar({
             <Button variant="ghost" size="sm" className="flex items-center justify-start gap-2">
               <Settings className="h-4 w-4" />
               <span>Settings</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSignOut}
-              className="flex items-center justify-start gap-2 text-destructive"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Sign out</span>
             </Button>
           </div>
         </motion.div>

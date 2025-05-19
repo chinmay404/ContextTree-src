@@ -8,50 +8,65 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Network, AlertCircle, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 
-export default function ForgotPasswordPage() {
+export default function ForgotPassword() {
   const [email, setEmail] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setError(null)
+    setError("")
 
     try {
-      // In a real implementation, this would call an API endpoint
-      // For now, we'll just simulate a successful request
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // In a real implementation, this would call an API endpoint to send a password reset email
+      // For now, we'll just simulate success after a delay
+      await new Promise((resolve) => setTimeout(resolve, 1500))
       setSuccess(true)
-    } catch (err: any) {
-      setError(err.message || "An error occurred")
+    } catch (error) {
+      setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Forgot Password</CardTitle>
-          <CardDescription>Enter your email address and we'll send you a link to reset your password</CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-1 text-center">
+          <div className="flex justify-center mb-2">
+            <div className="flex items-center gap-2">
+              <Network className="h-6 w-6 text-primary" />
+              <span className="font-semibold text-lg">ContextTree</span>
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
+          <CardDescription>Enter your email to receive a password reset link</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {error && (
             <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+
           {success ? (
-            <Alert className="mb-4">
-              <AlertDescription>
-                If an account exists with that email, we've sent a password reset link.
-              </AlertDescription>
-            </Alert>
+            <div className="space-y-4">
+              <Alert className="bg-green-50 border-green-200">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  If an account exists with this email, you will receive a password reset link shortly.
+                </AlertDescription>
+              </Alert>
+              <div className="text-center text-sm text-muted-foreground">
+                <p>Please check your email inbox and spam folder.</p>
+              </div>
+            </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -59,7 +74,7 @@ export default function ForgotPasswordPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -72,9 +87,9 @@ export default function ForgotPasswordPage() {
           )}
         </CardContent>
         <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Remember your password?{" "}
-            <Link href="/auth/login" className="text-primary hover:underline">
+            <Link href="/auth/signin" className="text-primary hover:underline">
               Sign in
             </Link>
           </p>
