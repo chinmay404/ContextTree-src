@@ -10,7 +10,6 @@ export type Conversation = {
   name: string
   nodes: any[]
   edges: any[]
-  userId?: string // Add userId to associate conversations with users
 }
 
 export type NodeParentInfo = {
@@ -23,13 +22,6 @@ export type AIModel = {
   id: string
   name: string
   provider: string
-}
-
-export type User = {
-  id: string
-  name?: string | null
-  email?: string | null
-  image?: string | null
 }
 
 export const availableModels: AIModel[] = [
