@@ -2,9 +2,14 @@ import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
+    if (!process.env.CHAT_API_ENDPOINT) {
+      return new NextResponse(JSON.stringify({ error: "CHAT_API_ENDPOINT environment variable is not set" }), {
+        status: 500,
+      })
+    }
     const body = await request.json()
 
-    const response = await fetch("http://X>YZ<", {
+    const response = await fetch(process.env.CHAT_API_ENDPOINT || "", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
