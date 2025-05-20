@@ -4,7 +4,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    const response = await fetch("http://18.234.147.188/api/v1/chat/", {
+    const response = await fetch("http://X>YZ<", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
