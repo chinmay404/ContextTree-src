@@ -11,6 +11,7 @@ import MainNode from "@/components/nodes/main-node"
 import BranchNode from "@/components/nodes/branch-node"
 import ImageNode from "@/components/nodes/image-node"
 import CustomEdge from "@/components/edges/custom-edge"
+import { useToast } from "@/components/ui/use-toast"
 import { v4 as uuidv4 } from "uuid"
 import type { Message, Conversation } from "@/lib/types"
 import type { Edge } from "reactflow"
@@ -19,12 +20,6 @@ import type { NodeParentInfo } from "@/lib/types"
 // Add import for the API service at the top
 import { getChatResponse } from "@/lib/api-service"
 import { getMockResponse } from "@/lib/mock-response"
-
-// Add these imports at the top of the file
-import { saveCanvasData, getCanvasData } from "@/lib/db-operations"
-import { debounce } from "@/lib/auto-save"
-import { useSession } from "next-auth/react"
-import { useToast } from "@/components/ui/use-toast"
 
 const initialNodes = [
   {
@@ -108,11 +103,29 @@ export default function ContextTree() {
   // Add the chatThinking state
   const [chatThinking, setChatThinking] = useState(false)
 
-  // Add these state variables inside the ContextTree component
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [lastSaved, setLastSaved] = useState<Date | null>(null)
-  const { data: session } = useSession()
+  useEffect(() => {
+    // Sync nodes and edges with the active conversation
+    const activeConv = conversations.find((conv) => conv.id === activeConversation)
+    if (activeConv) {
+      setNodes(activeConv.nodes)
+      setEdges(activeConv.edges)
+    }
+  }, [activeConversation, conversations, setNodes, setEdges])
+
+  useEffect(() => {
+    // Sync active node data
+    const activeNodeData = nodes.find((node) => node.id === activeNode)?.data
+    if (activeNodeData) {
+      setNodeName(activeNodeData.label)
+      setMessages(activeNodeData.messages)
+      setActiveNodeModel(activeNodeData.model || "gpt-4")
+    }
+  }, [activeNode, nodes])
+
+  // Save viewport state when it changes
+  const onViewportChange = useCallback((viewport) => {
+    lastViewportRef.current = viewport
+  }, [])
 
   const onNodeClick = useCallback(
     (nodeId: string) => {
@@ -203,167 +216,6 @@ export default function ContextTree() {
       nodes,
     ],
   )
-
-  useEffect(() => {
-    // Sync nodes and edges with the active conversation
-    const activeConv = conversations.find((conv) => conv.id === activeConversation)
-    if (activeConv) {
-      setNodes(activeConv.nodes)
-      setEdges(activeConv.edges)
-    }
-  }, [activeConversation, conversations, setNodes, setEdges])
-
-  useEffect(() => {
-    // Sync active node data
-    const activeNodeData = nodes.find((node) => node.id === activeNode)?.data
-    if (activeNodeData) {
-      setNodeName(activeNodeData.label)
-      setMessages(activeNodeData.messages)
-      setActiveNodeModel(activeNodeData.model || "gpt-4")
-    }
-  }, [activeNode, nodes])
-
-  // Save viewport state when it changes
-  const onViewportChange = useCallback((viewport) => {
-    lastViewportRef.current = viewport
-  }, [])
-
-  // Add this useEffect hook after the other useEffect hooks in the component
-  useEffect(() => {
-    // Load canvas data when component mounts
-    const loadCanvasData = async () => {
-      if (!session?.user) return
-
-      setIsLoading(true)
-      try {
-        const result = await getCanvasData()
-
-        if (result.success && result.data) {
-          const data = result.data
-
-          // Set the loaded data to state
-          setConversations(data.conversations || [])
-          setActiveConversation(data.activeConversation || "")
-          setNodes(data.nodes || [])
-          setEdges(data.edges || [])
-          setBranchPoints(data.branchPoints || {})
-          setConnectionPoints(data.connectionPoints || {})
-          setNodeNotes(data.nodeNotes || {})
-          setConnectionEvents(data.connectionEvents || [])
-
-          // If there are nodes, set the active node to the first one
-          if (data.nodes && data.nodes.length > 0) {
-            setActiveNode(data.nodes[0].id)
-          }
-
-          toast({
-            title: "Canvas loaded",
-            description: "Your canvas has been restored from your last session.",
-          })
-        } else {
-          // If no data is found, use the initial state
-          // This is already handled by the component's initial state
-        }
-      } catch (error) {
-        console.error("Error loading canvas data:", error)
-        toast({
-          title: "Error loading canvas",
-          description: "There was an error loading your canvas data.",
-          variant: "destructive",
-        })
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadCanvasData()
-  }, [
-    session,
-    setActiveNode,
-    setBranchPoints,
-    setConnectionEvents,
-    setConnectionPoints,
-    setConversations,
-    setEdges,
-    setIsLoading,
-    setNodeNotes,
-    setNodes,
-    toast,
-    activeConversation,
-  ])
-
-  // Add this useEffect hook for auto-saving
-  useEffect(() => {
-    // Skip saving if still loading initial data or no user session
-    if (isLoading || !session?.user) return
-
-    // Create a debounced save function
-    const debouncedSave = debounce(async () => {
-      setIsSaving(true)
-      try {
-        const result = await saveCanvasData({
-          conversations,
-          activeConversation,
-          nodes,
-          edges,
-          branchPoints,
-          connectionPoints,
-          nodeNotes,
-          connectionEvents,
-        })
-
-        if (result.success) {
-          setLastSaved(new Date())
-        } else {
-          console.error("Error saving canvas:", result.error)
-        }
-      } catch (error) {
-        console.error("Error in auto-save:", error)
-      } finally {
-        setIsSaving(false)
-      }
-    }, 2000) // 2 second debounce
-
-    // Call the debounced save function
-    debouncedSave()
-
-    // Cleanup
-    return () => {
-      // Nothing to clean up for debounce as it's handled internally
-    }
-  }, [
-    conversations,
-    nodes,
-    edges,
-    branchPoints,
-    connectionPoints,
-    nodeNotes,
-    connectionEvents,
-    session,
-    isLoading,
-    activeConversation,
-  ])
-
-  // Add this right after the return statement, before the main div
-  if (isLoading) {
-    return (
-      <div className="flex flex-col h-screen">
-        <Navbar
-          onSave={onSave}
-          onImageUpload={onImageUpload}
-          onExport={onExport}
-          showConnectionMode={showConnectionMode}
-          onCancelConnectionMode={cancelConnectionMode}
-        />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="text-muted-foreground">Loading your canvas...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // Handle edge creation through the ReactFlow onConnect callback
   const onConnect = useCallback(
@@ -1031,18 +883,7 @@ export default function ContextTree() {
         description: "The node and its connections have been removed.",
       })
     },
-    [
-      nodes,
-      edges,
-      setNodes,
-      setEdges,
-      activeConversation,
-      setConversations,
-      activeNode,
-      toast,
-      setBranchPoints,
-      setConnectionPoints,
-    ],
+    [nodes, edges, setNodes, setEdges, activeConversation, setConversations, activeNode, toast],
   )
 
   const onActiveNodeDelete = useCallback(() => {
@@ -1543,52 +1384,14 @@ export default function ContextTree() {
     setActiveConversation(newConversation.id)
   }
 
-  // Modify the onSave function to use the database
-  const onSave = async () => {
-    if (!session?.user) {
+  const onSave = () => {
+    if (reactFlowInstance) {
+      const flowData = reactFlowInstance.toObject()
+      localStorage.setItem("flow-conversation", JSON.stringify(flowData))
       toast({
-        title: "Not logged in",
-        description: "You need to be logged in to save your canvas.",
-        variant: "destructive",
+        title: "Canvas saved",
+        description: "The current canvas state has been saved to local storage.",
       })
-      return
-    }
-
-    setIsSaving(true)
-    try {
-      const result = await saveCanvasData({
-        conversations,
-        activeConversation,
-        nodes,
-        edges,
-        branchPoints,
-        connectionPoints,
-        nodeNotes,
-        connectionEvents,
-      })
-
-      if (result.success) {
-        setLastSaved(new Date())
-        toast({
-          title: "Canvas saved",
-          description: "Your canvas has been saved to your account.",
-        })
-      } else {
-        toast({
-          title: "Error saving canvas",
-          description: result.error || "There was an error saving your canvas.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("Error saving canvas:", error)
-      toast({
-        title: "Error saving canvas",
-        description: "There was an error saving your canvas.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSaving(false)
     }
   }
 
@@ -1739,8 +1542,6 @@ export default function ContextTree() {
         onExport={onExport}
         showConnectionMode={showConnectionMode}
         onCancelConnectionMode={cancelConnectionMode}
-        isSaving={isSaving}
-        lastSaved={lastSaved}
       />
       <div className="flex flex-1 overflow-hidden">
         <LeftSidebar
