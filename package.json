@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@auth/core": "latest",
-    "@auth/mongodb-adapter": "latest",
     "@aws-sdk/credential-providers": "latest",
     "@emotion/is-prop-valid": "latest",
     "@hookform/resolvers": "^3.9.1",
