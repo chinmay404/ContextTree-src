@@ -1,15 +1,14 @@
 "use client"
 
-import { Moon, Sun } from "lucide-react"
-import { useTheme } from "next-themes"
-import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
+import { useTheme } from "next-themes"
+import { MoonIcon, SunIcon } from "@heroicons/react/24/solid"
 
 export function ThemeToggle() {
-  const { setTheme, theme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const { theme, setTheme } = useTheme()
 
-  // Avoid hydration mismatch by only rendering after mount
+  // useEffect only runs on the client, so now we can safely show the UI
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -19,17 +18,19 @@ export function ThemeToggle() {
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
+    <button
+      aria-label="Toggle Dark Mode"
+      type="button"
+      className="dark:hover:bg-primary-dark hover:bg-primary transition-all duration-200 rounded-full p-2"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="h-8 w-8 rounded-md"
-      aria-label="Toggle theme"
     >
-      {theme === "dark" ? <Sun className="h-4 w-4 transition-all" /> : <Moon className="h-4 w-4 transition-all" />}
-    </Button>
+      {theme === "dark" ? (
+        <SunIcon className="h-5 w-5 text-gray-700" />
+      ) : (
+        <MoonIcon className="h-5 w-5 text-gray-700" />
+      )}
+    </button>
   )
 }
 
-// Also export as default for components that import it that way
 export default ThemeToggle
