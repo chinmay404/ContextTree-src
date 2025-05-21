@@ -107,8 +107,11 @@ export default function ContextTree() {
   // Add the chatThinking state
   const [chatThinking, setChatThinking] = useState(false)
   // Add this after the other useState declarations (around line 80)
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [dataLoaded, setDataLoaded] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
 
   useEffect(() => {
     // Sync nodes and edges with the active conversation
@@ -124,7 +127,7 @@ export default function ContextTree() {
     const activeNodeData = nodes.find((node) => node.id === activeNode)?.data
     if (activeNodeData) {
       setNodeName(activeNodeData.label)
-      setMessages(activeNodeData.messages)
+      setMessages(activeNodeData.messages || [])
       setActiveNodeModel(activeNodeData.model || "gpt-4")
     }
   }, [activeNode, nodes])
@@ -227,22 +230,89 @@ export default function ContextTree() {
   // Add this function after the other useCallback declarations
   const saveCanvasState = useCallback(
     debounce(async () => {
-      if (!session?.user) return
+      if (!session?.user || !dataLoaded) return
 
-      const canvasData = {
-        nodes,
-        edges,
-        conversations,
-        activeConversation,
-        activeNode,
-        branchCount,
-        nodeNotes,
-        branchPoints,
-        connectionPoints,
-        connectionEvents,
+      setIsSaving(true)
+
+      try {
+        // Prepare the data to save
+        // Make sure to clean up any circular references or functions
+        const cleanNodes = nodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            // Remove function references that can't be serialized
+            onNodeClick: undefined,
+            onLabelChange: undefined,
+            onToggleExpand: undefined,
+            onResize: undefined,
+            onStartConnection: undefined,
+            onDelete: undefined,
+            onModelChange: undefined,
+            onDimensionsChange: undefined,
+          },
+        }))
+
+        const canvasData = {
+          nodes: cleanNodes,
+          edges,
+          conversations: conversations.map((conv) => ({
+            ...conv,
+            nodes: conv.nodes.map((node) => ({
+              ...node,
+              data: {
+                ...node.data,
+                // Remove function references that can't be serialized
+                onNodeClick: undefined,
+                onLabelChange: undefined,
+                onToggleExpand: undefined,
+                onResize: undefined,
+                onStartConnection: undefined,
+                onDelete: undefined,
+                onModelChange: undefined,
+                onDimensionsChange: undefined,
+              },
+            })),
+          })),
+          activeConversation,
+          activeNode,
+          branchCount,
+          nodeNotes,
+          branchPoints,
+          connectionPoints,
+          connectionEvents,
+          lastViewport: lastViewportRef.current,
+        }
+
+        console.log("Saving canvas state...", {
+          nodesCount: cleanNodes.length,
+          edgesCount: edges.length,
+          conversationsCount: conversations.length,
+        })
+
+        const result = await saveUserCanvasData(canvasData)
+
+        if (result.success) {
+          console.log("Canvas state saved successfully")
+          setLastSaved(new Date())
+        } else {
+          console.error("Failed to save canvas state:", result.error)
+          toast({
+            title: "Save failed",
+            description: result.error || "Failed to save your work",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        console.error("Error saving canvas state:", error)
+        toast({
+          title: "Save failed",
+          description: "An unexpected error occurred while saving",
+          variant: "destructive",
+        })
+      } finally {
+        setIsSaving(false)
       }
-
-      await saveUserCanvasData(canvasData)
     }, 2000),
     [
       nodes,
@@ -256,6 +326,9 @@ export default function ContextTree() {
       connectionPoints,
       connectionEvents,
       session,
+      dataLoaded,
+      toast,
+      lastViewportRef,
     ],
   )
 
@@ -614,7 +687,7 @@ export default function ContextTree() {
               ...node,
               data: {
                 ...node.data,
-                messages: [...node.data.messages, newUserMessage],
+                messages: [...(node.data.messages || []), newUserMessage],
               },
             }
           }
@@ -634,7 +707,7 @@ export default function ContextTree() {
                     ...node,
                     data: {
                       ...node.data,
-                      messages: [...node.data.messages, newUserMessage],
+                      messages: [...(node.data.messages || []), newUserMessage],
                     },
                   }
                 }
@@ -684,7 +757,7 @@ export default function ContextTree() {
                 ...node,
                 data: {
                   ...node.data,
-                  messages: [...node.data.messages, newAiMessage],
+                  messages: [...(node.data.messages || []), newAiMessage],
                 },
               }
             }
@@ -704,7 +777,7 @@ export default function ContextTree() {
                       ...node,
                       data: {
                         ...node.data,
-                        messages: [...node.data.messages, newAiMessage],
+                        messages: [...(node.data.messages || []), newAiMessage],
                       },
                     }
                   }
@@ -1426,51 +1499,104 @@ export default function ContextTree() {
     setActiveConversation(newConversation.id)
   }
 
-  const onSave = () => {
-    if (reactFlowInstance) {
-      const flowData = reactFlowInstance.toObject()
+  const onSave = async () => {
+    setIsSaving(true)
 
-      // Save to local storage as before
-      localStorage.setItem("flow-conversation", JSON.stringify(flowData))
+    try {
+      if (reactFlowInstance) {
+        const flowData = reactFlowInstance.toObject()
 
-      // Also save to database
-      const canvasData = {
-        nodes,
-        edges,
-        conversations,
-        activeConversation,
-        activeNode,
-        branchCount,
-        nodeNotes,
-        branchPoints,
-        connectionPoints,
-        connectionEvents,
-      }
+        // Save to local storage as before
+        localStorage.setItem("flow-conversation", JSON.stringify(flowData))
 
-      const save = async () => {
+        // Prepare the data to save
+        // Make sure to clean up any circular references or functions
+        const cleanNodes = nodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            // Remove function references that can't be serialized
+            onNodeClick: undefined,
+            onLabelChange: undefined,
+            onToggleExpand: undefined,
+            onResize: undefined,
+            onStartConnection: undefined,
+            onDelete: undefined,
+            onModelChange: undefined,
+            onDimensionsChange: undefined,
+          },
+        }))
+
+        const canvasData = {
+          nodes: cleanNodes,
+          edges,
+          conversations: conversations.map((conv) => ({
+            ...conv,
+            nodes: conv.nodes.map((node) => ({
+              ...node,
+              data: {
+                ...node.data,
+                // Remove function references that can't be serialized
+                onNodeClick: undefined,
+                onLabelChange: undefined,
+                onToggleExpand: undefined,
+                onResize: undefined,
+                onStartConnection: undefined,
+                onDelete: undefined,
+                onModelChange: undefined,
+                onDimensionsChange: undefined,
+              },
+            })),
+          })),
+          activeConversation,
+          activeNode,
+          branchCount,
+          nodeNotes,
+          branchPoints,
+          connectionPoints,
+          connectionEvents,
+          lastViewport: lastViewportRef.current,
+        }
+
+        console.log("Manual save - Saving canvas state...", {
+          nodesCount: cleanNodes.length,
+          edgesCount: edges.length,
+          conversationsCount: conversations.length,
+        })
+
         const result = await saveUserCanvasData(canvasData)
 
         if (result.success) {
+          console.log("Canvas state saved successfully")
+          setLastSaved(new Date())
           toast({
             title: "Canvas saved",
             description: "Your canvas has been saved to your account.",
           })
         } else {
+          console.error("Failed to save canvas state:", result.error)
           toast({
             title: "Save failed",
-            description: result.error || "Failed to save canvas to your account.",
+            description: result.error || "Failed to save your work",
             variant: "destructive",
           })
         }
+      } else {
+        toast({
+          title: "Save failed",
+          description: "Canvas is not ready yet. Please try again.",
+          variant: "destructive",
+        })
       }
-
-      save()
-    } else {
+    } catch (error) {
+      console.error("Error during manual save:", error)
       toast({
         title: "Save failed",
-        description: "Failed to save canvas to your account.",
+        description: "An unexpected error occurred while saving",
         variant: "destructive",
       })
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -1513,7 +1639,7 @@ export default function ContextTree() {
         const targetNodeData = nodes.find((n) => n.id === connectedNodeId)
         const nodeType = targetNodeData?.type || "unknown"
         const nodeLabel = targetNodeData?.data?.label || "Unknown"
-        const direction = edge.source === activeNode ? "outgoing" : "incoming"
+        const direction = edge.source === activeNode ? edge.target : edge.source
 
         // Create a disconnection notification message
         const newMessage = {
@@ -1619,15 +1745,26 @@ export default function ContextTree() {
   // Add this useEffect to load data when component mounts
   useEffect(() => {
     const loadSavedData = async () => {
-      if (!session?.user) {
-        setIsLoading(false)
+      if (status !== "authenticated") {
+        if (status === "unauthenticated") {
+          setIsLoading(false)
+        }
         return
       }
+
+      console.log("Loading saved data for user:", session?.user?.email)
+      setIsLoading(true)
 
       try {
         const result = await loadUserCanvasData()
 
         if (result.success && result.data) {
+          console.log("Successfully loaded canvas data:", {
+            nodesCount: result.data.nodes?.length,
+            edgesCount: result.data.edges?.length,
+            conversationsCount: result.data.conversations?.length,
+          })
+
           const {
             nodes: savedNodes,
             edges: savedEdges,
@@ -1639,16 +1776,55 @@ export default function ContextTree() {
             branchPoints: savedBranchPoints,
             connectionPoints: savedConnectionPoints,
             connectionEvents: savedConnectionEvents,
+            lastViewport,
           } = result.data
 
-          // Restore all the state
-          setNodes(savedNodes)
-          setEdges(savedEdges)
-          setConversations(savedConversations)
-          setActiveConversation(savedActiveConversation)
-          setActiveNode(savedActiveNode)
-          setBranchCount(savedBranchCount || 1)
+          // Add necessary callback functions to nodes
+          const nodesWithCallbacks = savedNodes.map((node) => ({
+            ...node,
+            data: {
+              ...node.data,
+              onNodeClick,
+              onLabelChange,
+              onToggleExpand: handleToggleExpand,
+              onResize,
+              onStartConnection: startConnectionMode,
+              onDelete: onNodeDelete,
+              onModelChange,
+              onDimensionsChange: () => {},
+            },
+          }))
 
+          // Restore all the state
+          setNodes(nodesWithCallbacks)
+          setEdges(savedEdges || [])
+
+          // Make sure conversations have nodes with callbacks
+          if (savedConversations && savedConversations.length > 0) {
+            const conversationsWithCallbacks = savedConversations.map((conv) => ({
+              ...conv,
+              nodes: conv.nodes.map((node) => ({
+                ...node,
+                data: {
+                  ...node.data,
+                  onNodeClick,
+                  onLabelChange,
+                  onToggleExpand: handleToggleExpand,
+                  onResize,
+                  onStartConnection: startConnectionMode,
+                  onDelete: onNodeDelete,
+                  onModelChange,
+                  onDimensionsChange: () => {},
+                },
+              })),
+            }))
+
+            setConversations(conversationsWithCallbacks)
+          }
+
+          if (savedActiveConversation) setActiveConversation(savedActiveConversation)
+          if (savedActiveNode) setActiveNode(savedActiveNode)
+          if (savedBranchCount) setBranchCount(savedBranchCount)
           if (savedNodeNotes) setNodeNotes(savedNodeNotes)
           if (savedBranchPoints) setBranchPoints(savedBranchPoints)
           if (savedConnectionPoints) setConnectionPoints(savedConnectionPoints)
@@ -1657,24 +1833,61 @@ export default function ContextTree() {
           // Get the active node data to restore messages and node name
           const activeNodeData = savedNodes.find((node) => node.id === savedActiveNode)?.data
           if (activeNodeData) {
-            setNodeName(activeNodeData.label)
-            setMessages(activeNodeData.messages)
+            setNodeName(activeNodeData.label || "Untitled")
+            setMessages(activeNodeData.messages || [])
             setActiveNodeModel(activeNodeData.model || "gpt-4")
           }
+
+          // Restore viewport if available
+          if (lastViewport && reactFlowInstance) {
+            setTimeout(() => {
+              reactFlowInstance.setViewport(lastViewport)
+            }, 100)
+          }
+
+          toast({
+            title: "Canvas restored",
+            description: "Your previous work has been loaded successfully.",
+          })
+        } else if (!result.success) {
+          console.error("Failed to load canvas data:", result.error)
+          toast({
+            title: "Failed to load canvas",
+            description: result.error || "Could not load your previous work",
+            variant: "destructive",
+          })
         }
       } catch (error) {
         console.error("Error loading saved data:", error)
+        toast({
+          title: "Error loading canvas",
+          description: "An unexpected error occurred while loading your work",
+          variant: "destructive",
+        })
       } finally {
         setIsLoading(false)
+        setDataLoaded(true)
       }
     }
 
     loadSavedData()
-  }, [session, setNodeNotes, setBranchPoints, setConnectionPoints, setConnectionEvents])
+  }, [
+    status,
+    session,
+    toast,
+    reactFlowInstance,
+    onNodeClick,
+    onLabelChange,
+    handleToggleExpand,
+    onResize,
+    onNodeDelete,
+    onModelChange,
+  ])
 
   // Add this useEffect to save data when state changes
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && dataLoaded) {
+      console.log('Auto-saving canvas state...")')
       saveCanvasState()
     }
   }, [
@@ -1689,6 +1902,7 @@ export default function ContextTree() {
     connectionPoints,
     connectionEvents,
     isLoading,
+    dataLoaded,
     saveCanvasState,
   ])
 
@@ -1708,6 +1922,8 @@ export default function ContextTree() {
         onExport={onExport}
         showConnectionMode={showConnectionMode}
         onCancelConnectionMode={cancelConnectionMode}
+        isSaving={isSaving}
+        lastSaved={lastSaved}
       />
       <div className="flex flex-1 overflow-hidden">
         <LeftSidebar

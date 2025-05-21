@@ -10,12 +10,15 @@ export async function saveUserCanvasData(canvasData: any) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session || !session.user?.id) {
-      throw new Error("User not authenticated")
+    if (!session || !session.user?.email) {
+      console.error("No user session found")
+      return { success: false, error: "User not authenticated" }
     }
 
-    const userId = session.user.id
+    const userId = session.user.email
     const { db } = await connectToDatabase()
+
+    console.log(`Saving canvas data for user: ${userId}`)
 
     // Update or insert the canvas data for this user
     await db.collection("userCanvasData").updateOne(
@@ -30,6 +33,7 @@ export async function saveUserCanvasData(canvasData: any) {
       { upsert: true },
     )
 
+    console.log("Canvas data saved successfully")
     revalidatePath("/canvas")
     return { success: true }
   } catch (error) {
@@ -43,20 +47,25 @@ export async function loadUserCanvasData() {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session || !session.user?.id) {
-      throw new Error("User not authenticated")
+    if (!session || !session.user?.email) {
+      console.error("No user session found")
+      return { success: false, error: "User not authenticated", data: null }
     }
 
-    const userId = session.user.id
+    const userId = session.user.email
     const { db } = await connectToDatabase()
+
+    console.log(`Loading canvas data for user: ${userId}`)
 
     // Find the canvas data for this user
     const userData = await db.collection("userCanvasData").findOne({ userId })
 
     if (!userData) {
+      console.log("No saved canvas data found for user")
       return { success: true, data: null }
     }
 
+    console.log("Canvas data loaded successfully")
     return { success: true, data: userData.canvasData }
   } catch (error) {
     console.error("Failed to load canvas data:", error)
