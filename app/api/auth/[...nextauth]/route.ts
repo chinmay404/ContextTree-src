@@ -1,8 +1,43 @@
 import NextAuth from "next-auth"
-import { authOptions as authOptionsFromLib } from "@/lib/auth"
+import GoogleProvider from "next-auth/providers/google"
 
-// Re-export authOptions to maintain compatibility with existing imports
-export const authOptions = authOptionsFromLib
+export const authOptions = {
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+  ],
+  secret: process.env.NEXTAUTH_SECRET,
+  session: {
+    strategy: "jwt",
+  },
+  pages: {
+    signIn: "/auth/login",
+    error: "/auth/error",
+  },
+  callbacks: {
+    async redirect({ url, baseUrl }) {
+      // Always redirect to canvas after successful login
+      if (url.startsWith("/api/auth/callback") || url.startsWith("/auth/login")) {
+        return `${baseUrl}/canvas`
+      }
+
+      // Handle relative URLs
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`
+      }
+
+      // Handle same-origin URLs
+      if (new URL(url).origin === baseUrl) {
+        return url
+      }
+
+      // Default to canvas
+      return `${baseUrl}/canvas`
+    },
+  },
+}
 
 const handler = NextAuth(authOptions)
 
