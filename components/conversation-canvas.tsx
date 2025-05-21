@@ -118,7 +118,7 @@ export default function ContextTree() {
       setIsLoading(true)
 
       try {
-        const response = await fetch(`/api/canvas?userId=${session.user.id}`)
+        const response = await fetch(`/api/canvas-data?userId=${session.user.id}`)
 
         if (response.ok) {
           const data = await response.json()
@@ -172,7 +172,7 @@ export default function ContextTree() {
           connectionEvents,
         }
 
-        await fetch("/api/canvas", {
+        await fetch("/api/canvas-data", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1503,7 +1503,7 @@ export default function ContextTree() {
         connectionEvents,
       }
 
-      const response = await fetch("/api/canvas", {
+      const response = await fetch("/api/canvas-data", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
