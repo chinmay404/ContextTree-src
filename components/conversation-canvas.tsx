@@ -1556,7 +1556,26 @@ export default function ContextTree() {
           onDeleteConversation={deleteConversation}
           onDuplicateConversation={duplicateConversation}
         />
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden relative">
+          <div className="absolute top-4 left-0 right-0 z-50 mx-auto w-fit">
+            <div className="bg-amber-100 border border-amber-300 text-amber-800 px-4 py-2 rounded-md shadow-md flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 mr-2"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span className="font-medium">Context treeing and branching features temporarily removed</span>
+            </div>
+          </div>
           <FlowCanvas
             nodes={nodes}
             edges={edges}
