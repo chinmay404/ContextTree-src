@@ -20,6 +20,7 @@ import type { NodeParentInfo } from "@/lib/types"
 // Add import for the API service at the top
 import { getChatResponse } from "@/lib/api-service"
 import { getMockResponse } from "@/lib/mock-response"
+import { useSession } from "next-auth/react"
 
 const initialNodes = [
   {
@@ -102,6 +103,102 @@ export default function ContextTree() {
   const [nodeNotes, setNodeNotes] = useState<Record<string, string>>({})
   // Add the chatThinking state
   const [chatThinking, setChatThinking] = useState(false)
+  // Add loading state for database operations
+  const [isLoading, setIsLoading] = useState(true)
+  // Get the user session
+  const { data: session } = useSession()
+  // Track if data has been loaded from the database
+  const dataLoadedRef = useRef(false)
+
+  // Load user's canvas data from the database when they log in
+  useEffect(() => {
+    const loadUserCanvas = async () => {
+      if (!session?.user?.id || dataLoadedRef.current) return
+
+      setIsLoading(true)
+
+      try {
+        const response = await fetch(`/api/canvas?userId=${session.user.id}`)
+
+        if (response.ok) {
+          const data = await response.json()
+
+          if (data && data.conversations && data.conversations.length > 0) {
+            setConversations(data.conversations)
+            setActiveConversation(data.activeConversation || data.conversations[0].id)
+            setBranchCount(data.branchCount || 1)
+            setNodeNotes(data.nodeNotes || {})
+            setBranchPoints(data.branchPoints || {})
+            setConnectionPoints(data.connectionPoints || {})
+            setConnectionEvents(data.connectionEvents || [])
+
+            toast({
+              title: "Canvas loaded",
+              description: "Your canvas has been loaded from the database.",
+            })
+
+            dataLoadedRef.current = true
+          }
+        }
+      } catch (error) {
+        console.error("Error loading canvas data:", error)
+        toast({
+          title: "Error loading canvas",
+          description: "There was an error loading your canvas data.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadUserCanvas()
+  }, [session, toast])
+
+  // Auto-save canvas data to the database when changes are made
+  useEffect(() => {
+    const saveUserCanvas = async () => {
+      if (!session?.user?.id || isLoading || !dataLoadedRef.current) return
+
+      try {
+        const canvasData = {
+          userId: session.user.id,
+          conversations,
+          activeConversation,
+          branchCount,
+          nodeNotes,
+          branchPoints,
+          connectionPoints,
+          connectionEvents,
+        }
+
+        await fetch("/api/canvas", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(canvasData),
+        })
+      } catch (error) {
+        console.error("Error saving canvas data:", error)
+      }
+    }
+
+    // Debounce the save operation to avoid too many requests
+    const timeoutId = setTimeout(saveUserCanvas, 2000)
+
+    return () => clearTimeout(timeoutId)
+  }, [
+    session,
+    conversations,
+    activeConversation,
+    branchCount,
+    nodeNotes,
+    branchPoints,
+    connectionPoints,
+    connectionEvents,
+    isLoading,
+  ])
 
   useEffect(() => {
     // Sync nodes and edges with the active conversation
@@ -1322,7 +1419,7 @@ export default function ContextTree() {
     return id
   }
 
-  // Update the createNewConversation function to initialize parents array for the first node
+  // Update the createNewConversation function to include parents array for the first node
   const createNewConversation = (name: string) => {
     const newConversation = {
       id: uuidv4(),
@@ -1384,13 +1481,54 @@ export default function ContextTree() {
     setActiveConversation(newConversation.id)
   }
 
-  const onSave = () => {
-    if (reactFlowInstance) {
-      const flowData = reactFlowInstance.toObject()
-      localStorage.setItem("flow-conversation", JSON.stringify(flowData))
+  const onSave = async () => {
+    if (!session?.user?.id) {
       toast({
-        title: "Canvas saved",
-        description: "The current canvas state has been saved to local storage.",
+        title: "Not logged in",
+        description: "Please log in to save your canvas.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const canvasData = {
+        userId: session.user.id,
+        conversations,
+        activeConversation,
+        branchCount,
+        nodeNotes,
+        branchPoints,
+        connectionPoints,
+        connectionEvents,
+      }
+
+      const response = await fetch("/api/canvas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(canvasData),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Canvas saved",
+          description: "Your canvas has been saved to the database.",
+        })
+      } else {
+        toast({
+          title: "Error saving canvas",
+          description: "There was an error saving your canvas data.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error saving canvas data:", error)
+      toast({
+        title: "Error saving canvas",
+        description: "There was an error saving your canvas data.",
+        variant: "destructive",
       })
     }
   }
@@ -1533,6 +1671,16 @@ export default function ContextTree() {
     },
     [activeConversation, setConversations, setSelectedEdge, handleEdgeRemoval],
   )
+
+  // Show loading indicator while canvas data is being loaded
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+        <p className="text-lg">Loading your canvas...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-screen">
