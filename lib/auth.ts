@@ -3,20 +3,20 @@ import GoogleProvider from "next-auth/providers/google"
 import { MongoDBAdapter } from "@auth/mongodb-adapter"
 import clientPromise from "./mongodb"
 
-// Keep the original getUserSessionId function that was in the file
-export const getUserSessionId = (): string => {
-  // Check if we already have a session ID in localStorage
-  const existingSessionId = localStorage.getItem("user_session_id")
+// This file is for client-side auth utilities
+// Server-side auth utilities are in auth-server.ts
 
-  if (existingSessionId) {
-    return existingSessionId
+// Re-export the getUserSessionId function for backward compatibility
+// but make it a client-side wrapper that calls the server function
+export async function getUserSessionId() {
+  try {
+    const response = await fetch("/api/auth/session")
+    const session = await response.json()
+    return session?.user?.id || null
+  } catch (error) {
+    console.error("Error getting user session ID:", error)
+    return null
   }
-
-  // Generate a new session ID
-  const newSessionId = `user_${Math.random().toString(36).substring(2, 15)}_${Date.now()}`
-  localStorage.setItem("user_session_id", newSessionId)
-
-  return newSessionId
 }
 
 // Add the NextAuth configuration
