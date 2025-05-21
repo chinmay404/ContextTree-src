@@ -1,42 +1,26 @@
-"use client"
+export function getUserSessionId(): string {
+  // In a client component, we can't directly access the session
+  // This is a simplified version that works with both client and server components
 
-import type { NextAuthOptions } from "next-auth"
-import GoogleProvider from "next-auth/providers/google"
+  // For client components, we'll use a fallback mechanism
+  // In a real implementation, you might want to use a more robust solution
+  // like storing the user ID in localStorage after authentication
 
-// Simple client-side implementation of getUserSessionId
-export const getUserSessionId = (): string => {
-  // Check if we already have a session ID in localStorage
-  const existingSessionId = localStorage.getItem("user_session_id")
+  // Check if we're in a browser environment
+  if (typeof window !== "undefined") {
+    // Try to get the user ID from localStorage
+    const userId = localStorage.getItem("userId")
+    if (userId) return userId
 
-  if (existingSessionId) {
-    return existingSessionId
+    // Generate a temporary ID if none exists
+    // This is just for demo purposes - in a real app, you'd want proper authentication
+    const tempId = `temp-${Math.random().toString(36).substring(2, 15)}`
+    localStorage.setItem("userId", tempId)
+    return tempId
   }
 
-  // Generate a new session ID
-  const newSessionId = `user_${Math.random().toString(36).substring(2, 15)}_${Date.now()}`
-  localStorage.setItem("user_session_id", newSessionId)
-
-  return newSessionId
-}
-
-// Add the missing authOptions export
-export const authOptions: NextAuthOptions = {
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
-  callbacks: {
-    async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub
-      }
-      return session
-    },
-  },
-  pages: {
-    signIn: "/auth/login",
-    error: "/auth/error",
-  },
+  // For server components, we'd normally use the session
+  // But since this can be called from client components too,
+  // we'll return a placeholder
+  return "anonymous-user"
 }

@@ -9,7 +9,7 @@ interface ChatRequestPayload {
   user_id: string
 }
 
-const getMockResponse = (message: string): string => {
+export const getMockResponse = (message: string): string => {
   // Mock implementation for fallback
   return `Mock response for: ${message}`
 }
@@ -21,6 +21,11 @@ export const getChatResponse = async (
   parentNodeIds: string[],
 ): Promise<string> => {
   const userId = getUserSessionId()
+
+  if (!userId) {
+    console.warn("No user ID found, using mock response")
+    return getMockResponse(message)
+  }
 
   const payload: ChatRequestPayload = {
     message,
