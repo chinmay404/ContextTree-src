@@ -6,6 +6,7 @@ import ContextTree from "@/components/conversation-canvas"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ReactFlowProvider } from "reactflow"
 import { useEffect } from "react"
+import { SessionProvider } from "next-auth/react"
 
 // Error handler component to catch ResizeObserver errors
 function ErrorHandler({ children }: { children: React.ReactNode }) {
@@ -26,14 +27,16 @@ function ErrorHandler({ children }: { children: React.ReactNode }) {
 
 export default function CanvasPage() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <ErrorHandler>
-        <ReactFlowProvider>
-          <main className="flex min-h-screen flex-col">
-            <ContextTree />
-          </main>
-        </ReactFlowProvider>
-      </ErrorHandler>
-    </ThemeProvider>
+    <SessionProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ErrorHandler>
+          <ReactFlowProvider>
+            <main className="flex min-h-screen flex-col">
+              <ContextTree />
+            </main>
+          </ReactFlowProvider>
+        </ErrorHandler>
+      </ThemeProvider>
+    </SessionProvider>
   )
 }
