@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Skip Next.js internal routes and public files
-  if (pathname.startsWith("/_next") || pathname.startsWith("/api/auth") || pathname.includes(".") || pathname === "/") {
+  if (pathname.startsWith("/_next") || pathname.startsWith("/api/") || pathname.includes(".") || pathname === "/") {
     return NextResponse.next()
   }
 
@@ -36,5 +36,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    // Match all paths except static files, api routes, and the root path
+    "/((?!_next/static|_next/image|favicon.ico|api/).*)",
+  ],
 }
