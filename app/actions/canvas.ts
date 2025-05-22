@@ -17,7 +17,7 @@ export async function saveConversation(conversationData: any) {
     const userId = session.user.id || session.user.email
 
     const client = await clientPromise
-    const db = client.db("contexttree")
+    const db = client.db("Conversationstore")
     const conversationsCollection = db.collection("conversations")
 
     // Check if conversation already exists
@@ -76,7 +76,7 @@ export async function saveAllConversations(conversations: any[]) {
     const userId = session.user.id || session.user.email
 
     const client = await clientPromise
-    const db = client.db("contexttree")
+    const db = client.db("Conversationstore")
     const conversationsCollection = db.collection("conversations")
 
     // Get existing conversations to preserve creation dates
@@ -130,7 +130,7 @@ export async function getUserConversations() {
     const userId = session.user.id || session.user.email
 
     const client = await clientPromise
-    const db = client.db("contexttree")
+    const db = client.db("Conversationstore")
     const conversationsCollection = db.collection("conversations")
 
     // Get all conversations for this user
@@ -168,7 +168,7 @@ export async function deleteConversation(conversationId: string) {
     const userId = session.user.id || session.user.email
 
     const client = await clientPromise
-    const db = client.db("contexttree")
+    const db = client.db("Conversationstore")
     const conversationsCollection = db.collection("conversations")
 
     await conversationsCollection.deleteOne({ userId, conversationId })
@@ -212,7 +212,7 @@ export async function setActiveConversation(conversationId: string) {
     const userId = session.user.id || session.user.email
 
     const client = await clientPromise
-    const db = client.db("contexttree")
+    const db = client.db("Conversationstore")
     const userCanvasCollection = db.collection("userCanvas")
 
     await userCanvasCollection.updateOne(

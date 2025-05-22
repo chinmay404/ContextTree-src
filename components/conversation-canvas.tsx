@@ -29,6 +29,7 @@ import {
   setActiveConversation as setActiveConversationInDB,
 } from "@/app/actions/canvas"
 import { useSession } from "next-auth/react"
+import { initializeDatabase } from "@/lib/init-db"
 
 const initialNodes = [
   {
@@ -116,15 +117,39 @@ export default function ContextTree() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [dbInitialized, setDbInitialized] = useState(false)
 
   // Auto-save timer
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
   const saveTimeoutDuration = 10000 // 10 seconds
 
+  // Initialize database
+  useEffect(() => {
+    const initDb = async () => {
+      if (!dbInitialized) {
+        try {
+          const result = await initializeDatabase()
+          if (result.success) {
+            setDbInitialized(true)
+            console.log("Database initialized successfully")
+          } else {
+            console.error("Failed to initialize database:", result.error)
+          }
+        } catch (error) {
+          console.error("Error initializing database:", error)
+        }
+      }
+    }
+
+    if (status === "authenticated") {
+      initDb()
+    }
+  }, [status, dbInitialized])
+
   // Load user conversations from MongoDB when component mounts
   useEffect(() => {
     const loadUserData = async () => {
-      if (status === "authenticated" && session?.user && !isInitialized) {
+      if (status === "authenticated" && session?.user && !isInitialized && dbInitialized) {
         setIsLoading(true)
         try {
           const result = await getUserConversations()
@@ -171,11 +196,11 @@ export default function ContextTree() {
     }
 
     loadUserData()
-  }, [status, session, toast, isInitialized])
+  }, [status, session, toast, isInitialized, dbInitialized])
 
   // Set up auto-save
   useEffect(() => {
-    if (status === "authenticated" && isInitialized) {
+    if (status === "authenticated" && isInitialized && dbInitialized) {
       // Clear any existing timer
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current)
@@ -192,11 +217,11 @@ export default function ContextTree() {
         clearTimeout(autoSaveTimerRef.current)
       }
     }
-  }, [conversations, activeConversation, nodes, edges, status, isInitialized])
+  }, [conversations, activeConversation, nodes, edges, status, isInitialized, dbInitialized])
 
   // Handle auto-save
   const handleAutoSave = async () => {
-    if (status === "authenticated" && isInitialized) {
+    if (status === "authenticated" && isInitialized && dbInitialized) {
       try {
         setIsSaving(true)
 
