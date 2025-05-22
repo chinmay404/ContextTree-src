@@ -20,6 +20,15 @@ import type { NodeParentInfo } from "@/lib/types"
 // Add import for the API service at the top
 import { getChatResponse } from "@/lib/api-service"
 import { getMockResponse } from "@/lib/mock-response"
+// Import server actions
+import {
+  saveConversation,
+  saveAllConversations,
+  getUserConversations,
+  deleteConversation as deleteConversationFromDB,
+  setActiveConversation as setActiveConversationInDB,
+} from "@/app/actions/canvas"
+import { useSession } from "next-auth/react"
 
 const initialNodes = [
   {
@@ -62,6 +71,7 @@ const defaultEdgeOptions = {
 }
 
 export default function ContextTree() {
+  const { data: session, status } = useSession()
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [selectedEdge, setSelectedEdge] = useState(null)
@@ -102,6 +112,108 @@ export default function ContextTree() {
   const [nodeNotes, setNodeNotes] = useState<Record<string, string>>({})
   // Add the chatThinking state
   const [chatThinking, setChatThinking] = useState(false)
+  // Add loading state for database operations
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
+
+  // Auto-save timer
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const saveTimeoutDuration = 10000 // 10 seconds
+
+  // Load user conversations from MongoDB when component mounts
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (status === "authenticated" && session?.user && !isInitialized) {
+        setIsLoading(true)
+        try {
+          const result = await getUserConversations()
+
+          if (result.success && result.conversations.length > 0) {
+            setConversations(result.conversations)
+
+            // Set active conversation
+            if (result.activeConversationId) {
+              setActiveConversation(result.activeConversationId)
+            } else {
+              // Default to the first conversation
+              setActiveConversation(result.conversations[0].id)
+            }
+
+            setIsInitialized(true)
+          } else if (result.success && result.conversations.length === 0) {
+            // No conversations found, create a default one and save it
+            const defaultConversation = {
+              id: uuidv4(),
+              name: "New Context",
+              nodes: initialNodes,
+              edges: initialEdges,
+            }
+
+            setConversations([defaultConversation])
+            setActiveConversation(defaultConversation.id)
+
+            // Save the default conversation
+            await saveConversation(defaultConversation)
+            setIsInitialized(true)
+          }
+        } catch (error) {
+          console.error("Error loading user data:", error)
+          toast({
+            title: "Error loading your data",
+            description: "There was a problem loading your conversations. Please try again.",
+            variant: "destructive",
+          })
+        } finally {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadUserData()
+  }, [status, session, toast, isInitialized])
+
+  // Set up auto-save
+  useEffect(() => {
+    if (status === "authenticated" && isInitialized) {
+      // Clear any existing timer
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+      }
+
+      // Set a new timer for auto-save
+      autoSaveTimerRef.current = setTimeout(async () => {
+        await handleAutoSave()
+      }, saveTimeoutDuration)
+    }
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+      }
+    }
+  }, [conversations, activeConversation, nodes, edges, status, isInitialized])
+
+  // Handle auto-save
+  const handleAutoSave = async () => {
+    if (status === "authenticated" && isInitialized) {
+      try {
+        setIsSaving(true)
+
+        // Save all conversations
+        await saveAllConversations(conversations)
+
+        // Update active conversation in DB
+        await setActiveConversationInDB(activeConversation)
+
+        console.log("Auto-saved successfully")
+      } catch (error) {
+        console.error("Auto-save failed:", error)
+      } finally {
+        setIsSaving(false)
+      }
+    }
+  }
 
   useEffect(() => {
     // Sync nodes and edges with the active conversation
@@ -676,6 +788,14 @@ export default function ContextTree() {
 
         // Set thinking state back to false
         setChatThinking(false)
+
+        // Trigger a save after sending a message
+        if (autoSaveTimerRef.current) {
+          clearTimeout(autoSaveTimerRef.current)
+        }
+        autoSaveTimerRef.current = setTimeout(async () => {
+          await handleAutoSave()
+        }, 2000) // Save sooner after a message
       }
     },
     [activeNode, setNodes, activeConversation, setConversations, setMessages, nodes],
@@ -1323,7 +1443,7 @@ export default function ContextTree() {
   }
 
   // Update the createNewConversation function to initialize parents array for the first node
-  const createNewConversation = (name: string) => {
+  const createNewConversation = async (name: string) => {
     const newConversation = {
       id: uuidv4(),
       name,
@@ -1348,19 +1468,64 @@ export default function ContextTree() {
 
     setConversations((prevConversations) => [...prevConversations, newConversation])
     setActiveConversation(newConversation.id)
-  }
 
-  const deleteConversation = (id: string) => {
-    if (conversations.length <= 1) return
-
-    setConversations((prevConversations) => prevConversations.filter((conv) => conv.id !== id))
-
-    if (activeConversation === id) {
-      setActiveConversation(conversations.find((conv) => conv.id !== id)?.id || "")
+    // Save the new conversation to the database
+    try {
+      await saveConversation(newConversation)
+      await setActiveConversationInDB(newConversation.id)
+    } catch (error) {
+      console.error("Error saving new conversation:", error)
+      toast({
+        title: "Error saving conversation",
+        description: "There was a problem saving your new conversation.",
+        variant: "destructive",
+      })
     }
   }
 
-  const duplicateConversation = (id: string) => {
+  const deleteConversation = async (id: string) => {
+    if (conversations.length <= 1) {
+      toast({
+        title: "Cannot delete",
+        description: "You must have at least one conversation.",
+      })
+      return
+    }
+
+    try {
+      // Delete from database first
+      const result = await deleteConversationFromDB(id)
+
+      if (result.success) {
+        // Then update local state
+        setConversations((prevConversations) => prevConversations.filter((conv) => conv.id !== id))
+
+        if (activeConversation === id) {
+          const newActiveConv = conversations.find((conv) => conv.id !== id)
+          if (newActiveConv) {
+            setActiveConversation(newActiveConv.id)
+            await setActiveConversationInDB(newActiveConv.id)
+          }
+        }
+
+        toast({
+          title: "Conversation deleted",
+          description: "The conversation has been removed.",
+        })
+      } else {
+        throw new Error(result.error || "Unknown error")
+      }
+    } catch (error) {
+      console.error("Error deleting conversation:", error)
+      toast({
+        title: "Error deleting conversation",
+        description: "There was a problem deleting your conversation.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const duplicateConversation = async (id: string) => {
     const conversationToDuplicate = conversations.find((conv) => conv.id === id)
     if (!conversationToDuplicate) return
 
@@ -1380,18 +1545,57 @@ export default function ContextTree() {
       })),
     }
 
-    setConversations((prevConversations) => [...prevConversations, newConversation])
-    setActiveConversation(newConversation.id)
+    try {
+      // Save to database
+      await saveConversation(newConversation)
+
+      // Update local state
+      setConversations((prevConversations) => [...prevConversations, newConversation])
+      setActiveConversation(newConversation.id)
+      await setActiveConversationInDB(newConversation.id)
+
+      toast({
+        title: "Conversation duplicated",
+        description: "A copy of the conversation has been created.",
+      })
+    } catch (error) {
+      console.error("Error duplicating conversation:", error)
+      toast({
+        title: "Error duplicating conversation",
+        description: "There was a problem creating a copy of your conversation.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const onSave = () => {
-    if (reactFlowInstance) {
-      const flowData = reactFlowInstance.toObject()
-      localStorage.setItem("flow-conversation", JSON.stringify(flowData))
+  const onSave = async () => {
+    try {
+      setIsSaving(true)
+
+      // Find the active conversation
+      const activeConv = conversations.find((conv) => conv.id === activeConversation)
+      if (activeConv) {
+        // Save the active conversation
+        const result = await saveConversation(activeConv)
+
+        if (result.success) {
+          toast({
+            title: "Canvas saved",
+            description: "Your work has been saved to the database.",
+          })
+        } else {
+          throw new Error(result.error || "Unknown error")
+        }
+      }
+    } catch (error) {
+      console.error("Error saving canvas:", error)
       toast({
-        title: "Canvas saved",
-        description: "The current canvas state has been saved to local storage.",
+        title: "Error saving canvas",
+        description: "There was a problem saving your work.",
+        variant: "destructive",
       })
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -1551,7 +1755,10 @@ export default function ContextTree() {
           onAddImageNode={createImageNode}
           activeConversation={activeConversation}
           conversations={conversations}
-          setActiveConversation={setActiveConversation}
+          setActiveConversation={async (id) => {
+            setActiveConversation(id)
+            await setActiveConversationInDB(id)
+          }}
           onCreateNewConversation={createNewConversation}
           onDeleteConversation={deleteConversation}
           onDuplicateConversation={duplicateConversation}
@@ -1576,51 +1783,68 @@ export default function ContextTree() {
               <span className="font-medium">Context treeing and branching features temporarily removed</span>
             </div>
           </div>
-          <FlowCanvas
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            selectedEdge={selectedEdge}
-            setSelectedEdge={setSelectedEdge}
-            activeNode={activeNode}
-            activeConversation={activeConversation}
-            setConversations={setConversations}
-            conversations={conversations}
-            createBranchNode={createBranchNode}
-            branchCount={branchCount}
-            setReactFlowInstance={setReactFlowInstance}
-            showConnectionMode={showConnectionMode}
-            connectionSource={connectionSource}
-            onConnect={onConnect}
-            onViewportChange={onViewportChange}
-            onEdgeDelete={onEdgeDelete}
-          />
-          <div className="absolute bottom-4 left-[280px] z-10 w-64">
-            <ConnectionHistory connectionEvents={connectionEvents} onNavigateToNode={navigateToNode} />
-          </div>
-          <ChatPanel
-            messages={messages}
-            onSendMessage={onSendMessage}
-            nodeName={nodeName}
-            onNodeNameChange={onNodeNameChange}
-            onCreateBranchNode={createBranchNodeFromChat}
-            isCollapsed={chatPanelCollapsed}
-            setIsCollapsed={setChatPanelCollapsed}
-            onDeleteNode={onActiveNodeDelete}
-            model={activeNodeModel}
-            onModelChange={onActiveNodeModelChange}
-            branchPoints={branchPoints}
-            connectionPoints={connectionPoints}
-            onNavigateToNode={navigateToNode}
-            nodeNotes={nodeNotes}
-            onSaveNote={saveNodeNote}
-            activeNodeId={activeNode}
-            nodes={nodes} // Pass the nodes array
-            thinking={chatThinking}
-          />
+          {isLoading ? (
+            <div className="flex items-center justify-center w-full h-full">
+              <div className="flex flex-col items-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+                <p className="text-gray-600">Loading your canvas...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <FlowCanvas
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                selectedEdge={selectedEdge}
+                setSelectedEdge={setSelectedEdge}
+                activeNode={activeNode}
+                activeConversation={activeConversation}
+                setConversations={setConversations}
+                conversations={conversations}
+                createBranchNode={createBranchNode}
+                branchCount={branchCount}
+                setReactFlowInstance={setReactFlowInstance}
+                showConnectionMode={showConnectionMode}
+                connectionSource={connectionSource}
+                onConnect={onConnect}
+                onViewportChange={onViewportChange}
+                onEdgeDelete={onEdgeDelete}
+              />
+              <div className="absolute bottom-4 left-[280px] z-10 w-64">
+                <ConnectionHistory connectionEvents={connectionEvents} onNavigateToNode={navigateToNode} />
+              </div>
+              <ChatPanel
+                messages={messages}
+                onSendMessage={onSendMessage}
+                nodeName={nodeName}
+                onNodeNameChange={onNodeNameChange}
+                onCreateBranchNode={createBranchNodeFromChat}
+                isCollapsed={chatPanelCollapsed}
+                setIsCollapsed={setChatPanelCollapsed}
+                onDeleteNode={onActiveNodeDelete}
+                model={activeNodeModel}
+                onModelChange={onActiveNodeModelChange}
+                branchPoints={branchPoints}
+                connectionPoints={connectionPoints}
+                onNavigateToNode={navigateToNode}
+                nodeNotes={nodeNotes}
+                onSaveNote={saveNodeNote}
+                activeNodeId={activeNode}
+                nodes={nodes} // Pass the nodes array
+                thinking={chatThinking}
+              />
+            </>
+          )}
+          {isSaving && (
+            <div className="absolute bottom-4 right-4 bg-white rounded-md shadow-md px-3 py-2 flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+              <span className="text-sm text-gray-600">Saving...</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
