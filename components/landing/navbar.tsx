@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Network, Menu, X } from "lucide-react"
+import { Menu, X } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -31,7 +31,11 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-2 group">
               <div className="relative w-8 h-8 flex items-center justify-center">
-                <Network className="h-6 w-6 text-primary transition-transform group-hover:scale-110 duration-300" />
+                <img
+                  src="/contexttree-logo.png"
+                  alt="ContextTree Logo"
+                  className="h-6 w-6 transition-transform group-hover:scale-110 duration-300"
+                />
                 <div className="absolute inset-0 bg-primary/10 rounded-full scale-[0.8] group-hover:scale-100 opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
               </div>
               <span className="font-semibold text-lg tracking-tight relative">

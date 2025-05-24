@@ -5,20 +5,7 @@ import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import type React from "react"
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import {
-  Save,
-  ImageIcon,
-  Download,
-  Settings,
-  Menu,
-  X,
-  Network,
-  Zap,
-  Share2,
-  Link2Off,
-  User,
-  LogOut,
-} from "lucide-react"
+import { Save, ImageIcon, Download, Settings, Menu, X, Zap, Share2, Link2Off, User, LogOut } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,7 +65,7 @@ export default function Navbar({
     <div className="bg-background/95 backdrop-blur-md border-b border-border py-3 px-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
       <div className="flex items-center">
         <div className="flex items-center gap-2 mr-6">
-          <Network className="h-5 w-5 text-primary" />
+          <img src="/contexttree-logo.png" alt="ContextTree Logo" className="h-6 w-6" />
           <h1 className="text-lg font-semibold tracking-tight">ContextTree</h1>
         </div>
       </div>
