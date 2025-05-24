@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify(body),
     })
-
+    console.log(response)
     if (!response.ok) {
       console.error(`API responded with status: ${response.status}`)
       throw new Error(`API responded with status: ${response.status}`)
