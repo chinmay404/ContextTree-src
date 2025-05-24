@@ -1,4 +1,5 @@
 import { getUserSessionId } from "@/lib/auth"
+import { getMockResponse } from "@/lib/mock-response"
 
 interface ChatRequestPayload {
   message: string
@@ -7,11 +8,6 @@ interface ChatRequestPayload {
   temperature: number
   context: string
   user_id: string
-}
-
-const getMockResponse = (message: string): string => {
-  // Mock implementation for fallback
-  return `Mock response for: ${message}`
 }
 
 export const getChatResponse = async (
@@ -32,6 +28,8 @@ export const getChatResponse = async (
   }
 
   try {
+    console.log("Sending chat request with payload:", JSON.stringify(payload))
+
     // Use our proxy API route instead of calling the external API directly
     const response = await fetch("/api/chat", {
       method: "POST",
@@ -42,6 +40,7 @@ export const getChatResponse = async (
     })
 
     if (!response.ok) {
+      console.error(`API request failed with status ${response.status}: ${response.statusText}`)
       throw new Error(`API request failed with status ${response.status}: ${response.statusText}`)
     }
 
