@@ -2,85 +2,226 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  .reading-mode {
+    --text-base-size: 1.125rem;
+    --text-scale-ratio: 1.2;
+    --text-line-height: 1.6;
+    --text-space-y: 1.5em;
+
+    font-size: var(--text-base-size);
+    line-height: var(--text-line-height);
+    color: hsl(var(--foreground));
+  }
+
+  .reading-mode p {
+    margin-bottom: var(--text-space-y);
+  }
+
+  .reading-mode h1,
+  .reading-mode h2,
+  .reading-mode h3,
+  .reading-mode h4 {
+    line-height: 1.3;
+    font-weight: 600;
+    margin-top: 1.5em;
+    margin-bottom: 0.75em;
+  }
+
+  .reading-mode h1 {
+    font-size: calc(var(--text-base-size) * var(--text-scale-ratio) * var(--text-scale-ratio) * var(--text-scale-ratio));
+  }
+  .reading-mode h2 {
+    font-size: calc(var(--text-base-size) * var(--text-scale-ratio) * var(--text-scale-ratio));
+  }
+  .reading-mode h3 {
+    font-size: calc(var(--text-base-size) * var(--text-scale-ratio));
+  }
+  .reading-mode h4 {
+    font-size: var(--text-base-size);
+  }
+
+  .reading-mode ul,
+  .reading-mode ol {
+    padding-left: 1.5em;
+    margin-bottom: var(--text-space-y);
+  }
+
+  .reading-mode li {
+    margin-bottom: 0.5em;
+  }
+
+  .reading-mode blockquote {
+    border-left: 3px solid hsl(var(--primary));
+    padding-left: 1em;
+    font-style: italic;
+    margin: 1.5em 0;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .reading-mode pre {
+    background-color: hsl(var(--muted));
+    padding: 1em;
+    border-radius: 0.25em;
+    overflow-x: auto;
+    margin: 1.5em 0;
+  }
+
+  .reading-mode code {
+    font-family: monospace;
+    background-color: hsl(var(--muted));
+    padding: 0.2em 0.4em;
+    border-radius: 0.25em;
+    font-size: 0.9em;
+  }
+
+  .reading-mode a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.15em;
+  }
+
+  .reading-mode a:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  /* Dark mode adjustments */
+  .dark .reading-mode {
+    --text-line-height: 1.7;
+  }
+
+  /* Improved focus styles */
+  .reading-mode *:focus {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 640px) {
+    .reading-mode {
+      --text-base-size: 1rem;
+    }
+  }
+
+  /* Pulse animation for the solution section */
+  .pulse-animation {
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(var(--primary), 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 6px rgba(var(--primary), 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(var(--primary), 0);
+    }
+  }
+
+  /* Text gradient */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600;
+  }
+
+  /* Shadow glow effect */
+  .shadow-glow {
+    @apply shadow-[0_0_15px_rgba(59,130,246,0.5)];
+  }
+
+  .shadow-glow-hover {
+    @apply shadow-[0_0_25px_rgba(59,130,246,0.6)];
+  }
+
+  .shadow-glow-sm {
+    box-shadow: 0 0 10px -3px hsl(var(--primary) / 0.3), 0 0 4px -2px hsl(var(--primary) / 0.2);
+  }
+
+  .shadow-glow-hover-sm {
+    box-shadow: 0 0 15px -5px hsl(var(--primary) / 0.4), 0 0 6px -2px hsl(var(--primary) / 0.3);
+  }
+
+  /* Grid pattern background */
+  .bg-grid-pattern {
+    background-image: linear-gradient(to right, rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Add animations for the collapsible component */
+  @keyframes collapsible-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-collapsible-content-height);
+    }
+  }
+
+  @keyframes collapsible-up {
+    from {
+      height: var(--radix-collapsible-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+
+  .animate-collapsible-down {
+    animation: collapsible-down 0.2s ease-out;
+  }
+
+  .animate-collapsible-up {
+    animation: collapsible-up 0.2s ease-out;
   }
 }
 
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
   }
 }
 
@@ -91,93 +232,151 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Improved typography for better readability */
+  p,
+  li,
+  blockquote {
+    @apply text-balance;
+  }
 }
 
-/* Thinking details styling */
-.thinking-details {
-  transition: all 0.2s ease;
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+
+  .preview-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .preview-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .preview-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  .preview-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+
+  /* Typography enhancements */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Chat panel styling */
+  .chat-bubble-user {
+    border-radius: 18px 18px 0 18px;
+  }
+
+  .chat-bubble-ai {
+    border-radius: 18px 18px 18px 0;
+  }
+
+  .glass-panel {
+    @apply bg-background/80 backdrop-blur-md border border-border/50;
+  }
+
+  .message-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .node-preview {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(var(--border), 0.2);
+    backdrop-filter: blur(8px);
+  }
+
+  /* Full-screen mode enhancements */
+  .fullscreen-mode {
+    @apply max-w-3xl mx-auto;
+    font-size: 1.125rem;
+    line-height: 1.7;
+  }
+
+  .fullscreen-mode p {
+    @apply my-4;
+  }
+
+  /* Reading mode styles */
+  .reading-container {
+    max-width: 70ch;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
 }
 
-.thinking-details:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+/* ReactFlow custom styling */
+.react-flow__controls {
+  background-color: rgba(var(--background), 0.8);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(8px);
+  border-radius: 0.375rem;
+  padding: 0.25rem;
 }
 
-.thinking-details[open] .thinking-chevron {
-  transform: rotate(180deg);
+.react-flow__controls-button {
+  border: none;
+  background-color: transparent;
+  color: hsl(var(--foreground));
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
 }
 
-.thinking-chevron {
-  transition: transform 0.2s ease;
+.react-flow__controls-button:hover {
+  background-color: hsl(var(--muted));
 }
 
-.thinking-details summary::-webkit-details-marker {
-  display: none;
+.react-flow__panel {
+  background-color: transparent;
 }
 
-/* Enhanced message styling */
-.markdown-content h1,
-.markdown-content h2,
-.markdown-content h3 {
-  font-family: var(--font-sans);
-  letter-spacing: -0.02em;
+.react-flow__attribution {
+  background-color: transparent;
+  color: hsl(var(--muted-foreground));
 }
 
-.markdown-content p {
-  line-height: 1.65;
+.react-flow__node {
+  transition-property: box-shadow;
+  transition-duration: 200ms;
 }
 
-.markdown-content code {
-  font-size: 0.9em;
+.react-flow__handle {
+  transition-property: all;
+  transition-duration: 200ms;
 }
 
-.markdown-content pre {
-  margin-bottom: 1.5rem;
-  border-radius: 0.5rem;
-  overflow: hidden;
+.react-flow__handle:hover {
+  transform: scale(1.25);
 }
 
-.markdown-content blockquote {
-  font-style: italic;
-  color: var(--muted-foreground);
-  border-left: 3px solid var(--border);
-  padding-left: 1rem;
-  margin: 1.5rem 0;
+.dark .react-flow__background {
+  background-color: hsl(var(--background));
 }
 
-/* Chat message bubbles enhanced styling */
-.message-bubble {
-  border-radius: 1.25rem;
-  overflow: hidden;
-  transition: box-shadow 0.2s ease, transform 0.1s ease;
-}
-
-.message-bubble.user {
-  border-bottom-right-radius: 0.25rem;
-}
-
-.message-bubble.ai {
-  border-bottom-left-radius: 0.25rem;
-}
-
-.message-bubble:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-/* Custom scrollbar for code blocks */
-.markdown-content pre::-webkit-scrollbar {
-  height: 6px;
-}
-
-.markdown-content pre::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 3px;
-}
-
-.markdown-content pre::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-}
-
-.markdown-content pre::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+.dark .react-flow__background-pattern {
+  color: rgba(var(--muted), 0.2);
 }
