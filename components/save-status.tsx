@@ -1,40 +1,15 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { CheckCircle, AlertCircle, CloudOff } from "lucide-react"
+import { CheckCircle, CloudOff, AlertCircle } from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
 
 interface SaveStatusProps {
   isSaving: boolean
   lastSaved: Date | null
   isOnline: boolean
+  autoSaveEnabled?: boolean
 }
 
-export default function SaveStatus({ isSaving, lastSaved, isOnline }: SaveStatusProps) {
-  const [timeAgo, setTimeAgo] = useState<string>("")
-
-  useEffect(() => {
-    if (!lastSaved) return
-
-    const updateTimeAgo = () => {
-      const now = new Date()
-      const diffMs = now.getTime() - lastSaved.getTime()
-
-      if (diffMs < 60000) {
-        setTimeAgo("just now")
-      } else if (diffMs < 3600000) {
-        const minutes = Math.floor(diffMs / 60000)
-        setTimeAgo(`${minutes}m ago`)
-      } else {
-        const hours = Math.floor(diffMs / 3600000)
-        setTimeAgo(`${hours}h ago`)
-      }
-    }
-
-    updateTimeAgo()
-    const interval = setInterval(updateTimeAgo, 60000)
-
-    return () => clearInterval(interval)
-  }, [lastSaved])
+export function SaveStatus({ isSaving, lastSaved, isOnline, autoSaveEnabled = false }: SaveStatusProps) {
+  const timeAgo = lastSaved ? formatDistanceToNow(lastSaved, { addSuffix: true }) : null
 
   if (!isOnline) {
     return (
@@ -49,7 +24,7 @@ export default function SaveStatus({ isSaving, lastSaved, isOnline }: SaveStatus
     return (
       <div className="flex items-center text-blue-500 text-sm">
         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500 mr-2"></div>
-        <span>Saving...</span>
+        <span>Auto-saving...</span>
       </div>
     )
   }
@@ -58,7 +33,7 @@ export default function SaveStatus({ isSaving, lastSaved, isOnline }: SaveStatus
     return (
       <div className="flex items-center text-green-500 text-sm">
         <CheckCircle size={16} className="mr-1" />
-        <span>Saved {timeAgo}</span>
+        <span>Auto-saved {timeAgo}</span>
       </div>
     )
   }
@@ -66,7 +41,7 @@ export default function SaveStatus({ isSaving, lastSaved, isOnline }: SaveStatus
   return (
     <div className="flex items-center text-amber-500 text-sm">
       <AlertCircle size={16} className="mr-1" />
-      <span>Not saved</span>
+      <span>{autoSaveEnabled ? "Waiting to auto-save..." : "Not saved"}</span>
     </div>
   )
 }
