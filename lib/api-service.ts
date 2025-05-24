@@ -16,6 +16,11 @@ const generateMessageId = (): string => {
   return Date.now().toString() + Math.random().toString(36).substring(2, 9)
 }
 
+// Generate a unique ID for use in conversation_id
+const generateUniqueId = (): string => {
+  return Math.random().toString(36).substring(2, 15)
+}
+
 export const getChatResponse = async (
   message: string,
   nodeId: string,
@@ -24,10 +29,13 @@ export const getChatResponse = async (
 ): Promise<string> => {
   const userId = getUserSessionId()
 
+  // Create conversation_id by combining userId and a unique identifier
+  const conversationId = `${userId}_${nodeId}`
+
   const payload: ChatRequestPayload = {
     message,
     message_id: generateMessageId(), // Generate a unique message ID
-    conversation_id: nodeId,
+    conversation_id: conversationId, // Combined user ID and node ID
     model_name: modelName, // User selected model
     temperature: 0,
     context: parentNodeIds, // Send as array directly
