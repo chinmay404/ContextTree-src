@@ -2,12 +2,12 @@ import { getUserSessionId } from "@/lib/auth"
 
 interface ChatRequestPayload {
   message: string
+  message_id: string
   conversation_id: string
   model_name: string
   temperature: number
-  context: string
+  context: string[] | string
   user_id: string
-  message_id?: string
 }
 
 export const getChatResponse = async (
@@ -19,18 +19,25 @@ export const getChatResponse = async (
   const userId = getUserSessionId() || `user_${Date.now()}`
   const messageId = `msg_${Date.now()}`
 
+  // Format the payload according to the API expectations
   const payload: ChatRequestPayload = {
     message,
     message_id: messageId,
     conversation_id: nodeId,
-    model_name: modelName,
+    model_name: modelName || "llama3-70b-8192", // Default model if none selected
     temperature: 0,
-    context: parentNodeIds.join(","),
+    context: parentNodeIds.length > 0 ? parentNodeIds : [""],
     user_id: userId,
   }
 
   try {
     console.log("Sending chat request:", JSON.stringify(payload, null, 2))
+
+    // Check if we're online before making the request
+    if (!navigator.onLine) {
+      console.error("Browser is offline")
+      return "You appear to be offline. Please check your internet connection and try again."
+    }
 
     // Use our proxy API route instead of calling the external API directly
     const response = await fetch("/api/chat", {
@@ -53,7 +60,7 @@ export const getChatResponse = async (
     // Check if we got a valid response
     if (!data || data.trim() === "") {
       console.error("Empty response received from API")
-      return "I apologize, but I received an empty response. Please try again or check your connection."
+      return "I apologize, but I received an empty response. Please try again."
     }
 
     return data

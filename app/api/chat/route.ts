@@ -1,47 +1,52 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
-export async function POST(request: Request) {
+export const runtime = "nodejs"
+
+export async function POST(req: NextRequest) {
   try {
-    // Use hardcoded API endpoint as fallback if environment variable is not set
+    const body = await req.json()
+
+    // Get the API endpoint from environment variable or use default
     const apiEndpoint = process.env.CHAT_API_ENDPOINT || "http://18.234.147.188/api/v1/chat/"
 
-    const body = await request.json()
+    console.log(`Making API request to: ${apiEndpoint}`)
+    console.log(`Request payload: ${JSON.stringify(body, null, 2)}`)
 
-    // Format the request payload according to the expected format
-    const formattedBody = {
-      message: body.message,
-      message_id: body.message_id || String(Date.now()),
-      conversation_id: body.conversation_id,
-      model_name: body.model_name || "",
-      temperature: body.temperature || 0,
-      context: Array.isArray(body.context) ? body.context : [body.context],
-      user_id: body.user_id || "user_" + Date.now(),
+    // Format the context as an array if it's not already
+    if (body.context && typeof body.context === "string") {
+      body.context = body.context.split(",").filter(Boolean)
     }
 
-    console.log("Sending request to API:", apiEndpoint)
-    console.log("Request payload:", JSON.stringify(formattedBody, null, 2))
+    // Ensure we have a message_id
+    if (!body.message_id) {
+      body.message_id = `msg_${Date.now()}`
+    }
 
+    // Make the API request
     const response = await fetch(apiEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(formattedBody),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`API responded with status: ${response.status}, message: ${errorText}`)
-      throw new Error(`API responded with status: ${response.status}`)
+      console.error(`API Error: ${response.status} ${response.statusText}`)
+      console.error(`Error response: ${errorText}`)
+      return NextResponse.json(
+        { error: `API request failed: ${response.status} ${response.statusText}` },
+        { status: response.status },
+      )
     }
 
     const data = await response.text()
-    console.log("API response received, length:", data.length)
+    console.log(`API response received, length: ${data.length}`)
+
     return new NextResponse(data)
   } catch (error) {
-    console.error("Proxy API error:", error)
-    return new NextResponse(JSON.stringify({ error: "Failed to fetch from external API", details: error.message }), {
-      status: 500,
-    })
+    console.error("Error in chat API route:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
