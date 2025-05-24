@@ -3,11 +3,17 @@ import { getMockResponse } from "@/lib/mock-response"
 
 interface ChatRequestPayload {
   message: string
+  message_id: string
   conversation_id: string
   model_name: string
   temperature: number
-  context: string[] // Changed to string array
+  context: string[] // String array
   user_id: string
+}
+
+// Simple function to generate a unique message ID
+const generateMessageId = (): string => {
+  return Date.now().toString() + Math.random().toString(36).substring(2, 9)
 }
 
 export const getChatResponse = async (
@@ -20,8 +26,9 @@ export const getChatResponse = async (
 
   const payload: ChatRequestPayload = {
     message,
+    message_id: generateMessageId(), // Generate a unique message ID
     conversation_id: nodeId,
-    model_name: modelName,
+    model_name: modelName, // User selected model
     temperature: 0,
     context: parentNodeIds, // Send as array directly
     user_id: userId,
