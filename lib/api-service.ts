@@ -7,6 +7,7 @@ interface ChatRequestPayload {
   temperature: number
   context: string
   user_id: string
+  message_id?: string
 }
 
 export const getChatResponse = async (
@@ -15,10 +16,12 @@ export const getChatResponse = async (
   modelName: string,
   parentNodeIds: string[],
 ): Promise<string> => {
-  const userId = getUserSessionId()
+  const userId = getUserSessionId() || `user_${Date.now()}`
+  const messageId = `msg_${Date.now()}`
 
   const payload: ChatRequestPayload = {
     message,
+    message_id: messageId,
     conversation_id: nodeId,
     model_name: modelName,
     temperature: 0,
@@ -27,6 +30,8 @@ export const getChatResponse = async (
   }
 
   try {
+    console.log("Sending chat request:", JSON.stringify(payload, null, 2))
+
     // Use our proxy API route instead of calling the external API directly
     const response = await fetch("/api/chat", {
       method: "POST",
@@ -43,10 +48,12 @@ export const getChatResponse = async (
     }
 
     const data = await response.text()
+    console.log("Received response, length:", data.length)
 
     // Check if we got a valid response
     if (!data || data.trim() === "") {
-      throw new Error("Empty response from API")
+      console.error("Empty response received from API")
+      return "I apologize, but I received an empty response. Please try again or check your connection."
     }
 
     return data
@@ -56,11 +63,9 @@ export const getChatResponse = async (
     // Log the full error details for debugging
     if (error instanceof Error) {
       console.error(`API Error details: ${error.message}`)
-      console.error(`Stack trace: ${error.stack}`)
     }
 
-    // Throw the error instead of returning mock response
-    // This will help identify the actual issue
-    throw error
+    // Return a user-friendly error message
+    return "I'm having trouble connecting to the AI service right now. Please check your internet connection and try again."
   }
 }
