@@ -40,6 +40,26 @@ import remarkGfm from "remark-gfm"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus, vs } from "react-syntax-highlighter/dist/esm/styles/prism"
 
+// Utility function to extract thinking content from a message
+const extractThinking = (content: string): { thinking: string | null; message: string } => {
+  const thinkRegex = /<think>([\s\S]*?)<\/think>/
+  const match = content.match(thinkRegex)
+
+  if (match && match[1]) {
+    // Return the thinking content and the message with the thinking part removed
+    return {
+      thinking: match[1].trim(),
+      message: content.replace(thinkRegex, "").trim(),
+    }
+  }
+
+  // If no thinking content is found, return null for thinking and the original message
+  return {
+    thinking: null,
+    message: content,
+  }
+}
+
 interface ChatPanelProps {
   messages: Message[]
   onSendMessage: (content: string) => void
@@ -557,70 +577,95 @@ export default function ChatPanel({
                           </p>
                         ) : (
                           <div className={`${isExpanded ? "text-base" : "text-sm"} markdown-content`}>
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                code({ node, inline, className, children, ...props }) {
-                                  const match = /language-(\w+)/.exec(className || "")
-                                  return !inline && match ? (
-                                    <SyntaxHighlighter
-                                      style={theme === "dark" ? vscDarkPlus : vs}
-                                      language={match[1]}
-                                      PreTag="div"
-                                      {...props}
-                                    >
-                                      {String(children).replace(/\n$/, "")}
-                                    </SyntaxHighlighter>
-                                  ) : (
-                                    <code
-                                      className={`${className} bg-muted px-1 py-0.5 rounded text-sm font-mono`}
-                                      {...props}
-                                    >
-                                      {children}
-                                    </code>
-                                  )
-                                },
-                                p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
-                                ul: ({ children }) => <ul className="mb-4 list-disc pl-6 last:mb-0">{children}</ul>,
-                                ol: ({ children }) => <ol className="mb-4 list-decimal pl-6 last:mb-0">{children}</ol>,
-                                li: ({ children }) => <li className="mb-1">{children}</li>,
-                                h1: ({ children }) => <h1 className="text-xl font-bold mb-4 mt-6">{children}</h1>,
-                                h2: ({ children }) => <h2 className="text-lg font-bold mb-3 mt-5">{children}</h2>,
-                                h3: ({ children }) => <h3 className="text-md font-bold mb-2 mt-4">{children}</h3>,
-                                a: ({ href, children }) => (
-                                  <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary underline"
+                            {(() => {
+                              const { thinking, message: cleanMessage } = extractThinking(message.content)
+                              return (
+                                <>
+                                  {thinking && (
+                                    <div className="mb-3">
+                                      <details className="bg-muted/30 rounded-md">
+                                        <summary className="cursor-pointer p-2 text-xs font-medium text-muted-foreground flex items-center">
+                                          <span className="mr-1">AI Thinking</span>
+                                        </summary>
+                                        <div className="p-3 text-xs border-t border-border/40 whitespace-pre-wrap font-mono">
+                                          {thinking}
+                                        </div>
+                                      </details>
+                                    </div>
+                                  )}
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                      code({ node, inline, className, children, ...props }) {
+                                        const match = /language-(\w+)/.exec(className || "")
+                                        return !inline && match ? (
+                                          <SyntaxHighlighter
+                                            style={theme === "dark" ? vscDarkPlus : vs}
+                                            language={match[1]}
+                                            PreTag="div"
+                                            {...props}
+                                          >
+                                            {String(children).replace(/\n$/, "")}
+                                          </SyntaxHighlighter>
+                                        ) : (
+                                          <code
+                                            className={`${className} bg-muted px-1 py-0.5 rounded text-sm font-mono`}
+                                            {...props}
+                                          >
+                                            {children}
+                                          </code>
+                                        )
+                                      },
+                                      p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
+                                      ul: ({ children }) => (
+                                        <ul className="mb-4 list-disc pl-6 last:mb-0">{children}</ul>
+                                      ),
+                                      ol: ({ children }) => (
+                                        <ol className="mb-4 list-decimal pl-6 last:mb-0">{children}</ol>
+                                      ),
+                                      li: ({ children }) => <li className="mb-1">{children}</li>,
+                                      h1: ({ children }) => <h1 className="text-xl font-bold mb-4 mt-6">{children}</h1>,
+                                      h2: ({ children }) => <h2 className="text-lg font-bold mb-3 mt-5">{children}</h2>,
+                                      h3: ({ children }) => <h3 className="text-md font-bold mb-2 mt-4">{children}</h3>,
+                                      a: ({ href, children }) => (
+                                        <a
+                                          href={href}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-primary underline"
+                                        >
+                                          {children}
+                                        </a>
+                                      ),
+                                      blockquote: ({ children }) => (
+                                        <blockquote className="border-l-4 border-muted-foreground/30 pl-4 italic my-4">
+                                          {children}
+                                        </blockquote>
+                                      ),
+                                      hr: () => <hr className="my-4 border-border" />,
+                                      table: ({ children }) => (
+                                        <div className="overflow-x-auto my-4">
+                                          <table className="min-w-full divide-y divide-border">{children}</table>
+                                        </div>
+                                      ),
+                                      thead: ({ children }) => <thead className="bg-muted/50">{children}</thead>,
+                                      tbody: ({ children }) => (
+                                        <tbody className="divide-y divide-border">{children}</tbody>
+                                      ),
+                                      tr: ({ children }) => <tr>{children}</tr>,
+                                      th: ({ children }) => (
+                                        <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                          {children}
+                                        </th>
+                                      ),
+                                      td: ({ children }) => <td className="px-3 py-2 whitespace-nowrap">{children}</td>,
+                                    }}
                                   >
-                                    {children}
-                                  </a>
-                                ),
-                                blockquote: ({ children }) => (
-                                  <blockquote className="border-l-4 border-muted-foreground/30 pl-4 italic my-4">
-                                    {children}
-                                  </blockquote>
-                                ),
-                                hr: () => <hr className="my-4 border-border" />,
-                                table: ({ children }) => (
-                                  <div className="overflow-x-auto my-4">
-                                    <table className="min-w-full divide-y divide-border">{children}</table>
-                                  </div>
-                                ),
-                                thead: ({ children }) => <thead className="bg-muted/50">{children}</thead>,
-                                tbody: ({ children }) => <tbody className="divide-y divide-border">{children}</tbody>,
-                                tr: ({ children }) => <tr>{children}</tr>,
-                                th: ({ children }) => (
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                    {children}
-                                  </th>
-                                ),
-                                td: ({ children }) => <td className="px-3 py-2 whitespace-nowrap">{children}</td>,
-                              }}
-                            >
-                              {message.content}
-                            </ReactMarkdown>
+                                    {cleanMessage}
+                                  </ReactMarkdown>
+                                </>
+                              )
+                            })()}
                           </div>
                         )}
 
