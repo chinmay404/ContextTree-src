@@ -98,7 +98,14 @@ export async function saveConversation(conversationData: any, sessionId?: string
     revalidatePath("/canvas")
     return { success: true, sessionId }
   } catch (error) {
-    console.error("Error saving conversation:", error)
+    // Enhanced error logging
+    console.error("Error saving conversation (full details):", error)
+    if (error instanceof Error) {
+      console.error("Error stack:", error.stack)
+      if ((error as any).digest) {
+        console.error("Error digest:", (error as any).digest)
+      }
+    }
     return { success: false, error: (error as Error).message }
   }
 }
