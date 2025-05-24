@@ -9,11 +9,6 @@ interface ChatRequestPayload {
   user_id: string
 }
 
-const getMockResponse = (message: string): string => {
-  // Mock implementation for fallback
-  return `Mock response for: ${message}`
-}
-
 export const getChatResponse = async (
   message: string,
   nodeId: string,
@@ -42,26 +37,30 @@ export const getChatResponse = async (
     })
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`API Error Response: ${errorText}`)
       throw new Error(`API request failed with status ${response.status}: ${response.statusText}`)
     }
 
     const data = await response.text()
+
+    // Check if we got a valid response
+    if (!data || data.trim() === "") {
+      throw new Error("Empty response from API")
+    }
+
     return data
   } catch (error) {
     console.error("Error fetching chat response:", error)
 
-    // Provide a fallback response with more detailed error information
-    let errorMessage = "Sorry, I couldn't process your request at the moment."
-
+    // Log the full error details for debugging
     if (error instanceof Error) {
       console.error(`API Error details: ${error.message}`)
-
-      if (error.message.includes("Failed to fetch")) {
-        errorMessage = "Network error: Unable to connect to the AI service. Please try again later."
-      }
+      console.error(`Stack trace: ${error.stack}`)
     }
 
-    // Use the mock response as fallback
-    return getMockResponse(message)
+    // Throw the error instead of returning mock response
+    // This will help identify the actual issue
+    throw error
   }
 }
