@@ -6,7 +6,7 @@ interface ChatRequestPayload {
   conversation_id: string
   model_name: string
   temperature: number
-  context: string
+  context: string[] // Changed to string array
   user_id: string
 }
 
@@ -23,7 +23,7 @@ export const getChatResponse = async (
     conversation_id: nodeId,
     model_name: modelName,
     temperature: 0,
-    context: parentNodeIds.join(","),
+    context: parentNodeIds, // Send as array directly
     user_id: userId,
   }
 
@@ -45,6 +45,7 @@ export const getChatResponse = async (
     }
 
     const data = await response.text()
+    console.log("API response received:", data.substring(0, 100) + "...") // Log first 100 chars of response
     return data
   } catch (error) {
     console.error("Error fetching chat response:", error)
