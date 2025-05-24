@@ -34,7 +34,7 @@ export default function Navbar() {
                 <img
                   src="/contexttree-logo.png"
                   alt="ContextTree Logo"
-                  className="h-6 w-6 transition-transform group-hover:scale-110 duration-300"
+                  className="h-7 w-7 transition-transform group-hover:scale-110 duration-300"
                 />
                 <div className="absolute inset-0 bg-primary/10 rounded-full scale-[0.8] group-hover:scale-100 opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
               </div>
