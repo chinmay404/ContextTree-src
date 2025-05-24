@@ -1,29 +1,15 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
-export const runtime = "nodejs"
-
-export async function POST(req: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await req.json()
-
-    // Get the API endpoint from environment variable or use default
-    const apiEndpoint = process.env.CHAT_API_ENDPOINT || "http://18.234.147.188/api/v1/chat/"
-
-    console.log(`Making API request to: ${apiEndpoint}`)
-    console.log(`Request payload: ${JSON.stringify(body, null, 2)}`)
-
-    // Format the context as an array if it's not already
-    if (body.context && typeof body.context === "string") {
-      body.context = body.context.split(",").filter(Boolean)
+    if (!process.env.CHAT_API_ENDPOINT) {
+      return new NextResponse(JSON.stringify({ error: "CHAT_API_ENDPOINT environment variable is not set" }), {
+        status: 500,
+      })
     }
+    const body = await request.json()
 
-    // Ensure we have a message_id
-    if (!body.message_id) {
-      body.message_id = `msg_${Date.now()}`
-    }
-
-    // Make the API request
-    const response = await fetch(apiEndpoint, {
+    const response = await fetch(process.env.CHAT_API_ENDPOINT || "", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -32,21 +18,13 @@ export async function POST(req: NextRequest) {
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`API Error: ${response.status} ${response.statusText}`)
-      console.error(`Error response: ${errorText}`)
-      return NextResponse.json(
-        { error: `API request failed: ${response.status} ${response.statusText}` },
-        { status: response.status },
-      )
+      throw new Error(`API responded with status: ${response.status}`)
     }
 
     const data = await response.text()
-    console.log(`API response received, length: ${data.length}`)
-
     return new NextResponse(data)
   } catch (error) {
-    console.error("Error in chat API route:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Proxy API error:", error)
+    return new NextResponse(JSON.stringify({ error: "Failed to fetch from external API" }), { status: 500 })
   }
 }
