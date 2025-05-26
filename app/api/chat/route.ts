@@ -2,28 +2,22 @@ import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    // Hardcode the API endpoint URL directly
-    const API_ENDPOINT = "http://18.234.147.188/api/v1/chat/"
-
-    const body = await request.json()
-    console.log("Sending request to:", API_ENDPOINT)
-    console.log("Request payload:", JSON.stringify(body))
-
-    // Ensure context is an array
-    if (typeof body.context === "string") {
-      body.context = body.context.split(",").filter(Boolean)
+    if (!process.env.CHAT_API_ENDPOINT) {
+      return new NextResponse(JSON.stringify({ error: "CHAT_API_ENDPOINT environment variable is not set" }), {
+        status: 500,
+      })
     }
+    const body = await request.json()
 
-    const response = await fetch(API_ENDPOINT, {
+    const response = await fetch(process.env.CHAT_API_ENDPOINT || "", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
     })
-    console.log(response)
+
     if (!response.ok) {
-      console.error(`API responded with status: ${response.status}`)
       throw new Error(`API responded with status: ${response.status}`)
     }
 
