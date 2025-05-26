@@ -1,54 +1,41 @@
 import NextAuth from "next-auth"
-import type { NextAuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 
-export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: "jwt",
-  },
+export const authOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-  debug: process.env.NODE_ENV === "development",
   secret: process.env.NEXTAUTH_SECRET,
+  session: {
+    strategy: "jwt",
+    maxAge: 3 * 60 * 60, // 3 hours in seconds (3 * 60 minutes * 60 seconds)
+  },
+  pages: {
+    signIn: "/auth/login",
+    error: "/auth/error",
+  },
   callbacks: {
     async redirect({ url, baseUrl }) {
-      // Ensure baseUrl is properly formatted
-      const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
-
-      // Handle callback URLs from OAuth providers
-      if (url.startsWith("/api/auth/callback")) {
-        return `${base}/canvas`
-      }
-
-      // Handle sign-in redirects
-      if (url.startsWith("/auth/login") || url === "/auth/signin") {
-        return `${base}/canvas`
+      // Always redirect to canvas after successful login
+      if (url.startsWith("/api/auth/callback") || url.startsWith("/auth/login")) {
+        return `${baseUrl}/canvas`
       }
 
       // Handle relative URLs
       if (url.startsWith("/")) {
-        return `${base}${url}`
+        return `${baseUrl}${url}`
       }
 
-      // Validate same-origin URLs
-      try {
-        const urlObj = new URL(url)
-        const baseObj = new URL(base)
-
-        if (urlObj.origin === baseObj.origin) {
-          return url
-        }
-      } catch (error) {
-        // Invalid URL, fallback to canvas
-        console.warn("Invalid redirect URL:", url)
+      // Handle same-origin URLs
+      if (new URL(url).origin === baseUrl) {
+        return url
       }
 
-      // Default fallback
-      return `${base}/canvas`
+      // Default to canvas
+      return `${baseUrl}/canvas`
     },
   },
 }
