@@ -39,6 +39,23 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vscDarkPlus, vs } from "react-syntax-highlighter/dist/esm/styles/prism"
+import "./chat-panel.css"
+
+// Function to extract thinking content from a message
+const extractThinking = (content: string): { thinking: string | null; content: string } => {
+  const thinkRegex = /<think>([\s\S]*?)<\/think>/
+  const match = content.match(thinkRegex)
+
+  if (match && match[1]) {
+    // Return the thinking content and the cleaned message content
+    return {
+      thinking: match[1].trim(),
+      content: content.replace(thinkRegex, "").trim(),
+    }
+  }
+
+  return { thinking: null, content }
+}
 
 interface ChatPanelProps {
   messages: Message[]
@@ -379,14 +396,14 @@ export default function ChatPanel({
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className={`sticky top-0 z-10 w-full flex items-center justify-between p-4 border-b border-border ${
-            readingMode ? "bg-background/80 backdrop-blur-md" : "bg-card/95 backdrop-blur-md"
-          }`}
+            readingMode ? "bg-background/90 backdrop-blur-md" : "bg-card/95 backdrop-blur-md"
+          } shadow-sm`}
         >
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-full"
+              className="h-9 w-9 rounded-full hover:bg-muted transition-colors"
               onClick={toggleExpand}
               aria-label="Exit full-screen"
             >
@@ -406,12 +423,17 @@ export default function ChatPanel({
             <Button
               variant="ghost"
               size="sm"
-              className={`h-8 text-xs ${readingMode ? "bg-primary/10 text-primary" : ""}`}
+              className={`h-8 text-xs ${readingMode ? "bg-primary/10 text-primary" : ""} hover:bg-muted transition-colors`}
               onClick={toggleReadingMode}
             >
               {readingMode ? "Edit Mode" : "Reading Mode"}
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hover:bg-muted transition-colors"
+              onClick={toggleTheme}
+            >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <div className="hidden md:flex items-center">
@@ -526,215 +548,242 @@ export default function ChatPanel({
                 </p>
               </motion.div>
             ) : (
-              messages.map((message, index) => (
-                <div key={message.id} className="mb-8">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className={`flex flex-col group ${message.sender === "user" ? "items-end" : "items-start"}`}
-                  >
-                    <div className="flex items-end gap-2 relative">
-                      {message.sender !== "user" && (
-                        <div className="bg-primary/15 p-1.5 rounded-full shadow-sm">
-                          <Bot className="h-3.5 w-3.5 text-primary" />
-                        </div>
+              messages.map((message, index) => {
+                const { thinking, content } = extractThinking(message.content)
+
+                return (
+                  <div key={message.id} className="mb-8">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className={`flex flex-col group ${message.sender === "user" ? "items-end" : "items-start"}`}
+                    >
+                      {/* Thinking section */}
+                      {thinking && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className={`mb-2 w-full max-w-[85%] md:max-w-[75%] ${message.sender === "user" ? "self-end" : "self-start"}`}
+                        >
+                          <details className="bg-muted/30 rounded-lg border border-border/50 text-sm">
+                            <summary className="cursor-pointer p-2 font-medium text-xs flex items-center gap-1.5 text-muted-foreground">
+                              <span className="inline-flex items-center justify-center rounded-full bg-primary/10 p-1">
+                                <Bot className="h-3 w-3 text-primary" />
+                              </span>
+                              Thinking process
+                            </summary>
+                            <div className="p-3 pt-1 whitespace-pre-wrap font-mono text-xs text-muted-foreground">
+                              {thinking}
+                            </div>
+                          </details>
+                        </motion.div>
                       )}
-                      <div
-                        className={`${
-                          isExpanded
-                            ? message.sender === "user"
-                              ? "bg-primary text-primary-foreground max-w-[85%] md:max-w-[75%] rounded-2xl p-4 shadow-sm"
-                              : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] md:max-w-[75%] rounded-2xl p-4 hover:shadow-md transition-shadow duration-200"
-                            : message.sender === "user"
-                              ? "bg-primary text-primary-foreground max-w-[85%] rounded-2xl p-3.5 shadow-sm"
-                              : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] rounded-2xl p-3.5 hover:shadow-md transition-shadow duration-200"
-                        } relative`}
-                      >
-                        {message.sender === "user" ? (
-                          <p className={`${isExpanded ? "text-base leading-relaxed" : "text-sm leading-relaxed"}`}>
-                            {message.content}
-                          </p>
-                        ) : (
-                          <div className={`${isExpanded ? "text-base" : "text-sm"} markdown-content`}>
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                code({ node, inline, className, children, ...props }) {
-                                  const match = /language-(\w+)/.exec(className || "")
-                                  return !inline && match ? (
-                                    <SyntaxHighlighter
-                                      style={theme === "dark" ? vscDarkPlus : vs}
-                                      language={match[1]}
-                                      PreTag="div"
-                                      {...props}
-                                    >
-                                      {String(children).replace(/\n$/, "")}
-                                    </SyntaxHighlighter>
-                                  ) : (
-                                    <code
-                                      className={`${className} bg-muted px-1 py-0.5 rounded text-sm font-mono`}
-                                      {...props}
+
+                      <div className="flex items-end gap-2 relative">
+                        {message.sender !== "user" && (
+                          <div className="bg-primary/15 p-1.5 rounded-full shadow-sm">
+                            <Bot className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                        )}
+                        <div
+                          className={`${
+                            isExpanded
+                              ? message.sender === "user"
+                                ? "bg-primary text-primary-foreground max-w-[85%] md:max-w-[75%] rounded-2xl p-4 shadow-sm"
+                                : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] md:max-w-[75%] rounded-2xl p-4 hover:shadow-md transition-shadow duration-200"
+                              : message.sender === "user"
+                                ? "bg-primary text-primary-foreground max-w-[85%] rounded-2xl p-3.5 shadow-sm"
+                                : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] rounded-2xl p-3.5 hover:shadow-md transition-shadow duration-200"
+                          } relative`}
+                        >
+                          {message.sender === "user" ? (
+                            <p className={`${isExpanded ? "text-base leading-relaxed" : "text-sm leading-relaxed"}`}>
+                              {content}
+                            </p>
+                          ) : (
+                            <div className={`${isExpanded ? "text-base" : "text-sm"} markdown-content`}>
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  code({ node, inline, className, children, ...props }) {
+                                    const match = /language-(\w+)/.exec(className || "")
+                                    return !inline && match ? (
+                                      <SyntaxHighlighter
+                                        style={theme === "dark" ? vscDarkPlus : vs}
+                                        language={match[1]}
+                                        PreTag="div"
+                                        {...props}
+                                      >
+                                        {String(children).replace(/\n$/, "")}
+                                      </SyntaxHighlighter>
+                                    ) : (
+                                      <code
+                                        className={`${className} bg-muted px-1 py-0.5 rounded text-sm font-mono`}
+                                        {...props}
+                                      >
+                                        {children}
+                                      </code>
+                                    )
+                                  },
+                                  p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
+                                  ul: ({ children }) => <ul className="mb-4 list-disc pl-6 last:mb-0">{children}</ul>,
+                                  ol: ({ children }) => (
+                                    <ol className="mb-4 list-decimal pl-6 last:mb-0">{children}</ol>
+                                  ),
+                                  li: ({ children }) => <li className="mb-1">{children}</li>,
+                                  h1: ({ children }) => <h1 className="text-xl font-bold mb-4 mt-6">{children}</h1>,
+                                  h2: ({ children }) => <h2 className="text-lg font-bold mb-3 mt-5">{children}</h2>,
+                                  h3: ({ children }) => <h3 className="text-md font-bold mb-2 mt-4">{children}</h3>,
+                                  a: ({ href, children }) => (
+                                    <a
+                                      href={href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-primary underline"
                                     >
                                       {children}
-                                    </code>
-                                  )
-                                },
-                                p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
-                                ul: ({ children }) => <ul className="mb-4 list-disc pl-6 last:mb-0">{children}</ul>,
-                                ol: ({ children }) => <ol className="mb-4 list-decimal pl-6 last:mb-0">{children}</ol>,
-                                li: ({ children }) => <li className="mb-1">{children}</li>,
-                                h1: ({ children }) => <h1 className="text-xl font-bold mb-4 mt-6">{children}</h1>,
-                                h2: ({ children }) => <h2 className="text-lg font-bold mb-3 mt-5">{children}</h2>,
-                                h3: ({ children }) => <h3 className="text-md font-bold mb-2 mt-4">{children}</h3>,
-                                a: ({ href, children }) => (
-                                  <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary underline"
-                                  >
-                                    {children}
-                                  </a>
-                                ),
-                                blockquote: ({ children }) => (
-                                  <blockquote className="border-l-4 border-muted-foreground/30 pl-4 italic my-4">
-                                    {children}
-                                  </blockquote>
-                                ),
-                                hr: () => <hr className="my-4 border-border" />,
-                                table: ({ children }) => (
-                                  <div className="overflow-x-auto my-4">
-                                    <table className="min-w-full divide-y divide-border">{children}</table>
-                                  </div>
-                                ),
-                                thead: ({ children }) => <thead className="bg-muted/50">{children}</thead>,
-                                tbody: ({ children }) => <tbody className="divide-y divide-border">{children}</tbody>,
-                                tr: ({ children }) => <tr>{children}</tr>,
-                                th: ({ children }) => (
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                    {children}
-                                  </th>
-                                ),
-                                td: ({ children }) => <td className="px-3 py-2 whitespace-nowrap">{children}</td>,
+                                    </a>
+                                  ),
+                                  blockquote: ({ children }) => (
+                                    <blockquote className="border-l-4 border-muted-foreground/30 pl-4 italic my-4">
+                                      {children}
+                                    </blockquote>
+                                  ),
+                                  hr: () => <hr className="my-4 border-border" />,
+                                  table: ({ children }) => (
+                                    <div className="overflow-x-auto my-4">
+                                      <table className="min-w-full divide-y divide-border">{children}</table>
+                                    </div>
+                                  ),
+                                  thead: ({ children }) => <thead className="bg-muted/50">{children}</thead>,
+                                  tbody: ({ children }) => <tbody className="divide-y divide-border">{children}</tbody>,
+                                  tr: ({ children }) => <tr>{children}</tr>,
+                                  th: ({ children }) => (
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                      {children}
+                                    </th>
+                                  ),
+                                  td: ({ children }) => <td className="px-3 py-2 whitespace-nowrap">{children}</td>,
+                                }}
+                              >
+                                {content}
+                              </ReactMarkdown>
+                            </div>
+                          )}
+
+                          {/* Add plus icon for creating new node from message */}
+                          {onCreateBranchNode && message.sender === "user" && (
+                            <div
+                              className="absolute -right-3 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onCreateBranchNode(message.content)
+                                toast({
+                                  title: "Branch created",
+                                  description: "New branch node created from this message",
+                                })
                               }}
+                              title="Create branch from this message"
                             >
-                              {message.content}
-                            </ReactMarkdown>
-                          </div>
-                        )}
-
-                        {/* Add plus icon for creating new node from message */}
-                        {onCreateBranchNode && message.sender === "user" && (
-                          <div
-                            className="absolute -right-3 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onCreateBranchNode(message.content)
-                              toast({
-                                title: "Branch created",
-                                description: "New branch node created from this message",
-                              })
-                            }}
-                            title="Create branch from this message"
-                          >
-                            <div className="bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200">
-                              <GitBranch className="h-3.5 w-3.5" />
+                              <div className="bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200">
+                                <GitBranch className="h-3.5 w-3.5" />
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {/* Add plus icon for creating new node from AI message */}
-                        {onCreateBranchNode && message.sender === "ai" && (
-                          <div
-                            className="absolute -left-3 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onCreateBranchNode(message.content)
-                              toast({
-                                title: "Branch created",
-                                description: "New branch node created from this message",
-                              })
-                            }}
-                            title="Create branch from this message"
-                          >
-                            <div className="bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200">
-                              <GitBranch className="h-3.5 w-3.5" />
+                          {/* Add plus icon for creating new node from AI message */}
+                          {onCreateBranchNode && message.sender === "ai" && (
+                            <div
+                              className="absolute -left-3 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onCreateBranchNode(message.content)
+                                toast({
+                                  title: "Branch created",
+                                  description: "New branch node created from this message",
+                                })
+                              }}
+                              title="Create branch from this message"
+                            >
+                              <div className="bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200">
+                                <GitBranch className="h-3.5 w-3.5" />
+                              </div>
                             </div>
+                          )}
+                        </div>
+                        {message.sender === "user" && (
+                          <div className="bg-primary/15 p-1.5 rounded-full shadow-sm">
+                            <User className="h-3.5 w-3.5 text-primary" />
                           </div>
                         )}
                       </div>
-                      {message.sender === "user" && (
-                        <div className="bg-primary/15 p-1.5 rounded-full shadow-sm">
-                          <User className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                      )}
-                    </div>
-                    <span className={`text-xs text-muted-foreground mt-1.5 px-2 ${isExpanded ? "opacity-70" : ""}`}>
-                      {format(new Date(message.timestamp), "h:mm a")}
-                    </span>
-                  </motion.div>
-
-                  {/* Branch indicator */}
-                  {branchPoints[message.id] && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.1 }}
-                      className={`flex my-2 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={`flex items-center gap-1.5 h-7 px-2 py-1 text-xs rounded-md border border-dashed ${
-                          message.sender === "user"
-                            ? "border-primary/30 text-primary"
-                            : "border-orange-500/30 text-orange-500"
-                        }`}
-                        onClick={() => handleNavigateToNode(branchPoints[message.id])}
-                      >
-                        <GitBranch className="h-3 w-3" />
-                        <span>Branch created</span>
-                        <CornerDownRight className="h-3 w-3 ml-1" />
-                      </Button>
+                      <span className={`text-xs text-muted-foreground mt-1.5 px-2 ${isExpanded ? "opacity-70" : ""}`}>
+                        {format(new Date(message.timestamp), "h:mm a")}
+                      </span>
                     </motion.div>
-                  )}
 
-                  {/* Connection indicator */}
-                  {connectionPoints[message.id] && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.1 }}
-                      className={`flex my-2 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={`flex items-center gap-1.5 h-7 px-2 py-1 text-xs rounded-md border border-dashed ${
-                          connectionPoints[message.id].type === "mainNode"
-                            ? "border-primary/30 text-primary"
-                            : connectionPoints[message.id].type === "branchNode"
-                              ? "border-orange-500/30 text-orange-500"
-                              : "border-blue-500/30 text-blue-500"
-                        }`}
-                        onClick={() => handleNavigateToNode(connectionPoints[message.id].nodeId)}
+                    {/* Branch indicator */}
+                    {branchPoints[message.id] && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 }}
+                        className={`flex my-2 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
                       >
-                        <Link className="h-3 w-3" />
-                        <span>
-                          {connectionPoints[message.id].direction === "outgoing" ? "Connected to" : "Connected from"}{" "}
-                          {getNodeTypeName(connectionPoints[message.id].type)}
-                        </span>
-                        {connectionPoints[message.id].direction === "outgoing" ? (
-                          <ArrowRight className="h-3 w-3 ml-1" />
-                        ) : (
-                          <ArrowLeft className="h-3 w-3 ml-1" />
-                        )}
-                      </Button>
-                    </motion.div>
-                  )}
-                </div>
-              ))
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`flex items-center gap-1.5 h-7 px-2 py-1 text-xs rounded-md border border-dashed ${
+                            message.sender === "user"
+                              ? "border-primary/30 text-primary"
+                              : "border-orange-500/30 text-orange-500"
+                          }`}
+                          onClick={() => handleNavigateToNode(branchPoints[message.id])}
+                        >
+                          <GitBranch className="h-3 w-3" />
+                          <span>Branch created</span>
+                          <CornerDownRight className="h-3 w-3 ml-1" />
+                        </Button>
+                      </motion.div>
+                    )}
+
+                    {/* Connection indicator */}
+                    {connectionPoints[message.id] && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 }}
+                        className={`flex my-2 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`flex items-center gap-1.5 h-7 px-2 py-1 text-xs rounded-md border border-dashed ${
+                            connectionPoints[message.id].type === "mainNode"
+                              ? "border-primary/30 text-primary"
+                              : connectionPoints[message.id].type === "branchNode"
+                                ? "border-orange-500/30 text-orange-500"
+                                : "border-blue-500/30 text-blue-500"
+                          }`}
+                          onClick={() => handleNavigateToNode(connectionPoints[message.id].nodeId)}
+                        >
+                          <Link className="h-3 w-3" />
+                          <span>
+                            {connectionPoints[message.id].direction === "outgoing" ? "Connected to" : "Connected from"}{" "}
+                            {getNodeTypeName(connectionPoints[message.id].type)}
+                          </span>
+                          {connectionPoints[message.id].direction === "outgoing" ? (
+                            <ArrowRight className="h-3 w-3 ml-1" />
+                          ) : (
+                            <ArrowLeft className="h-3 w-3 ml-1" />
+                          )}
+                        </Button>
+                      </motion.div>
+                    )}
+                  </div>
+                )
+              })
             )}
             {thinking && (
               <motion.div
@@ -761,7 +810,7 @@ export default function ChatPanel({
               isExpanded
                 ? readingMode
                   ? "hidden"
-                  : "sticky bottom-0 p-6 border-t border-border/60 bg-gradient-to-r from-background/95 to-card/95 backdrop-blur-md max-w-4xl mx-auto w-full shadow-sm"
+                  : "sticky bottom-0 p-6 border-t border-border/60 bg-gradient-to-r from-background/95 to-card/95 backdrop-blur-md max-w-4xl mx-auto w-full shadow-md"
                 : "p-4 border-t border-border/60 bg-gradient-to-b from-background/80 to-card/80 backdrop-blur-sm"
             }`}
             initial={{ opacity: 0, y: 10 }}
@@ -792,7 +841,7 @@ export default function ChatPanel({
                   placeholder="Type your message..."
                   className={`flex-1 ${
                     isExpanded
-                      ? "bg-background/80 border-muted-foreground/20 focus-visible:ring-primary/30 h-12 text-base shadow-sm"
+                      ? "bg-background/80 border-muted-foreground/20 focus-visible:ring-primary/30 h-12 text-base shadow-sm rounded-xl"
                       : "bg-background/70 backdrop-blur-sm border-muted-foreground/20 focus-visible:ring-primary/30 shadow-sm hover:shadow transition-shadow duration-200"
                   }`}
                 />
@@ -801,7 +850,7 @@ export default function ChatPanel({
                   size={isExpanded ? "default" : "icon"}
                   className={`${
                     isExpanded
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90 px-6 shadow-sm hover:shadow transition-shadow duration-200"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90 px-6 shadow-sm hover:shadow transition-shadow duration-200 rounded-xl h-12"
                       : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow transition-shadow duration-200"
                   }`}
                 >
