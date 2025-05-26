@@ -23,13 +23,17 @@ import { getMockResponse } from "@/lib/mock-response"
 // Import server actions
 import {
   saveConversation,
-  saveAllConversations,
   getUserConversations,
   deleteConversation as deleteConversationFromDB,
   setActiveConversation as setActiveConversationInDB,
+  trackInteraction,
+  getInteractionHistory,
 } from "@/app/actions/canvas"
 import { useSession } from "next-auth/react"
 import { initializeDatabase } from "@/lib/init-db"
+import { useEffect as useEffectOriginal } from "react"
+import SessionManager from "@/components/session-manager"
+import SaveStatus from "@/components/save-status"
 
 const initialNodes = [
   {
@@ -118,6 +122,10 @@ export default function ContextTree() {
   const [isSaving, setIsSaving] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
   const [dbInitialized, setDbInitialized] = useState(false)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [isOnline, setIsOnline] = useState(true)
+  const [interactionHistory, setInteractionHistory] = useState<any[]>([])
 
   // Auto-save timer
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -154,33 +162,52 @@ export default function ContextTree() {
         try {
           const result = await getUserConversations()
 
-          if (result.success && result.conversations.length > 0) {
-            setConversations(result.conversations)
-
-            // Set active conversation
-            if (result.activeConversationId) {
-              setActiveConversation(result.activeConversationId)
-            } else {
-              // Default to the first conversation
-              setActiveConversation(result.conversations[0].id)
+          if (result.success) {
+            // Store the session ID
+            if (result.sessionId) {
+              setCurrentSessionId(result.sessionId)
             }
 
-            setIsInitialized(true)
-          } else if (result.success && result.conversations.length === 0) {
-            // No conversations found, create a default one and save it
-            const defaultConversation = {
-              id: uuidv4(),
-              name: "New Context",
-              nodes: initialNodes,
-              edges: initialEdges,
+            if (result.conversations.length > 0) {
+              setConversations(result.conversations)
+
+              // Set active conversation
+              if (result.activeConversationId) {
+                setActiveConversation(result.activeConversationId)
+              } else {
+                // Default to the first conversation
+                setActiveConversation(result.conversations[0].id)
+              }
+
+              // Load interaction history for the active conversation
+              if (result.activeConversationId) {
+                const historyResult = await getInteractionHistory(result.activeConversationId)
+                if (historyResult.success) {
+                  setInteractionHistory(historyResult.interactions)
+                }
+              }
+
+              setIsInitialized(true)
+            } else if (result.success && result.conversations.length === 0) {
+              // No conversations found, create a default one and save it
+              const defaultConversation = {
+                id: uuidv4(),
+                name: "New Context",
+                nodes: initialNodes,
+                edges: initialEdges,
+              }
+
+              setConversations([defaultConversation])
+              setActiveConversation(defaultConversation.id)
+
+              // Save the default conversation
+              const saveResult = await saveConversation(defaultConversation)
+              if (saveResult.sessionId) {
+                setCurrentSessionId(saveResult.sessionId)
+              }
+
+              setIsInitialized(true)
             }
-
-            setConversations([defaultConversation])
-            setActiveConversation(defaultConversation.id)
-
-            // Save the default conversation
-            await saveConversation(defaultConversation)
-            setIsInitialized(true)
           }
         } catch (error) {
           console.error("Error loading user data:", error)
@@ -219,19 +246,44 @@ export default function ContextTree() {
     }
   }, [conversations, activeConversation, nodes, edges, status, isInitialized, dbInitialized])
 
+  // Track online/offline status
+  useEffectOriginal(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [])
+
   // Handle auto-save
   const handleAutoSave = async () => {
     if (status === "authenticated" && isInitialized && dbInitialized) {
       try {
         setIsSaving(true)
 
-        // Save all conversations
-        await saveAllConversations(conversations)
+        // Find the active conversation
+        const activeConv = conversations.find((conv) => conv.id === activeConversation)
+        if (activeConv) {
+          // Save the active conversation
+          const result = await saveConversation(activeConv, currentSessionId)
 
-        // Update active conversation in DB
-        await setActiveConversationInDB(activeConversation)
+          if (result.success) {
+            // Update session ID if it was created during save
+            if (result.sessionId && !currentSessionId) {
+              setCurrentSessionId(result.sessionId)
+            }
 
-        console.log("Auto-saved successfully")
+            setLastSaved(new Date())
+            console.log("Auto-saved successfully")
+          } else {
+            throw new Error(result.error || "Unknown error")
+          }
+        }
       } catch (error) {
         console.error("Auto-save failed:", error)
       } finally {
@@ -821,9 +873,19 @@ export default function ContextTree() {
         autoSaveTimerRef.current = setTimeout(async () => {
           await handleAutoSave()
         }, 2000) // Save sooner after a message
+
+        if (currentSessionId) {
+          await trackInteraction(
+            activeConversation,
+            "send_message",
+            newUserMessage.id,
+            { content: content, nodeId: activeNode },
+            currentSessionId,
+          )
+        }
       }
     },
-    [activeNode, setNodes, activeConversation, setConversations, setMessages, nodes],
+    [activeNode, setNodes, activeConversation, setConversations, setMessages, nodes, currentSessionId],
   )
 
   const handleToggleExpand = useCallback(
@@ -1601,9 +1663,22 @@ export default function ContextTree() {
       const activeConv = conversations.find((conv) => conv.id === activeConversation)
       if (activeConv) {
         // Save the active conversation
-        const result = await saveConversation(activeConv)
+        const result = await saveConversation(activeConv, currentSessionId)
 
         if (result.success) {
+          // Track the save interaction
+          if (currentSessionId) {
+            await trackInteraction(
+              activeConversation,
+              "manual_save",
+              activeConversation,
+              { conversationName: activeConv.name },
+              currentSessionId,
+            )
+          }
+
+          setLastSaved(new Date())
+
           toast({
             title: "Canvas saved",
             description: "Your work has been saved to the database.",
@@ -1763,6 +1838,44 @@ export default function ContextTree() {
     [activeConversation, setConversations, setSelectedEdge, handleEdgeRemoval],
   )
 
+  const handleForceSync = async () => {
+    setIsLoading(true)
+    try {
+      // Reload the current conversation from the database
+      const result = await getUserConversations()
+
+      if (result.success && result.conversations.length > 0) {
+        // Find the current active conversation in the result
+        const updatedConversation = result.conversations.find((conv) => conv.id === activeConversation)
+
+        if (updatedConversation) {
+          // Update the local state with the latest from the database
+          setConversations((prevConversations) =>
+            prevConversations.map((conv) => (conv.id === activeConversation ? updatedConversation : conv)),
+          )
+
+          // Update nodes and edges
+          setNodes(updatedConversation.nodes)
+          setEdges(updatedConversation.edges)
+
+          toast({
+            title: "Canvas synchronized",
+            description: "Your canvas has been synchronized with the latest changes.",
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Error syncing canvas:", error)
+      toast({
+        title: "Error synchronizing",
+        description: "There was a problem synchronizing your canvas.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen">
       <Navbar
@@ -1864,12 +1977,10 @@ export default function ContextTree() {
               />
             </>
           )}
-          {isSaving && (
-            <div className="absolute bottom-4 right-4 bg-white rounded-md shadow-md px-3 py-2 flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
-              <span className="text-sm text-gray-600">Saving...</span>
-            </div>
-          )}
+          <div className="absolute bottom-4 right-4 flex flex-col items-end space-y-2">
+            <SaveStatus isSaving={isSaving} lastSaved={lastSaved} isOnline={isOnline} />
+            <SessionManager currentSessionId={currentSessionId} onForceSync={handleForceSync} />
+          </div>
         </div>
       </div>
     </div>

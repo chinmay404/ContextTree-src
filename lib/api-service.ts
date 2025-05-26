@@ -1,17 +1,24 @@
 import { getUserSessionId } from "@/lib/auth"
+import { getMockResponse } from "@/lib/mock-response"
 
 interface ChatRequestPayload {
   message: string
+  message_id: string
   conversation_id: string
   model_name: string
   temperature: number
-  context: string
+  context: string[] // String array
   user_id: string
 }
 
-const getMockResponse = (message: string): string => {
-  // Mock implementation for fallback
-  return `Mock response for: ${message}`
+// Simple function to generate a unique message ID
+const generateMessageId = (): string => {
+  return Date.now().toString() + Math.random().toString(36).substring(2, 9)
+}
+
+// Generate a unique ID for use in conversation_id
+const generateUniqueId = (): string => {
+  return Math.random().toString(36).substring(2, 15)
 }
 
 export const getChatResponse = async (
@@ -22,16 +29,22 @@ export const getChatResponse = async (
 ): Promise<string> => {
   const userId = getUserSessionId()
 
+  // Create conversation_id by combining userId and a unique identifier
+  const conversationId = `${userId}_${nodeId}`
+
   const payload: ChatRequestPayload = {
     message,
-    conversation_id: nodeId,
-    model_name: modelName,
+    message_id: generateMessageId(), // Generate a unique message ID
+    conversation_id: conversationId, // Combined user ID and node ID
+    model_name: modelName, // User selected model
     temperature: 0,
-    context: parentNodeIds.join(","),
+    context: parentNodeIds, // Send as array directly
     user_id: userId,
   }
 
   try {
+    console.log("Sending chat request with payload:", JSON.stringify(payload))
+
     // Use our proxy API route instead of calling the external API directly
     const response = await fetch("/api/chat", {
       method: "POST",
@@ -42,10 +55,12 @@ export const getChatResponse = async (
     })
 
     if (!response.ok) {
+      console.error(`API request failed with status ${response.status}: ${response.statusText}`)
       throw new Error(`API request failed with status ${response.status}: ${response.statusText}`)
     }
 
     const data = await response.text()
+    console.log("API response received:", data.substring(0, 100) + "...") // Log first 100 chars of response
     return data
   } catch (error) {
     console.error("Error fetching chat response:", error)
