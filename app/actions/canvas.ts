@@ -6,7 +6,7 @@ import clientPromise from "@/lib/mongodb"
 import type { CanvasData, UserCanvasData, CanvasInteraction } from "@/lib/models/canvas"
 import { revalidatePath } from "next/cache"
 import { v4 as uuidv4 } from "uuid"
-import { createCanvasSession, updateSessionActivity } from "@/lib/session-manager"
+import { createCanvasSession, updateSessionActivity } from "@/components/session-manager"
 
 // Save a conversation to MongoDB with optimistic concurrency control
 export async function saveConversation(conversationData: any, sessionId?: string) {

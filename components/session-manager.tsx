@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { getUserActiveSessions } from "@/lib/session-manager"
+import { getUserActiveSessions } from "@/components/session-manager"
 import type { CanvasSession } from "@/lib/models/canvas"
 import { formatDistanceToNow } from "date-fns"
 

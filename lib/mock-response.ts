@@ -1,4 +1,3 @@
-// This provides a fallback when the API is unavailable
 export const getMockResponse = (message: string): string => {
   // Simple responses based on message content
   if (message.toLowerCase().includes("hello") || message.toLowerCase().includes("hi")) {
