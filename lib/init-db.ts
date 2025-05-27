@@ -34,6 +34,11 @@ export async function initializeDatabase() {
       await db.collection("canvasSessions").createIndex({ userId: 1, conversationId: 1 })
     }
 
+    if (!collectionNames.includes("users")) {
+      await db.createCollection("users")
+      await db.collection("users").createIndex({ userId: 1 }, { unique: true })
+    }
+
     return { success: true }
   } catch (error) {
     console.error("Error initializing database:", error)

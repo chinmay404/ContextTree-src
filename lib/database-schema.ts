@@ -6,38 +6,12 @@ import type { ObjectId } from "mongodb"
 
 export interface User {
   _id: ObjectId
-  userId: string // Google OAuth ID or email
-  email: string
+  googleId: string // Google OAuth sub or email
   name: string
+  email: string
   avatar?: string
-  profile: {
-    displayName: string
-    bio?: string
-    preferences: {
-      theme: "light" | "dark" | "system"
-      language: string
-      timezone: string
-      notifications: {
-        email: boolean
-        push: boolean
-        mentions: boolean
-      }
-    }
-  }
-  subscription: {
-    plan: "free" | "pro" | "enterprise"
-    status: "active" | "cancelled" | "expired"
-    startDate: Date
-    endDate?: Date
-    features: string[]
-  }
-  metadata: {
-    createdAt: Date
-    updatedAt: Date
-    lastLoginAt: Date
-    isActive: boolean
-    version: number
-  }
+  createdAt: Date
+  updatedAt: Date
 }
 
 // ============================================================================
@@ -46,75 +20,13 @@ export interface User {
 
 export interface Canvas {
   _id: ObjectId
-  canvasId: string // Unique identifier
-  userId: string // Owner of the canvas
-  metadata: {
-    name: string
-    description?: string
-    tags: string[]
-    category?: string
-    isPublic: boolean
-    isTemplate: boolean
-  }
-  settings: {
-    theme: string
-    layout: "flow" | "grid" | "freeform"
-    zoom: number
-    viewport: {
-      x: number
-      y: number
-      width: number
-      height: number
-    }
-    gridSettings: {
-      enabled: boolean
-      size: number
-      color: string
-    }
-  }
-  permissions: {
-    owner: string // userId
-    collaborators: Array<{
-      userId: string
-      role: "viewer" | "editor" | "admin"
-      permissions: string[]
-      addedAt: Date
-      addedBy: string
-    }>
-    shareSettings: {
-      isPublic: boolean
-      allowComments: boolean
-      allowCopy: boolean
-      shareLink?: string
-      expiresAt?: Date
-    }
-  }
-  versioning: {
-    currentVersion: number
-    versions: Array<{
-      version: number
-      createdAt: Date
-      createdBy: string
-      description?: string
-      snapshot: {
-        nodes: string[] // nodeIds
-        edges: string[] // edgeIds
-      }
-    }>
-  }
-  statistics: {
-    nodeCount: number
-    messageCount: number
-    collaboratorCount: number
-    viewCount: number
-    lastActivity: Date
-  }
-  timestamps: {
-    createdAt: Date
-    updatedAt: Date
-    lastModified: Date
-    lastAccessed: Date
-  }
+  chatThreadId: ObjectId // Reference to ChatThread._id
+  name: string
+  nodes: ObjectId[] // Array of Node._id
+  edges: ObjectId[] // Array of Edge._id (optional)
+  createdAt: Date
+  updatedAt: Date
+  version: number
 }
 
 // ============================================================================
@@ -123,91 +35,18 @@ export interface Canvas {
 
 export interface Node {
   _id: ObjectId
-  nodeId: string // Unique identifier
-  canvasId: string
-  userId: string // Creator of the node
-  type: "main" | "branch" | "image" | "text" | "code" | "link" | "file"
-
-  // Position and visual properties
-  position: {
-    x: number
-    y: number
-    z?: number // For layering
-  }
-  dimensions: {
-    width: number
-    height: number
-  }
-  style: {
-    backgroundColor?: string
-    borderColor?: string
-    borderWidth?: number
-    borderRadius?: number
-    opacity?: number
-    rotation?: number
-  }
-
-  // Content based on node type
-  content: {
-    title: string
-    description?: string
-    // Type-specific content
-    text?: string
+  canvasId: ObjectId // Reference to Canvas._id
+  type: string // e.g., "main", "branch", "image"
+  position: { x: number; y: number }
+  data: {
+    label: string
+    style?: Record<string, any>
+    model?: string
     imageUrl?: string
-    fileUrl?: string
-    linkUrl?: string
-    codeContent?: {
-      language: string
-      code: string
-    }
-    metadata?: Record<string, any>
   }
-
-  // Chat thread association
-  chatThread: {
-    threadId: string
-    messageCount: number
-    lastMessageAt?: Date
-    isActive: boolean
-  }
-
-  // Relationships
-  connections: {
-    incoming: string[] // nodeIds that connect to this node
-    outgoing: string[] // nodeIds this node connects to
-    parent?: string // parent nodeId for hierarchical structures
-    children: string[] // child nodeIds
-  }
-
-  // Permissions and sharing
-  permissions: {
-    isPrivate: boolean
-    allowedUsers: string[] // userIds who can access this node
-    inheritFromCanvas: boolean
-  }
-
-  // Versioning
-  versioning: {
-    version: number
-    history: Array<{
-      version: number
-      changes: Record<string, any>
-      changedBy: string
-      changedAt: Date
-      description?: string
-    }>
-  }
-
-  // Metadata
-  metadata: {
-    createdAt: Date
-    updatedAt: Date
-    createdBy: string
-    lastModifiedBy: string
-    tags: string[]
-    isArchived: boolean
-    archivedAt?: Date
-  }
+  messages: ObjectId[] // Array of Message._id
+  createdAt: Date
+  updatedAt: Date
 }
 
 // ============================================================================
@@ -216,56 +55,12 @@ export interface Node {
 
 export interface ChatThread {
   _id: ObjectId
-  threadId: string // Unique identifier
-  nodeId: string // Associated node
-  canvasId: string
-  userId: string // Thread creator
-
-  metadata: {
-    title: string
-    description?: string
-    status: "active" | "resolved" | "archived" | "locked"
-    priority: "low" | "medium" | "high" | "urgent"
-    category?: string
-    tags: string[]
-  }
-
-  participants: Array<{
-    userId: string
-    role: "owner" | "participant" | "observer"
-    joinedAt: Date
-    lastReadAt: Date
-    permissions: string[]
-    isActive: boolean
-  }>
-
-  settings: {
-    isPrivate: boolean
-    allowAnonymous: boolean
-    requireApproval: boolean
-    autoArchiveAfter?: number // days
-    notificationSettings: {
-      mentions: boolean
-      newMessages: boolean
-      statusChanges: boolean
-    }
-  }
-
-  statistics: {
-    messageCount: number
-    participantCount: number
-    lastActivity: Date
-    averageResponseTime?: number
-    resolutionTime?: number
-  }
-
-  timestamps: {
-    createdAt: Date
-    updatedAt: Date
-    lastMessageAt?: Date
-    resolvedAt?: Date
-    archivedAt?: Date
-  }
+  userId: ObjectId // Reference to User._id
+  title: string
+  description?: string
+  canvasId: ObjectId // Reference to Canvas._id
+  createdAt: Date
+  updatedAt: Date
 }
 
 // ============================================================================
@@ -274,79 +69,10 @@ export interface ChatThread {
 
 export interface Message {
   _id: ObjectId
-  messageId: string // Unique identifier
-  threadId: string
-  nodeId: string
-  canvasId: string
-  userId: string // Message sender
-
-  content: {
-    type: "text" | "image" | "file" | "code" | "system" | "ai_response"
-    text?: string
-    html?: string // Rendered markdown/rich text
-    attachments?: Array<{
-      type: "image" | "file" | "link"
-      url: string
-      name: string
-      size?: number
-      mimeType?: string
-      thumbnail?: string
-    }>
-    mentions?: Array<{
-      userId: string
-      displayName: string
-      position: number // Character position in text
-    }>
-    reactions?: Array<{
-      emoji: string
-      userId: string
-      addedAt: Date
-    }>
-  }
-
-  // AI-specific fields
-  aiContext?: {
-    model: string
-    prompt?: string
-    tokens?: {
-      input: number
-      output: number
-    }
-    processingTime?: number
-    confidence?: number
-    thinking?: string // AI thinking process
-  }
-
-  // Message relationships
-  relationships: {
-    replyTo?: string // messageId this is replying to
-    threadPosition: number // Position in thread
-    isEdited: boolean
-    editHistory?: Array<{
-      content: string
-      editedAt: Date
-      editedBy: string
-    }>
-  }
-
-  // Status and metadata
-  status: {
-    isDelivered: boolean
-    isRead: boolean
-    readBy: Array<{
-      userId: string
-      readAt: Date
-    }>
-    isDeleted: boolean
-    deletedAt?: Date
-    deletedBy?: string
-  }
-
-  timestamps: {
-    createdAt: Date
-    updatedAt: Date
-    scheduledFor?: Date // For scheduled messages
-  }
+  nodeId: ObjectId // Reference to Node._id
+  sender: string // "user", "ai", or user name
+  content: string
+  timestamp: Date
 }
 
 // ============================================================================

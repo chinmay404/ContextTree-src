@@ -9,7 +9,7 @@ if (!process.env.MONGODB_URI) {
 const uri = process.env.MONGODB_URI
 const options = {}
 
-let client
+let client: MongoClient
 let clientPromise: Promise<MongoClient>
 
 if (process.env.NODE_ENV === "development") {
@@ -30,6 +30,14 @@ if (process.env.NODE_ENV === "development") {
   clientPromise = client.connect()
 }
 
+// Add a runtime check to ensure the resolved value is a MongoClient
+const checkedClientPromise: Promise<MongoClient> = clientPromise.then((resolved) => {
+  if (typeof resolved?.db !== "function") {
+    throw new Error("MongoDB clientPromise did not resolve to a MongoClient instance. Check your MongoDB URI and client initialization.")
+  }
+  return resolved
+})
+
 // Export a module-scoped MongoClient promise. By doing this in a
 // separate module, the client can be shared across functions.
-export default clientPromise
+export default checkedClientPromise

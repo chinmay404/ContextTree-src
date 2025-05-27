@@ -6,9 +6,9 @@ import clientPromise from "@/lib/mongodb"
 import type { CanvasData, UserCanvasData, CanvasInteraction } from "@/lib/models/canvas"
 import { revalidatePath } from "next/cache"
 import { v4 as uuidv4 } from "uuid"
-import { createCanvasSession, updateSessionActivity } from "@/components/session-manager"
+import { createCanvasSession, updateSessionActivity } from "@/lib/session-manager"
 
-// Save a conversation to MongoDB with optimistic concurrency control
+// Save a conversation to MongoDB with normalized schema
 export async function saveConversation(conversationData: any, sessionId?: string) {
   try {
     const session = await getServerSession(authOptions)
@@ -16,71 +16,123 @@ export async function saveConversation(conversationData: any, sessionId?: string
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
-
+    // Use email as userId for all DB operations
+    const userId = session.user.email
     const client = await clientPromise
     const db = client.db("Conversationstore")
-    const conversationsCollection = db.collection("conversations")
 
-    // Check if conversation already exists
-    const existingConversation = await conversationsCollection.findOne({
-      userId,
-      conversationId: conversationData.id,
-    })
-
-    // If session ID is not provided, create a new one
-    if (!sessionId) {
-      sessionId = await createCanvasSession(conversationData.id)
+    // --- 1. Upsert ChatThread ---
+    // Find or create a chat thread for this conversation
+    let chatThread = await db.collection("chatThreads").findOne({ userId, title: conversationData.name })
+    let chatThreadId: any
+    if (!chatThread) {
+      const chatThreadDoc = {
+        userId,
+        title: conversationData.name,
+        description: "",
+        canvasId: null, // will set after canvas is created
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      const result = await db.collection("chatThreads").insertOne(chatThreadDoc)
+      chatThreadId = result.insertedId
+      chatThread = { ...chatThreadDoc, _id: chatThreadId }
     } else {
-      // Update session activity
-      await updateSessionActivity(sessionId)
+      chatThreadId = chatThread._id
+      await db.collection("chatThreads").updateOne(
+        { _id: chatThreadId },
+        { $set: { title: conversationData.name, updatedAt: new Date() } }
+      )
     }
 
-    const canvasData: CanvasData = {
-      userId,
-      conversationId: conversationData.id,
-      name: conversationData.name,
-      nodes: conversationData.nodes,
-      edges: conversationData.edges,
-      lastModified: new Date(),
-      createdAt: existingConversation ? existingConversation.createdAt : new Date(),
-      version: existingConversation ? (existingConversation.version || 0) + 1 : 1,
+    // --- 2. Upsert Canvas ---
+    let canvas = await db.collection("canvases").findOne({ chatThreadId })
+    let canvasId: any
+    if (!canvas) {
+      const canvasDoc = {
+        chatThreadId,
+        name: conversationData.name,
+        nodes: [],
+        edges: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        version: 1,
+      }
+      const result = await db.collection("canvases").insertOne(canvasDoc)
+      canvasId = result.insertedId
+      canvas = { ...canvasDoc, _id: canvasId }
+      // Update chatThread with canvasId
+      await db.collection("chatThreads").updateOne({ _id: chatThreadId }, { $set: { canvasId } })
+    } else {
+      canvasId = canvas._id
+      await db.collection("canvases").updateOne(
+        { _id: canvasId },
+        { $set: { name: conversationData.name, updatedAt: new Date(), version: (canvas.version || 1) + 1 } }
+      )
     }
 
-    // Use optimistic concurrency control to prevent conflicts
-    const updateResult = await conversationsCollection.updateOne(
-      {
-        userId,
-        conversationId: conversationData.id,
-        ...(existingConversation ? { version: existingConversation.version || 0 } : {}),
-      },
-      { $set: canvasData },
-      { upsert: true },
-    )
+    // --- 3. Upsert Nodes ---
+    const nodeIds: any[] = []
+    for (const node of conversationData.nodes) {
+      // Use node.id as a stable identifier if present
+      let nodeDoc = await db.collection("nodes").findOne({ canvasId, "data.label": node.data.label })
+      let nodeId: any
+      if (!nodeDoc) {
+        const nodeInsert = {
+          canvasId,
+          type: node.type,
+          position: node.position,
+          data: node.data,
+          messages: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        const result = await db.collection("nodes").insertOne(nodeInsert)
+        nodeId = result.insertedId
+        nodeDoc = { ...nodeInsert, _id: nodeId }
+      } else {
+        nodeId = nodeDoc._id
+        await db.collection("nodes").updateOne(
+          { _id: nodeId },
+          { $set: { type: node.type, position: node.position, data: node.data, updatedAt: new Date() } }
+        )
+      }
+      nodeIds.push(nodeId)
 
-    // If no document was modified and it wasn't an upsert, we have a conflict
-    if (updateResult.modifiedCount === 0 && updateResult.upsertedCount === 0 && existingConversation) {
-      // Handle conflict - fetch the latest version and merge changes
-      const latestVersion = await conversationsCollection.findOne({
-        userId,
-        conversationId: conversationData.id,
-      })
-
-      if (latestVersion) {
-        // Implement a simple merge strategy - keep both sets of nodes and edges
-        // A more sophisticated merge would compare timestamps of individual nodes/edges
-        const mergedNodes = mergeArraysById(latestVersion.nodes, conversationData.nodes)
-        const mergedEdges = mergeArraysById(latestVersion.edges, conversationData.edges)
-
-        canvasData.nodes = mergedNodes
-        canvasData.edges = mergedEdges
-        canvasData.version = latestVersion.version + 1
-
-        await conversationsCollection.updateOne({ userId, conversationId: conversationData.id }, { $set: canvasData })
+      // --- 4. Upsert Messages for this node ---
+      if (node.data && node.data.messages && Array.isArray(node.data.messages)) {
+        const messageIds: any[] = []
+        for (const msg of node.data.messages) {
+          // Try to find by content and timestamp
+          let msgDoc = await db.collection("messages").findOne({ nodeId, content: msg.content, timestamp: msg.timestamp })
+          let msgId: any
+          if (!msgDoc) {
+            const msgInsert = {
+              nodeId,
+              sender: msg.sender,
+              content: msg.content,
+              timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+            }
+            const result = await db.collection("messages").insertOne(msgInsert)
+            msgId = result.insertedId
+          } else {
+            msgId = msgDoc._id
+          }
+          messageIds.push(msgId)
+        }
+        // Update node with message ids
+        await db.collection("nodes").updateOne({ _id: nodeId }, { $set: { messages: messageIds } })
       }
     }
+    // Update canvas with node ids
+    await db.collection("canvases").updateOne({ _id: canvasId }, { $set: { nodes: nodeIds, edges: conversationData.edges || [] } })
 
-    // Update user's active conversation
+    // --- 5. Session and userCanvas logic (unchanged) ---
+    if (!sessionId) {
+      sessionId = await createCanvasSession(conversationData.id) || undefined
+    } else {
+      await updateSessionActivity(sessionId)
+    }
     const userCanvasCollection = db.collection("userCanvas")
     await userCanvasCollection.updateOne(
       { userId },
@@ -94,7 +146,6 @@ export async function saveConversation(conversationData: any, sessionId?: string
       },
       { upsert: true },
     )
-
     revalidatePath("/canvas")
     return { success: true, sessionId }
   } catch (error) {
@@ -126,7 +177,8 @@ export async function saveAllConversations(conversations: any[], sessionId?: str
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
+    // Use email as userId for all DB operations
+    const userId = session.user.email
 
     const client = await clientPromise
     const db = client.db("Conversationstore")
@@ -193,24 +245,87 @@ export async function getUserConversations() {
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
+    // Use email as userId for all DB operations
+    const userId = session.user.email
+    const userName = session.user.name || "User"
+    const userAvatar = session.user.image || ""
 
     const client = await clientPromise
     const db = client.db("Conversationstore")
+    const usersCollection = db.collection("users")
     const conversationsCollection = db.collection("conversations")
+    const userCanvasCollection = db.collection("userCanvas")
+
+    // Ensure user exists
+    let user = await usersCollection.findOne({ userId })
+    if (!user) {
+      await usersCollection.insertOne({
+        userId,
+        name: userName,
+        avatar: userAvatar,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    }
 
     // Get all conversations for this user
-    const conversations = await conversationsCollection.find({ userId }).sort({ lastModified: -1 }).toArray()
+    let conversations = await conversationsCollection.find({ userId }).sort({ lastModified: -1 }).toArray()
+
+    // If no conversations, create a default one
+    if (conversations.length === 0) {
+      const { v4: uuidv4 } = await import("uuid")
+      const defaultConversationId = uuidv4()
+      const defaultConversation = {
+        userId,
+        conversationId: defaultConversationId,
+        name: "New Context",
+        nodes: [
+          {
+            id: uuidv4(),
+            type: "mainNode",
+            position: { x: 250, y: 100 },
+            data: {
+              label: "Start",
+              messages: [
+                { id: uuidv4(), sender: "ai", content: "Hello!", timestamp: Date.now() },
+              ],
+              isEditing: false,
+              expanded: true,
+              style: { width: 250 },
+              model: "gpt-4",
+              parents: [],
+            },
+          },
+        ],
+        edges: [],
+        lastModified: new Date(),
+        createdAt: new Date(),
+        version: 1,
+      }
+      await conversationsCollection.insertOne(defaultConversation)
+      conversations = [defaultConversation]
+      // Set as active conversation in userCanvas
+      await userCanvasCollection.updateOne(
+        { userId },
+        {
+          $set: {
+            userId,
+            activeConversationId: defaultConversationId,
+            lastAccessed: new Date(),
+            sessionId: "",
+          },
+        },
+        { upsert: true },
+      )
+    }
 
     // Get user's active conversation
-    const userCanvasCollection = db.collection("userCanvas")
     const userCanvas = (await userCanvasCollection.findOne({ userId })) as UserCanvasData | null
 
     // Create a new session for the active conversation
     let sessionId = userCanvas?.sessionId
     if (userCanvas?.activeConversationId && (!sessionId || sessionId === "")) {
       sessionId = await createCanvasSession(userCanvas.activeConversationId)
-
       // Update the user canvas with the new session ID
       if (sessionId) {
         await userCanvasCollection.updateOne({ userId }, { $set: { sessionId } })
@@ -227,7 +342,7 @@ export async function getUserConversations() {
         lastModified: conv.lastModified,
         version: conv.version || 1,
       })),
-      activeConversationId: userCanvas?.activeConversationId,
+      activeConversationId: userCanvas?.activeConversationId || conversations[0].conversationId,
       sessionId,
     }
   } catch (error) {
@@ -244,7 +359,8 @@ export async function deleteConversation(conversationId: string) {
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
+    // Use email as userId for all DB operations
+    const userId = session.user.email
 
     const client = await clientPromise
     const db = client.db("Conversationstore")
@@ -306,7 +422,8 @@ export async function setActiveConversation(conversationId: string) {
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
+    // Use email as userId for all DB operations
+    const userId = session.user.email
 
     // Create a new session for this conversation
     const sessionId = await createCanvasSession(conversationId)
@@ -350,7 +467,8 @@ export async function trackInteraction(
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
+    // Use email as userId for all DB operations
+    const userId = session.user.email
 
     const client = await clientPromise
     const db = client.db("Conversationstore")
@@ -387,7 +505,8 @@ export async function getInteractionHistory(conversationId: string, limit = 100)
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
+    // Use email as userId for all DB operations
+    const userId = session.user.email
 
     const client = await clientPromise
     const db = client.db("Conversationstore")
