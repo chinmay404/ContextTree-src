@@ -1,12 +1,9 @@
-import { getDatabase } from "@/lib/mongodb"
+import clientPromise from "@/lib/mongodb"
 
 export async function initializeDatabase() {
   try {
-    const db = await getDatabase()
-
-    // Test the connection first
-    await db.admin().ping()
-    console.log("MongoDB connection successful")
+    const client = await clientPromise
+    const db = client.db("Conversationstore")
 
     // Check if collections exist, create them if they don't
     const collections = await db.listCollections().toArray()
@@ -37,18 +34,9 @@ export async function initializeDatabase() {
       await db.collection("canvasSessions").createIndex({ userId: 1, conversationId: 1 })
     }
 
-    if (!collectionNames.includes("users")) {
-      await db.createCollection("users")
-      await db.collection("users").createIndex({ userId: 1 }, { unique: true })
-    }
-
-    console.log("Database initialization completed successfully")
     return { success: true }
   } catch (error) {
     console.error("Error initializing database:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown database error",
-    }
+    return { success: false, error: (error as Error).message }
   }
 }

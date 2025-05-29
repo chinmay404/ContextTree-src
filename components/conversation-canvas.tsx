@@ -14,7 +14,7 @@ import CustomEdge from "@/components/edges/custom-edge"
 import { useToast } from "@/components/ui/use-toast"
 import { v4 as uuidv4 } from "uuid"
 import type { Message, Conversation } from "@/lib/types"
-import type { Edge } from "reactflow"
+import type { Edge, Node } from "reactflow"
 import ConnectionHistory from "@/components/connection-history"
 import type { NodeParentInfo } from "@/lib/types"
 // Add import for the API service at the top
@@ -31,17 +31,18 @@ import {
 } from "@/app/actions/canvas"
 import { useSession } from "next-auth/react"
 import { initializeDatabase } from "@/lib/init-db"
+import { useEffect as useEffectOriginal } from "react"
 import SessionManager from "@/components/session-manager"
 import SaveStatus from "@/components/save-status"
 
-const initialNodes = [
+const initialNodes: Node<any, any>[] = [
   {
     id: "1",
     type: "mainNode",
     position: { x: 250, y: 100 },
     data: {
       label: "Start",
-      messages: [{ id: uuidv4(), sender: "ai", content: "Hello!", timestamp: Date.now() }],
+      messages: [{ id: uuidv4(), sender: "ai" as const, content: "Hello! How can i help you today", timestamp: Date.now() }],
       isEditing: false,
       expanded: true,
       style: { width: 250 },
@@ -51,7 +52,7 @@ const initialNodes = [
   },
 ]
 
-const initialEdges = []
+const initialEdges: Edge[] = []
 
 const nodeTypes = {
   mainNode: MainNode,
@@ -74,19 +75,11 @@ const defaultEdgeOptions = {
   },
 }
 
-interface ContextTreeProps {
-  initialData?: {
-    conversations: any[]
-    activeConversationId: string | null
-    sessionId: string | null
-  }
-}
-
-export default function ContextTree({ initialData }: ContextTreeProps) {
+export default function ContextTree() {
   const { data: session, status } = useSession()
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
-  const [selectedEdge, setSelectedEdge] = useState(null)
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null)
   const [activeNode, setActiveNode] = useState("1")
   const [nodeName, setNodeName] = useState("Start")
   const [messages, setMessages] = useState<Message[]>([
@@ -167,18 +160,7 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
       if (status === "authenticated" && session?.user && !isInitialized && dbInitialized) {
         setIsLoading(true)
         try {
-          // Use initial data if available, otherwise fetch from server
-          let result
-          if (initialData && initialData.conversations.length > 0) {
-            result = {
-              success: true,
-              conversations: initialData.conversations,
-              activeConversationId: initialData.activeConversationId,
-              sessionId: initialData.sessionId,
-            }
-          } else {
-            result = await getUserConversations()
-          }
+          const result = await getUserConversations()
 
           if (result.success) {
             // Store the session ID
@@ -188,25 +170,12 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
 
             if (result.conversations.length > 0) {
               setConversations(result.conversations)
-
-              // Set active conversation
-              if (result.activeConversationId) {
-                setActiveConversation(result.activeConversationId)
-              } else {
-                // Default to the first conversation
-                setActiveConversation(result.conversations[0].id)
-              }
-
-              // Load interaction history for the active conversation
-              if (result.activeConversationId) {
-                const historyResult = await getInteractionHistory(result.activeConversationId)
-                if (historyResult.success) {
-                  setInteractionHistory(historyResult.interactions)
-                }
-              }
-
+              // Set active conversation after conversations are set
+              setTimeout(() => {
+                setActiveConversation((result.activeConversationId ?? result.conversations[0]?.id ?? '1') as string)
+              }, 0)
               setIsInitialized(true)
-            } else if (result.success && result.conversations.length === 0) {
+            } else {
               // No conversations found, create a default one and save it
               const defaultConversation = {
                 id: uuidv4(),
@@ -214,16 +183,13 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
                 nodes: initialNodes,
                 edges: initialEdges,
               }
-
               setConversations([defaultConversation])
               setActiveConversation(defaultConversation.id)
-
               // Save the default conversation
               const saveResult = await saveConversation(defaultConversation)
               if (saveResult.sessionId) {
                 setCurrentSessionId(saveResult.sessionId)
               }
-
               setIsInitialized(true)
             }
           }
@@ -239,9 +205,22 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
         }
       }
     }
-
     loadUserData()
-  }, [status, session, toast, isInitialized, dbInitialized, initialData])
+  }, [status, session, toast, isInitialized, dbInitialized])
+
+  // Set nodes/edges and activeNode after conversations and activeConversation are set
+  useEffect(() => {
+    if (!isInitialized) return;
+    const activeConv = conversations.find((conv) => conv.id === activeConversation)
+    if (activeConv) {
+      setNodes(activeConv.nodes as Node<any, any>[])
+      setEdges(activeConv.edges as Edge[])
+      // Set activeNode to the first node in the conversation if available
+      if (activeConv.nodes && activeConv.nodes.length > 0) {
+        setActiveNode((activeConv.nodes[0]?.id ?? '1') as string)
+      }
+    }
+  }, [activeConversation, conversations, setNodes, setEdges, isInitialized])
 
   // Set up auto-save
   useEffect(() => {
@@ -265,7 +244,7 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
   }, [conversations, activeConversation, nodes, edges, status, isInitialized, dbInitialized])
 
   // Track online/offline status
-  useEffect(() => {
+  useEffectOriginal(() => {
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
 
@@ -314,8 +293,8 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
     // Sync nodes and edges with the active conversation
     const activeConv = conversations.find((conv) => conv.id === activeConversation)
     if (activeConv) {
-      setNodes(activeConv.nodes)
-      setEdges(activeConv.edges)
+      setNodes(activeConv.nodes as Node<any, any>[])
+      setEdges(activeConv.edges as Edge[])
     }
   }, [activeConversation, conversations, setNodes, setEdges])
 
@@ -330,7 +309,7 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
   }, [activeNode, nodes])
 
   // Save viewport state when it changes
-  const onViewportChange = useCallback((viewport) => {
+  const onViewportChange = useCallback((viewport: any) => {
     lastViewportRef.current = viewport
   }, [])
 
@@ -426,7 +405,7 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
 
   // Handle edge creation through the ReactFlow onConnect callback
   const onConnect = useCallback(
-    (params) => {
+    (params: any) => {
       const newEdge = {
         ...params,
         id: `e${params.source}-${params.target}`,
@@ -562,7 +541,10 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
         }
 
         // Update messages in the active node
-        setMessages((prevMessages) => [...prevMessages, newMessage])
+        setMessages((prevMessages: Message[]) => [
+          ...prevMessages,
+          { id: uuidv4(), sender: "user", content: newMessage.content, timestamp: newMessage.timestamp } as Message,
+        ])
 
         // Update the active node with the new message
         setNodes((nds) =>
@@ -762,14 +744,17 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
   const onSendMessage = useCallback(
     async (content: string) => {
       // Create and add the user message
-      const newUserMessage = {
+      const newUserMessage: Message = {
         id: uuidv4(),
         sender: "user",
         content: content,
         timestamp: Date.now(),
       }
 
-      setMessages((prevMessages) => [...prevMessages, newUserMessage])
+      setMessages((prevMessages: Message[]) => [
+        ...prevMessages,
+        newUserMessage,
+      ])
 
       // Update the active node with the new user message
       setNodes((nds) =>
@@ -821,7 +806,7 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
       // Set thinking state to true (we'll pass this down to ChatPanel)
       setChatThinking(true)
 
-      let apiResponse: string
+      let apiResponse = ""
 
       try {
         // Call the API to get a response
@@ -832,14 +817,17 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
         apiResponse = getMockResponse(content)
       } finally {
         // Create and add the AI response message
-        const newAiMessage = {
+        const newAiMessage: Message = {
           id: uuidv4(),
           sender: "ai",
           content: apiResponse || "Sorry, I couldn't generate a response at this time.",
           timestamp: Date.now(),
         }
 
-        setMessages((prevMessages) => [...prevMessages, newAiMessage])
+        setMessages((prevMessages: Message[]) => [
+          ...prevMessages,
+          newAiMessage,
+        ])
 
         // Update the active node with the new AI message
         setNodes((nds) =>
@@ -1547,7 +1535,7 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
     return id
   }
 
-  // Update the createNewConversation function to include parents array for the first node
+  // Update the createNewConversation function to initialize parents array for the first node
   const createNewConversation = async (name: string) => {
     const newConversation = {
       id: uuidv4(),
@@ -1767,7 +1755,10 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
         }
 
         // Update messages in the active node
-        setMessages((prevMessages) => [...prevMessages, newMessage])
+        setMessages((prevMessages: Message[]) => [
+          ...prevMessages,
+          newMessage,
+        ])
 
         // Update the active node with the new message
         setNodes((nds) =>
@@ -1873,8 +1864,8 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
           )
 
           // Update nodes and edges
-          setNodes(updatedConversation.nodes)
-          setEdges(updatedConversation.edges)
+          setNodes(updatedConversation.nodes as Node<any, any>[])
+          setEdges(updatedConversation.edges as Edge[])
 
           toast({
             title: "Canvas synchronized",
@@ -1892,6 +1883,11 @@ export default function ContextTree({ initialData }: ContextTreeProps) {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Render loading state if data is not ready
+  if (isLoading || !isInitialized) {
+    return <div className="flex items-center justify-center h-screen">Loading your canvas...</div>;
   }
 
   return (

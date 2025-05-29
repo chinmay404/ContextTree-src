@@ -261,9 +261,9 @@ export default function LeftSidebar({
         </div>
 
         <div className={`space-y-1 overflow-auto flex-1 custom-scrollbar ${isCollapsed ? "hidden" : "block"}`}>
-          {conversations.map((conversation, idx) => (
+          {conversations.map((conversation) => (
             <div
-              key={conversation.id && conversation.id !== "" ? conversation.id : `conv-${idx}`}
+              key={conversation.id}
               className={`flex items-center justify-between p-2 rounded-md text-sm cursor-pointer hover:bg-accent group ${
                 activeConversation === conversation.id ? "bg-accent" : ""
               }`}
