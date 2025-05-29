@@ -31,7 +31,6 @@ import {
 } from "@/app/actions/canvas"
 import { useSession } from "next-auth/react"
 import { initializeDatabase } from "@/lib/init-db"
-import { useEffect as useEffectOriginal } from "react"
 import SessionManager from "@/components/session-manager"
 import SaveStatus from "@/components/save-status"
 
@@ -75,7 +74,15 @@ const defaultEdgeOptions = {
   },
 }
 
-export default function ContextTree() {
+interface ContextTreeProps {
+  initialData?: {
+    conversations: any[]
+    activeConversationId: string | null
+    sessionId: string | null
+  }
+}
+
+export default function ContextTree({ initialData }: ContextTreeProps) {
   const { data: session, status } = useSession()
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
@@ -160,7 +167,18 @@ export default function ContextTree() {
       if (status === "authenticated" && session?.user && !isInitialized && dbInitialized) {
         setIsLoading(true)
         try {
-          const result = await getUserConversations()
+          // Use initial data if available, otherwise fetch from server
+          let result
+          if (initialData && initialData.conversations.length > 0) {
+            result = {
+              success: true,
+              conversations: initialData.conversations,
+              activeConversationId: initialData.activeConversationId,
+              sessionId: initialData.sessionId,
+            }
+          } else {
+            result = await getUserConversations()
+          }
 
           if (result.success) {
             // Store the session ID
@@ -223,7 +241,7 @@ export default function ContextTree() {
     }
 
     loadUserData()
-  }, [status, session, toast, isInitialized, dbInitialized])
+  }, [status, session, toast, isInitialized, dbInitialized, initialData])
 
   // Set up auto-save
   useEffect(() => {
@@ -247,7 +265,7 @@ export default function ContextTree() {
   }, [conversations, activeConversation, nodes, edges, status, isInitialized, dbInitialized])
 
   // Track online/offline status
-  useEffectOriginal(() => {
+  useEffect(() => {
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
 
@@ -1529,7 +1547,7 @@ export default function ContextTree() {
     return id
   }
 
-  // Update the createNewConversation function to initialize parents array for the first node
+  // Update the createNewConversation function to include parents array for the first node
   const createNewConversation = async (name: string) => {
     const newConversation = {
       id: uuidv4(),

@@ -1,42 +1,36 @@
-"use client"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { getUserConversations } from "@/app/actions/canvas"
+import { redirect } from "next/navigation"
+import CanvasClient from "./canvas-client"
 
-import type React from "react"
+export default async function CanvasPage() {
+  const session = await getServerSession(authOptions)
 
-import ContextTree from "@/components/conversation-canvas"
-import { ThemeProvider } from "@/components/theme-provider"
-import { ReactFlowProvider } from "reactflow"
-import { useEffect } from "react"
-import { SessionProvider } from "next-auth/react"
+  if (!session) {
+    redirect("/auth/login")
+  }
 
-// Error handler component to catch ResizeObserver errors
-function ErrorHandler({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      if (event.message.includes("ResizeObserver")) {
-        // Prevent the error from being displayed in the console
-        event.preventDefault()
+  // Fetch initial data on the server
+  let initialData = {
+    conversations: [],
+    activeConversationId: null,
+    sessionId: null,
+  }
+
+  try {
+    const result = await getUserConversations()
+    if (result.success) {
+      initialData = {
+        conversations: result.conversations,
+        activeConversationId: result.activeConversationId,
+        sessionId: result.sessionId,
       }
     }
+  } catch (error) {
+    console.error("Error fetching initial data:", error)
+    // Continue with empty data - the client will handle creating default conversation
+  }
 
-    window.addEventListener("error", handleError)
-    return () => window.removeEventListener("error", handleError)
-  }, [])
-
-  return <>{children}</>
-}
-
-export default function CanvasPage() {
-  return (
-    <SessionProvider>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        <ErrorHandler>
-          <ReactFlowProvider>
-            <main className="flex min-h-screen flex-col">
-              <ContextTree />
-            </main>
-          </ReactFlowProvider>
-        </ErrorHandler>
-      </ThemeProvider>
-    </SessionProvider>
-  )
+  return <CanvasClient initialData={initialData} />
 }
