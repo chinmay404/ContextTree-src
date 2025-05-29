@@ -11,6 +11,7 @@ if (!process.env.MONGODB_URI) {
   throw new Error('Invalid/Missing environment variable: "MONGODB_URI"')
 }
 
+console.log("MONGODB_URI being used (first 50 chars):", process.env.MONGODB_URI?.substring(0, 50))
 const uri = process.env.MONGODB_URI
 const options = {}
 
