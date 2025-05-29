@@ -5,7 +5,7 @@ export async function initializeDatabase() {
 
   try {
     // Check connection status first
-    const { isConnected, connectionError } = getConnectionStatus()
+    const { isConnected, connectionError } = await getConnectionStatus() // Added await here
     if (!isConnected && connectionError) {
       console.error(`❌ Cannot initialize database: MongoDB connection failed: ${connectionError}`)
       return {

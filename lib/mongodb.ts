@@ -63,10 +63,13 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // Export connection status functions
-export const getConnectionStatus = () => ({
-  isConnected,
-  connectionError: connectionError ? connectionError.message : null,
-})
+export async function getConnectionStatus() {
+  // Made this function async
+  return {
+    isConnected,
+    connectionError: connectionError ? connectionError.message : null,
+  }
+}
 
 // Export a module-scoped MongoClient promise. By doing this in a
 // separate module, the client can be shared across functions.
