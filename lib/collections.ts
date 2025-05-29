@@ -21,8 +21,16 @@ export class DatabaseCollections {
   public static async getInstance(): Promise<DatabaseCollections> {
     if (!DatabaseCollections.instance) {
       DatabaseCollections.instance = new DatabaseCollections()
-      const client = await clientPromise
-      DatabaseCollections.instance.db = client.db("ContextTreeDB")
+      try {
+        const client = await clientPromise
+        DatabaseCollections.instance.db = client.db("ContextTreeDB")
+
+        // Test the connection
+        await DatabaseCollections.instance.db.admin().ping()
+      } catch (error) {
+        console.error("Failed to connect to MongoDB:", error)
+        throw new Error(`Database connection failed: ${error instanceof Error ? error.message : "Unknown error"}`)
+      }
     }
     return DatabaseCollections.instance
   }

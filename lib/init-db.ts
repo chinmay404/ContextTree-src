@@ -5,6 +5,10 @@ export async function initializeDatabase() {
     const client = await clientPromise
     const db = client.db("Conversationstore")
 
+    // Test the connection first
+    await db.admin().ping()
+    console.log("MongoDB connection successful")
+
     // Check if collections exist, create them if they don't
     const collections = await db.listCollections().toArray()
     const collectionNames = collections.map((c) => c.name)
@@ -39,9 +43,13 @@ export async function initializeDatabase() {
       await db.collection("users").createIndex({ userId: 1 }, { unique: true })
     }
 
+    console.log("Database initialization completed successfully")
     return { success: true }
   } catch (error) {
     console.error("Error initializing database:", error)
-    return { success: false, error: (error as Error).message }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown database error",
+    }
   }
 }

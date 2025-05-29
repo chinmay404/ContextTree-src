@@ -6,8 +6,34 @@ if (!process.env.MONGODB_URI) {
   throw new Error('Invalid/Missing environment variable: "MONGODB_URI"')
 }
 
-const uri = process.env.MONGODB_URI
-const options = {}
+// Clean the URI to remove duplicate parameters
+function cleanMongoUri(uri: string): string {
+  try {
+    const url = new URL(uri)
+    const params = new URLSearchParams(url.search)
+
+    // Remove duplicate 'w' parameters if they exist
+    const wValues = params.getAll("w")
+    if (wValues.length > 1) {
+      params.delete("w")
+      // Keep the last 'w' value or default to 'majority'
+      params.set("w", wValues[wValues.length - 1] || "majority")
+    }
+
+    url.search = params.toString()
+    return url.toString()
+  } catch (error) {
+    console.warn("Failed to parse MongoDB URI, using as-is:", error)
+    return uri
+  }
+}
+
+const uri = cleanMongoUri(process.env.MONGODB_URI)
+const options = {
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+}
 
 let client: MongoClient
 let clientPromise: Promise<MongoClient>
@@ -31,12 +57,19 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // Add a runtime check to ensure the resolved value is a MongoClient
-const checkedClientPromise: Promise<MongoClient> = clientPromise.then((resolved) => {
-  if (typeof resolved?.db !== "function") {
-    throw new Error("MongoDB clientPromise did not resolve to a MongoClient instance. Check your MongoDB URI and client initialization.")
-  }
-  return resolved
-})
+const checkedClientPromise: Promise<MongoClient> = clientPromise
+  .then((resolved) => {
+    if (typeof resolved?.db !== "function") {
+      throw new Error(
+        "MongoDB clientPromise did not resolve to a MongoClient instance. Check your MongoDB URI and client initialization.",
+      )
+    }
+    return resolved
+  })
+  .catch((error) => {
+    console.error("MongoDB connection failed:", error)
+    throw error
+  })
 
 // Export a module-scoped MongoClient promise. By doing this in a
 // separate module, the client can be shared across functions.
