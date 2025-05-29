@@ -1,46 +1,49 @@
-export interface CanvasData {
+export interface UserProfile {
   userId: string
-  conversationId: string
-  name: string
-  nodes: any[]
-  edges: any[]
-  lastModified: Date
+  email: string
+  name?: string
+  avatar?: string
+  preferences: UserPreferences
   createdAt: Date
-  version: number // For optimistic concurrency control
+  lastLogin: Date
+  subscription?: {
+    plan: "free" | "pro" | "enterprise"
+    status: "active" | "cancelled" | "expired"
+    expiresAt?: Date
+  }
 }
 
-export interface UserCanvasData {
-  userId: string
-  activeConversationId: string
-  lastAccessed: Date
-  sessionId?: string // Track current session
+export interface UserPreferences {
+  theme: "light" | "dark" | "system"
+  autoSave: boolean
+  autoSaveInterval: number // in seconds
+  defaultModel: string
+  canvasSettings: {
+    snapToGrid: boolean
+    showMinimap: boolean
+    animateEdges: boolean
+  }
+  notifications: {
+    email: boolean
+    browser: boolean
+  }
 }
 
-export interface CanvasInteraction {
-  id: string
-  userId: string
+export interface ConversationMetadata {
   conversationId: string
-  actionType:
-    | "create_node"
-    | "delete_node"
-    | "update_node"
-    | "create_edge"
-    | "delete_edge"
-    | "update_edge"
-    | "send_message"
-    | "rename"
-  entityId: string // Node or edge ID
-  timestamp: Date
-  metadata: any // Additional data about the action
-  sessionId: string // To track which session performed the action
-}
-
-export interface CanvasSession {
-  id: string
   userId: string
-  conversationId: string
-  startTime: Date
-  lastActivity: Date
-  deviceInfo: string
-  isActive: boolean
+  tags: string[]
+  isPublic: boolean
+  collaborators: string[]
+  analytics: {
+    totalNodes: number
+    totalEdges: number
+    totalMessages: number
+    lastActivity: Date
+    timeSpent: number // in minutes
+  }
+  backup: {
+    lastBackup: Date
+    backupCount: number
+  }
 }

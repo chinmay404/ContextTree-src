@@ -3,10 +3,72 @@
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import clientPromise from "@/lib/mongodb"
-import type { CanvasData, UserCanvasData, CanvasInteraction } from "@/lib/models/canvas"
 import { revalidatePath } from "next/cache"
 import { v4 as uuidv4 } from "uuid"
-import { createCanvasSession, updateSessionActivity } from "@/lib/session-manager"
+
+// Helper function to merge arrays by ID
+function mergeArraysById(arr1: any[], arr2: any[]): any[] {
+  const merged = [...arr1]
+  const ids = new Set(arr1.map((item) => item.id))
+
+  arr2.forEach((item) => {
+    if (!ids.has(item.id)) {
+      merged.push(item)
+      ids.add(item.id)
+    }
+  })
+
+  return merged
+}
+
+// Create a new canvas session
+async function createCanvasSession(conversationId: string): Promise<string> {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user) {
+      throw new Error("Authentication required")
+    }
+
+    const userId = session.user.id || session.user.email
+    const sessionId = uuidv4()
+
+    const client = await clientPromise
+    const db = client.db("Conversationstore")
+    const sessionsCollection = db.collection("canvasSessions")
+
+    await sessionsCollection.insertOne({
+      sessionId,
+      userId,
+      conversationId,
+      createdAt: new Date(),
+      lastActivity: new Date(),
+      isActive: true,
+    })
+
+    return sessionId
+  } catch (error) {
+    console.error("Error creating canvas session:", error)
+    return ""
+  }
+}
+
+// Update session activity
+async function updateSessionActivity(sessionId: string): Promise<boolean> {
+  try {
+    if (!sessionId) return false
+
+    const client = await clientPromise
+    const db = client.db("Conversationstore")
+    const sessionsCollection = db.collection("canvasSessions")
+
+    await sessionsCollection.updateOne({ sessionId, isActive: true }, { $set: { lastActivity: new Date() } })
+
+    return true
+  } catch (error) {
+    console.error("Error updating session activity:", error)
+    return false
+  }
+}
 
 // Save a conversation to MongoDB with optimistic concurrency control
 export async function saveConversation(conversationData: any, sessionId?: string) {
@@ -36,7 +98,7 @@ export async function saveConversation(conversationData: any, sessionId?: string
       await updateSessionActivity(sessionId)
     }
 
-    const canvasData: CanvasData = {
+    const canvasData = {
       userId,
       conversationId: conversationData.id,
       name: conversationData.name,
@@ -110,88 +172,6 @@ export async function saveConversation(conversationData: any, sessionId?: string
   }
 }
 
-// Helper function to merge arrays by ID
-function mergeArraysById(arr1: any[], arr2: any[]): any[] {
-  const merged = [...arr1]
-  const ids = new Set(arr1.map((item) => item.id))
-
-  arr2.forEach((item) => {
-    if (!ids.has(item.id)) {
-      merged.push(item)
-      ids.add(item.id)
-    }
-  })
-
-  return merged
-}
-
-// Save all conversations to MongoDB
-export async function saveAllConversations(conversations: any[], sessionId?: string) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session || !session.user) {
-      throw new Error("Authentication required")
-    }
-
-    const userId = session.user.id || session.user.email
-
-    const client = await clientPromise
-    const db = client.db("Conversationstore")
-    const conversationsCollection = db.collection("conversations")
-
-    // Get existing conversations to preserve creation dates and versions
-    const existingConversations = await conversationsCollection.find({ userId }).toArray()
-
-    const existingMap = new Map(
-      existingConversations.map((conv) => [
-        conv.conversationId,
-        { createdAt: conv.createdAt, version: conv.version || 0 },
-      ]),
-    )
-
-    // Prepare bulk operations
-    const operations = conversations.map((conversation) => {
-      const existing = existingMap.get(conversation.id)
-      const createdAt = existing ? existing.createdAt : new Date()
-      const version = existing ? existing.version + 1 : 1
-
-      return {
-        updateOne: {
-          filter: { userId, conversationId: conversation.id },
-          update: {
-            $set: {
-              userId,
-              conversationId: conversation.id,
-              name: conversation.name,
-              nodes: conversation.nodes,
-              edges: conversation.edges,
-              lastModified: new Date(),
-              createdAt,
-              version,
-            },
-          },
-          upsert: true,
-        },
-      }
-    })
-
-    if (operations.length > 0) {
-      await conversationsCollection.bulkWrite(operations)
-    }
-
-    // If session ID is provided, update its activity
-    if (sessionId) {
-      await updateSessionActivity(sessionId)
-    }
-
-    revalidatePath("/canvas")
-    return { success: true }
-  } catch (error) {
-    console.error("Error saving all conversations:", error)
-    return { success: false, error: (error as Error).message }
-  }
-}
-
 // Get all conversations for the current user
 export async function getUserConversations() {
   try {
@@ -211,7 +191,7 @@ export async function getUserConversations() {
 
     // Get user's active conversation
     const userCanvasCollection = db.collection("userCanvas")
-    const userCanvas = (await userCanvasCollection.findOne({ userId })) as UserCanvasData | null
+    const userCanvas = await userCanvasCollection.findOne({ userId })
 
     // Create a new session for the active conversation
     let sessionId = userCanvas?.sessionId
@@ -272,7 +252,7 @@ export async function deleteConversation(conversationId: string) {
 
     // If this was the active conversation, update the user's active conversation
     const userCanvasCollection = db.collection("userCanvas")
-    const userCanvas = (await userCanvasCollection.findOne({ userId })) as UserCanvasData | null
+    const userCanvas = await userCanvasCollection.findOne({ userId })
 
     if (userCanvas && userCanvas.activeConversationId === conversationId) {
       // Find another conversation to set as active
@@ -363,11 +343,11 @@ export async function trackInteraction(
     const db = client.db("Conversationstore")
     const interactionsCollection = db.collection("canvasInteractions")
 
-    const interaction: CanvasInteraction = {
+    const interaction = {
       id: uuidv4(),
       userId,
       conversationId,
-      actionType: actionType as any,
+      actionType,
       entityId,
       timestamp: new Date(),
       metadata,
