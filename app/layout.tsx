@@ -1,32 +1,62 @@
-import type React from "react"
-import "./globals.css"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/components/auth/auth-provider"
+import type { Metadata } from "next";
+import { Inter } from 'next/font/google';
+import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import { initializeDatabase } from "@/lib/init-db"; // Import initializeDatabase
+import { SessionProvider } from "next-auth/react" // Ensure SessionProvider is here if you use NextAuth client-side
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ContextTree",
-  description: "Visualize and navigate your conversations",
+  title: "ContextTree - Visualize Your Ideas",
+  description: "A collaborative canvas for brainstorming and context mapping.",
     generator: 'v0.dev'
-}
+};
 
-export default function RootLayout({
+// Call initializeDatabase once when the server starts
+// This is a common pattern, but for Next.js App Router,
+// this top-level await will ensure it runs before rendering.
+// However, this runs on *every* request in dev, and on build in prod.
+// For a true "once per server start", you might need a different strategy
+// or make initializeDatabase idempotent (safe to run multiple times).
+// For now, this ensures it's called.
+const dbInitializationPromise = initializeDatabase().then(result => {
+  if (result.success) {
+    console.log("APP/LAYOUT.TSX: Database initialization successful (called from layout).");
+  } else {
+    console.error("APP/LAYOUT.TSX: Database initialization failed (called from layout):", result.error);
+  }
+}).catch(error => {
+  console.error("APP/LAYOUT.TSX: Critical error during database initialization (called from layout):", error);
+});
+
+
+export default async function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  // You can await the promise here if you need to ensure it's done before rendering,
+  // but be mindful of increasing server response time.
+  // For now, we've initiated it above.
+  // await dbInitializationPromise; // Uncomment if critical for first render
+
+  console.log("APP/LAYOUT.TSX: RootLayout rendering...");
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <AuthProvider>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <SessionProvider> {/* If using NextAuth client hooks like useSession */}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
             {children}
           </ThemeProvider>
-        </AuthProvider>
+        </SessionProvider>
       </body>
     </html>
-  )
+  );
 }
