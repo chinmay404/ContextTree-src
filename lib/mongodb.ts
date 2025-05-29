@@ -6,85 +6,81 @@ if (!process.env.MONGODB_URI) {
   throw new Error('Invalid/Missing environment variable: "MONGODB_URI"')
 }
 
-// Clean the URI to remove duplicate parameters
+if (!process.env.MONGODB_DB) {
+  throw new Error('Invalid/Missing environment variable: "MONGODB_DB"')
+}
+
+// Comprehensive URI cleaning function
 function cleanMongoUri(uri: string): string {
   try {
     const url = new URL(uri)
-    const params = new URLSearchParams(url.search)
+    const originalParams = url.search
 
-    // List of parameters that commonly get duplicated
-    const duplicateProneParams = ["w", "tls", "ssl", "authSource", "retryWrites", "readPreference", "maxPoolSize"]
+    // Get all parameter names that appear in the URI
+    const allParams = new URLSearchParams(url.search)
+    const paramNames = Array.from(allParams.keys())
 
-    // Remove duplicates for each parameter
-    duplicateProneParams.forEach((param) => {
-      const values = params.getAll(param)
-      if (values.length > 1) {
-        params.delete(param)
-        // Keep the last value or use a sensible default
-        let finalValue = values[values.length - 1]
+    // Create a new URLSearchParams to rebuild clean parameters
+    const cleanParams = new URLSearchParams()
 
-        // Apply defaults for specific parameters if needed
-        switch (param) {
-          case "w":
-            finalValue = finalValue || "majority"
-            break
-          case "tls":
-          case "ssl":
-            finalValue = finalValue || "true"
-            break
-          case "retryWrites":
-            finalValue = finalValue || "true"
-            break
-          case "readPreference":
-            finalValue = finalValue || "primary"
-            break
-          case "maxPoolSize":
-            finalValue = finalValue || "10"
-            break
-        }
-
-        if (finalValue) {
-          params.set(param, finalValue)
-        }
+    // For each unique parameter name, keep only the last value
+    paramNames.forEach((paramName) => {
+      const values = allParams.getAll(paramName)
+      if (values.length > 0) {
+        // Always use the last value to avoid duplicates
+        cleanParams.set(paramName, values[values.length - 1])
       }
     })
 
-    url.search = params.toString()
-    return url.toString()
-  } catch (error) {
-    console.warn("Failed to parse MongoDB URI, attempting manual cleanup:", error)
+    url.search = cleanParams.toString()
+    const cleanedUri = url.toString()
 
-    // Fallback: manual string replacement for common duplicates
-    let cleanedUri = uri
-
-    // Remove duplicate tls parameters
-    cleanedUri = cleanedUri.replace(/([?&])tls=([^&]*)/g, (match, separator, value, offset, string) => {
-      const beforeMatch = string.substring(0, offset)
-      const tlsCount = (beforeMatch.match(/[?&]tls=/g) || []).length
-      return tlsCount === 0 ? match : ""
-    })
-
-    // Remove duplicate w parameters
-    cleanedUri = cleanedUri.replace(/([?&])w=([^&]*)/g, (match, separator, value, offset, string) => {
-      const beforeMatch = string.substring(0, offset)
-      const wCount = (beforeMatch.match(/[?&]w=/g) || []).length
-      return wCount === 0 ? match : ""
-    })
-
-    // Clean up any double separators
-    cleanedUri = cleanedUri.replace(/[?&]{2,}/g, "&").replace(/[?]&/, "?")
+    // Log the cleaning process (without credentials) for debugging
+    if (originalParams !== cleanParams.toString()) {
+      console.log("MongoDB URI cleaned - removed duplicate parameters")
+    }
 
     return cleanedUri
+  } catch (error) {
+    console.warn("Failed to parse MongoDB URI with URL constructor, attempting manual cleanup:", error)
+
+    // More robust fallback: split by ? and & then rebuild
+    try {
+      const [baseUri, queryString] = uri.split("?")
+      if (!queryString) return uri
+
+      const params = queryString.split("&")
+      const paramMap = new Map<string, string>()
+
+      // Process each parameter
+      params.forEach((param) => {
+        const [key, value] = param.split("=")
+        if (key && value !== undefined) {
+          // Always keep the last occurrence of each parameter
+          paramMap.set(key, value)
+        }
+      })
+
+      // Rebuild the query string
+      const cleanQueryString = Array.from(paramMap.entries())
+        .map(([key, value]) => `${key}=${value}`)
+        .join("&")
+
+      return cleanQueryString ? `${baseUri}?${cleanQueryString}` : baseUri
+    } catch (fallbackError) {
+      console.error("Manual URI cleanup also failed:", fallbackError)
+      return uri // Return original URI as last resort
+    }
   }
 }
 
 const uri = cleanMongoUri(process.env.MONGODB_URI)
+const dbName = process.env.MONGODB_DB
+
+// Minimal options to avoid conflicts with URI parameters
 const options = {
-  maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
   connectTimeoutMS: 10000,
-  // Don't set these in options if they're in the URI to avoid conflicts
 }
 
 let client: MongoClient
@@ -116,14 +112,20 @@ const checkedClientPromise: Promise<MongoClient> = clientPromise
         "MongoDB clientPromise did not resolve to a MongoClient instance. Check your MongoDB URI and client initialization.",
       )
     }
+    console.log("MongoDB connection established successfully")
     return resolved
   })
   .catch((error) => {
     console.error("MongoDB connection failed:", error)
-    console.error("Cleaned URI (without credentials):", uri.replace(/\/\/[^@]*@/, "//***:***@"))
     throw error
   })
 
 // Export a module-scoped MongoClient promise. By doing this in a
 // separate module, the client can be shared across functions.
 export default checkedClientPromise
+
+// Export database connection helper
+export async function getDatabase() {
+  const client = await checkedClientPromise
+  return client.db(dbName)
+}

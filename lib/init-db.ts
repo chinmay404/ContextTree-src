@@ -1,9 +1,8 @@
-import clientPromise from "@/lib/mongodb"
+import { getDatabase } from "@/lib/mongodb"
 
 export async function initializeDatabase() {
   try {
-    const client = await clientPromise
-    const db = client.db("Conversationstore")
+    const db = await getDatabase()
 
     // Test the connection first
     await db.admin().ping()

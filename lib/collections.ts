@@ -1,4 +1,4 @@
-import clientPromise from "@/lib/mongodb"
+import { getDatabase } from "@/lib/mongodb"
 import type {
   User,
   Canvas,
@@ -22,8 +22,7 @@ export class DatabaseCollections {
     if (!DatabaseCollections.instance) {
       DatabaseCollections.instance = new DatabaseCollections()
       try {
-        const client = await clientPromise
-        DatabaseCollections.instance.db = client.db("ContextTreeDB")
+        DatabaseCollections.instance.db = await getDatabase()
 
         // Test the connection
         await DatabaseCollections.instance.db.admin().ping()
@@ -90,19 +89,20 @@ export class DatabaseCollections {
   }
 
   private async createIndexes() {
-    const { DatabaseIndexes } = await import("@/lib/models/database-schema")
+    try {
+      // Create basic indexes for common queries
+      await this.users.createIndex({ userId: 1 }, { unique: true })
+      await this.canvases.createIndex({ userId: 1, canvasId: 1 })
+      await this.canvases.createIndex({ "timestamps.lastModified": -1 })
+      await this.nodes.createIndex({ canvasId: 1 })
+      await this.chatThreads.createIndex({ canvasId: 1 })
+      await this.messages.createIndex({ threadId: 1, "relationships.threadPosition": 1 })
+      await this.edges.createIndex({ canvasId: 1 })
+      await this.sessions.createIndex({ userId: 1, isActive: 1 })
 
-    // Create indexes for each collection
-    for (const [collectionName, indexes] of Object.entries(DatabaseIndexes)) {
-      const collection = this.db.collection(collectionName)
-
-      for (const index of indexes) {
-        try {
-          await collection.createIndex(index)
-        } catch (error) {
-          console.warn(`Failed to create index for ${collectionName}:`, error)
-        }
-      }
+      console.log("Database indexes created successfully")
+    } catch (error) {
+      console.warn("Some indexes may already exist:", error)
     }
   }
 
