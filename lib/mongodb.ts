@@ -22,7 +22,7 @@ console.log(
   ),
 )
 
-const uri = process.env.MONGODB_URI
+const uri ="mongodb+srv://chinmaypisal:Sirius17188@contexttree.4g4brxh.mongodb.net/?retryWrites=true&w=majority&appName=ContextTree"
 const options = {} // Add any specific MongoClient options here if needed
 
 let client: MongoClient
