@@ -12,17 +12,16 @@ import type {
   UpdateResult,
   DeleteResult,
   InsertOneResult,
+  IndexSpecification,
 } from "mongodb"
-import clientPromise from "@/lib/mongodb"
+import clientPromise from "@/lib/mongodb" // Assuming @/lib/mongodb.ts is correct and resolvable
 
 console.log("LIB/DB: Module loaded. (Marked as 'use server', exporting async functions)")
 
-// Internal helper functions (not exported directly if not needed by other server modules)
-async function getConnectedClient(): Promise<MongoClient> {
-  // console.log("LIB/DB: getConnectedClient() - Awaiting clientPromise...")
+// Exported helper functions
+export async function getConnectedClient(): Promise<MongoClient> {
   try {
     const client = await clientPromise
-    // console.log("LIB/DB: getConnectedClient() - clientPromise resolved.")
     return client
   } catch (error: any) {
     console.error("LIB/DB: getConnectedClient() - ❌ Error resolving clientPromise:", error.message)
@@ -30,12 +29,18 @@ async function getConnectedClient(): Promise<MongoClient> {
   }
 }
 
-async function getDatabase(dbName = "Conversationstore"): Promise<Db> {
-  // console.log(`LIB/DB: getDatabase('${dbName}') - Getting database instance.`)
+export async function getDatabase(dbName = "Conversationstore"): Promise<Db> {
   const client = await getConnectedClient()
   return client.db(dbName)
 }
 
+// Define 'db' as an explicit async function that wraps getDatabase
+// This ensures 'db' is clearly an async function defined in this module.
+export const db = async (dbName?: string): Promise<Db> => {
+  return getDatabase(dbName)
+}
+
+// Internal performOperation, not exported
 async function performOperation<T extends Document, R>(
   collectionName: string,
   operationName: string, // For logging
@@ -44,17 +49,38 @@ async function performOperation<T extends Document, R>(
 ): Promise<R> {
   console.log(`LIB/DB: ${collectionName}.${operationName}() - Starting. Params: ${JSON.stringify(logParams)}`)
   try {
-    const dbInstance = await getDatabase()
+    const dbInstance = await getDatabase() // Uses the exported getDatabase
     const collection = dbInstance.collection<T>(collectionName)
     const result = await operation(collection)
     console.log(`LIB/DB: ${collectionName}.${operationName}() - ✅ Success.`)
     return result
   } catch (error: any) {
-    console.error(
-      `LIB/DB: ${collectionName}.${operationName}() - ❌ Error:`,
-      error.message,
-      // error.stack // Optional: for more detailed stack trace
-    )
+    console.error(`LIB/DB: ${collectionName}.${operationName}() - ❌ Error:`, error.message)
+    throw error
+  }
+}
+
+// --- Collection Specific Functions ---
+
+export async function createIndexes(
+  collectionName: string,
+  indexes: { key: IndexSpecification; name?: string; unique?: boolean }[],
+): Promise<void> {
+  console.log(
+    `LIB/DB: createIndexes() for ${collectionName} - Starting. Indexes:`,
+    JSON.stringify(indexes.map((idx) => idx.name || JSON.stringify(idx.key))),
+  )
+  try {
+    const dbInstance = await getDatabase()
+    const collection = dbInstance.collection(collectionName)
+    for (const index of indexes) {
+      await collection.createIndex(index.key, { name: index.name, unique: index.unique })
+      console.log(
+        `LIB/DB: createIndexes() for ${collectionName} - ✅ Index created/ensured: ${index.name || JSON.stringify(index.key)}`,
+      )
+    }
+  } catch (error: any) {
+    console.error(`LIB/DB: createIndexes() for ${collectionName} - ❌ Error:`, error.message)
     throw error
   }
 }
@@ -69,16 +95,9 @@ export async function findConversations(filter: Filter<any>, options?: FindOptio
 }
 
 export async function insertOneConversation(doc: OptionalUnlessRequiredId<any>): Promise<InsertOneResult<any>> {
-  const result = await performOperation(
-    "conversations",
-    "insertOne",
-    (col) => col.insertOne(doc),
-    { doc: { id: doc.conversationId, name: doc.name } }, // Log summary
-  )
-  // The performOperation itself doesn't know about constructing { ...doc, _id: result.insertedId }
-  // The raw InsertOneResult is returned. Callers might need to adjust.
-  // Or, adjust performOperation to allow transforming result, but that adds complexity.
-  // For now, returning raw result.
+  const result = await performOperation("conversations", "insertOne", (col) => col.insertOne(doc), {
+    doc: { id: doc.conversationId, name: doc.name },
+  })
   console.log("LIB/DB: conversations.insertOne() - InsertedId:", result.insertedId)
   return result
 }
@@ -218,13 +237,12 @@ export async function insertOneUserProfile(doc: OptionalUnlessRequiredId<any>): 
 }
 
 export async function upsertOneUserProfile(
-  // Changed from updateOne to upsertOne for consistency
   filter: Filter<any>,
   update: UpdateFilter<any> | Partial<any>,
 ): Promise<UpdateResult> {
   const result = await performOperation(
     "userProfiles",
-    "upsertOne", // Changed name
+    "upsertOne",
     (col) => col.updateOne(filter, update, { upsert: true }),
     { filter },
   )
