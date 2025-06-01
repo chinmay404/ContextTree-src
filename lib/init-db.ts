@@ -1,119 +1,143 @@
-import clientPromise, { getConnectionStatus } from "@/lib/mongodb"
+import clientPromise, { getConnectionStatus } from "@/lib/mongodb" // Assuming getConnectionStatus is async
+
+console.log("LIB/INIT-DB: Module loaded.")
 
 export async function initializeDatabase() {
-  console.log("🔄 Initializing database...")
+  console.log("LIB/INIT-DB: initializeDatabase() - 🔄 Initializing database...")
 
   try {
-    // Check connection status first
-    const { isConnected, connectionError } = await getConnectionStatus() // Added await here
-    if (!isConnected && connectionError) {
-      console.error(`❌ Cannot initialize database: MongoDB connection failed: ${connectionError}`)
+    console.log("LIB/INIT-DB: initializeDatabase() - Checking MongoDB connection status...")
+    const status = await getConnectionStatus() // getConnectionStatus is async
+    if (!status.isConnected && status.connectionError) {
+      console.error(
+        `LIB/INIT-DB: initializeDatabase() - ❌ Cannot initialize database: MongoDB connection failed: ${status.connectionError}`,
+      )
       return {
         success: false,
-        error: `MongoDB connection failed: ${connectionError}`,
+        error: `MongoDB connection failed: ${status.connectionError}`,
         connectionStatus: "failed",
       }
     }
+    if (!status.isConnected) {
+      console.warn(
+        "LIB/INIT-DB: initializeDatabase() - MongoDB not connected yet, but no specific error. Proceeding to await clientPromise.",
+      )
+    } else {
+      console.log("LIB/INIT-DB: initializeDatabase() - ✅ MongoDB connection status is good.")
+    }
 
-    // Wait for client promise to resolve
+    console.log("LIB/INIT-DB: initializeDatabase() - Awaiting clientPromise...")
     const client = await clientPromise
-    console.log("✅ MongoDB client connected, initializing database...")
+    console.log("LIB/INIT-DB: initializeDatabase() - ✅ MongoDB client obtained. Initializing collections...")
 
-    const db = client.db("Conversationstore")
+    const db = client.db("Conversationstore") // Default DB name
 
-    // Check if collections exist, create them if they don't
-    console.log("🔄 Checking collections...")
-    const collections = await db.listCollections().toArray()
-    const collectionNames = collections.map((c) => c.name)
+    const collectionsToEnsure = [
+      {
+        name: "conversations",
+        indexes: [
+          { key: { userId: 1, conversationId: 1 }, options: { unique: true } },
+          { key: { userId: 1, lastModified: -1 } },
+          { key: { userId: 1, createdAt: -1 } },
+          { key: { name: "text" } },
+        ],
+      },
+      { name: "userCanvas", indexes: [{ key: { userId: 1 }, options: { unique: true } }] },
+      {
+        name: "canvasInteractions",
+        indexes: [
+          { key: { userId: 1, conversationId: 1, timestamp: -1 } },
+          { key: { sessionId: 1 } },
+          { key: { actionType: 1, timestamp: -1 } },
+        ],
+      },
+      {
+        name: "canvasSessions",
+        indexes: [
+          { key: { userId: 1, isActive: 1 } },
+          { key: { userId: 1, conversationId: 1 } },
+          { key: { lastActivity: -1 } },
+        ],
+      },
+      {
+        name: "userProfiles",
+        indexes: [
+          { key: { userId: 1 }, options: { unique: true } },
+          { key: { email: 1 }, options: { unique: true } },
+          { key: { lastLogin: -1 } },
+        ],
+      },
+      {
+        name: "conversationMetadata",
+        indexes: [
+          { key: { userId: 1, conversationId: 1 }, options: { unique: true } },
+          { key: { userId: 1, "analytics.lastActivity": -1 } },
+          { key: { tags: 1 } },
+          { key: { isPublic: 1 } },
+        ],
+      },
+      {
+        name: "conversationBackups",
+        indexes: [
+          { key: { userId: 1, conversationId: 1, createdAt: -1 } },
+          { key: { createdAt: 1 }, options: { expireAfterSeconds: 2592000 } }, // 30 days TTL
+        ],
+      },
+    ]
 
-    // Existing collections
-    if (!collectionNames.includes("conversations")) {
-      console.log("📦 Creating conversations collection...")
-      await db.createCollection("conversations")
-      // Enhanced indexes for better performance
-      await db.collection("conversations").createIndex({ userId: 1, conversationId: 1 }, { unique: true })
-      await db.collection("conversations").createIndex({ userId: 1, lastModified: -1 })
-      await db.collection("conversations").createIndex({ userId: 1, createdAt: -1 })
-      await db.collection("conversations").createIndex({ name: "text" }) // Text search on conversation names
+    console.log("LIB/INIT-DB: initializeDatabase() - 🔄 Checking and creating collections and indexes...")
+    const existingCollections = (await db.listCollections().toArray()).map((c) => c.name)
+
+    for (const colInfo of collectionsToEnsure) {
+      if (!existingCollections.includes(colInfo.name)) {
+        console.log(`LIB/INIT-DB: initializeDatabase() - 📦 Collection '${colInfo.name}' not found. Creating...`)
+        await db.createCollection(colInfo.name)
+        console.log(`LIB/INIT-DB: initializeDatabase() - ✅ Collection '${colInfo.name}' created.`)
+      } else {
+        console.log(`LIB/INIT-DB: initializeDatabase() - ℹ️ Collection '${colInfo.name}' already exists.`)
+      }
+      if (colInfo.indexes && colInfo.indexes.length > 0) {
+        console.log(`LIB/INIT-DB: initializeDatabase() - 🔄 Ensuring indexes for '${colInfo.name}'...`)
+        await db.collection(colInfo.name).createIndexes(colInfo.indexes as any) // Type assertion if needed
+        console.log(`LIB/INIT-DB: initializeDatabase() - ✅ Indexes ensured for '${colInfo.name}'.`)
+      }
     }
 
-    if (!collectionNames.includes("userCanvas")) {
-      console.log("📦 Creating userCanvas collection...")
-      await db.createCollection("userCanvas")
-      await db.collection("userCanvas").createIndex({ userId: 1 }, { unique: true })
-    }
-
-    if (!collectionNames.includes("canvasInteractions")) {
-      console.log("📦 Creating canvasInteractions collection...")
-      await db.createCollection("canvasInteractions")
-      await db.collection("canvasInteractions").createIndex({ userId: 1, conversationId: 1, timestamp: -1 })
-      await db.collection("canvasInteractions").createIndex({ sessionId: 1 })
-      await db.collection("canvasInteractions").createIndex({ actionType: 1, timestamp: -1 })
-    }
-
-    if (!collectionNames.includes("canvasSessions")) {
-      console.log("📦 Creating canvasSessions collection...")
-      await db.createCollection("canvasSessions")
-      await db.collection("canvasSessions").createIndex({ userId: 1, isActive: 1 })
-      await db.collection("canvasSessions").createIndex({ userId: 1, conversationId: 1 })
-      await db.collection("canvasSessions").createIndex({ lastActivity: -1 })
-    }
-
-    // New collections for enhanced functionality
-    if (!collectionNames.includes("userProfiles")) {
-      console.log("📦 Creating userProfiles collection...")
-      await db.createCollection("userProfiles")
-      await db.collection("userProfiles").createIndex({ userId: 1 }, { unique: true })
-      await db.collection("userProfiles").createIndex({ email: 1 }, { unique: true })
-      await db.collection("userProfiles").createIndex({ lastLogin: -1 })
-    }
-
-    if (!collectionNames.includes("conversationMetadata")) {
-      console.log("📦 Creating conversationMetadata collection...")
-      await db.createCollection("conversationMetadata")
-      await db.collection("conversationMetadata").createIndex({ userId: 1, conversationId: 1 }, { unique: true })
-      await db.collection("conversationMetadata").createIndex({ userId: 1, "analytics.lastActivity": -1 })
-      await db.collection("conversationMetadata").createIndex({ tags: 1 })
-      await db.collection("conversationMetadata").createIndex({ isPublic: 1 })
-    }
-
-    if (!collectionNames.includes("conversationBackups")) {
-      console.log("📦 Creating conversationBackups collection...")
-      await db.createCollection("conversationBackups")
-      await db.collection("conversationBackups").createIndex({ userId: 1, conversationId: 1, createdAt: -1 })
-      await db.collection("conversationBackups").createIndex({ createdAt: 1 }, { expireAfterSeconds: 2592000 }) // 30 days TTL
-    }
-
-    console.log("✅ Database initialization completed successfully")
+    console.log("LIB/INIT-DB: initializeDatabase() - ✅ Database initialization completed successfully.")
     return {
       success: true,
       connectionStatus: "connected",
-      collections: collectionNames,
     }
-  } catch (error) {
-    console.error("❌ Error initializing database:", error)
+  } catch (error: any) {
+    console.error(
+      "LIB/INIT-DB: initializeDatabase() - ❌ Error during database initialization:",
+      error.message,
+      error.stack,
+    )
     return {
       success: false,
-      error: (error as Error).message,
+      error: error.message,
       connectionStatus: "error",
     }
   }
 }
 
-// Function to check database connection status
+// Function to check database connection status (can be called from an API route)
 export async function checkDatabaseConnection() {
+  console.log("LIB/INIT-DB: checkDatabaseConnection() - Pinging database...")
   try {
     const client = await clientPromise
     await client.db("admin").command({ ping: 1 })
+    console.log("LIB/INIT-DB: checkDatabaseConnection() - ✅ Ping successful.")
     return {
       connected: true,
       message: "Database connection successful",
     }
-  } catch (error) {
-    console.error("Database connection check failed:", error)
+  } catch (error: any) {
+    console.error("LIB/INIT-DB: checkDatabaseConnection() - ❌ Ping failed:", error.message)
     return {
       connected: false,
-      message: `Database connection failed: ${(error as Error).message}`,
+      message: `Database connection failed: ${error.message}`,
     }
   }
 }

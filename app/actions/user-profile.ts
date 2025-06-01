@@ -2,27 +2,27 @@
 
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import clientPromise from "@/lib/mongodb"
-import type { UserProfile, UserPreferences } from "@/lib/models/canvas"
+import { db } from "@/lib/db" // Use our new db utility
+import type { UserProfile, UserPreferences } from "@/lib/models/canvas" // Assuming models are correctly defined
 import { revalidatePath } from "next/cache"
 
-// Get or create user profile
-export async function getUserProfile() {
+console.log("ACTION/USER-PROFILE: Module loaded.")
+
+export async function getUserProfile(): Promise<{ success: boolean; profile?: UserProfile; error?: string }> {
+  console.log("ACTION/USER-PROFILE: getUserProfile() called.")
   try {
     const session = await getServerSession(authOptions)
-    if (!session || !session.user) {
+    if (!session?.user) {
+      console.warn("ACTION/USER-PROFILE: getUserProfile() - Authentication required.")
       throw new Error("Authentication required")
     }
+    const userId = session.user.id || session.user.email!
+    console.log("ACTION/USER-PROFILE: getUserProfile() - User:", userId)
 
-    const userId = session.user.id || session.user.email
-    const client = await clientPromise
-    const db = client.db("Conversationstore")
-    const profilesCollection = db.collection("userProfiles")
+    let userProfileDoc = await db.userProfiles.findOne({ userId })
 
-    let userProfile = await profilesCollection.findOne({ userId })
-
-    // Create default profile if it doesn't exist
-    if (!userProfile) {
+    if (!userProfileDoc) {
+      console.log("ACTION/USER-PROFILE: getUserProfile() - No profile found, creating default for user:", userId)
       const defaultProfile: UserProfile = {
         userId,
         email: session.user.email!,
@@ -32,91 +32,84 @@ export async function getUserProfile() {
           theme: "system",
           autoSave: true,
           autoSaveInterval: 30,
-          defaultModel: "gpt-4",
-          canvasSettings: {
-            snapToGrid: false,
-            showMinimap: true,
-            animateEdges: true,
-          },
-          notifications: {
-            email: true,
-            browser: true,
-          },
+          defaultModel: "gpt-4", // Consider making this configurable
+          canvasSettings: { snapToGrid: false, showMinimap: true, animateEdges: true },
+          notifications: { email: true, browser: true },
         },
         createdAt: new Date(),
         lastLogin: new Date(),
       }
-
-      await profilesCollection.insertOne(defaultProfile)
-      userProfile = defaultProfile
+      // The insertOne in lib/db returns the document with _id, but here we expect UserProfile type
+      const inserted = await db.userProfiles.insertOne(defaultProfile as any) // Cast if insertOne has different return
+      userProfileDoc = { ...defaultProfile, _id: inserted._id } as any // Reconstruct if needed
+      console.log("ACTION/USER-PROFILE: getUserProfile() - ✅ Default profile created for user:", userId)
     } else {
-      // Update last login
-      await profilesCollection.updateOne({ userId }, { $set: { lastLogin: new Date() } })
+      console.log("ACTION/USER-PROFILE: getUserProfile() - Profile found for user:", userId, "Updating lastLogin.")
+      await db.userProfiles.updateOne({ userId }, { $set: { lastLogin: new Date() } })
+      console.log("ACTION/USER-PROFILE: getUserProfile() - ✅ lastLogin updated for user:", userId)
     }
-
-    return { success: true, profile: userProfile }
-  } catch (error) {
-    console.error("Error getting user profile:", error)
-    return { success: false, error: (error as Error).message }
+    // Ensure the returned profile matches the UserProfile interface, especially if _id is involved
+    const { _id, ...profileData } = userProfileDoc // Exclude MongoDB _id if UserProfile doesn't have it
+    return { success: true, profile: profileData as UserProfile }
+  } catch (error: any) {
+    console.error("ACTION/USER-PROFILE: getUserProfile() - ❌ Error:", error.message, error.stack)
+    return { success: false, error: error.message }
   }
 }
 
-// Update user preferences
-export async function updateUserPreferences(preferences: Partial<UserPreferences>) {
+export async function updateUserPreferences(
+  preferences: Partial<UserPreferences>,
+): Promise<{ success: boolean; error?: string }> {
+  console.log("ACTION/USER-PROFILE: updateUserPreferences() called with:", JSON.stringify(preferences))
   try {
     const session = await getServerSession(authOptions)
-    if (!session || !session.user) {
+    if (!session?.user) {
+      console.warn("ACTION/USER-PROFILE: updateUserPreferences() - Authentication required.")
       throw new Error("Authentication required")
     }
+    const userId = session.user.id || session.user.email!
+    console.log("ACTION/USER-PROFILE: updateUserPreferences() - User:", userId)
 
-    const userId = session.user.id || session.user.email
-    const client = await clientPromise
-    const db = client.db("Conversationstore")
-    const profilesCollection = db.collection("userProfiles")
+    // Construct the update object carefully to target nested fields in 'preferences'
+    const updateFields: any = {}
+    for (const key in preferences) {
+      updateFields[`preferences.${key}`] = (preferences as any)[key]
+    }
+    updateFields.lastLogin = new Date()
 
-    await profilesCollection.updateOne(
-      { userId },
-      {
-        $set: {
-          preferences: preferences,
-          lastLogin: new Date(),
-        },
-      },
-      { upsert: true },
-    )
+    await db.userProfiles.updateOne({ userId }, { $set: updateFields })
 
-    revalidatePath("/canvas")
+    revalidatePath("/canvas") // Or specific paths related to preferences
+    console.log("ACTION/USER-PROFILE: updateUserPreferences() - ✅ Preferences updated for user:", userId)
     return { success: true }
-  } catch (error) {
-    console.error("Error updating user preferences:", error)
-    return { success: false, error: (error as Error).message }
+  } catch (error: any) {
+    console.error("ACTION/USER-PROFILE: updateUserPreferences() - ❌ Error:", error.message, error.stack)
+    return { success: false, error: error.message }
   }
 }
 
-// Update user profile
-export async function updateUserProfile(profileData: Partial<UserProfile>) {
+export async function updateUserProfile(
+  profileData: Partial<Omit<UserProfile, "preferences" | "userId" | "email" | "createdAt" | "lastLogin">>,
+): Promise<{ success: boolean; error?: string }> {
+  console.log("ACTION/USER-PROFILE: updateUserProfile() called with:", JSON.stringify(profileData))
   try {
     const session = await getServerSession(authOptions)
-    if (!session || !session.user) {
+    if (!session?.user) {
+      console.warn("ACTION/USER-PROFILE: updateUserProfile() - Authentication required.")
       throw new Error("Authentication required")
     }
+    const userId = session.user.id || session.user.email!
+    console.log("ACTION/USER-PROFILE: updateUserProfile() - User:", userId)
 
-    const userId = session.user.id || session.user.email
-    const client = await clientPromise
-    const db = client.db("Conversationstore")
-    const profilesCollection = db.collection("userProfiles")
+    const updatePayload: any = { ...profileData, lastLogin: new Date() }
 
-    const updateData = {
-      ...profileData,
-      lastLogin: new Date(),
-    }
+    await db.userProfiles.updateOne({ userId }, { $set: updatePayload })
 
-    await profilesCollection.updateOne({ userId }, { $set: updateData }, { upsert: true })
-
-    revalidatePath("/canvas")
+    revalidatePath("/canvas") // Or specific paths related to profile
+    console.log("ACTION/USER-PROFILE: updateUserProfile() - ✅ Profile updated for user:", userId)
     return { success: true }
-  } catch (error) {
-    console.error("Error updating user profile:", error)
-    return { success: false, error: (error as Error).message }
+  } catch (error: any) {
+    console.error("ACTION/USER-PROFILE: updateUserProfile() - ❌ Error:", error.message, error.stack)
+    return { success: false, error: error.message }
   }
 }

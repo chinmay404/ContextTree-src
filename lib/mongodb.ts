@@ -6,72 +6,84 @@ import { MongoClient } from "mongodb"
 let isConnected = false
 let connectionError: Error | null = null
 
+console.log("LIB/MONGODB: Module loaded.")
+
 if (!process.env.MONGODB_URI) {
-  console.error("MONGODB_URI environment variable is not defined")
+  console.error("LIB/MONGODB: FATAL ERROR - MONGODB_URI environment variable is not defined.")
   throw new Error('Invalid/Missing environment variable: "MONGODB_URI"')
 }
 
-console.log("MONGODB_URI being used (first 50 chars):", process.env.MONGODB_URI?.substring(0, 50))
+// Log only a part of the URI for security, but confirm it's being read
+console.log(
+  "LIB/MONGODB: MONGODB_URI found (partially):",
+  process.env.MONGODB_URI.substring(
+    0,
+    process.env.MONGODB_URI.indexOf("@") > 0 ? process.env.MONGODB_URI.indexOf("@") : 30,
+  ),
+)
+
 const uri = process.env.MONGODB_URI
-const options = {}
+const options = {} // Add any specific MongoClient options here if needed
 
 let client: MongoClient
 let clientPromise: Promise<MongoClient>
 
-// Create a new MongoClient
-const createClient = () => {
+const createClient = (): Promise<MongoClient> => {
   try {
-    console.log("Creating new MongoDB client...")
+    console.log("LIB/MONGODB: createClient() - Attempting to create new MongoDB client...")
     client = new MongoClient(uri, options)
 
-    // Create a promise that resolves with the connected client
+    console.log("LIB/MONGODB: createClient() - Calling client.connect()...")
     const promise = client
       .connect()
-      .then((client) => {
-        console.log("✅ MongoDB connected successfully")
+      .then((connectedClient) => {
+        console.log("LIB/MONGODB: createClient() - ✅ MongoDB connected successfully!")
         isConnected = true
         connectionError = null
-        return client
+        return connectedClient
       })
       .catch((err) => {
-        console.error("❌ MongoDB connection failed:", err)
+        console.error("LIB/MONGODB: createClient() - ❌ MongoDB connection failed:", err.message, err.stack)
         isConnected = false
         connectionError = err
+        // Propagate the error so it can be caught by callers
         throw err
       })
 
     return promise
-  } catch (err) {
-    console.error("❌ Error creating MongoDB client:", err)
+  } catch (err: any) {
+    console.error("LIB/MONGODB: createClient() - ❌ Error creating MongoDB client instance:", err.message, err.stack)
+    // Propagate the error
     throw err
   }
 }
 
 if (process.env.NODE_ENV === "development") {
-  // In development mode, use a global variable so that the value
-  // is preserved across module reloads caused by HMR (Hot Module Replacement).
+  console.log("LIB/MONGODB: Development mode - managing clientPromise globally.")
   const globalWithMongo = global as typeof globalThis & {
     _mongoClientPromise?: Promise<MongoClient>
   }
 
   if (!globalWithMongo._mongoClientPromise) {
+    console.log("LIB/MONGODB: No existing global clientPromise found, creating new one.")
     globalWithMongo._mongoClientPromise = createClient()
+  } else {
+    console.log("LIB/MONGODB: Reusing existing global clientPromise.")
   }
   clientPromise = globalWithMongo._mongoClientPromise
 } else {
-  // In production mode, it's best to not use a global variable.
+  console.log("LIB/MONGODB: Production mode - creating new clientPromise.")
   clientPromise = createClient()
 }
 
-// Export connection status functions
+// Export connection status function (must be async due to "use server")
 export async function getConnectionStatus() {
-  // Made this function async
+  console.log("LIB/MONGODB: getConnectionStatus() called.")
   return {
     isConnected,
     connectionError: connectionError ? connectionError.message : null,
   }
 }
 
-// Export a module-scoped MongoClient promise. By doing this in a
-// separate module, the client can be shared across functions.
+// Export a module-scoped MongoClient promise.
 export default clientPromise
