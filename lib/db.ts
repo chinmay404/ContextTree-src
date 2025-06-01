@@ -1,4 +1,4 @@
-"use server" // Explicitly mark as a server module
+"use server"
 
 import type {
   MongoClient,
@@ -9,173 +9,229 @@ import type {
   UpdateFilter,
   OptionalUnlessRequiredId,
   Document,
+  UpdateResult,
+  DeleteResult,
+  InsertOneResult,
 } from "mongodb"
 import clientPromise from "@/lib/mongodb"
 
-console.log("LIB/DB: Module loaded. (Marked as 'use server')")
+console.log("LIB/DB: Module loaded. (Marked as 'use server', exporting async functions)")
 
+// Internal helper functions (not exported directly if not needed by other server modules)
 async function getConnectedClient(): Promise<MongoClient> {
-  console.log("LIB/DB: getConnectedClient() - Awaiting clientPromise...")
+  // console.log("LIB/DB: getConnectedClient() - Awaiting clientPromise...")
   try {
     const client = await clientPromise
-    console.log("LIB/DB: getConnectedClient() - clientPromise resolved. MongoDB client obtained.")
+    // console.log("LIB/DB: getConnectedClient() - clientPromise resolved.")
     return client
   } catch (error: any) {
-    console.error("LIB/DB: getConnectedClient() - ❌ Error resolving clientPromise:", error.message, error.stack)
+    console.error("LIB/DB: getConnectedClient() - ❌ Error resolving clientPromise:", error.message)
     throw new Error(`Failed to connect to MongoDB: ${error.message}`)
   }
 }
 
 async function getDatabase(dbName = "Conversationstore"): Promise<Db> {
-  console.log(`LIB/DB: getDatabase('${dbName}') - Getting database instance.`)
+  // console.log(`LIB/DB: getDatabase('${dbName}') - Getting database instance.`)
   const client = await getConnectedClient()
   return client.db(dbName)
 }
 
-// Generic helper for collection operations to reduce boilerplate and centralize logging
 async function performOperation<T extends Document, R>(
   collectionName: string,
+  operationName: string, // For logging
   operation: (collection: Collection<T>) => Promise<R>,
+  logParams: any = {}, // Parameters to log
 ): Promise<R> {
-  console.log(`LIB/DB: performOperation('${collectionName}') - Starting operation.`)
+  console.log(`LIB/DB: ${collectionName}.${operationName}() - Starting. Params: ${JSON.stringify(logParams)}`)
   try {
     const dbInstance = await getDatabase()
     const collection = dbInstance.collection<T>(collectionName)
     const result = await operation(collection)
-    console.log(`LIB/DB: performOperation('${collectionName}') - ✅ Operation successful.`)
+    console.log(`LIB/DB: ${collectionName}.${operationName}() - ✅ Success.`)
     return result
   } catch (error: any) {
     console.error(
-      `LIB/DB: performOperation('${collectionName}') - ❌ Error during operation:`,
+      `LIB/DB: ${collectionName}.${operationName}() - ❌ Error:`,
       error.message,
-      error.stack,
+      // error.stack // Optional: for more detailed stack trace
     )
-    throw error // Re-throw to be handled by the caller
+    throw error
   }
 }
 
-export const db = {
-  // General client/db access if needed, though performOperation is preferred
-  getClient: getConnectedClient,
-  getDb: getDatabase,
+// --- Conversations Collection Functions ---
+export async function findOneConversation(filter: Filter<any>): Promise<any | null> {
+  return performOperation("conversations", "findOne", (col) => col.findOne(filter), { filter })
+}
 
-  // Collection-specific helpers
-  conversations: {
-    async findOne(filter: Filter<any>): Promise<any | null> {
-      console.log("LIB/DB: conversations.findOne() - Filter:", JSON.stringify(filter))
-      return performOperation("conversations", (col) => col.findOne(filter))
-    },
-    async find(filter: Filter<any>, options?: FindOptions<any>): Promise<any[]> {
-      console.log("LIB/DB: conversations.find() - Filter:", JSON.stringify(filter), "Options:", JSON.stringify(options))
-      return performOperation("conversations", (col) => col.find(filter, options).toArray())
-    },
-    async insertOne(doc: OptionalUnlessRequiredId<any>): Promise<any> {
-      console.log("LIB/DB: conversations.insertOne() - Document (summary):", { id: doc.conversationId, name: doc.name })
-      return performOperation("conversations", async (col) => {
-        const result = await col.insertOne(doc)
-        console.log("LIB/DB: conversations.insertOne() - InsertedId:", result.insertedId)
-        return { ...doc, _id: result.insertedId }
-      })
-    },
-    async updateOne(filter: Filter<any>, update: UpdateFilter<any> | Partial<any>): Promise<any> {
-      console.log(
-        "LIB/DB: conversations.updateOne() - Filter:",
-        JSON.stringify(filter),
-        "Update (summary):",
-        update.$set ? { name: (update.$set as any).name, version: (update.$set as any).version } : "Full update",
-      )
-      return performOperation("conversations", async (col) => {
-        const result = await col.updateOne(filter, update)
-        console.log("LIB/DB: conversations.updateOne() - Result:", {
-          matchedCount: result.matchedCount,
-          modifiedCount: result.modifiedCount,
-          upsertedId: result.upsertedId,
-        })
-        return result
-      })
-    },
-    async upsertOne(filter: Filter<any>, update: UpdateFilter<any> | Partial<any>): Promise<any> {
-      console.log(
-        "LIB/DB: conversations.upsertOne() - Filter:",
-        JSON.stringify(filter),
-        "Update (summary):",
-        update.$set ? { name: (update.$set as any).name, version: (update.$set as any).version } : "Full update",
-      )
-      return performOperation("conversations", async (col) => {
-        const result = await col.updateOne(filter, update, { upsert: true })
-        console.log("LIB/DB: conversations.upsertOne() - Result:", {
-          matchedCount: result.matchedCount,
-          modifiedCount: result.modifiedCount,
-          upsertedId: result.upsertedId,
-        })
-        return result
-      })
-    },
-    async deleteOne(filter: Filter<any>): Promise<any> {
-      console.log("LIB/DB: conversations.deleteOne() - Filter:", JSON.stringify(filter))
-      return performOperation("conversations", (col) => col.deleteOne(filter))
-    },
-  },
+export async function findConversations(filter: Filter<any>, options?: FindOptions<any>): Promise<any[]> {
+  return performOperation("conversations", "find", (col) => col.find(filter, options).toArray(), { filter, options })
+}
 
-  userCanvas: {
-    // For managing user's active conversation, etc.
-    async findOne(filter: Filter<any>): Promise<any | null> {
-      console.log("LIB/DB: userCanvas.findOne() - Filter:", JSON.stringify(filter))
-      return performOperation("userCanvas", (col) => col.findOne(filter))
-    },
-    async updateOne(filter: Filter<any>, update: UpdateFilter<any> | Partial<any>): Promise<any> {
-      console.log("LIB/DB: userCanvas.updateOne() - Filter:", JSON.stringify(filter), "Update:", JSON.stringify(update))
-      return performOperation("userCanvas", (col) => col.updateOne(filter, update, { upsert: true }))
-    },
-  },
+export async function insertOneConversation(doc: OptionalUnlessRequiredId<any>): Promise<InsertOneResult<any>> {
+  const result = await performOperation(
+    "conversations",
+    "insertOne",
+    (col) => col.insertOne(doc),
+    { doc: { id: doc.conversationId, name: doc.name } }, // Log summary
+  )
+  // The performOperation itself doesn't know about constructing { ...doc, _id: result.insertedId }
+  // The raw InsertOneResult is returned. Callers might need to adjust.
+  // Or, adjust performOperation to allow transforming result, but that adds complexity.
+  // For now, returning raw result.
+  console.log("LIB/DB: conversations.insertOne() - InsertedId:", result.insertedId)
+  return result
+}
 
-  canvasInteractions: {
-    async insertOne(doc: OptionalUnlessRequiredId<any>): Promise<any> {
-      console.log("LIB/DB: canvasInteractions.insertOne() - ActionType:", doc.actionType, "EntityId:", doc.entityId)
-      return performOperation("canvasInteractions", (col) => col.insertOne(doc))
-    },
-    async find(filter: Filter<any>, options?: FindOptions<any>): Promise<any[]> {
-      console.log(
-        "LIB/DB: canvasInteractions.find() - Filter:",
-        JSON.stringify(filter),
-        "Options:",
-        JSON.stringify(options),
-      )
-      return performOperation("canvasInteractions", (col) => col.find(filter, options).toArray())
-    },
-    async deleteMany(filter: Filter<any>): Promise<any> {
-      console.log("LIB/DB: canvasInteractions.deleteMany() - Filter:", JSON.stringify(filter))
-      return performOperation("canvasInteractions", (col) => col.deleteMany(filter))
-    },
-  },
+export async function updateOneConversation(
+  filter: Filter<any>,
+  update: UpdateFilter<any> | Partial<any>,
+): Promise<UpdateResult> {
+  const result = await performOperation("conversations", "updateOne", (col) => col.updateOne(filter, update), {
+    filter,
+    update: update.$set ? "partial" : "full",
+  })
+  console.log("LIB/DB: conversations.updateOne() - Result:", {
+    matchedCount: result.matchedCount,
+    modifiedCount: result.modifiedCount,
+  })
+  return result
+}
 
-  canvasSessions: {
-    async insertOne(doc: OptionalUnlessRequiredId<any>): Promise<any> {
-      console.log("LIB/DB: canvasSessions.insertOne() - SessionId:", doc.sessionId)
-      return performOperation("canvasSessions", (col) => col.insertOne(doc))
-    },
-    async updateOne(filter: Filter<any>, update: UpdateFilter<any> | Partial<any>): Promise<any> {
-      console.log("LIB/DB: canvasSessions.updateOne() - Filter:", JSON.stringify(filter))
-      return performOperation("canvasSessions", (col) => col.updateOne(filter, update))
-    },
-    async updateMany(filter: Filter<any>, update: UpdateFilter<any> | Partial<any>): Promise<any> {
-      console.log("LIB/DB: canvasSessions.updateMany() - Filter:", JSON.stringify(filter))
-      return performOperation("canvasSessions", (col) => col.updateMany(filter, update))
-    },
-  },
+export async function upsertOneConversation(
+  filter: Filter<any>,
+  update: UpdateFilter<any> | Partial<any>,
+): Promise<UpdateResult> {
+  const result = await performOperation(
+    "conversations",
+    "upsertOne",
+    (col) => col.updateOne(filter, update, { upsert: true }),
+    { filter, update: update.$set ? "partial" : "full" },
+  )
+  console.log("LIB/DB: conversations.upsertOne() - Result:", {
+    matchedCount: result.matchedCount,
+    modifiedCount: result.modifiedCount,
+    upsertedId: result.upsertedId,
+  })
+  return result
+}
 
-  userProfiles: {
-    async findOne(filter: Filter<any>): Promise<any | null> {
-      console.log("LIB/DB: userProfiles.findOne() - Filter:", JSON.stringify(filter))
-      return performOperation("userProfiles", (col) => col.findOne(filter))
-    },
-    async insertOne(doc: OptionalUnlessRequiredId<any>): Promise<any> {
-      console.log("LIB/DB: userProfiles.insertOne() - UserId:", doc.userId)
-      return performOperation("userProfiles", (col) => col.insertOne(doc))
-    },
-    async updateOne(filter: Filter<any>, update: UpdateFilter<any> | Partial<any>): Promise<any> {
-      console.log("LIB/DB: userProfiles.updateOne() - Filter:", JSON.stringify(filter))
-      return performOperation("userProfiles", (col) => col.updateOne(filter, update, { upsert: true }))
-    },
-  },
+export async function deleteOneConversation(filter: Filter<any>): Promise<DeleteResult> {
+  const result = await performOperation("conversations", "deleteOne", (col) => col.deleteOne(filter), { filter })
+  console.log("LIB/DB: conversations.deleteOne() - DeletedCount:", result.deletedCount)
+  return result
+}
+
+// --- UserCanvas Collection Functions ---
+export async function findOneUserCanvas(filter: Filter<any>): Promise<any | null> {
+  return performOperation("userCanvas", "findOne", (col) => col.findOne(filter), { filter })
+}
+
+export async function upsertOneUserCanvas(
+  filter: Filter<any>,
+  update: UpdateFilter<any> | Partial<any>,
+): Promise<UpdateResult> {
+  const result = await performOperation(
+    "userCanvas",
+    "upsertOne",
+    (col) => col.updateOne(filter, update, { upsert: true }),
+    { filter, update },
+  )
+  console.log("LIB/DB: userCanvas.upsertOne() - Result:", {
+    matchedCount: result.matchedCount,
+    modifiedCount: result.modifiedCount,
+    upsertedId: result.upsertedId,
+  })
+  return result
+}
+
+// --- CanvasInteractions Collection Functions ---
+export async function insertOneCanvasInteraction(doc: OptionalUnlessRequiredId<any>): Promise<InsertOneResult<any>> {
+  const result = await performOperation("canvasInteractions", "insertOne", (col) => col.insertOne(doc), {
+    doc: { actionType: doc.actionType, entityId: doc.entityId },
+  })
+  console.log("LIB/DB: canvasInteractions.insertOne() - InsertedId:", result.insertedId)
+  return result
+}
+
+export async function findCanvasInteractions(filter: Filter<any>, options?: FindOptions<any>): Promise<any[]> {
+  return performOperation("canvasInteractions", "find", (col) => col.find(filter, options).toArray(), {
+    filter,
+    options,
+  })
+}
+
+export async function deleteManyCanvasInteractions(filter: Filter<any>): Promise<DeleteResult> {
+  const result = await performOperation("canvasInteractions", "deleteMany", (col) => col.deleteMany(filter), { filter })
+  console.log("LIB/DB: canvasInteractions.deleteMany() - DeletedCount:", result.deletedCount)
+  return result
+}
+
+// --- CanvasSessions Collection Functions ---
+export async function insertOneCanvasSession(doc: OptionalUnlessRequiredId<any>): Promise<InsertOneResult<any>> {
+  const result = await performOperation("canvasSessions", "insertOne", (col) => col.insertOne(doc), {
+    doc: { sessionId: doc.sessionId },
+  })
+  console.log("LIB/DB: canvasSessions.insertOne() - InsertedId:", result.insertedId)
+  return result
+}
+
+export async function updateOneCanvasSession(
+  filter: Filter<any>,
+  update: UpdateFilter<any> | Partial<any>,
+): Promise<UpdateResult> {
+  const result = await performOperation("canvasSessions", "updateOne", (col) => col.updateOne(filter, update), {
+    filter,
+  })
+  console.log("LIB/DB: canvasSessions.updateOne() - Result:", {
+    matchedCount: result.matchedCount,
+    modifiedCount: result.modifiedCount,
+  })
+  return result
+}
+
+export async function updateManyCanvasSessions(
+  filter: Filter<any>,
+  update: UpdateFilter<any> | Partial<any>,
+): Promise<UpdateResult> {
+  const result = await performOperation("canvasSessions", "updateMany", (col) => col.updateMany(filter, update), {
+    filter,
+  })
+  console.log("LIB/DB: canvasSessions.updateMany() - Result:", {
+    matchedCount: result.matchedCount,
+    modifiedCount: result.modifiedCount,
+  })
+  return result
+}
+
+// --- UserProfiles Collection Functions ---
+export async function findOneUserProfile(filter: Filter<any>): Promise<any | null> {
+  return performOperation("userProfiles", "findOne", (col) => col.findOne(filter), { filter })
+}
+
+export async function insertOneUserProfile(doc: OptionalUnlessRequiredId<any>): Promise<InsertOneResult<any>> {
+  const result = await performOperation("userProfiles", "insertOne", (col) => col.insertOne(doc), {
+    doc: { userId: doc.userId },
+  })
+  console.log("LIB/DB: userProfiles.insertOne() - InsertedId:", result.insertedId)
+  return result
+}
+
+export async function upsertOneUserProfile(
+  // Changed from updateOne to upsertOne for consistency
+  filter: Filter<any>,
+  update: UpdateFilter<any> | Partial<any>,
+): Promise<UpdateResult> {
+  const result = await performOperation(
+    "userProfiles",
+    "upsertOne", // Changed name
+    (col) => col.updateOne(filter, update, { upsert: true }),
+    { filter },
+  )
+  console.log("LIB/DB: userProfiles.upsertOne() - Result:", {
+    matchedCount: result.matchedCount,
+    modifiedCount: result.modifiedCount,
+    upsertedId: result.upsertedId,
+  })
+  return result
 }
