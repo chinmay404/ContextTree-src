@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useRef, useEffect } from "react"
-import type { Message } from "@/lib/types"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import type React from "react";
+import { useState, useRef, useEffect } from "react";
+import type { Message } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Send,
   Edit,
@@ -25,63 +25,77 @@ import {
   ArrowLeft,
   Moon,
   Sun,
-} from "lucide-react"
-import { format } from "date-fns"
-import { motion, AnimatePresence } from "framer-motion"
-import { toast } from "@/components/ui/use-toast"
-import { availableModels } from "@/lib/types"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import NodeNotes from "@/components/node-notes"
-import ThinkingAnimation from "./thinking-animation"
-import { useTheme } from "next-themes"
-import KeyboardShortcuts from "@/components/keyboard-shortcuts"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
-import { vscDarkPlus, vs } from "react-syntax-highlighter/dist/esm/styles/prism"
-import "./chat-panel.css"
+} from "lucide-react";
+import { format } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "@/components/ui/use-toast";
+import { availableModels } from "@/lib/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import NodeNotes from "@/components/node-notes";
+import ThinkingAnimation from "./thinking-animation";
+import { useTheme } from "next-themes";
+import KeyboardShortcuts from "@/components/keyboard-shortcuts";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import {
+  vscDarkPlus,
+  vs,
+} from "react-syntax-highlighter/dist/esm/styles/prism";
+import "./chat-panel.css";
 
 // Function to extract thinking content from a message
-const extractThinking = (content: string): { thinking: string | null; content: string } => {
-  const thinkRegex = /<think>([\s\S]*?)<\/think>/
-  const match = content.match(thinkRegex)
+const extractThinking = (
+  content: string
+): { thinking: string | null; content: string } => {
+  const thinkRegex = /<think>([\s\S]*?)<\/think>/;
+  const match = content.match(thinkRegex);
 
   if (match && match[1]) {
     // Return the thinking content and the cleaned message content
     return {
       thinking: match[1].trim(),
       content: content.replace(thinkRegex, "").trim(),
-    }
+    };
   }
 
-  return { thinking: null, content }
-}
+  return { thinking: null, content };
+};
 
 interface ChatPanelProps {
-  messages: Message[]
-  onSendMessage: (content: string) => void
-  nodeName: string
-  onNodeNameChange: (name: string) => void
-  onCreateBranchNode?: (content: string) => void
-  isCollapsed?: boolean
-  setIsCollapsed?: (collapsed: boolean) => void
-  onDeleteNode?: () => void
-  model?: string
-  onModelChange?: (model: string) => void
-  branchPoints?: Record<string, string>
-  connectionPoints?: Record<string, { nodeId: string; type: string; direction: "incoming" | "outgoing" }>
-  onNavigateToNode?: (nodeId: string) => void
-  nodeNotes?: Record<string, string>
-  onSaveNote?: (nodeId: string, note: string) => void
-  activeNodeId?: string
-  nodes?: any[]
-  thinking?: boolean
+  messages: Message[];
+  onSendMessage: (content: string) => void;
+  nodeName: string;
+  onNodeNameChange: (name: string) => void;
+  onCreateBranchNode?: (content: string) => void;
+  isCollapsed?: boolean;
+  setIsCollapsed?: (collapsed: boolean) => void;
+  onDeleteNode?: () => void;
+  model?: string;
+  onModelChange?: (model: string) => void;
+  branchPoints?: Record<string, string>;
+  connectionPoints?: Record<
+    string,
+    { nodeId: string; type: string; direction: "incoming" | "outgoing" }
+  >;
+  onNavigateToNode?: (nodeId: string) => void;
+  nodeNotes?: Record<string, string>;
+  onSaveNote?: (nodeId: string, note: string) => void;
+  activeNodeId?: string;
+  nodes?: any[];
+  thinking?: boolean;
 }
 
 interface NodeParentInfo {
-  id: string
-  label: string
-  type: string
+  id: string;
+  label: string;
+  type: string;
 }
 
 export default function ChatPanel({
@@ -104,216 +118,228 @@ export default function ChatPanel({
   nodes,
   thinking = false,
 }: ChatPanelProps) {
-  const [inputValue, setInputValue] = useState("")
-  const [isEditingName, setIsEditingName] = useState(false)
-  const [editedName, setEditedName] = useState(nodeName)
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [panelWidth, setPanelWidth] = useState(320)
-  const [isResizing, setIsResizing] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const resizeStartXRef = useRef(0)
-  const resizeStartWidthRef = useRef(0)
-  const panelRef = useRef<HTMLDivElement>(null)
-  const resizeFrameRef = useRef<number | null>(null)
+  const [inputValue, setInputValue] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(nodeName);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(320);
+  const [isResizing, setIsResizing] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthRef = useRef(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const resizeFrameRef = useRef<number | null>(null);
   const [commandFeedback, setCommandFeedback] = useState<{
-    active: boolean
-    command: string
-    content: string
-  } | null>(null)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [createdBranchId, setCreatedBranchId] = useState<string | null>(null)
-  const [readingMode, setReadingMode] = useState(false)
-  const { theme, setTheme } = useTheme()
-  const inputRef = useRef<HTMLInputElement>(null)
+    active: boolean;
+    command: string;
+    content: string;
+  } | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [createdBranchId, setCreatedBranchId] = useState<string | null>(null);
+  const [readingMode, setReadingMode] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setEditedName(nodeName)
-  }, [nodeName])
+    setEditedName(nodeName);
+  }, [nodeName]);
 
   useEffect(() => {
     if (propIsCollapsed !== undefined) {
-      setIsCollapsed(propIsCollapsed)
+      setIsCollapsed(propIsCollapsed);
     }
-  }, [propIsCollapsed])
+  }, [propIsCollapsed]);
 
   // Add keyboard shortcut for full-screen toggle
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Toggle full-screen with F key or Escape to exit
       if (e.key === "f" && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault()
-        setIsExpanded((prev) => !prev)
+        e.preventDefault();
+        setIsExpanded((prev) => !prev);
       } else if (e.key === "Escape" && isExpanded) {
-        setIsExpanded(false)
+        setIsExpanded(false);
       }
-    }
+    };
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isExpanded])
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isExpanded]);
 
   // Focus input when entering full-screen mode
   useEffect(() => {
     if (isExpanded && inputRef.current) {
       setTimeout(() => {
-        inputRef.current?.focus()
-      }, 300)
+        inputRef.current?.focus();
+      }, 300);
     }
-  }, [isExpanded])
+  }, [isExpanded]);
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (inputValue.trim()) {
       if (inputValue.startsWith("/branch ")) {
-        const branchContent = inputValue.substring(8).trim()
+        const branchContent = inputValue.substring(8).trim();
 
         if (branchContent && onCreateBranchNode) {
-          const branchId = onCreateBranchNode(branchContent)
+          const branchId = onCreateBranchNode(branchContent);
           if (branchId) {
-            setCreatedBranchId(branchId)
+            setCreatedBranchId(branchId);
             toast({
               title: "Branch node created",
-              description: `Created a new branch node with content: "${branchContent.substring(0, 30)}${
-                branchContent.length > 30 ? "..." : ""
-              }"`,
-            })
+              description: `Created a new branch node with content: "${branchContent.substring(
+                0,
+                30
+              )}${branchContent.length > 30 ? "..." : ""}"`,
+            });
           }
-          setInputValue("")
-          return
+          setInputValue("");
+          return;
         }
       }
 
-      onSendMessage(inputValue)
-      setInputValue("")
+      onSendMessage(inputValue);
+      setInputValue("");
     }
-  }
+  };
 
   const handleSaveName = () => {
     if (editedName.trim()) {
-      onNodeNameChange(editedName)
+      onNodeNameChange(editedName);
     }
-    setIsEditingName(false)
-  }
+    setIsEditingName(false);
+  };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, nodeName])
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, nodeName]);
 
   const toggleCollapse = () => {
-    const newCollapsedState = !isCollapsed
-    setIsCollapsed(newCollapsedState)
+    const newCollapsedState = !isCollapsed;
+    setIsCollapsed(newCollapsedState);
     if (propSetIsCollapsed) {
-      propSetIsCollapsed(newCollapsedState)
+      propSetIsCollapsed(newCollapsedState);
     }
-  }
+  };
 
   const toggleExpand = () => {
-    setIsExpanded(!isExpanded)
-    setReadingMode(false) // Reset reading mode when toggling expand
-  }
+    setIsExpanded(!isExpanded);
+    setReadingMode(false); // Reset reading mode when toggling expand
+  };
 
   const toggleReadingMode = () => {
-    setReadingMode(!readingMode)
-  }
+    setReadingMode(!readingMode);
+  };
 
   const handleDeleteNode = () => {
     if (onDeleteNode) {
-      onDeleteNode()
+      onDeleteNode();
     }
-  }
+  };
 
   const handleModelChange = (value: string) => {
     if (onModelChange) {
-      onModelChange(value)
+      onModelChange(value);
     }
-  }
+  };
 
   const startResize = (e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizing(true)
-    resizeStartXRef.current = e.clientX
-    resizeStartWidthRef.current = panelWidth
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartXRef.current = e.clientX;
+    resizeStartWidthRef.current = panelWidth;
 
-    document.addEventListener("mousemove", handleResize)
-    document.addEventListener("mouseup", stopResize)
-  }
+    document.addEventListener("mousemove", handleResize);
+    document.addEventListener("mouseup", stopResize);
+  };
 
   const handleResize = (e: MouseEvent) => {
-    if (!isResizing) return
+    if (!isResizing) return;
 
     if (resizeFrameRef.current !== null) {
-      cancelAnimationFrame(resizeFrameRef.current)
+      cancelAnimationFrame(resizeFrameRef.current);
     }
 
     resizeFrameRef.current = requestAnimationFrame(() => {
-      const newWidth = Math.max(280, Math.min(500, resizeStartWidthRef.current - (e.clientX - resizeStartXRef.current)))
-      setPanelWidth(newWidth)
-    })
-  }
+      const newWidth = Math.max(
+        280,
+        Math.min(
+          500,
+          resizeStartWidthRef.current - (e.clientX - resizeStartXRef.current)
+        )
+      );
+      setPanelWidth(newWidth);
+    });
+  };
 
   const stopResize = () => {
-    setIsResizing(false)
-    document.removeEventListener("mousemove", handleResize)
-    document.removeEventListener("mouseup", stopResize)
-  }
+    setIsResizing(false);
+    document.removeEventListener("mousemove", handleResize);
+    document.removeEventListener("mouseup", stopResize);
+  };
 
   useEffect(() => {
     return () => {
-      document.removeEventListener("mousemove", handleResize)
-      document.removeEventListener("mouseup", stopResize)
+      document.removeEventListener("mousemove", handleResize);
+      document.removeEventListener("mouseup", stopResize);
       if (resizeFrameRef.current !== null) {
-        cancelAnimationFrame(resizeFrameRef.current)
+        cancelAnimationFrame(resizeFrameRef.current);
       }
-    }
-  }, [])
+    };
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setInputValue(value)
+    const value = e.target.value;
+    setInputValue(value);
 
     if (value.startsWith("/branch ")) {
       setCommandFeedback({
         active: true,
         command: "/branch",
         content: value.substring(8).trim(),
-      })
+      });
     } else {
-      setCommandFeedback(null)
+      setCommandFeedback(null);
     }
-  }
+  };
 
   const handleNavigateToNode = (nodeId: string) => {
     if (onNavigateToNode) {
-      onNavigateToNode(nodeId)
+      onNavigateToNode(nodeId);
     }
-  }
+  };
 
-  const selectedModel = availableModels.find((m) => m.id === model)?.name || "GPT-4"
+  const selectedModel =
+    availableModels.find((m) => m.id === model)?.name || "GPT-4";
 
   const getNodeTypeName = (type: string) => {
     switch (type) {
       case "mainNode":
-        return "Main Node"
+        return "Main Node";
       case "branchNode":
-        return "Branch Node"
+        return "Branch Node";
       case "imageNode":
-        return "Image"
+        return "Image";
       default:
-        return "Node"
+        return "Node";
     }
-  }
+  };
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
-  }
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
 
   return (
     <motion.div
       ref={panelRef}
       className={`relative flex flex-col h-full border-l border-border/60 transition-all duration-300 ${
         isCollapsed ? "w-12" : ""
-      } ${isExpanded ? "fixed right-0 top-0 h-screen z-50 w-full backdrop-blur-md bg-background/95 shadow-xl" : ""}`}
+      } ${
+        isExpanded
+          ? "fixed right-0 top-0 h-screen z-50 w-full backdrop-blur-md bg-background/95 shadow-xl"
+          : ""
+      }`}
       style={{
         width: isCollapsed ? "48px" : isExpanded ? "100%" : `${panelWidth}px`,
         marginTop: isExpanded ? "0" : "",
@@ -321,7 +347,13 @@ export default function ChatPanel({
         paddingTop: isExpanded ? "0" : "",
       }}
       initial={isCollapsed ? { width: "48px" } : { width: `${panelWidth}px` }}
-      animate={isCollapsed ? { width: "48px" } : isExpanded ? { width: "100%" } : { width: `${panelWidth}px` }}
+      animate={
+        isCollapsed
+          ? { width: "48px" }
+          : isExpanded
+          ? { width: "100%" }
+          : { width: `${panelWidth}px` }
+      }
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       {/* Header for normal mode */}
@@ -332,8 +364,17 @@ export default function ChatPanel({
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
         >
-          <Button variant="ghost" size="icon" className="h-8 w-8 mr-2" onClick={toggleCollapse}>
-            {isCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 mr-2"
+            onClick={toggleCollapse}
+          >
+            {isCollapsed ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
           </Button>
 
           {!isCollapsed && (
@@ -358,18 +399,35 @@ export default function ChatPanel({
                     className="h-8 text-sm"
                     autoFocus
                   />
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSaveName}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={handleSaveName}
+                  >
                     <Check className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditingName(false)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setIsEditingName(false)}
+                  >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               ) : (
                 <>
-                  <h2 className="text-lg font-semibold flex-1 tracking-tight">{nodeName}</h2>
+                  <h2 className="text-lg font-semibold flex-1 tracking-tight">
+                    {nodeName}
+                  </h2>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditingName(true)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setIsEditingName(true)}
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
                     {onDeleteNode && (
@@ -389,14 +447,15 @@ export default function ChatPanel({
           )}
         </motion.div>
       )}
-
       {/* Enhanced full-screen header */}
       {isExpanded && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className={`sticky top-0 z-10 w-full flex items-center justify-between p-4 border-b border-border ${
-            readingMode ? "bg-background/90 backdrop-blur-md" : "bg-card/95 backdrop-blur-md"
+            readingMode
+              ? "bg-background/90 backdrop-blur-md"
+              : "bg-card/95 backdrop-blur-md"
           } shadow-sm`}
         >
           <div className="flex items-center gap-3">
@@ -423,7 +482,9 @@ export default function ChatPanel({
             <Button
               variant="ghost"
               size="sm"
-              className={`h-8 text-xs ${readingMode ? "bg-primary/10 text-primary" : ""} hover:bg-muted transition-colors`}
+              className={`h-8 text-xs ${
+                readingMode ? "bg-primary/10 text-primary" : ""
+              } hover:bg-muted transition-colors`}
               onClick={toggleReadingMode}
             >
               {readingMode ? "Edit Mode" : "Reading Mode"}
@@ -434,34 +495,48 @@ export default function ChatPanel({
               className="h-8 w-8 hover:bg-muted transition-colors"
               onClick={toggleTheme}
             >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
             </Button>
             <div className="hidden md:flex items-center">
               <KeyboardShortcuts />
             </div>
           </div>
         </motion.div>
-      )}
-
+      )}{" "}
       {!isCollapsed && (
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {!isExpanded && (
             <motion.div
+              key="chat-header"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
               className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between"
             >
               <div className="flex-1">
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">AI Model</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  AI Model
+                </label>
                 <Select value={model} onValueChange={handleModelChange}>
                   <SelectTrigger className="h-9 text-sm bg-background/70 backdrop-blur-sm border-border/60 shadow-sm hover:shadow transition-shadow duration-200">
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent className="border-border/60 shadow-md">
                     {availableModels.map((model) => (
-                      <SelectItem key={model.id} value={model.id} className="focus:bg-primary/10">
-                        {model.name} <span className="text-xs text-muted-foreground ml-1">({model.provider})</span>
+                      <SelectItem
+                        key={model.id}
+                        value={model.id}
+                        className="focus:bg-primary/10"
+                      >
+                        {model.name}{" "}
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({model.provider})
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -469,25 +544,34 @@ export default function ChatPanel({
               </div>
               {activeNodeId && onSaveNote && (
                 <div className="ml-3">
-                  <NodeNotes nodeId={activeNodeId} notes={nodeNotes} onSaveNote={onSaveNote} />
+                  <NodeNotes
+                    nodeId={activeNodeId}
+                    notes={nodeNotes}
+                    onSaveNote={onSaveNote}
+                  />
                 </div>
               )}
             </motion.div>
           )}
 
           {!isCollapsed && !isExpanded && activeNodeId && (
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               <motion.div
+                key="parent-nodes-panel"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
                 className="px-4 py-2 border-t border-border bg-muted/10"
               >
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-muted-foreground">Parent Nodes</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Parent Nodes
+                  </label>
                 </div>
 
-                {nodes?.find((n) => n.id === activeNodeId)?.data?.parents?.length > 0 ? (
+                {nodes?.find((n) => n.id === activeNodeId)?.data?.parents
+                  ?.length > 0 ? (
                   <div className="mt-2 space-y-1.5">
                     {nodes
                       ?.find((n) => n.id === activeNodeId)
@@ -497,15 +581,17 @@ export default function ChatPanel({
                           variant="outline"
                           size="sm"
                           className="w-full justify-start text-xs h-7 gap-1.5"
-                          onClick={() => onNavigateToNode && onNavigateToNode(parent.id)}
+                          onClick={() =>
+                            onNavigateToNode && onNavigateToNode(parent.id)
+                          }
                         >
                           <div
                             className={`w-2 h-2 rounded-full ${
                               parent.type === "mainNode"
                                 ? "bg-primary"
                                 : parent.type === "branchNode"
-                                  ? "bg-orange-500"
-                                  : "bg-blue-500"
+                                ? "bg-orange-500"
+                                : "bg-blue-500"
                             }`}
                           ></div>
                           <span className="truncate">{parent.label}</span>
@@ -513,7 +599,9 @@ export default function ChatPanel({
                       ))}
                   </div>
                 ) : (
-                  <div className="py-2 text-center text-xs text-muted-foreground">No parent nodes</div>
+                  <div className="py-2 text-center text-xs text-muted-foreground">
+                    No parent nodes
+                  </div>
                 )}
               </motion.div>
             </AnimatePresence>
@@ -527,7 +615,9 @@ export default function ChatPanel({
                   ? "px-4 md:px-0 py-8 max-w-3xl mx-auto"
                   : "p-6 md:p-8 max-w-4xl mx-auto"
                 : "p-4"
-            } space-y-8 custom-scrollbar ${isExpanded ? "max-h-[calc(100vh-140px)]" : ""}`}
+            } space-y-8 custom-scrollbar ${
+              isExpanded ? "max-h-[calc(100vh-140px)]" : ""
+            }`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.1 }}
@@ -544,12 +634,13 @@ export default function ChatPanel({
                 </div>
                 <p className="text-lg font-medium mb-2">No messages yet</p>
                 <p className="text-muted-foreground text-sm max-w-xs">
-                  Start a conversation by typing a message below. This will be part of your conversation node.
+                  Start a conversation by typing a message below. This will be
+                  part of your conversation node.
                 </p>
               </motion.div>
             ) : (
               messages.map((message, index) => {
-                const { thinking, content } = extractThinking(message.content)
+                const { thinking, content } = extractThinking(message.content);
 
                 return (
                   <div key={message.id} className="mb-8">
@@ -557,14 +648,20 @@ export default function ChatPanel({
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.05 }}
-                      className={`flex flex-col group ${message.sender === "user" ? "items-end" : "items-start"}`}
+                      className={`flex flex-col group ${
+                        message.sender === "user" ? "items-end" : "items-start"
+                      }`}
                     >
                       {/* Thinking section */}
                       {thinking && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
-                          className={`mb-2 w-full max-w-[85%] md:max-w-[75%] ${message.sender === "user" ? "self-end" : "self-start"}`}
+                          className={`mb-2 w-full max-w-[85%] md:max-w-[75%] ${
+                            message.sender === "user"
+                              ? "self-end"
+                              : "self-start"
+                          }`}
                         >
                           <details className="bg-muted/30 rounded-lg border border-border/50 text-sm">
                             <summary className="cursor-pointer p-2 font-medium text-xs flex items-center gap-1.5 text-muted-foreground">
@@ -593,24 +690,44 @@ export default function ChatPanel({
                                 ? "bg-primary text-primary-foreground max-w-[85%] md:max-w-[75%] rounded-2xl p-4 shadow-sm"
                                 : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] md:max-w-[75%] rounded-2xl p-4 hover:shadow-md transition-shadow duration-200"
                               : message.sender === "user"
-                                ? "bg-primary text-primary-foreground max-w-[85%] rounded-2xl p-3.5 shadow-sm"
-                                : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] rounded-2xl p-3.5 hover:shadow-md transition-shadow duration-200"
+                              ? "bg-primary text-primary-foreground max-w-[85%] rounded-2xl p-3.5 shadow-sm"
+                              : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] rounded-2xl p-3.5 hover:shadow-md transition-shadow duration-200"
                           } relative`}
                         >
                           {message.sender === "user" ? (
-                            <p className={`${isExpanded ? "text-base leading-relaxed" : "text-sm leading-relaxed"}`}>
+                            <p
+                              className={`${
+                                isExpanded
+                                  ? "text-base leading-relaxed"
+                                  : "text-sm leading-relaxed"
+                              }`}
+                            >
                               {content}
                             </p>
                           ) : (
-                            <div className={`${isExpanded ? "text-base" : "text-sm"} markdown-content`}>
+                            <div
+                              className={`${
+                                isExpanded ? "text-base" : "text-sm"
+                              } markdown-content`}
+                            >
                               <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 components={{
-                                  code({ node, inline, className, children, ...props }) {
-                                    const match = /language-(\w+)/.exec(className || "")
+                                  code({
+                                    node,
+                                    inline,
+                                    className,
+                                    children,
+                                    ...props
+                                  }) {
+                                    const match = /language-(\w+)/.exec(
+                                      className || ""
+                                    );
                                     return !inline && match ? (
                                       <SyntaxHighlighter
-                                        style={theme === "dark" ? vscDarkPlus : vs}
+                                        style={
+                                          theme === "dark" ? vscDarkPlus : vs
+                                        }
                                         language={match[1]}
                                         PreTag="div"
                                         {...props}
@@ -624,17 +741,39 @@ export default function ChatPanel({
                                       >
                                         {children}
                                       </code>
-                                    )
+                                    );
                                   },
-                                  p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
-                                  ul: ({ children }) => <ul className="mb-4 list-disc pl-6 last:mb-0">{children}</ul>,
-                                  ol: ({ children }) => (
-                                    <ol className="mb-4 list-decimal pl-6 last:mb-0">{children}</ol>
+                                  p: ({ children }) => (
+                                    <p className="mb-4 last:mb-0">{children}</p>
                                   ),
-                                  li: ({ children }) => <li className="mb-1">{children}</li>,
-                                  h1: ({ children }) => <h1 className="text-xl font-bold mb-4 mt-6">{children}</h1>,
-                                  h2: ({ children }) => <h2 className="text-lg font-bold mb-3 mt-5">{children}</h2>,
-                                  h3: ({ children }) => <h3 className="text-md font-bold mb-2 mt-4">{children}</h3>,
+                                  ul: ({ children }) => (
+                                    <ul className="mb-4 list-disc pl-6 last:mb-0">
+                                      {children}
+                                    </ul>
+                                  ),
+                                  ol: ({ children }) => (
+                                    <ol className="mb-4 list-decimal pl-6 last:mb-0">
+                                      {children}
+                                    </ol>
+                                  ),
+                                  li: ({ children }) => (
+                                    <li className="mb-1">{children}</li>
+                                  ),
+                                  h1: ({ children }) => (
+                                    <h1 className="text-xl font-bold mb-4 mt-6">
+                                      {children}
+                                    </h1>
+                                  ),
+                                  h2: ({ children }) => (
+                                    <h2 className="text-lg font-bold mb-3 mt-5">
+                                      {children}
+                                    </h2>
+                                  ),
+                                  h3: ({ children }) => (
+                                    <h3 className="text-md font-bold mb-2 mt-4">
+                                      {children}
+                                    </h3>
+                                  ),
                                   a: ({ href, children }) => (
                                     <a
                                       href={href}
@@ -650,21 +789,37 @@ export default function ChatPanel({
                                       {children}
                                     </blockquote>
                                   ),
-                                  hr: () => <hr className="my-4 border-border" />,
+                                  hr: () => (
+                                    <hr className="my-4 border-border" />
+                                  ),
                                   table: ({ children }) => (
                                     <div className="overflow-x-auto my-4">
-                                      <table className="min-w-full divide-y divide-border">{children}</table>
+                                      <table className="min-w-full divide-y divide-border">
+                                        {children}
+                                      </table>
                                     </div>
                                   ),
-                                  thead: ({ children }) => <thead className="bg-muted/50">{children}</thead>,
-                                  tbody: ({ children }) => <tbody className="divide-y divide-border">{children}</tbody>,
+                                  thead: ({ children }) => (
+                                    <thead className="bg-muted/50">
+                                      {children}
+                                    </thead>
+                                  ),
+                                  tbody: ({ children }) => (
+                                    <tbody className="divide-y divide-border">
+                                      {children}
+                                    </tbody>
+                                  ),
                                   tr: ({ children }) => <tr>{children}</tr>,
                                   th: ({ children }) => (
                                     <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                       {children}
                                     </th>
                                   ),
-                                  td: ({ children }) => <td className="px-3 py-2 whitespace-nowrap">{children}</td>,
+                                  td: ({ children }) => (
+                                    <td className="px-3 py-2 whitespace-nowrap">
+                                      {children}
+                                    </td>
+                                  ),
                                 }}
                               >
                                 {content}
@@ -677,12 +832,13 @@ export default function ChatPanel({
                             <div
                               className="absolute -right-3 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
                               onClick={(e) => {
-                                e.stopPropagation()
-                                onCreateBranchNode(message.content)
+                                e.stopPropagation();
+                                onCreateBranchNode(message.content);
                                 toast({
                                   title: "Branch created",
-                                  description: "New branch node created from this message",
-                                })
+                                  description:
+                                    "New branch node created from this message",
+                                });
                               }}
                               title="Create branch from this message"
                             >
@@ -697,12 +853,13 @@ export default function ChatPanel({
                             <div
                               className="absolute -left-3 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
                               onClick={(e) => {
-                                e.stopPropagation()
-                                onCreateBranchNode(message.content)
+                                e.stopPropagation();
+                                onCreateBranchNode(message.content);
                                 toast({
                                   title: "Branch created",
-                                  description: "New branch node created from this message",
-                                })
+                                  description:
+                                    "New branch node created from this message",
+                                });
                               }}
                               title="Create branch from this message"
                             >
@@ -718,7 +875,11 @@ export default function ChatPanel({
                           </div>
                         )}
                       </div>
-                      <span className={`text-xs text-muted-foreground mt-1.5 px-2 ${isExpanded ? "opacity-70" : ""}`}>
+                      <span
+                        className={`text-xs text-muted-foreground mt-1.5 px-2 ${
+                          isExpanded ? "opacity-70" : ""
+                        }`}
+                      >
                         {format(new Date(message.timestamp), "h:mm a")}
                       </span>
                     </motion.div>
@@ -729,7 +890,11 @@ export default function ChatPanel({
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: 0.1 }}
-                        className={`flex my-2 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                        className={`flex my-2 ${
+                          message.sender === "user"
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
                       >
                         <Button
                           variant="ghost"
@@ -739,7 +904,9 @@ export default function ChatPanel({
                               ? "border-primary/30 text-primary"
                               : "border-orange-500/30 text-orange-500"
                           }`}
-                          onClick={() => handleNavigateToNode(branchPoints[message.id])}
+                          onClick={() =>
+                            handleNavigateToNode(branchPoints[message.id])
+                          }
                         >
                           <GitBranch className="h-3 w-3" />
                           <span>Branch created</span>
@@ -754,7 +921,11 @@ export default function ChatPanel({
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: 0.1 }}
-                        className={`flex my-2 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                        className={`flex my-2 ${
+                          message.sender === "user"
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
                       >
                         <Button
                           variant="ghost"
@@ -762,18 +933,27 @@ export default function ChatPanel({
                           className={`flex items-center gap-1.5 h-7 px-2 py-1 text-xs rounded-md border border-dashed ${
                             connectionPoints[message.id].type === "mainNode"
                               ? "border-primary/30 text-primary"
-                              : connectionPoints[message.id].type === "branchNode"
-                                ? "border-orange-500/30 text-orange-500"
-                                : "border-blue-500/30 text-blue-500"
+                              : connectionPoints[message.id].type ===
+                                "branchNode"
+                              ? "border-orange-500/30 text-orange-500"
+                              : "border-blue-500/30 text-blue-500"
                           }`}
-                          onClick={() => handleNavigateToNode(connectionPoints[message.id].nodeId)}
+                          onClick={() =>
+                            handleNavigateToNode(
+                              connectionPoints[message.id].nodeId
+                            )
+                          }
                         >
                           <Link className="h-3 w-3" />
                           <span>
-                            {connectionPoints[message.id].direction === "outgoing" ? "Connected to" : "Connected from"}{" "}
+                            {connectionPoints[message.id].direction ===
+                            "outgoing"
+                              ? "Connected to"
+                              : "Connected from"}{" "}
                             {getNodeTypeName(connectionPoints[message.id].type)}
                           </span>
-                          {connectionPoints[message.id].direction === "outgoing" ? (
+                          {connectionPoints[message.id].direction ===
+                          "outgoing" ? (
                             <ArrowRight className="h-3 w-3 ml-1" />
                           ) : (
                             <ArrowLeft className="h-3 w-3 ml-1" />
@@ -782,7 +962,7 @@ export default function ChatPanel({
                       </motion.div>
                     )}
                   </div>
-                )
+                );
               })
             )}
             {thinking && (
@@ -825,7 +1005,9 @@ export default function ChatPanel({
                 className="px-4 py-2 mb-3 bg-orange-500/10 border border-orange-500/20 rounded-md flex items-center gap-2"
               >
                 <GitBranch className="h-4 w-4 text-orange-500" />
-                <span className="text-sm font-medium">Creating branch node with content:</span>
+                <span className="text-sm font-medium">
+                  Creating branch node with content:
+                </span>
                 <span className="text-sm text-muted-foreground truncate">
                   {commandFeedback.content.substring(0, 30)}
                   {commandFeedback.content.length > 30 ? "..." : ""}
@@ -865,14 +1047,15 @@ export default function ChatPanel({
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Tip: Type{" "}
-                <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">/branch Your content</span> to
-                create a new branch node
+                <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">
+                  /branch Your content
+                </span>{" "}
+                to create a new branch node
               </p>
             </form>
           </motion.div>
         </AnimatePresence>
       )}
-
       {/* Resize handle */}
       {!isCollapsed && !isExpanded && (
         <div
@@ -881,5 +1064,5 @@ export default function ChatPanel({
         />
       )}
     </motion.div>
-  )
+  );
 }

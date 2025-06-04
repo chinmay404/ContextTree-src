@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { db } from "@/lib/db" // Use our new db utility
 import type { UserProfile, UserPreferences } from "@/lib/models/canvas" // Assuming models are correctly defined
 import { revalidatePath } from "next/cache"
+import { serializeMongoDoc, safeSerializeForClient } from "@/lib/serialize-mongodb" // Import serialization utilities
 
 console.log("ACTION/USER-PROFILE: Module loaded.")
 
@@ -47,13 +48,18 @@ export async function getUserProfile(): Promise<{ success: boolean; profile?: Us
       console.log("ACTION/USER-PROFILE: getUserProfile() - Profile found for user:", userId, "Updating lastLogin.")
       await db.userProfiles.updateOne({ userId }, { $set: { lastLogin: new Date() } })
       console.log("ACTION/USER-PROFILE: getUserProfile() - ✅ lastLogin updated for user:", userId)
-    }
-    // Ensure the returned profile matches the UserProfile interface, especially if _id is involved
-    const { _id, ...profileData } = userProfileDoc // Exclude MongoDB _id if UserProfile doesn't have it
-    return { success: true, profile: profileData as UserProfile }
-  } catch (error: any) {
+    }    // Ensure the returned profile matches the UserProfile interface, properly serialized
+    const serializedProfile = serializeMongoDoc(userProfileDoc);
+    // Exclude MongoDB _id if UserProfile doesn't have it
+    const { _id, ...profileData } = serializedProfile;
+    
+    // Final safety check using safeSerializeForClient
+    return safeSerializeForClient({ 
+      success: true, 
+      profile: profileData as UserProfile 
+    });  } catch (error: any) {
     console.error("ACTION/USER-PROFILE: getUserProfile() - ❌ Error:", error.message, error.stack)
-    return { success: false, error: error.message }
+    return safeSerializeForClient({ success: false, error: error.message })
   }
 }
 
@@ -77,14 +83,11 @@ export async function updateUserPreferences(
     }
     updateFields.lastLogin = new Date()
 
-    await db.userProfiles.updateOne({ userId }, { $set: updateFields })
-
-    revalidatePath("/canvas") // Or specific paths related to preferences
+    await db.userProfiles.updateOne({ userId }, { $set: updateFields })    revalidatePath("/canvas") // Or specific paths related to preferences
     console.log("ACTION/USER-PROFILE: updateUserPreferences() - ✅ Preferences updated for user:", userId)
-    return { success: true }
-  } catch (error: any) {
+    return safeSerializeForClient({ success: true })  } catch (error: any) {
     console.error("ACTION/USER-PROFILE: updateUserPreferences() - ❌ Error:", error.message, error.stack)
-    return { success: false, error: error.message }
+    return safeSerializeForClient({ success: false, error: error.message })
   }
 }
 
@@ -103,13 +106,10 @@ export async function updateUserProfile(
 
     const updatePayload: any = { ...profileData, lastLogin: new Date() }
 
-    await db.userProfiles.updateOne({ userId }, { $set: updatePayload })
-
-    revalidatePath("/canvas") // Or specific paths related to profile
+    await db.userProfiles.updateOne({ userId }, { $set: updatePayload })    revalidatePath("/canvas") // Or specific paths related to profile
     console.log("ACTION/USER-PROFILE: updateUserProfile() - ✅ Profile updated for user:", userId)
-    return { success: true }
-  } catch (error: any) {
+    return safeSerializeForClient({ success: true })  } catch (error: any) {
     console.error("ACTION/USER-PROFILE: updateUserProfile() - ❌ Error:", error.message, error.stack)
-    return { success: false, error: error.message }
+    return safeSerializeForClient({ success: false, error: error.message })
   }
 }

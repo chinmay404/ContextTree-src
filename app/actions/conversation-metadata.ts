@@ -1,10 +1,14 @@
-"use server"
+"use server";
 
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import getMongoClientPromise from "@/lib/mongodb"
-import type { ConversationMetadata } from "@/lib/models/canvas"
-import { revalidatePath } from "next/cache"
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import getMongoClientPromise from "@/lib/mongodb";
+import type { ConversationMetadata } from "@/lib/models/canvas";
+import { revalidatePath } from "next/cache";
+import {
+  serializeMongoDoc,
+  safeSerializeForClient,
+} from "@/lib/serialize-mongodb";
 
 interface SessionUserWithId {
   id?: string; // NextAuth session user might not always have an id, so make it optional
@@ -14,37 +18,50 @@ interface SessionUserWithId {
 // Get conversation metadata
 export async function getConversationMetadata(conversationId: string) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session || !session.user) {
-      throw new Error("Authentication required")
+      throw new Error("Authentication required");
     }
 
-    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
-    const client = await getMongoClientPromise()
-    const db = client.db("Conversationstore")
-    const metadataCollection = db.collection("conversationMetadata")
+    const userId =
+      (session.user as SessionUserWithId).id || session.user.email || "";
+    const client = await getMongoClientPromise();
+    const db = client.db("Conversationstore");
+    const metadataCollection = db.collection("conversationMetadata");
 
-    const metadata = await metadataCollection.findOne({ userId, conversationId })
+    const metadata = await metadataCollection.findOne({
+      userId,
+      conversationId,
+    }); // Use our dedicated serialization utility for MongoDB documents
+    const serializableMetadata = metadata ? serializeMongoDoc(metadata) : null;
 
-    return { success: true, metadata }
+    // Final safety check - ensure everything is proper JSON
+    return safeSerializeForClient({
+      success: true,
+      metadata: serializableMetadata,
+    });
   } catch (error) {
-    console.error("Error getting conversation metadata:", error)
-    return { success: false, error: (error as Error).message }
+    console.error("Error getting conversation metadata:", error);
+    return { success: false, error: (error as Error).message };
   }
 }
 
 // Update conversation metadata
-export async function updateConversationMetadata(conversationId: string, updates: Partial<ConversationMetadata>) {
+export async function updateConversationMetadata(
+  conversationId: string,
+  updates: Partial<ConversationMetadata>
+) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session || !session.user) {
-      throw new Error("Authentication required")
+      throw new Error("Authentication required");
     }
 
-    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
-    const client = await getMongoClientPromise()
-    const db = client.db("Conversationstore")
-    const metadataCollection = db.collection("conversationMetadata")
+    const userId =
+      (session.user as SessionUserWithId).id || session.user.email || "";
+    const client = await getMongoClientPromise();
+    const db = client.db("Conversationstore");
+    const metadataCollection = db.collection("conversationMetadata");
 
     await metadataCollection.updateOne(
       { userId, conversationId },
@@ -54,28 +71,32 @@ export async function updateConversationMetadata(conversationId: string, updates
           "analytics.lastActivity": new Date(),
         },
       },
-      { upsert: true },
-    )
+      { upsert: true }
+    );
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error("Error updating conversation metadata:", error)
-    return { success: false, error: (error as Error).message }
+    console.error("Error updating conversation metadata:", error);
+    return { success: false, error: (error as Error).message };
   }
 }
 
 // Add tags to conversation
-export async function addConversationTags(conversationId: string, tags: string[]) {
+export async function addConversationTags(
+  conversationId: string,
+  tags: string[]
+) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session || !session.user) {
-      throw new Error("Authentication required")
+      throw new Error("Authentication required");
     }
 
-    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
-    const client = await getMongoClientPromise()
-    const db = client.db("Conversationstore")
-    const metadataCollection = db.collection("conversationMetadata")
+    const userId =
+      (session.user as SessionUserWithId).id || session.user.email || "";
+    const client = await getMongoClientPromise();
+    const db = client.db("Conversationstore");
+    const metadataCollection = db.collection("conversationMetadata");
 
     await metadataCollection.updateOne(
       { userId, conversationId },
@@ -83,36 +104,37 @@ export async function addConversationTags(conversationId: string, tags: string[]
         $addToSet: { tags: { $each: tags } },
         $set: { "analytics.lastActivity": new Date() },
       },
-      { upsert: true },
-    )
+      { upsert: true }
+    );
 
-    revalidatePath("/canvas")
-    return { success: true }
+    revalidatePath("/canvas");
+    return { success: true };
   } catch (error) {
-    console.error("Error adding conversation tags:", error)
-    return { success: false, error: (error as Error).message }
+    console.error("Error adding conversation tags:", error);
+    return { success: false, error: (error as Error).message };
   }
 }
 
 // Search conversations by tags or content
 export async function searchConversations(query: string, tags?: string[]) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session || !session.user) {
-      throw new Error("Authentication required")
+      throw new Error("Authentication required");
     }
 
-    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
-    const client = await getMongoClientPromise()
-    const db = client.db("Conversationstore")
-    const conversationsCollection = db.collection("conversations")
-    const metadataCollection = db.collection("conversationMetadata")
+    const userId =
+      (session.user as SessionUserWithId).id || session.user.email || "";
+    const client = await getMongoClientPromise();
+    const db = client.db("Conversationstore");
+    const conversationsCollection = db.collection("conversations");
+    const metadataCollection = db.collection("conversationMetadata");
 
     // Build search criteria
-    const searchCriteria: any = { userId }
+    const searchCriteria: any = { userId };
 
     if (query) {
-      searchCriteria.$text = { $search: query }
+      searchCriteria.$text = { $search: query };
     }
 
     if (tags && tags.length > 0) {
@@ -121,21 +143,25 @@ export async function searchConversations(query: string, tags?: string[]) {
           userId,
           tags: { $in: tags },
         })
-        .toArray()
+        .toArray();
 
-      const conversationIds = metadataResults.map((m) => m.conversationId)
-      searchCriteria.conversationId = { $in: conversationIds }
+      const conversationIds = metadataResults.map((m) => m.conversationId);
+      searchCriteria.conversationId = { $in: conversationIds };
     }
 
     const conversations = await conversationsCollection
       .find(searchCriteria)
       .sort({ lastModified: -1 })
       .limit(50)
-      .toArray()
+      .toArray();
 
-    return { success: true, conversations }
+    return { success: true, conversations };
   } catch (error) {
-    console.error("Error searching conversations:", error)
-    return { success: false, error: (error as Error).message, conversations: [] }
+    console.error("Error searching conversations:", error);
+    return {
+      success: false,
+      error: (error as Error).message,
+      conversations: [],
+    };
   }
 }
