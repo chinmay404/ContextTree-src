@@ -126,6 +126,10 @@ export default function ContextTree() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [isOnline, setIsOnline] = useState(true)
   const [interactionHistory, setInteractionHistory] = useState<any[]>([])
+  // Add state for error and countdown
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [countdown, setCountdown] = useState(5)
+  const [forceProceed, setForceProceed] = useState(false)
 
   // Auto-save timer
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -156,9 +160,13 @@ export default function ContextTree() {
 
   // Load user conversations from MongoDB when component mounts
   useEffect(() => {
+    let countdownTimer: NodeJS.Timeout | null = null
     const loadUserData = async () => {
       if (status === "authenticated" && session?.user && !isInitialized && dbInitialized) {
         setIsLoading(true)
+        setLoadError(null)
+        setCountdown(5)
+        setForceProceed(false)
         try {
           const result = await getUserConversations()
 
@@ -167,6 +175,8 @@ export default function ContextTree() {
             if (result.sessionId) {
               setCurrentSessionId(result.sessionId)
             }
+            console.log("Session object in CanvasPage:", session)
+            console.log("Conversations loaded:", result.conversations)
 
             if (result.conversations.length > 0) {
               setConversations(result.conversations)
@@ -192,20 +202,42 @@ export default function ContextTree() {
               }
               setIsInitialized(true)
             }
+          } else {
+            throw new Error(result.error || "Unknown error")
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error loading user data:", error)
-          toast({
-            title: "Error loading your data",
-            description: "There was a problem loading your conversations. Please try again.",
-            variant: "destructive",
-          })
+          setLoadError(error?.message || "Unknown error")
+          setCountdown(5)
+          setForceProceed(false)
+          // Start countdown
+          countdownTimer = setInterval(() => {
+            setCountdown((prev) => {
+              if (prev <= 1) {
+                clearInterval(countdownTimer as NodeJS.Timeout)
+                setForceProceed(true)
+                setIsInitialized(true)
+                setConversations([{
+                  id: uuidv4(),
+                  name: "New Context",
+                  nodes: initialNodes,
+                  edges: initialEdges,
+                }])
+                setActiveConversation((prev) => prev || "1")
+                return 0
+              }
+              return prev - 1
+            })
+          }, 1000)
         } finally {
           setIsLoading(false)
         }
       }
     }
     loadUserData()
+    return () => {
+      if (countdownTimer) clearInterval(countdownTimer)
+    }
   }, [status, session, toast, isInitialized, dbInitialized])
 
   // Set nodes/edges and activeNode after conversations and activeConversation are set
@@ -1886,8 +1918,39 @@ export default function ContextTree() {
   }
 
   // Render loading state if data is not ready
-  if (isLoading || !isInitialized) {
-    return <div className="flex items-center justify-center h-screen">Loading your canvas...</div>;
+  if ((isLoading || !isInitialized) && loadError) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="flex flex-col items-center">
+          <div className="text-red-600 text-lg font-semibold mb-2">Error loading your canvas data.</div>
+          <div className="mb-2">{loadError}</div>
+          {countdown > 0 && !forceProceed ? (
+            <div className="mb-2">Retrying in <span className="font-bold">{countdown}</span> seconds...</div>
+          ) : null}
+          {countdown > 0 && !forceProceed ? (
+            <button
+              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              onClick={() => {
+                setForceProceed(true)
+                setIsInitialized(true)
+                setConversations([{
+                  id: uuidv4(),
+                  name: "New Context",
+                  nodes: initialNodes,
+                  edges: initialEdges,
+                }])
+                setActiveConversation((prev) => prev || "1")
+              }}
+            >
+              Continue without loading data
+            </button>
+          ) : null}
+          {forceProceed && (
+            <div className="mt-2 text-green-600">Proceeding to canvas without loading data...</div>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (

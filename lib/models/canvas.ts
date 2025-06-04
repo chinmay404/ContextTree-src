@@ -47,3 +47,13 @@ export interface ConversationMetadata {
     backupCount: number
   }
 }
+
+export interface CanvasSession {
+  id: string
+  userId: string
+  conversationId: string
+  startTime: Date
+  lastActivity: Date
+  deviceInfo: string
+  isActive: boolean
+}

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from 'next/font/google';
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
 import { initializeDatabase } from "@/lib/init-db"; // Import initializeDatabase
-import { SessionProvider } from "next-auth/react" // Ensure SessionProvider is here if you use NextAuth client-side
+import { Providers } from "@/components/providers"; // Import the new Providers component
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -46,16 +45,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <SessionProvider> {/* If using NextAuth client hooks like useSession */}
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            {children}
-          </ThemeProvider>
-        </SessionProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

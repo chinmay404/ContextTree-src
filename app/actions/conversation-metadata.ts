@@ -2,9 +2,14 @@
 
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import clientPromise from "@/lib/mongodb"
+import getMongoClientPromise from "@/lib/mongodb"
 import type { ConversationMetadata } from "@/lib/models/canvas"
 import { revalidatePath } from "next/cache"
+
+interface SessionUserWithId {
+  id?: string; // NextAuth session user might not always have an id, so make it optional
+  email?: string | null;
+}
 
 // Get conversation metadata
 export async function getConversationMetadata(conversationId: string) {
@@ -14,8 +19,8 @@ export async function getConversationMetadata(conversationId: string) {
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
-    const client = await clientPromise
+    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
+    const client = await getMongoClientPromise()
     const db = client.db("Conversationstore")
     const metadataCollection = db.collection("conversationMetadata")
 
@@ -36,8 +41,8 @@ export async function updateConversationMetadata(conversationId: string, updates
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
-    const client = await clientPromise
+    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
+    const client = await getMongoClientPromise()
     const db = client.db("Conversationstore")
     const metadataCollection = db.collection("conversationMetadata")
 
@@ -67,8 +72,8 @@ export async function addConversationTags(conversationId: string, tags: string[]
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
-    const client = await clientPromise
+    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
+    const client = await getMongoClientPromise()
     const db = client.db("Conversationstore")
     const metadataCollection = db.collection("conversationMetadata")
 
@@ -97,8 +102,8 @@ export async function searchConversations(query: string, tags?: string[]) {
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
-    const client = await clientPromise
+    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
+    const client = await getMongoClientPromise()
     const db = client.db("Conversationstore")
     const conversationsCollection = db.collection("conversations")
     const metadataCollection = db.collection("conversationMetadata")

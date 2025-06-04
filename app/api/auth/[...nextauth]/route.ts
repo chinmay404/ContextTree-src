@@ -1,5 +1,7 @@
 import NextAuth from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
+import type { JWT } from "next-auth/jwt"
+import type { Session, User } from "next-auth"
 
 export const authOptions = {
   providers: [
@@ -18,6 +20,38 @@ export const authOptions = {
     error: "/auth/error",
   },
   callbacks: {
+    async jwt({ token, user }: { token: JWT, user?: User }) {
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+      }
+      return token;
+    },
+    async session({ session, token }: { session: Session, token: JWT }) {
+      // Ensure all properties of the user object are serializable
+      const serializableUser: {
+        id?: string | null;
+        name?: string | null;
+        email?: string | null;
+        image?: string | null;
+      } = {};
+
+      if (token.id) {
+        serializableUser.id = token.id as string;
+      }
+      if (token.name) {
+        serializableUser.name = token.name;
+      }
+      if (token.email) {
+        serializableUser.email = token.email;
+      }
+      if (token.picture) {
+        serializableUser.image = token.picture;
+      }
+
+      session.user = serializableUser;
+      return session;
+    },
     async redirect({ url, baseUrl }: { url: string, baseUrl: string }) {
       // If running locally, always redirect to local /canvas
       if (baseUrl.startsWith("http://localhost") || baseUrl.startsWith("https://localhost")) {

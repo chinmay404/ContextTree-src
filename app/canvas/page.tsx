@@ -3,10 +3,8 @@
 import type React from "react"
 
 import ContextTree from "@/components/conversation-canvas"
-import { ThemeProvider } from "@/components/theme-provider"
 import { ReactFlowProvider } from "reactflow"
 import { useEffect, useState } from "react"
-import { SessionProvider } from "next-auth/react"
 import { Toaster } from "@/components/ui/toaster"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -76,18 +74,14 @@ function DatabaseStatus() {
 
 export default function CanvasPage() {
   return (
-    <SessionProvider>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        <ErrorHandler>
-          <ReactFlowProvider>
-            <main className="flex min-h-screen flex-col">
-              <ContextTree />
-              <DatabaseStatus />
-              <Toaster />
-            </main>
-          </ReactFlowProvider>
-        </ErrorHandler>
-      </ThemeProvider>
-    </SessionProvider>
+    <ErrorHandler>
+      <ReactFlowProvider>
+        <main className="flex min-h-screen flex-col">
+          <ContextTree />
+          <DatabaseStatus />
+          <Toaster />
+        </main>
+      </ReactFlowProvider>
+    </ErrorHandler>
   )
 }

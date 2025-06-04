@@ -1,10 +1,10 @@
-import clientPromise from "@/lib/mongodb"
+import getMongoClientPromise from "@/lib/mongodb"
 
 // Database utility functions for better data management
 
 export class DatabaseUtils {
   private static async getDb() {
-    const client = await clientPromise
+    const client = await getMongoClientPromise()
     return client.db("Conversationstore")
   }
 

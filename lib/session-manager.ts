@@ -1,11 +1,16 @@
 "use server"
 
 import { v4 as uuidv4 } from "uuid"
-import clientPromise from "@/lib/mongodb"
+import getMongoClientPromise from "@/lib/mongodb"
 import type { CanvasSession } from "@/lib/models/canvas"
 import { cookies } from "next/headers"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+
+interface SessionUserWithId {
+  id?: string; // NextAuth session user might not always have an id, so make it optional
+  email?: string | null;
+}
 
 // Create a new canvas session
 export async function createCanvasSession(conversationId: string): Promise<string | null> {
@@ -15,15 +20,15 @@ export async function createCanvasSession(conversationId: string): Promise<strin
       return null
     }
 
-    const userId = session.user.id || session.user.email
+    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
 
     // Generate a unique session ID
     const sessionId = uuidv4()
 
     // Get browser and device info from headers
-    const userAgent = cookies().get("user-agent")?.value || "Unknown"
+    const userAgent = (await cookies()).get("user-agent")?.value || "Unknown"
 
-    const client = await clientPromise
+    const client = await getMongoClientPromise()
     const db = client.db("Conversationstore")
     const sessionsCollection = db.collection("canvasSessions")
 
@@ -60,7 +65,7 @@ export async function createCanvasSession(conversationId: string): Promise<strin
 // Update session activity
 export async function updateSessionActivity(sessionId: string): Promise<boolean> {
   try {
-    const client = await clientPromise
+    const client = await getMongoClientPromise()
     const db = client.db("Conversationstore")
     const sessionsCollection = db.collection("canvasSessions")
 
@@ -76,7 +81,7 @@ export async function updateSessionActivity(sessionId: string): Promise<boolean>
 // End a canvas session
 export async function endCanvasSession(sessionId: string): Promise<boolean> {
   try {
-    const client = await clientPromise
+    const client = await getMongoClientPromise()
     const db = client.db("Conversationstore")
     const sessionsCollection = db.collection("canvasSessions")
 
@@ -97,9 +102,9 @@ export async function getUserActiveSessions(): Promise<CanvasSession[]> {
       return []
     }
 
-    const userId = session.user.id || session.user.email
+    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
 
-    const client = await clientPromise
+    const client = await getMongoClientPromise()
     const db = client.db("Conversationstore")
     const sessionsCollection = db.collection("canvasSessions")
 
@@ -108,7 +113,7 @@ export async function getUserActiveSessions(): Promise<CanvasSession[]> {
       .sort({ lastActivity: -1 })
       .toArray()
 
-    return activeSessions as CanvasSession[]
+    return activeSessions as unknown as CanvasSession[]
   } catch (error) {
     console.error("Error getting user active sessions:", error)
     return []

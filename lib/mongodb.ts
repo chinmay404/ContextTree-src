@@ -85,5 +85,7 @@ export async function getConnectionStatus() {
   }
 }
 
-// Export a module-scoped MongoClient promise.
-export default clientPromise
+// Export a module-scoped MongoClient promise through an async function.
+export default async function getMongoClientPromise(): Promise<MongoClient> {
+  return clientPromise
+}

@@ -2,8 +2,14 @@
 
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import clientPromise from "@/lib/mongodb"
+import getMongoClientPromise from "@/lib/mongodb"
 import { revalidatePath } from "next/cache"
+import { ObjectId } from "mongodb"
+
+interface SessionUserWithId {
+  id?: string; // NextAuth session user might not always have an id, so make it optional
+  email?: string | null;
+}
 
 // Create conversation backup
 export async function createConversationBackup(conversationId: string) {
@@ -13,8 +19,8 @@ export async function createConversationBackup(conversationId: string) {
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
-    const client = await clientPromise
+    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
+    const client = await getMongoClientPromise()
     const db = client.db("Conversationstore")
     const conversationsCollection = db.collection("conversations")
     const backupsCollection = db.collection("conversationBackups")
@@ -67,8 +73,8 @@ export async function getConversationBackups(conversationId: string) {
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
-    const client = await clientPromise
+    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
+    const client = await getMongoClientPromise()
     const db = client.db("Conversationstore")
     const backupsCollection = db.collection("conversationBackups")
 
@@ -89,15 +95,15 @@ export async function restoreConversationFromBackup(conversationId: string, back
       throw new Error("Authentication required")
     }
 
-    const userId = session.user.id || session.user.email
-    const client = await clientPromise
+    const userId = (session.user as SessionUserWithId).id || session.user.email || ""
+    const client = await getMongoClientPromise()
     const db = client.db("Conversationstore")
     const conversationsCollection = db.collection("conversations")
     const backupsCollection = db.collection("conversationBackups")
 
     // Get the backup
     const backup = await backupsCollection.findOne({
-      _id: backupId,
+      _id: new ObjectId(backupId), // Convert string backupId to ObjectId
       userId,
       conversationId,
     })

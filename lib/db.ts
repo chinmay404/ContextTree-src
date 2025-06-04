@@ -14,17 +14,17 @@ import type {
   InsertOneResult,
   IndexSpecification,
 } from "mongodb"
-import clientPromise from "@/lib/mongodb" // Assuming @/lib/mongodb.ts is correct and resolvable
+import getMongoClientPromise from "@/lib/mongodb"
 
 console.log("LIB/DB: Module loaded. (Marked as 'use server', exporting async functions)")
 
 // Exported helper functions
 export async function getConnectedClient(): Promise<MongoClient> {
   try {
-    const client = await clientPromise
+    const client = await getMongoClientPromise()
     return client
   } catch (error: any) {
-    console.error("LIB/DB: getConnectedClient() - ❌ Error resolving clientPromise:", error.message)
+    console.error("LIB/DB: getConnectedClient() - ❌ Error resolving getMongoClientPromise:", error.message)
     throw new Error(`Failed to connect to MongoDB: ${error.message}`)
   }
 }

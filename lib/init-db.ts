@@ -1,4 +1,4 @@
-import clientPromise, { getConnectionStatus } from "@/lib/mongodb" // Assuming getConnectionStatus is async
+import getMongoClientPromise, { getConnectionStatus } from "@/lib/mongodb" // Assuming getConnectionStatus is async
 
 console.log("LIB/INIT-DB: Module loaded.")
 
@@ -20,14 +20,14 @@ export async function initializeDatabase() {
     }
     if (!status.isConnected) {
       console.warn(
-        "LIB/INIT-DB: initializeDatabase() - MongoDB not connected yet, but no specific error. Proceeding to await clientPromise.",
+        "LIB/INIT-DB: initializeDatabase() - MongoDB not connected yet, but no specific error. Proceeding to await getMongoClientPromise.",
       )
     } else {
       console.log("LIB/INIT-DB: initializeDatabase() - ✅ MongoDB connection status is good.")
     }
 
-    console.log("LIB/INIT-DB: initializeDatabase() - Awaiting clientPromise...")
-    const client = await clientPromise
+    console.log("LIB/INIT-DB: initializeDatabase() - Awaiting getMongoClientPromise...")
+    const client = await getMongoClientPromise()
     console.log("LIB/INIT-DB: initializeDatabase() - ✅ MongoDB client obtained. Initializing collections...")
 
     const db = client.db("Conversationstore") // Default DB name
@@ -126,7 +126,7 @@ export async function initializeDatabase() {
 export async function checkDatabaseConnection() {
   console.log("LIB/INIT-DB: checkDatabaseConnection() - Pinging database...")
   try {
-    const client = await clientPromise
+    const client = await getMongoClientPromise()
     await client.db("admin").command({ ping: 1 })
     console.log("LIB/INIT-DB: checkDatabaseConnection() - ✅ Ping successful.")
     return {
