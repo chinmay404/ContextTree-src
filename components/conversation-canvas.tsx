@@ -2417,156 +2417,85 @@ export default function ContextTree() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
-      <Navbar
-        onSave={onSave}
-        onImageUpload={onImageUpload}
-        onExport={onExport}
-        showConnectionMode={showConnectionMode}
-        onCancelConnectionMode={cancelConnectionMode}
-      />
-      <div className="flex flex-1 overflow-hidden">
-        <LeftSidebar
-          onAddMainNode={createMainNode}
-          onAddBranchNode={createBranchNode}
-          onAddMultipleBranches={createMultipleBranches}
-          onAddImageNode={createImageNode}
-          activeConversation={activeConversation}
-          conversations={conversations}
-          setActiveConversation={async (id) => {
-            setActiveConversation(id);
-            await setActiveConversationInDB(id);
-          }}
-          onCreateNewConversation={createNewConversation}
-          onDeleteConversation={deleteConversation}
-          onDuplicateConversation={duplicateConversation}
-        />
-        <div className="flex flex-1 overflow-hidden relative">
-          <div className="absolute top-4 left-0 right-0 z-50 mx-auto w-fit">
-            <div className="bg-amber-100 border border-amber-300 text-amber-800 px-4 py-2 rounded-md shadow-md flex items-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 mr-2"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-              <span className="font-medium">
-                Context treeing and branching features temporarily removed
-              </span>
-            </div>
-          </div>
-          {isLoading ? (
-            <div className="flex items-center justify-center w-full h-full">
-              <div className="flex flex-col items-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-                <p className="text-gray-600">Loading your canvas...</p>
-              </div>
-            </div>
-          ) : (
-            <>
-              <FlowCanvas
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                nodeTypes={nodeTypes}
-                edgeTypes={edgeTypes}
-                selectedEdge={selectedEdge}
-                setSelectedEdge={setSelectedEdge}
-                activeNode={activeNode}
-                activeConversation={activeConversation}
-                setConversations={setConversations}
-                conversations={conversations}
-                createBranchNode={createBranchNode}
-                branchCount={branchCount}
-                setReactFlowInstance={setReactFlowInstance}
-                showConnectionMode={showConnectionMode}
-                connectionSource={connectionSource}
-                onConnect={onConnect}
-                onViewportChange={onViewportChange}
-                onEdgeDelete={onEdgeDelete}
-              />
-              <div className="absolute bottom-4 left-[280px] z-10 w-64">
-                <ConnectionHistory
-                  connectionEvents={connectionEvents}
-                  onNavigate
-                  toNode={navigateToNode}
-                />
-              </div>
-              <ChatPanel
-                messages={messages}
-                onSendMessage={onSendMessage}
-                nodeName={nodeName}
-                onNodeNameChange={onNodeNameChange}
-                onCreateBranchNode={createBranchNodeFromChat}
-                isCollapsed={chatPanelCollapsed}
-                setIsCollapsed={setChatPanelCollapsed}
-                onDeleteNode={onActiveNodeDelete}
-                model={activeNodeModel}
-                onModelChange={onActiveNodeModelChange}
-                branchPoints={branchPoints}
-                connectionPoints={connectionPoints}
-                onNavigateToNode={navigateToNode}
-                nodeNotes={nodeNotes}
-                onSaveNote={saveNodeNote}
-                activeNodeId={activeNode}
-                nodes={nodes} // Pass the nodes array
-                thinking={chatThinking}
-              />
-            </>
-          )}{" "}
-          <div className="absolute bottom-4 right-4 flex flex-col items-end space-y-2">
-            <SaveStatus
-              isSaving={isSaving}
-              lastSaved={lastSaved}
-              isOnline={isOnline}
-              saveResult={saveResult}
-              analytics={saveAnalytics}
-              preferences={{ savePreferences }}
-              hasUnsavedChanges={hasUnsavedChanges}
-              backupCount={backupCount}
-              onShowPreferences={handleShowPreferences}
-              onShowBackups={handleShowBackups}
-              onManualSave={handleManualSave}
-            />{" "}
-            <SessionManager
-              currentSessionId={currentSessionId}
-              onForceSync={handleForceSync}
+    <div className="reactflow-wrapper h-full w-full relative bg-slate-50">
+      <div className="flex h-full w-full">
+        {/* Sidebar Panel */}
+        <aside className="w-full md:w-1/4 p-2">
+          <div className="bg-white rounded-xl shadow-md h-full p-4">
+            <LeftSidebar
+              onAddMainNode={createMainNode}
+              onAddBranchNode={createBranchNode}
+              onAddMultipleBranches={createMultipleBranches}
+              onAddImageNode={createImageNode}
+              activeConversation={activeConversation}
+              conversations={conversations}
+              setActiveConversation={async (id) => {
+                setActiveConversation(id);
+                await setActiveConversationInDB(id);
+              }}
+              onCreateNewConversation={createNewConversation}
+              onDeleteConversation={deleteConversation}
+              onDuplicateConversation={duplicateConversation}
             />
           </div>
-          {/* Enhanced Save UI Components */}
-          {showBackupManager && (
-            <BackupManager
-              conversationId={activeConversation}
-              isOpen={showBackupManager}
-              onClose={() => setShowBackupManager(false)}
-              onRestore={handleBackupRestore}
+        </aside>
+        {/* Main Workspace */}
+        <div className="flex-1 flex flex-col p-2 gap-4">
+          <div className="bg-white rounded-t-xl shadow-md p-3">
+            <Navbar
+              onSave={onSave}
+              onImageUpload={onImageUpload}
+              onExport={onExport}
+              showConnectionMode={showConnectionMode}
+              onCancelConnectionMode={cancelConnectionMode}
             />
-          )}
-          {showSavePreferences && (
-            <SavePreferences
-              preferences={savePreferences}
-              isOpen={showSavePreferences}
-              onClose={() => setShowSavePreferences(false)}
-              onSave={handlePreferencesSave}
+          </div>
+          <div className="flex-1 bg-white rounded-b-xl shadow-inner overflow-hidden">
+            <FlowCanvas
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              selectedEdge={selectedEdge}
+              setSelectedEdge={setSelectedEdge}
+              activeNode={activeNode}
+              activeConversation={activeConversation}
+              setConversations={setConversations}
+              conversations={conversations}
+              createBranchNode={createBranchNode}
+              branchCount={branchCount}
+              setReactFlowInstance={setReactFlowInstance}
+              showConnectionMode={showConnectionMode}
+              connectionSource={connectionSource}
+              onConnect={onConnect}
+              onViewportChange={onViewportChange}
+              onEdgeDelete={onEdgeDelete}
             />
-          )}
-          {showSaveAnalytics && (
-            <SaveAnalytics
-              conversationId={activeConversation}
-              analytics={saveAnalytics}
-              isOpen={showSaveAnalytics}
-              onClose={() => setShowSaveAnalytics(false)}
+          </div>
+          <div className="bg-white rounded-xl shadow-md p-3 mt-2">
+            <ChatPanel
+              messages={messages}
+              onSendMessage={onSendMessage}
+              nodeName={nodeName}
+              onNodeNameChange={onNodeNameChange}
+              onCreateBranchNode={createBranchNodeFromChat}
+              isCollapsed={chatPanelCollapsed}
+              setIsCollapsed={setChatPanelCollapsed}
+              onDeleteNode={onActiveNodeDelete}
+              model={activeNodeModel}
+              onModelChange={onActiveNodeModelChange}
+              branchPoints={branchPoints}
+              connectionPoints={connectionPoints}
+              onNavigateToNode={navigateToNode}
+              nodeNotes={nodeNotes}
+              onSaveNote={saveNodeNote}
+              activeNodeId={activeNode}
+              nodes={nodes} // Pass the nodes array
+              thinking={chatThinking}
             />
-          )}
+          </div>
         </div>
       </div>
     </div>
