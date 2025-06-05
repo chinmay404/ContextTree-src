@@ -7,8 +7,8 @@ import { ReactFlowProvider } from "reactflow";
 import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/components/ui/use-toast";
-import LeftSidebar from "@/components/LeftSidebar";
-import Navbar from "@/components/Navbar";
+import LeftSidebar from "@/components/left-sidebar";
+import Navbar from "@/components/navbar";
 
 // Error handler component to catch ResizeObserver errors
 function ErrorHandler({ children }: { children: React.ReactNode }) {
