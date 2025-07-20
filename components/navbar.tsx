@@ -62,27 +62,35 @@ export default function Navbar({
   }
 
   return (
-    <div className="bg-background/95 backdrop-blur-md border-b border-border py-3 px-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
+    <div className="bg-gradient-to-r from-white/95 via-white/90 to-blue-50/80 backdrop-blur-xl border border-gray-200/60 rounded-xl py-3 px-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all duration-300">
       <div className="flex items-center">
-        <div className="flex items-center gap-2 mr-6">
-          <img src="/contexttree-logo.png" alt="ContextTree Logo" className="h-7 w-7" />
-          <h1 className="text-lg font-semibold tracking-tight">ContextTree</h1>
+        <div className="flex items-center gap-3 mr-6">
+          <div className="relative">
+            <img src="/contexttree-logo.png" alt="ContextTree Logo" className="h-8 w-8 rounded-lg shadow-sm" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
+          </div>
+          <h1 className="text-xl font-bold bg-gradient-to-r from-gray-800 via-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight">ContextTree</h1>
         </div>
       </div>
 
       {/* Connection Mode Indicator */}
       {showConnectionMode && (
-        <div className="absolute left-1/2 transform -translate-x-1/2 bg-yellow-500/90 text-black px-3 py-1 rounded-full flex items-center gap-2 text-sm font-medium">
-          <span>Connection Mode</span>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="absolute left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-2 rounded-full flex items-center gap-2 text-sm font-medium shadow-lg"
+        >
+          <span className="animate-pulse">●</span>
+          <span>Connection Mode Active</span>
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 rounded-full bg-yellow-600/50 hover:bg-yellow-600"
+            className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/30 transition-all duration-200"
             onClick={onCancelConnectionMode}
           >
             <Link2Off className="h-3.5 w-3.5" />
           </Button>
-        </div>
+        </motion.div>
       )}
 
       {/* Desktop Menu */}
@@ -91,9 +99,9 @@ export default function Navbar({
           variant="outline"
           size="sm"
           onClick={onSave}
-          className="flex items-center gap-1 h-8 px-3 text-xs font-medium"
+          className="flex items-center gap-2 h-9 px-4 text-sm font-medium bg-white/50 border-gray-200/60 hover:bg-white/80 hover:border-blue-300/60 hover:shadow-sm transition-all duration-200"
         >
-          <Save className="h-3.5 w-3.5" />
+          <Save className="h-4 w-4" />
           <span>Save</span>
         </Button>
 
@@ -101,9 +109,9 @@ export default function Navbar({
           variant="outline"
           size="sm"
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-1 h-8 px-3 text-xs font-medium"
+          className="flex items-center gap-2 h-9 px-4 text-sm font-medium bg-white/50 border-gray-200/60 hover:bg-white/80 hover:border-green-300/60 hover:shadow-sm transition-all duration-200"
         >
-          <ImageIcon className="h-3.5 w-3.5" />
+          <ImageIcon className="h-4 w-4" />
           <span>Add Image</span>
         </Button>
 
@@ -111,26 +119,26 @@ export default function Navbar({
           variant="outline"
           size="sm"
           onClick={onExport}
-          className="flex items-center gap-1 h-8 px-3 text-xs font-medium"
+          className="flex items-center gap-2 h-9 px-4 text-sm font-medium bg-white/50 border-gray-200/60 hover:bg-white/80 hover:border-purple-300/60 hover:shadow-sm transition-all duration-200"
         >
-          <Download className="h-3.5 w-3.5" />
+          <Download className="h-4 w-4" />
           <span>Export</span>
         </Button>
 
         <Button
           variant="default"
           size="sm"
-          className="flex items-center gap-1 h-8 px-3 text-xs font-medium bg-primary text-primary-foreground"
+          className="flex items-center gap-2 h-9 px-4 text-sm font-medium bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 hover:from-blue-600 hover:to-purple-700 shadow-md hover:shadow-lg transition-all duration-200"
         >
-          <Share2 className="h-3.5 w-3.5" />
+          <Share2 className="h-4 w-4" />
           <span>Share</span>
         </Button>
 
-        <div className="h-5 w-px bg-border mx-1"></div>
+        <div className="h-6 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent mx-2"></div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full overflow-hidden border border-border">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full overflow-hidden border-2 border-gray-200/60 hover:border-blue-300/60 shadow-sm hover:shadow-md transition-all duration-200">
               {session?.user?.image ? (
                 <img
                   src={session.user.image || "/placeholder.svg"}
@@ -138,13 +146,15 @@ export default function Navbar({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <img src="/diverse-avatars.png" alt="Profile" className="h-full w-full object-cover" />
+                <div className="h-full w-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                  <User className="h-5 w-5 text-white" />
+                </div>
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <div className="flex items-center p-2">
-              <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
+          <DropdownMenuContent align="end" className="w-64 bg-white/95 backdrop-blur-xl border border-gray-200/60 shadow-xl rounded-xl">
+            <div className="flex items-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
+              <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border-2 border-white shadow-sm">
                 {session?.user?.image ? (
                   <img
                     src={session.user.image || "/placeholder.svg"}
@@ -152,45 +162,47 @@ export default function Navbar({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <img src="/diverse-avatars.png" alt="Profile" className="h-full w-full object-cover" />
+                  <div className="h-full w-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                    <User className="h-5 w-5 text-white" />
+                  </div>
                 )}
               </div>
               <div>
-                <p className="text-sm font-medium">{session?.user?.name || "Guest User"}</p>
-                <p className="text-xs text-muted-foreground">{session?.user?.email || "Not signed in"}</p>
+                <p className="text-sm font-semibold text-gray-800">{session?.user?.name || "Guest User"}</p>
+                <p className="text-xs text-gray-600">{session?.user?.email || "Not signed in"}</p>
               </div>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem className="hover:bg-blue-50/50">
               <User className="h-4 w-4 mr-2" />
-              <span>Profile</span>
+              <span>Profile Settings</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleSignOut}>
+            <DropdownMenuItem onClick={handleSignOut} className="text-red-600 hover:bg-red-50/50">
               <LogOut className="h-4 w-4 mr-2" />
               <span>Sign out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="h-5 w-px bg-border mx-1"></div>
+        <div className="h-6 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent mx-2"></div>
 
         <ThemeToggle />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white/60 hover:shadow-sm transition-all duration-200">
               <Settings className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
+          <DropdownMenuContent align="end" className="w-56 bg-white/95 backdrop-blur-xl border border-gray-200/60 shadow-xl rounded-xl">
+            <DropdownMenuItem className="flex items-center gap-2 hover:bg-blue-50/50">
+              <Zap className="h-4 w-4 text-yellow-500" />
               <span>Canvas Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Keyboard Shortcuts</DropdownMenuItem>
-            <DropdownMenuItem>Preferences</DropdownMenuItem>
-            <DropdownMenuItem>About</DropdownMenuItem>
+            <DropdownMenuItem className="hover:bg-gray-50/50">Keyboard Shortcuts</DropdownMenuItem>
+            <DropdownMenuItem className="hover:bg-gray-50/50">Preferences</DropdownMenuItem>
+            <DropdownMenuItem className="hover:bg-gray-50/50">About</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -2424,11 +2424,11 @@ export default function ContextTree() {
   }
 
   return (
-    <div className="reactflow-wrapper h-full w-full relative bg-slate-50">
+    <div className="reactflow-wrapper h-full w-full relative bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50/30">
       <div className="flex h-full w-full">
         {/* Sidebar Panel */}
-        <aside className="w-full md:w-1/4 p-2">
-          <div className="bg-white rounded-xl shadow-md h-full p-4">
+        <aside className="w-full md:w-1/4 p-3">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 h-full p-5 hover:shadow-xl transition-all duration-300">
             <LeftSidebar
               onAddMainNode={createMainNode}
               onAddBranchNode={createBranchNode}
@@ -2447,8 +2447,8 @@ export default function ContextTree() {
           </div>
         </aside>
         {/* Main Workspace */}
-        <div className="flex-1 flex flex-col p-2 gap-4">
-          <div className="bg-white rounded-t-xl shadow-md p-3">
+        <div className="flex-1 flex flex-col p-3 gap-4">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-4 hover:shadow-xl transition-all duration-300">
             <Navbar
               onSave={onSave}
               onImageUpload={onImageUpload}
@@ -2457,7 +2457,8 @@ export default function ContextTree() {
               onCancelConnectionMode={cancelConnectionMode}
             />
           </div>
-          <div className="flex-1 bg-white rounded-b-xl shadow-inner overflow-hidden">
+          <div className="flex-1 bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 overflow-hidden hover:shadow-xl transition-all duration-300 relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 via-transparent to-purple-50/20 pointer-events-none"></div>
             <FlowCanvas
               nodes={nodes}
               edges={edges}
@@ -2481,7 +2482,7 @@ export default function ContextTree() {
               onEdgeDelete={onEdgeDelete}
             />
           </div>
-          <div className="bg-white rounded-xl shadow-md p-3 mt-2">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-4 hover:shadow-xl transition-all duration-300">
             <ChatPanel
               messages={messages}
               onSendMessage={onSendMessage}

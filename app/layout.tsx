@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from 'next/font/google';
 import "./globals.css";
+import "../styles/enhanced-ui.css";
 import { initializeDatabase } from "@/lib/init-db"; // Import initializeDatabase
 import { Providers } from "@/components/providers"; // Import the new Providers component
 

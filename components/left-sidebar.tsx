@@ -118,32 +118,39 @@ export default function LeftSidebar({
   return (
     <div
       ref={sidebarRef}
-      className={`relative border-r border-border bg-card transition-all duration-300 flex flex-col ${
+      className={`relative transition-all duration-300 flex flex-col h-full ${
         isCollapsed ? "w-16" : ""
       }`}
       style={{ width: isCollapsed ? "64px" : `${sidebarWidth}px` }}
     >
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <div className={`flex items-center gap-2 ${isCollapsed ? "hidden" : "flex"}`}>
-          <Network className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold text-sm">Node Tools</h2>
+      <div className="p-4 flex items-center justify-between border-b border-gray-200/50">
+        <div className={`flex items-center gap-3 ${isCollapsed ? "hidden" : "flex"}`}>
+          <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-sm">
+            <Network className="h-5 w-5 text-white" />
+          </div>
+          <h2 className="font-bold text-lg bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Node Tools</h2>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleCollapse}>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:shadow-sm transition-all duration-200" 
+          onClick={toggleCollapse}
+        >
           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
       </div>
 
-      <div className="p-3 flex flex-col gap-2">
+      <div className="p-4 flex flex-col gap-3">
         <TooltipProvider delayDuration={300}>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
-                className={`flex items-center gap-2 justify-start ${isCollapsed ? "px-2" : ""}`}
+                className={`flex items-center gap-3 justify-start h-11 bg-white/60 border-gray-200/60 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:border-blue-300/60 hover:shadow-sm transition-all duration-200 ${isCollapsed ? "px-2" : "px-4"}`}
                 onClick={onAddMainNode}
               >
-                <MessageSquare className="h-4 w-4 text-primary" />
-                {!isCollapsed && <span>Add Main Node</span>}
+                <MessageSquare className="h-5 w-5 text-blue-600" />
+                {!isCollapsed && <span className="font-medium">Add Main Node</span>}
               </Button>
             </TooltipTrigger>
             {isCollapsed && <TooltipContent side="right">Add Main Node</TooltipContent>}
@@ -153,11 +160,11 @@ export default function LeftSidebar({
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
-                className={`flex items-center gap-2 justify-start ${isCollapsed ? "px-2" : ""}`}
+                className={`flex items-center gap-3 justify-start h-11 bg-white/60 border-gray-200/60 hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 hover:border-orange-300/60 hover:shadow-sm transition-all duration-200 ${isCollapsed ? "px-2" : "px-4"}`}
                 onClick={onAddBranchNode}
               >
-                <GitBranch className="h-4 w-4 text-orange-500" />
-                {!isCollapsed && <span>Add Branch Node</span>}
+                <GitBranch className="h-5 w-5 text-orange-600" />
+                {!isCollapsed && <span className="font-medium">Add Branch Node</span>}
               </Button>
             </TooltipTrigger>
             {isCollapsed && <TooltipContent side="right">Add Branch Node</TooltipContent>}
@@ -169,20 +176,20 @@ export default function LeftSidebar({
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className={`flex items-center gap-2 justify-start ${isCollapsed ? "px-2" : ""}`}
+                    className={`flex items-center gap-3 justify-start h-11 bg-white/60 border-gray-200/60 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 hover:border-green-300/60 hover:shadow-sm transition-all duration-200 ${isCollapsed ? "px-2" : "px-4"}`}
                   >
-                    <GitBranch className="h-4 w-4 text-green-500" />
-                    {!isCollapsed && <span>Add Multiple Branches</span>}
+                    <GitBranch className="h-5 w-5 text-green-600" />
+                    {!isCollapsed && <span className="font-medium">Multiple Branches</span>}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[425px] bg-white/95 backdrop-blur-xl border border-gray-200/60 shadow-xl rounded-2xl">
                   <DialogHeader>
-                    <DialogTitle>Add Multiple Branches</DialogTitle>
-                    <DialogDescription>Specify how many branch nodes you want to create.</DialogDescription>
+                    <DialogTitle className="text-xl font-bold">Add Multiple Branches</DialogTitle>
+                    <DialogDescription className="text-gray-600">Specify how many branch nodes you want to create.</DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
+                  <div className="grid gap-6 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="branches" className="text-right">
+                      <Label htmlFor="branches" className="text-right font-medium">
                         Branches
                       </Label>
                       <Input
@@ -192,12 +199,16 @@ export default function LeftSidebar({
                         onChange={(e) => setBranchCount(Number.parseInt(e.target.value) || 2)}
                         min={1}
                         max={10}
-                        className="col-span-3"
+                        className="col-span-3 h-11 rounded-xl border-gray-200/60 focus:border-blue-400/60 focus:ring-blue-400/20"
                       />
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button type="submit" onClick={handleAddMultipleBranches}>
+                    <Button 
+                      type="submit" 
+                      onClick={handleAddMultipleBranches}
+                      className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-md hover:shadow-lg transition-all duration-200 rounded-xl"
+                    >
                       Create Branches
                     </Button>
                   </DialogFooter>
@@ -211,11 +222,11 @@ export default function LeftSidebar({
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
-                className={`flex items-center gap-2 justify-start ${isCollapsed ? "px-2" : ""}`}
+                className={`flex items-center gap-3 justify-start h-11 bg-white/60 border-gray-200/60 hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100 hover:border-purple-300/60 hover:shadow-sm transition-all duration-200 ${isCollapsed ? "px-2" : "px-4"}`}
                 onClick={onAddImageNode}
               >
-                <ImageIcon className="h-4 w-4 text-blue-500" />
-                {!isCollapsed && <span>Add Image Node</span>}
+                <ImageIcon className="h-5 w-5 text-purple-600" />
+                {!isCollapsed && <span className="font-medium">Add Image Node</span>}
               </Button>
             </TooltipTrigger>
             {isCollapsed && <TooltipContent side="right">Add Image Node</TooltipContent>}
@@ -223,25 +234,30 @@ export default function LeftSidebar({
         </TooltipProvider>
       </div>
 
-      <div className="mt-4 border-t border-border p-3 flex-1 flex flex-col overflow-hidden">
-        <div className={`flex items-center justify-between mb-2 ${isCollapsed ? "hidden" : "flex"}`}>
-          <h3 className="text-sm font-medium">Contexts</h3>
+      <div className="mt-4 border-t border-gray-200/50 p-4 flex-1 flex flex-col overflow-hidden">
+        <div className={`flex items-center justify-between mb-4 ${isCollapsed ? "hidden" : "flex"}`}>
+          <h3 className="text-lg font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Contexts</h3>
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6">
-                <Plus className="h-3.5 w-3.5" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 rounded-lg hover:bg-blue-50 hover:shadow-sm transition-all duration-200"
+              >
+                <Plus className="h-4 w-4 text-blue-600" />
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="bg-white/95 backdrop-blur-xl border border-gray-200/60 shadow-xl rounded-2xl">
               <DialogHeader>
-                <DialogTitle>Create New Context</DialogTitle>
-                <DialogDescription>Enter a name for your new context tree.</DialogDescription>
+                <DialogTitle className="text-xl font-bold">Create New Context</DialogTitle>
+                <DialogDescription className="text-gray-600">Enter a name for your new context tree.</DialogDescription>
               </DialogHeader>
               <div className="py-4">
                 <Input
                   value={newConversationName}
                   onChange={(e) => setNewConversationName(e.target.value)}
                   placeholder="Context name"
+                  className="h-11 rounded-xl border-gray-200/60 focus:border-blue-400/60 focus:ring-blue-400/20"
                 />
               </div>
               <DialogFooter>
@@ -252,50 +268,53 @@ export default function LeftSidebar({
                       setNewConversationName("New Context")
                     }
                   }}
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md hover:shadow-lg transition-all duration-200 rounded-xl"
                 >
-                  Create
+                  Create Context
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
 
-        <div className={`space-y-1 overflow-auto flex-1 custom-scrollbar ${isCollapsed ? "hidden" : "block"}`}>
+        <div className={`space-y-2 overflow-auto flex-1 custom-scrollbar ${isCollapsed ? "hidden" : "block"}`}>
           {conversations.map((conversation) => (
             <div
               key={conversation.id}
-              className={`flex items-center justify-between p-2 rounded-md text-sm cursor-pointer hover:bg-accent group ${
-                activeConversation === conversation.id ? "bg-accent" : ""
+              className={`flex items-center justify-between p-3 rounded-xl text-sm cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:shadow-sm transition-all duration-200 group ${
+                activeConversation === conversation.id ? "bg-gradient-to-r from-blue-100 to-purple-100 shadow-md border border-blue-200/50" : "bg-white/50 border border-gray-200/30"
               }`}
               onClick={() => setActiveConversation(conversation.id)}
             >
-              <div className="flex items-center gap-2">
-                <LayoutTemplate className="h-4 w-4 text-muted-foreground" />
-                <span className="truncate">{conversation.name}</span>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${activeConversation === conversation.id ? 'bg-gradient-to-br from-blue-500 to-purple-600 shadow-sm' : 'bg-gray-100'}`}>
+                  <LayoutTemplate className={`h-4 w-4 ${activeConversation === conversation.id ? 'text-white' : 'text-gray-600'}`} />
+                </div>
+                <span className={`truncate font-medium ${activeConversation === conversation.id ? 'text-gray-800' : 'text-gray-700'}`}>{conversation.name}</span>
               </div>
               <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6"
+                  className="h-8 w-8 rounded-lg hover:bg-blue-100 transition-all duration-200"
                   onClick={(e) => {
                     e.stopPropagation()
                     onDuplicateConversation(conversation.id)
                   }}
                 >
-                  <Copy className="h-3.5 w-3.5" />
+                  <Copy className="h-4 w-4 text-blue-600" />
                 </Button>
                 {conversations.length > 1 && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-destructive"
+                    className="h-8 w-8 rounded-lg hover:bg-red-100 transition-all duration-200"
                     onClick={(e) => {
                       e.stopPropagation()
                       onDeleteConversation(conversation.id)
                     }}
                   >
-                    <Trash className="h-3.5 w-3.5" />
+                    <Trash className="h-4 w-4 text-red-600" />
                   </Button>
                 )}
               </div>
@@ -308,8 +327,8 @@ export default function LeftSidebar({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <LayoutTemplate className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-blue-50 hover:shadow-sm transition-all duration-200">
+                    <LayoutTemplate className="h-5 w-5 text-blue-600" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Contexts</TooltipContent>
@@ -322,7 +341,7 @@ export default function LeftSidebar({
       {/* Resize handle */}
       {!isCollapsed && (
         <div
-          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 active:bg-primary/40 transition-colors"
+          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-gradient-to-b hover:from-blue-400 hover:to-purple-500 active:bg-gradient-to-b active:from-blue-500 active:to-purple-600 transition-all duration-200 rounded-r-lg"
           onMouseDown={startResize}
         />
       )}
