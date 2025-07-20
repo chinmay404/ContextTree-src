@@ -1,28 +1,40 @@
-"use client"
+"use client";
 
-import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-import type React from "react"
-import { useState, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { Save, ImageIcon, Download, Settings, Menu, X, Zap, Share2, Link2Off, User, LogOut } from "lucide-react"
+import type React from "react";
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Save,
+  ImageIcon,
+  Download,
+  Settings,
+  Menu,
+  X,
+  Zap,
+  Share2,
+  Link2Off,
+  User,
+  LogOut,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
-import { toast } from "@/components/ui/use-toast"
-import { ThemeToggle } from "./theme-toggle"
-import { motion } from "framer-motion"
-import { signOut, useSession } from "next-auth/react"
+} from "@/components/ui/dropdown-menu";
+import { toast } from "@/components/ui/use-toast";
+import { ThemeToggle } from "./theme-toggle";
+import { motion } from "framer-motion";
+import { signOut, useSession } from "next-auth/react";
 
 interface NavbarProps {
-  onSave: () => void
-  onImageUpload: (file: File) => void
-  onExport: () => void
-  showConnectionMode?: boolean
-  onCancelConnectionMode?: () => void
+  onSave: () => void;
+  onImageUpload: (file: File) => void;
+  onExport: () => void;
+  showConnectionMode?: boolean;
+  onCancelConnectionMode?: () => void;
 }
 
 export default function Navbar({
@@ -32,44 +44,50 @@ export default function Navbar({
   showConnectionMode = false,
   onCancelConnectionMode,
 }: NavbarProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const { data: session, status } = useSession()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { data: session, status } = useSession();
 
   const handleSignOut = async () => {
-    await signOut({ callbackUrl: "/" })
+    await signOut({ callbackUrl: "/" });
     toast({
       title: "Signed out",
       description: "You have been signed out successfully",
-    })
-  }
+    });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
       if (file.type.startsWith("image/")) {
-        onImageUpload(file)
+        onImageUpload(file);
       } else {
         toast({
           title: "Invalid file type",
           description: "Please upload an image file",
           variant: "destructive",
-        })
+        });
       }
       // Reset the input
-      e.target.value = ""
+      e.target.value = "";
     }
-  }
+  };
 
   return (
     <div className="bg-gradient-to-r from-white/95 via-white/90 to-blue-50/80 backdrop-blur-xl border border-gray-200/60 rounded-xl py-3 px-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all duration-300">
       <div className="flex items-center">
         <div className="flex items-center gap-3 mr-6">
           <div className="relative">
-            <img src="/contexttree-logo.png" alt="ContextTree Logo" className="h-8 w-8 rounded-lg shadow-sm" />
+            <img
+              src="/contexttree-logo.png"
+              alt="ContextTree Logo"
+              className="h-8 w-8 rounded-lg shadow-sm"
+            />
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
           </div>
-          <h1 className="text-xl font-bold bg-gradient-to-r from-gray-800 via-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight">ContextTree</h1>
+          <h1 className="text-xl font-bold bg-gradient-to-r from-gray-800 via-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight">
+            ContextTree
+          </h1>
         </div>
       </div>
 
@@ -138,7 +156,11 @@ export default function Navbar({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full overflow-hidden border-2 border-gray-200/60 hover:border-blue-300/60 shadow-sm hover:shadow-md transition-all duration-200">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full overflow-hidden border-2 border-gray-200/60 hover:border-blue-300/60 shadow-sm hover:shadow-md transition-all duration-200"
+            >
               {session?.user?.image ? (
                 <img
                   src={session.user.image || "/placeholder.svg"}
@@ -152,7 +174,10 @@ export default function Navbar({
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64 bg-white/95 backdrop-blur-xl border border-gray-200/60 shadow-xl rounded-xl">
+          <DropdownMenuContent
+            align="end"
+            className="w-64 bg-white/95 backdrop-blur-xl border border-gray-200/60 shadow-xl rounded-xl"
+          >
             <div className="flex items-center p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
               <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border-2 border-white shadow-sm">
                 {session?.user?.image ? (
@@ -168,8 +193,12 @@ export default function Navbar({
                 )}
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-800">{session?.user?.name || "Guest User"}</p>
-                <p className="text-xs text-gray-600">{session?.user?.email || "Not signed in"}</p>
+                <p className="text-sm font-semibold text-gray-800">
+                  {session?.user?.name || "Guest User"}
+                </p>
+                <p className="text-xs text-gray-600">
+                  {session?.user?.email || "Not signed in"}
+                </p>
               </div>
             </div>
             <DropdownMenuSeparator />
@@ -177,7 +206,10 @@ export default function Navbar({
               <User className="h-4 w-4 mr-2" />
               <span>Profile Settings</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleSignOut} className="text-red-600 hover:bg-red-50/50">
+            <DropdownMenuItem
+              onClick={handleSignOut}
+              className="text-red-600 hover:bg-red-50/50"
+            >
               <LogOut className="h-4 w-4 mr-2" />
               <span>Sign out</span>
             </DropdownMenuItem>
@@ -190,19 +222,32 @@ export default function Navbar({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white/60 hover:shadow-sm transition-all duration-200">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-xl hover:bg-white/60 hover:shadow-sm transition-all duration-200"
+            >
               <Settings className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 bg-white/95 backdrop-blur-xl border border-gray-200/60 shadow-xl rounded-xl">
+          <DropdownMenuContent
+            align="end"
+            className="w-56 bg-white/95 backdrop-blur-xl border border-gray-200/60 shadow-xl rounded-xl"
+          >
             <DropdownMenuItem className="flex items-center gap-2 hover:bg-blue-50/50">
               <Zap className="h-4 w-4 text-yellow-500" />
               <span>Canvas Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="hover:bg-gray-50/50">Keyboard Shortcuts</DropdownMenuItem>
-            <DropdownMenuItem className="hover:bg-gray-50/50">Preferences</DropdownMenuItem>
-            <DropdownMenuItem className="hover:bg-gray-50/50">About</DropdownMenuItem>
+            <DropdownMenuItem className="hover:bg-gray-50/50">
+              Keyboard Shortcuts
+            </DropdownMenuItem>
+            <DropdownMenuItem className="hover:bg-gray-50/50">
+              Preferences
+            </DropdownMenuItem>
+            <DropdownMenuItem className="hover:bg-gray-50/50">
+              About
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -210,8 +255,17 @@ export default function Navbar({
       {/* Mobile Menu Button */}
       <div className="md:hidden flex items-center gap-2">
         <ThemeToggle />
-        <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="h-8 w-8">
-          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="h-8 w-8"
+        >
+          {mobileMenuOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
         </Button>
       </div>
 
@@ -233,18 +287,31 @@ export default function Navbar({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <img src="/diverse-avatars.png" alt="Profile" className="h-full w-full object-cover" />
+                  <img
+                    src="/diverse-avatars.png"
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                  />
                 )}
               </div>
               <div>
-                <p className="text-sm font-medium">{session?.user?.name || "Guest User"}</p>
-                <p className="text-xs text-muted-foreground">{session?.user?.email || "Not signed in"}</p>
+                <p className="text-sm font-medium">
+                  {session?.user?.name || "Guest User"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {session?.user?.email || "Not signed in"}
+                </p>
               </div>
             </div>
 
             <div className="h-px w-full bg-border my-2"></div>
 
-            <Button variant="ghost" size="sm" onClick={onSave} className="flex items-center justify-start gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onSave}
+              className="flex items-center justify-start gap-2"
+            >
               <Save className="h-4 w-4" />
               <span>Save</span>
             </Button>
@@ -259,17 +326,30 @@ export default function Navbar({
               <span>Add Image</span>
             </Button>
 
-            <Button variant="ghost" size="sm" onClick={onExport} className="flex items-center justify-start gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onExport}
+              className="flex items-center justify-start gap-2"
+            >
               <Download className="h-4 w-4" />
               <span>Export</span>
             </Button>
 
-            <Button variant="default" size="sm" className="flex items-center justify-start gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              className="flex items-center justify-start gap-2"
+            >
               <Share2 className="h-4 w-4" />
               <span>Share</span>
             </Button>
 
-            <Button variant="ghost" size="sm" className="flex items-center justify-start gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center justify-start gap-2"
+            >
               <Settings className="h-4 w-4" />
               <span>Settings</span>
             </Button>
@@ -288,7 +368,13 @@ export default function Navbar({
       )}
 
       {/* Hidden file input */}
-      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        className="hidden"
+      />
     </div>
-  )
+  );
 }

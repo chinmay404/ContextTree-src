@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import ContextTree from "@/components/conversation-canvas"
-import { ReactFlowProvider } from "reactflow"
-import { useEffect, useState } from "react"
-import { Toaster } from "@/components/ui/toaster"
-import { useToast } from "@/components/ui/use-toast"
-import { ThreadProvider } from "@/components/thread-provider"
+import ContextTree from "@/components/conversation-canvas";
+import { ReactFlowProvider } from "reactflow";
+import { useEffect, useState } from "react";
+import { Toaster } from "@/components/ui/toaster";
+import { useToast } from "@/components/ui/use-toast";
+import { ThreadProvider } from "@/components/thread-provider";
 
 // Error handler component to catch ResizeObserver errors
 function ErrorHandler({ children }: { children: React.ReactNode }) {
@@ -88,5 +88,5 @@ export default function CanvasPage() {
         </ReactFlowProvider>
       </ThreadProvider>
     </ErrorHandler>
-  )
+  );
 }

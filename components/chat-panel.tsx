@@ -134,7 +134,15 @@ export default function ChatPanel({
     command: string;
     content: string;
   } | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const handleTogglePanel = () => {
+    if (propSetIsCollapsed) {
+      propSetIsCollapsed(!propIsCollapsed);
+    } else {
+      setIsCollapsed(!isCollapsed);
+    }
+  };
+
+  const isActuallyCollapsed = propIsCollapsed ?? isCollapsed;
   const [createdBranchId, setCreatedBranchId] = useState<string | null>(null);
   const [readingMode, setReadingMode] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -333,11 +341,11 @@ export default function ChatPanel({
   return (
     <motion.div
       ref={panelRef}
-      className={`relative flex flex-col h-full border-l border-border/60 transition-all duration-300 ${
+      className={`relative flex flex-col h-full border-l border-border/60 layout-transition ${
         isCollapsed ? "w-12" : ""
       } ${
         isExpanded
-          ? "fixed right-0 top-0 h-screen z-50 w-full backdrop-blur-md bg-background/95 shadow-xl"
+          ? "fixed right-0 top-0 h-screen z-50 w-full chat-panel-expanded shadow-xl"
           : ""
       }`}
       style={{
@@ -359,7 +367,7 @@ export default function ChatPanel({
       {/* Header for normal mode */}
       {!isExpanded && (
         <motion.div
-          className="p-4 border-b border-border/60 bg-gradient-to-r from-card/80 to-background/80 backdrop-blur-sm flex items-center"
+          className={`chat-header p-4 border-b border-border/60 flex items-center`}
           initial={{ opacity: 0.8 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
@@ -367,7 +375,7 @@ export default function ChatPanel({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 mr-2"
+            className="collapse-button h-8 w-8 mr-2"
             onClick={toggleCollapse}
           >
             {isCollapsed ? (
@@ -609,15 +617,13 @@ export default function ChatPanel({
 
           {/* Enhanced messages container for full-screen mode */}
           <motion.div
-            className={`flex-1 overflow-auto ${
+            className={`flex-1 overflow-auto chat-scrollbar ${
               isExpanded
                 ? readingMode
                   ? "px-4 md:px-0 py-8 max-w-3xl mx-auto"
                   : "p-6 md:p-8 max-w-4xl mx-auto"
                 : "p-4"
-            } space-y-8 custom-scrollbar ${
-              isExpanded ? "max-h-[calc(100vh-140px)]" : ""
-            }`}
+            } space-y-8 ${isExpanded ? "max-h-[calc(100vh-140px)]" : ""}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.1 }}
@@ -687,12 +693,12 @@ export default function ChatPanel({
                           className={`${
                             isExpanded
                               ? message.sender === "user"
-                                ? "bg-primary text-primary-foreground max-w-[85%] md:max-w-[75%] rounded-2xl p-4 shadow-sm"
-                                : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] md:max-w-[75%] rounded-2xl p-4 hover:shadow-md transition-shadow duration-200"
+                                ? "chat-message-user max-w-[85%] md:max-w-[75%] p-4"
+                                : "chat-message-ai max-w-[85%] md:max-w-[75%] p-4"
                               : message.sender === "user"
-                              ? "bg-primary text-primary-foreground max-w-[85%] rounded-2xl p-3.5 shadow-sm"
-                              : "bg-card/90 border border-border/70 shadow-sm max-w-[85%] rounded-2xl p-3.5 hover:shadow-md transition-shadow duration-200"
-                          } relative`}
+                              ? "chat-message-user max-w-[85%] p-3.5"
+                              : "chat-message-ai max-w-[85%] p-3.5"
+                          } relative chat-typography`}
                         >
                           {message.sender === "user" ? (
                             <p
@@ -842,7 +848,7 @@ export default function ChatPanel({
                               }}
                               title="Create branch from this message"
                             >
-                              <div className="bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200">
+                              <div className="branch-icon shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200">
                                 <GitBranch className="h-3.5 w-3.5" />
                               </div>
                             </div>
@@ -863,7 +869,7 @@ export default function ChatPanel({
                               }}
                               title="Create branch from this message"
                             >
-                              <div className="bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200">
+                              <div className="branch-icon shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200">
                                 <GitBranch className="h-3.5 w-3.5" />
                               </div>
                             </div>
@@ -1021,19 +1027,17 @@ export default function ChatPanel({
                   value={inputValue}
                   onChange={handleInputChange}
                   placeholder="Type your message..."
-                  className={`flex-1 ${
+                  className={`flex-1 chat-input ${
                     isExpanded
-                      ? "bg-background/80 border-muted-foreground/20 focus-visible:ring-primary/30 h-12 text-base shadow-sm rounded-xl"
-                      : "bg-background/70 backdrop-blur-sm border-muted-foreground/20 focus-visible:ring-primary/30 shadow-sm hover:shadow transition-shadow duration-200"
+                      ? "h-12 text-base rounded-xl"
+                      : "transition-shadow duration-200"
                   }`}
                 />
                 <Button
                   type="submit"
                   size={isExpanded ? "default" : "icon"}
-                  className={`${
-                    isExpanded
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90 px-6 shadow-sm hover:shadow transition-shadow duration-200 rounded-xl h-12"
-                      : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow transition-shadow duration-200"
+                  className={`chat-send-button ${
+                    isExpanded ? "px-6 rounded-xl h-12" : ""
                   }`}
                 >
                   {isExpanded ? (

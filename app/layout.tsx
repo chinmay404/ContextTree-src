@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from 'next/font/google';
+import { Inter } from "next/font/google";
 import "./globals.css";
 import "../styles/enhanced-ui.css";
 import { initializeDatabase } from "@/lib/init-db"; // Import initializeDatabase
@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ContextTree - Visualize Your Ideas",
   description: "A collaborative canvas for brainstorming and context mapping.",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 };
 
 // Call initializeDatabase once when the server starts
@@ -20,16 +20,25 @@ export const metadata: Metadata = {
 // For a true "once per server start", you might need a different strategy
 // or make initializeDatabase idempotent (safe to run multiple times).
 // For now, this ensures it's called.
-const dbInitializationPromise = initializeDatabase().then(result => {
-  if (result.success) {
-    console.log("APP/LAYOUT.TSX: Database initialization successful (called from layout).");
-  } else {
-    console.error("APP/LAYOUT.TSX: Database initialization failed (called from layout):", result.error);
-  }
-}).catch(error => {
-  console.error("APP/LAYOUT.TSX: Critical error during database initialization (called from layout):", error);
-});
-
+const dbInitializationPromise = initializeDatabase()
+  .then((result) => {
+    if (result.success) {
+      console.log(
+        "APP/LAYOUT.TSX: Database initialization successful (called from layout)."
+      );
+    } else {
+      console.error(
+        "APP/LAYOUT.TSX: Database initialization failed (called from layout):",
+        result.error
+      );
+    }
+  })
+  .catch((error) => {
+    console.error(
+      "APP/LAYOUT.TSX: Critical error during database initialization (called from layout):",
+      error
+    );
+  });
 
 export default async function RootLayout({
   children,

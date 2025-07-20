@@ -12,6 +12,18 @@ import BranchNode from "@/components/nodes/branch-node";
 import ImageNode from "@/components/nodes/image-node";
 import CustomEdge from "@/components/edges/custom-edge";
 import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Network,
+  MessageSquare,
+  GitBranch,
+  ImageIcon,
+  Plus,
+  Copy,
+  Trash,
+} from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import type { Message, Conversation } from "@/lib/types";
 import type { Edge, Node } from "reactflow";
@@ -95,7 +107,7 @@ const defaultEdgeOptions = {
 export default function ContextTree() {
   const { data: session, status } = useSession();
   const [isMounted, setIsMounted] = useState(false);
-  
+
   // Prevent SSR issues
   useEffect(() => {
     setIsMounted(true);
@@ -2424,65 +2436,210 @@ export default function ContextTree() {
   }
 
   return (
-    <div className="reactflow-wrapper h-full w-full relative bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50/30">
-      <div className="flex h-full w-full">
-        {/* Sidebar Panel */}
-        <aside className="w-full md:w-1/4 p-3">
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 h-full p-5 hover:shadow-xl transition-all duration-300">
-            <LeftSidebar
-              onAddMainNode={createMainNode}
-              onAddBranchNode={createBranchNode}
-              onAddMultipleBranches={createMultipleBranches}
-              onAddImageNode={createImageNode}
-              activeConversation={activeConversation}
-              conversations={conversations}
-              setActiveConversation={async (id) => {
-                setActiveConversation(id);
-                await setActiveConversationInDB(id);
-              }}
-              onCreateNewConversation={createNewConversation}
-              onDeleteConversation={deleteConversation}
-              onDuplicateConversation={duplicateConversation}
-            />
+    <div className="reactflow-wrapper h-screen w-full flex flex-col bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
+      {/* Top Navigation Bar */}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+        <Navbar
+          onSave={onSave}
+          onImageUpload={onImageUpload}
+          onExport={onExport}
+          showConnectionMode={showConnectionMode}
+          onCancelConnectionMode={cancelConnectionMode}
+        />
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 h-full overflow-hidden">
+        {/* Left Sidebar - Tools & Conversations */}
+        <aside className="w-80 bg-white/90 backdrop-blur-sm border-r border-gray-200/50 flex flex-col">
+          {/* Node Tools Section */}
+          <div className="p-4 border-b border-gray-200/50">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-sm">
+                <Network className="h-4 w-4 text-white" />
+              </div>
+              <h2 className="text-sm font-semibold text-gray-800">
+                Node Tools
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={createMainNode}
+                className="node-tool-button flex items-center gap-2 h-9"
+              >
+                <MessageSquare className="h-4 w-4 text-blue-600" />
+                <span className="text-xs">Main</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={createBranchNode}
+                className="node-tool-button flex items-center gap-2 h-9"
+              >
+                <GitBranch className="h-4 w-4 text-orange-600" />
+                <span className="text-xs">Branch</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={createImageNode}
+                className="node-tool-button flex items-center gap-2 h-9"
+              >
+                <ImageIcon className="h-4 w-4 text-purple-600" />
+                <span className="text-xs">Image</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => createMultipleBranches(3)}
+                className="node-tool-button flex items-center gap-2 h-9"
+              >
+                <GitBranch className="h-4 w-4 text-green-600" />
+                <span className="text-xs">Multi</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Conversation History */}
+          <div className="flex-1 overflow-hidden">
+            <div className="p-4 border-b border-gray-200/50">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-gradient-to-br from-gray-500 to-gray-700 rounded-lg">
+                    <LayoutTemplate className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-800">
+                    Conversations
+                  </h3>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => createNewConversation("New Context")}
+                  className="h-7 w-7 p-0 rounded-lg hover:bg-blue-50"
+                >
+                  <Plus className="h-3.5 w-3.5 text-blue-600" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+              {conversations.map((conversation) => (
+                <div
+                  key={conversation.id}
+                  className={`conversation-card group flex items-center justify-between p-3 cursor-pointer ${
+                    activeConversation === conversation.id ? "active" : ""
+                  }`}
+                  onClick={() => setActiveConversation(conversation.id)}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div
+                      className={`p-1.5 rounded-lg ${
+                        activeConversation === conversation.id
+                          ? "bg-gradient-to-br from-blue-500 to-purple-600 shadow-sm"
+                          : "bg-gray-100"
+                      }`}
+                    >
+                      <MessageSquare
+                        className={`h-3.5 w-3.5 ${
+                          activeConversation === conversation.id
+                            ? "text-white"
+                            : "text-gray-600"
+                        }`}
+                      />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 truncate">
+                      {conversation.name}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 rounded-md hover:bg-blue-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateConversation(conversation.id);
+                      }}
+                    >
+                      <Copy className="h-3 w-3 text-blue-600" />
+                    </Button>
+
+                    {conversations.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 rounded-md hover:bg-red-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteConversation(conversation.id);
+                        }}
+                      >
+                        <Trash className="h-3 w-3 text-red-600" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </aside>
-        {/* Main Workspace */}
-        <div className="flex-1 flex flex-col p-3 gap-4">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-4 hover:shadow-xl transition-all duration-300">
-            <Navbar
-              onSave={onSave}
-              onImageUpload={onImageUpload}
-              onExport={onExport}
-              showConnectionMode={showConnectionMode}
-              onCancelConnectionMode={cancelConnectionMode}
-            />
-          </div>
-          <div className="flex-1 bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 overflow-hidden hover:shadow-xl transition-all duration-300 relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 via-transparent to-purple-50/20 pointer-events-none"></div>
-            <FlowCanvas
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              selectedEdge={selectedEdge}
-              setSelectedEdge={setSelectedEdge}
-              activeNode={activeNode}
-              activeConversation={activeConversation}
-              setConversations={setConversations}
-              conversations={conversations}
-              createBranchNode={createBranchNode}
-              branchCount={branchCount}
-              setReactFlowInstance={setReactFlowInstance}
-              showConnectionMode={showConnectionMode}
-              connectionSource={connectionSource}
-              onConnect={onConnect}
-              onViewportChange={onViewportChange}
-              onEdgeDelete={onEdgeDelete}
-            />
-          </div>
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 p-4 hover:shadow-xl transition-all duration-300">
+
+        {/* Center Canvas */}
+        <div className="flex-1 bg-gradient-to-br from-blue-50/20 via-transparent to-purple-50/20 relative overflow-hidden">
+          <FlowCanvas
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            selectedEdge={selectedEdge}
+            setSelectedEdge={setSelectedEdge}
+            activeNode={activeNode}
+            activeConversation={activeConversation}
+            setConversations={setConversations}
+            conversations={conversations}
+            createBranchNode={createBranchNode}
+            branchCount={branchCount}
+            setReactFlowInstance={setReactFlowInstance}
+            showConnectionMode={showConnectionMode}
+            connectionSource={connectionSource}
+            onConnect={onConnect}
+            onViewportChange={onViewportChange}
+            onEdgeDelete={onEdgeDelete}
+          />
+        </div>
+
+        {/* Right Chat Panel - Expandable GPT-like Interface */}
+        <aside
+          className={`${
+            chatPanelCollapsed ? "w-12" : "w-96"
+          } bg-white/95 backdrop-blur-sm border-l border-gray-200/50 flex flex-col transition-all duration-300 ease-in-out relative`}
+        >
+          {chatPanelCollapsed ? (
+            // Collapsed state - show just a toggle button
+            <div className="flex flex-col items-center justify-start p-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setChatPanelCollapsed(false)}
+                className="h-8 w-8 rounded-full bg-primary/10 hover:bg-primary/20 text-primary"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="text-xs text-muted-foreground mt-2 -rotate-90 whitespace-nowrap">
+                Chat
+              </div>
+            </div>
+          ) : (
             <ChatPanel
               messages={messages}
               onSendMessage={onSendMessage}
@@ -2500,11 +2657,11 @@ export default function ContextTree() {
               nodeNotes={nodeNotes}
               onSaveNote={saveNodeNote}
               activeNodeId={activeNode}
-              nodes={nodes} // Pass the nodes array
+              nodes={nodes}
               thinking={chatThinking}
             />
-          </div>
-        </div>
+          )}
+        </aside>
       </div>
     </div>
   );
