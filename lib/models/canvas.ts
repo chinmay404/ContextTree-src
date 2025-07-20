@@ -120,3 +120,49 @@ export interface SaveOptions {
   sessionId?: string; // Associated session ID
   saveType?: "auto" | "manual" | "backup";
 }
+
+// Thread-related interfaces
+export interface ConversationThread {
+  threadId: string;
+  userId: string;
+  title: string;
+  description?: string;
+  createdAt: Date;
+  lastModified: Date;
+  isActive: boolean;
+  metadata?: {
+    tags: string[];
+    category?: string;
+    priority?: "low" | "medium" | "high";
+  };
+}
+
+export interface ThreadCheckpoint {
+  checkpointId: string;
+  threadId: string;
+  userId: string;
+  name: string;
+  description?: string;
+  data: any; // The checkpoint data
+  createdAt: Date;
+  metadata?: {
+    version: number;
+    nodeCount: number;
+    edgeCount: number;
+  };
+}
+
+export interface ThreadNode {
+  nodeId: string;
+  threadId: string;
+  userId: string;
+  type: "main" | "branch" | "image" | "custom";
+  position: { x: number; y: number };
+  data: any; // Node-specific data
+  createdAt: Date;
+  lastModified: Date;
+  metadata?: {
+    tags: string[];
+    priority?: "low" | "medium" | "high";
+  };
+}
