@@ -145,6 +145,7 @@ export default function ChatPanel({
   const isActuallyCollapsed = propIsCollapsed ?? isCollapsed;
   const [createdBranchId, setCreatedBranchId] = useState<string | null>(null);
   const [readingMode, setReadingMode] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const { theme, setTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
 
