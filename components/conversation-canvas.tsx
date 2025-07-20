@@ -94,6 +94,13 @@ const defaultEdgeOptions = {
 
 export default function ContextTree() {
   const { data: session, status } = useSession();
+  const [isMounted, setIsMounted] = useState(false);
+  
+  // Prevent SSR issues
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
@@ -111,7 +118,7 @@ export default function ContextTree() {
     },
   ]);
   const [activeConversation, setActiveConversation] = useState(
-    conversations[0].id
+    conversations[0]?.id || ""
   );
   const [branchCount, setBranchCount] = useState(1);
   const { toast } = useToast();

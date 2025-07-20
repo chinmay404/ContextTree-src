@@ -1,14 +1,13 @@
-"use client";
+"use client"
 
-import type React from "react";
+import type React from "react"
 
-import ContextTree from "@/components/conversation-canvas";
-import { ReactFlowProvider } from "reactflow";
-import { useEffect, useState } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/components/ui/use-toast";
-import LeftSidebar from "@/components/left-sidebar";
-import Navbar from "@/components/navbar";
+import ContextTree from "@/components/conversation-canvas"
+import { ReactFlowProvider } from "reactflow"
+import { useEffect, useState } from "react"
+import { Toaster } from "@/components/ui/toaster"
+import { useToast } from "@/components/ui/use-toast"
+import { ThreadProvider } from "@/components/thread-provider"
 
 // Error handler component to catch ResizeObserver errors
 function ErrorHandler({ children }: { children: React.ReactNode }) {
@@ -79,31 +78,15 @@ function DatabaseStatus() {
 export default function CanvasPage() {
   return (
     <ErrorHandler>
-      <ReactFlowProvider>
-        <main className="flex min-h-screen flex-col bg-slate-50 text-foreground">
-          <div className="container mx-auto flex flex-col md:flex-row flex-1 p-6 gap-6">
-            {/* Sidebar */}
-            <aside className="w-full md:w-1/4 bg-white rounded-xl shadow-lg p-4">
-              {/* ...existing LeftSidebar component... */}
-              <LeftSidebar />
-            </aside>
-            {/* Main Canvas Area */}
-            <section className="flex-1 flex flex-col bg-white rounded-xl shadow-lg overflow-hidden">
-              {/* Navbar Header */}
-              <header className="bg-background p-4 border-b border-border">
-                <Navbar />
-              </header>
-              {/* Canvas */}
-              <div className="flex-1 p-4">
-                <ContextTree />
-              </div>
-            </section>
-          </div>
-          {/* Status and Toast */}
-          <DatabaseStatus />
-          <Toaster />
-        </main>
-      </ReactFlowProvider>
+      <ThreadProvider>
+        <ReactFlowProvider>
+          <main className="flex min-h-screen flex-col">
+            <ContextTree />
+            <DatabaseStatus />
+            <Toaster />
+          </main>
+        </ReactFlowProvider>
+      </ThreadProvider>
     </ErrorHandler>
-  );
+  )
 }

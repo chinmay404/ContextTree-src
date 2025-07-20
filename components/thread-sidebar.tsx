@@ -357,7 +357,7 @@ export default function ThreadSidebar({
           </div>
         ) : (
           <div className="space-y-1 p-2">
-            {threads.map((thread) => (
+            {threads?.map((thread) => (
               <div key={thread.threadId} className="space-y-1">
                 {/* Thread Item */}
                 <div
@@ -457,7 +457,7 @@ export default function ThreadSidebar({
                 {expandedThreads.has(thread.threadId) &&
                   checkpoints[thread.threadId] && (
                     <div className="ml-6 space-y-1">
-                      {checkpoints[thread.threadId].map((checkpoint) => (
+                      {checkpoints[thread.threadId]?.map((checkpoint) => (
                         <div
                           key={checkpoint.checkpointId}
                           className={`group flex items-center p-2 rounded-md cursor-pointer transition-colors ${
