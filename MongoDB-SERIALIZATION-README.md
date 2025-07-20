@@ -6,9 +6,9 @@ Next.js has a restriction where MongoDB objects cannot be passed directly from S
 
 This leads to errors like:
 
-```
+\`\`\`
 Error: Only plain objects can be passed to Client Components from Server Components. Objects with toJSON methods are not supported.
-```
+\`\`\`
 
 ## Solution
 
@@ -30,7 +30,7 @@ This workspace implements a comprehensive solution for handling MongoDB serializ
 
 A reusable middleware function that can wrap any server action to automatically handle serialization and error handling:
 
-```typescript
+\`\`\`typescript
 export const myServerAction = withSerializedResponse(async function (
   arg1,
   arg2
@@ -38,7 +38,7 @@ export const myServerAction = withSerializedResponse(async function (
   // Your server action implementation
   return { success: true, data: mongoDbResult };
 });
-```
+\`\`\`
 
 ### Best Practices
 
@@ -77,7 +77,7 @@ export const myServerAction = withSerializedResponse(async function (
 
 #### Server Action Example
 
-```typescript
+\`\`\`typescript
 "use server";
 import { safeSerializeForClient } from "@/lib/serialize-mongodb";
 
@@ -86,11 +86,11 @@ export async function getDocumentById(id: string) {
   const doc = await database.collection("documents").findOne({ _id: id });
   return safeSerializeForClient(doc);
 }
-```
+\`\`\`
 
 #### Full Pattern with Error Handling
 
-```typescript
+\`\`\`typescript
 "use server";
 import { withSerializedResponse } from "@/lib/server-action-middleware";
 
@@ -109,7 +109,7 @@ export const getUserData = withSerializedResponse(async function (
     user: userData,
   };
 });
-```
+\`\`\`
 
 ### Troubleshooting
 
