@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { memo, useState, useRef, useEffect, useCallback } from "react"
-import { Handle, Position, type NodeProps, useUpdateNodeInternals } from "reactflow"
+import { Handle, Position, type NodeProps, useUpdateNodeInternals } from "@xyflow/react"
 import type { Message } from "@/lib/types"
 import {
   MessageSquare,
@@ -20,12 +20,14 @@ import { Input } from "@/components/ui/input"
 import { motion, AnimatePresence } from "framer-motion"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { debounce } from "lodash"
-import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { availableModels } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface NodeParentInfo {
   id: string
+  type: string
+  label: string
 }
 
 interface MainNodeData {
@@ -48,7 +50,7 @@ interface MainNodeData {
   model?: string
   onModelChange?: (id: string, model: string) => void
   onDimensionsChange?: (id: string, dimensions: { width: number; height: number }) => void
-  parents?: NodeParentInfo[] // Add parents array
+  parents?: NodeParentInfo[]
 }
 
 function MainNode({ id, data, selected }: NodeProps<MainNodeData>) {
@@ -78,6 +80,7 @@ function MainNode({ id, data, selected }: NodeProps<MainNodeData>) {
   const startWidthRef = useRef<number>(0)
   const resizeFrameRef = useRef<number | null>(null)
   const updateNodeInternals = useUpdateNodeInternals()
+  const { toast } = useToast()
 
   useEffect(() => {
     setNodeWidth(style.width || 220)
@@ -356,7 +359,7 @@ function MainNode({ id, data, selected }: NodeProps<MainNodeData>) {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="mt-2 space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar"
+              className="mt-2 space-y-2 max-h-32 overflow-y-auto pr-1 scrollbar-thin"
             >
               {messages.slice(-3).map((msg) => (
                 <motion.div
@@ -404,4 +407,6 @@ function MainNode({ id, data, selected }: NodeProps<MainNodeData>) {
   )
 }
 
+// Export both named and default
+export { MainNode }
 export default memo(MainNode)

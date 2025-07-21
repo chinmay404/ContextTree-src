@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { memo, useState, useRef, useEffect, useCallback } from "react"
-import { Handle, Position, type NodeProps, useUpdateNodeInternals } from "reactflow"
+import { Handle, Position, type NodeProps, useUpdateNodeInternals } from "@xyflow/react"
 import { motion } from "framer-motion"
 import { ImageIcon, Trash2, Move, ZoomIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,8 @@ import { debounce } from "lodash"
 
 interface NodeParentInfo {
   id: string
+  type: string
+  label: string
 }
 
 // Update the ImageNodeData interface to include parents
@@ -23,7 +25,7 @@ interface ImageNodeData {
     height: number
   }
   onDimensionsChange?: (id: string, dimensions: { width: number; height: number }) => void
-  parents?: NodeParentInfo[] // Add parents array
+  parents?: NodeParentInfo[]
 }
 
 function ImageNode({ id, data, selected }: NodeProps<ImageNodeData>) {
@@ -223,4 +225,6 @@ function ImageNode({ id, data, selected }: NodeProps<ImageNodeData>) {
   )
 }
 
+// Export both named and default
+export { ImageNode }
 export default memo(ImageNode)

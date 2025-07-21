@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { memo, useState, useRef, useEffect, useCallback } from "react"
-import { Handle, Position, type NodeProps, useUpdateNodeInternals } from "reactflow"
+import { Handle, Position, type NodeProps, useUpdateNodeInternals } from "@xyflow/react"
 import type { Message } from "@/lib/types"
 import { GitBranch, Edit, Check, ChevronDown, ChevronUp, Settings, MoreHorizontal, Link2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface NodeParentInfo {
   id: string
   type: string
+  label: string
 }
 
 // Update the BranchNodeData interface to include parents
@@ -40,7 +41,7 @@ interface BranchNodeData {
   model?: string
   onModelChange?: (id: string, model: string) => void
   onDimensionsChange?: (id: string, dimensions: { width: number; height: number }) => void
-  parents?: NodeParentInfo[] // Add parents array
+  parents?: NodeParentInfo[]
 }
 
 function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
@@ -351,7 +352,7 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="mt-2 space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar"
+              className="mt-2 space-y-2 max-h-32 overflow-y-auto pr-1 scrollbar-thin"
             >
               {messages.slice(-3).map((msg) => (
                 <motion.div
@@ -399,4 +400,6 @@ function BranchNode({ id, data, selected }: NodeProps<BranchNodeData>) {
   )
 }
 
+// Export both named and default
+export { BranchNode }
 export default memo(BranchNode)

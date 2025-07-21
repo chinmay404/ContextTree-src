@@ -1,7 +1,7 @@
 "use client"
 
 import { memo } from "react"
-import type { EdgeProps } from "reactflow"
+import type { EdgeProps } from "@xyflow/react"
 
 function CustomEdge({
   id,
@@ -84,4 +84,6 @@ function CustomEdge({
   )
 }
 
+// Export both named and default
+export { CustomEdge }
 export default memo(CustomEdge)
