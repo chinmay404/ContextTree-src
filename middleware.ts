@@ -1,37 +1,45 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { getToken } from "next-auth/jwt"
+import { withAuth } from "next-auth/middleware";
 
-export async function middleware(request: NextRequest) {
-  // Skip Next.js internal routes and public files
-  if (
-    request.nextUrl.pathname.startsWith("/_next") ||
-    request.nextUrl.pathname.includes("/api/") ||
-    request.nextUrl.pathname.includes(".") ||
-    request.nextUrl.pathname === "/"
-  ) {
-    return NextResponse.next()
+export default withAuth(
+  function middleware(req) {
+    // Add any additional middleware logic here
+  },
+  {
+    callbacks: {
+      authorized: ({ token, req }) => {
+        // Define which routes need authentication
+        const { pathname } = req.nextUrl;
+
+        // Allow public routes
+        if (
+          pathname.startsWith("/auth/") ||
+          pathname.startsWith("/api/auth/") ||
+          pathname.startsWith("/api/") || // Allow all API routes to handle their own auth
+          pathname === "/" ||
+          pathname === "/profile" || // Allow profile page (it handles auth internally)
+          pathname.startsWith("/_next/") ||
+          pathname.startsWith("/favicon.ico")
+        ) {
+          return true;
+        }
+
+        // Require authentication for all other routes
+        return !!token;
+      },
+    },
   }
-
-  const { pathname } = request.nextUrl
-  const isAuthPage = pathname.startsWith("/auth")
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-
-  // Redirect to login if accessing canvas without authentication
-  if (!token && pathname.startsWith("/canvas")) {
-    const url = new URL("/auth/login", request.url)
-    url.searchParams.set("callbackUrl", encodeURI(request.url))
-    return NextResponse.redirect(url)
-  }
-
-  // Redirect to canvas if accessing auth pages while authenticated
-  if (token && isAuthPage) {
-    return NextResponse.redirect(new URL("/canvas", request.url))
-  }
-
-  return NextResponse.next()
-}
+);
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)", "/canvas/:path*"],
-}
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/auth (auth API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|public/).*)",
+  ],
+};

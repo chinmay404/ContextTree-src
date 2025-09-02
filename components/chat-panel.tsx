@@ -1,920 +1,968 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useRef, useCallback } from "react"
-import type { Message } from "@/lib/types"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Maximize2, Minimize2, X, Bot, User } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { format } from "date-fns"
-import { motion, AnimatePresence } from "framer-motion"
-import { availableModels } from "@/lib/types"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import NodeNotes from "@/components/node-notes"
-import ThinkingAnimation from "./thinking-animation"
-import { useTheme } from "next-themes"
-import KeyboardShortcuts from "@/components/keyboard-shortcuts"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
-import { vscDarkPlus, vs } from "react-syntax-highlighter/dist/esm/styles/prism"
-import "./chat-panel.css"
-import { ChevronLeft, ChevronRight, Edit, Trash2 } from "lucide-react"
+import { useState, useEffect, useRef, memo } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Send,
+  Bot,
+  User,
+  MessageSquare,
+  X,
+  Maximize2,
+  Minimize2,
+  Sparkles,
+  PanelRightClose,
+  PanelRightOpen,
+  Settings,
+} from "lucide-react";
+import { storageService } from "@/lib/storage";
+import { toast } from "@/hooks/use-toast";
 
-// Function to extract thinking content from a message
-const extractThinking = (content: string): { thinking: string | null; content: string } => {
-  const thinkRegex = /<Thinking>([\s\S]*?)<\/think>/
-  const match = content.match(thinkRegex)
+const LLM_API_URL = process.env.NEXT_PUBLIC_LLM_API_URL || "";
 
-  if (match && match[1])
-  \
-  // Return the thinking content and the cleaned message content\
-  return \
-  thinking: match[1].trim(),\
-  content: content.replace(thinkRegex, "").trim(),
-    \
-  \
-  \
-  return \
-  thinking: null, content
-  \
-  \
-}
-
-interface ChatPanelProps \{
-  messages: Message[]
-  onSendMessage: (content: string) => void
-  nodeName: string
-  onNodeNameChange: (name: string) => void
-  onCreateBranchNode?: (content: string) => void
-  isCollapsed?: boolean
-  setIsCollapsed?: (collapsed: boolean) => void
-  onDeleteNode?: () => void
-  model?: string
-  onModelChange?: (model: string) => void
-  branchPoints?: Record<string, string>\
-  connectionPoints?: Record<string, \{ nodeId: string; type: string; direction: "incoming" | "outgoing" \}>
-  onNavigateToNode?: (nodeId: string) => void
-  nodeNotes?: Record<string, string>
-  onSaveNote?: (nodeId: string, note: string) => void
-  activeNodeId?: string
-  nodes?: any[]
-  thinking?: boolean
-  isOpen: boolean
-  onClose: () => void
-  className?: string
-\}
-
-interface NodeParentInfo \{
-  id: string
-  label: string
-  type: string
-\}
-\
-export function ChatPanel(\{
-  messages,
-  onSendMessage,
-  nodeName,
-  onNodeNameChange,
-  onCreateBranchNode,
-  isCollapsed: propIsCollapsed,
-  setIsCollapsed: propSetIsCollapsed,
-  onDeleteNode,
-  model = "gpt-4",
-  onModelChange,\
-  branchPoints = \{\},\
-  connectionPoints = \{\},
-  onNavigateToNode,\
-  nodeNotes = \{\},
-  onSaveNote,
-  activeNodeId,
-  nodes,
-  thinking = false,
-  isOpen,
-  onClose,
-  className,
-\}: ChatPanelProps) \
-{
-  const [inputValue, setInputValue] = useState("")
-  const [isEditingName, setIsEditingName] = useState(false)
-  const [editedName, setEditedName] = useState(nodeName)
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [panelWidth, setPanelWidth] = useState(320)
-  const [isResizing, setIsResizing] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const resizeStartXRef = useRef(0)
-  const resizeStartWidthRef = useRef(0)
-  const panelRef = useRef<HTMLDivElement>(null)
-  const resizeFrameRef = useRef<number | null>(null)
-  \
-  const [commandFeedback, setCommandFeedback] = useState<\
-  active: boolean
-  command: string
-  content: string
-  \
-  \
-  | null>(null)\
-  const \{ toast \} = useToast()
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-  \
-  const handleTogglePanel = () => \
-  if (propSetIsCollapsed)
-  \
-  propSetIsCollapsed(!propIsCollapsed)
-  \
-    \
-  else \
-  setIsCollapsed(!isCollapsed)
-  \
-  \
-
-  const isActuallyCollapsed = propIsCollapsed ?? isCollapsed
-  const [createdBranchId, setCreatedBranchId] = useState<string | null>(null)
-  const [readingMode, setReadingMode] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
-  \
-  const \{ theme, setTheme \} = useTheme()
-  \
-  useEffect(() => \
-  setEditedName(nodeName)
-  \
-  \
-  , [nodeName])
-
-  useEffect(() => \
-  if (propIsCollapsed !== undefined)
-  \
-  setIsCollapsed(propIsCollapsed)
-  \
-  \
-  \
-  , [propIsCollapsed])
-
-  // Add keyboard shortcut for full-screen toggle
-  useEffect(() => \
+// Available AI models
+const AVAILABLE_MODELS = [
+  { value: "gpt-4", label: "GPT-4", provider: "OpenAI" },
+  { value: "gpt-4-turbo", label: "GPT-4 Turbo", provider: "OpenAI" },
+  { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo", provider: "OpenAI" },
+  { value: "claude-3-opus", label: "Claude 3 Opus", provider: "Anthropic" },
+  { value: "claude-3-sonnet", label: "Claude 3 Sonnet", provider: "Anthropic" },
+  { value: "claude-3-haiku", label: "Claude 3 Haiku", provider: "Anthropic" },
+  { value: "gemini-pro", label: "Gemini Pro", provider: "Google" },
   {
-    \
-    const handleKeyDown = (e: KeyboardEvent) => \
-    // Toggle full-screen with F key or Escape to exit
-    if (e.key === "f" && (e.ctrlKey || e.metaKey))
-    \
-    e.preventDefault()
-    setIsExpanded((prev) => !prev)
-    \
-      \
-    else
-    if (e.key === "Escape" && isExpanded)
-    \
-    setIsExpanded(false)
-    \
-    \
+    value: "gemini-pro-vision",
+    label: "Gemini Pro Vision",
+    provider: "Google",
+  },
+] as const;
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-    \
-  \
-  }
-  , [isExpanded])
-
-  // Focus input when entering full-screen mode
-  useEffect(() => \
-  if (isExpanded && inputRef.current)
-  \
-  \
-      setTimeout(() => \
-  inputRef.current?.focus()
-  \
-      \
-  , 300)
-    \
-  \
-  \
-  , [isExpanded])
-\
-  const handleSubmit = (e: React.FormEvent) => \
-  e.preventDefault()
-
-  if (inputValue.trim())
-  \
-  if (inputValue.startsWith("/branch "))
-  \
-  {
-    const branchContent = inputValue.substring(8).trim()
-
-    if (branchContent && onCreateBranchNode)
-    \
-    {
-      const branchId = onCreateBranchNode(branchContent)
-      if (branchId)
-      \
-      setCreatedBranchId(branchId)
-      \
-            toast(\
-      title: "Branch node created",\
-      description: `Created a new branch node with content: "$\{branchContent.substring(
-                0,
-                30,
-              )\}$\{branchContent.length > 30 ? "..." : ""\}"`,\
-      \
-      )
-          \
-      setInputValue("")
-      return
-      \
-    }
-    \
-  }
-
-  onSendMessage(inputValue)
-  setInputValue("")
-  \
-  \
-  \
-  const handleSaveName = () => \
-  if (editedName.trim())
-  \
-  onNodeNameChange(editedName)
-  \
-  setIsEditingName(false)
-  \
-  \
-  const scrollToBottom = useCallback(() => \{\
-    messagesEndRef.current?.scrollIntoView(\{ behavior: "smooth" \})
-  \
+interface ChatPanelProps {
+  selectedNode: string | null;
+  selectedNodeName?: string;
+  onClose?: () => void;
+  selectedCanvas?: string | null;
+  isFullscreen?: boolean;
+  isCollapsed?: boolean;
+  onToggleFullscreen?: () => void;
+  onToggleCollapse?: () => void;
 }
-, [])
 
-  useEffect(() => \
-{
-  scrollToBottom()
-  \
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
 }
-, [messages, scrollToBottom])
 
-  useEffect(() => \
-{
-  if (isOpen && inputRef.current)
-  \
-  inputRef.current.focus()
-  \
-  \
+interface NodeConversation {
+  nodeId: string;
+  nodeName: string;
+  messages: Message[];
 }
-, [isOpen])
 
-const handleSendMessage = async () => \
-{
-  if (!inputValue.trim() || isLoading) return
-
-  const userMessage: Message = \
-  id: Date.now().toString(), content
-  : inputValue.trim(),
-      role: "user",
-      timestamp: new Date(),
-    \
-
-  onSendMessage(userMessage.content)
-  setInputValue("")
-  setIsLoading(true)
-
-  // Simulate AI response
-  setTimeout(() => \{
-      const assistantMessage: Message = \{
-        id: (Date.now() + 1).toString(),
-        content: `I understand you're asking about: "$\{userMessage.content\}". This is a simulated response. In a real implementation, this would connect to your AI service.`,
+const mockNodeConversations: Record<string, NodeConversation> = {
+  "1": {
+    nodeId: "1",
+    nodeName: "Entry Point",
+    messages: [
+      {
+        id: "m1",
         role: "assistant",
+        content: "Hello! How can I help you today?",
+        timestamp: new Date(Date.now() - 3600000),
+      },
+    ],
+  },
+  "2": {
+    nodeId: "2",
+    nodeName: "Branch Point",
+    messages: [
+      {
+        id: "m2",
+        role: "user",
+        content: "I need help with my order",
+        timestamp: new Date(Date.now() - 3000000),
+      },
+      {
+        id: "m3",
+        role: "assistant",
+        content:
+          "I'd be happy to help you with your order! Could you please provide your order number?",
+        timestamp: new Date(Date.now() - 2000000),
+      },
+    ],
+  },
+};
+
+export function ChatPanel({
+  selectedNode,
+  selectedNodeName,
+  onClose,
+  selectedCanvas,
+  isFullscreen = false,
+  isCollapsed = false,
+  onToggleFullscreen,
+  onToggleCollapse,
+}: ChatPanelProps) {
+  const [conversations, setConversations] = useState<
+    Record<string, NodeConversation>
+  >(mockNodeConversations);
+  const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>("gpt-4");
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Ensure a conversation object exists for the selected node so the UI can render immediately
+  useEffect(() => {
+    if (!selectedNode) return;
+
+    setConversations((prev) => {
+      if (prev[selectedNode]) return prev;
+      return {
+        ...prev,
+        [selectedNode]: {
+          nodeId: selectedNode,
+          nodeName: selectedNodeName || `Node ${selectedNode}`,
+          messages: [],
+        },
+      };
+    });
+  }, [selectedNode, selectedNodeName]);
+
+  useEffect(() => {
+    if (!selectedNode || !selectedCanvas) return;
+
+    // Load canvas data and extract messages for this node
+    (async () => {
+      try {
+        const res = await fetch(`/api/canvases/${selectedCanvas}`);
+        if (res.ok) {
+          const data = await res.json();
+          const canvas = data.canvas;
+          const node = canvas.nodes?.find((n: any) => n._id === selectedNode);
+          if (node && node.chatMessages) {
+            setConversations((prev) => ({
+              ...prev,
+              [selectedNode]: {
+                nodeId: selectedNode,
+                nodeName:
+                  selectedNodeName || node.name || `Node ${selectedNode}`,
+                messages: node.chatMessages.flatMap((msg: any, idx: number) => {
+                  // New format: turn { id, user?, assistant? }
+                  if (msg.user || msg.assistant) {
+                    const parts: any[] = [];
+                    if (msg.user) {
+                      parts.push({
+                        id: `${msg.id}-u`,
+                        role: "user",
+                        content: msg.user.content,
+                        timestamp: new Date(msg.user.timestamp),
+                      });
+                    }
+                    if (msg.assistant) {
+                      parts.push({
+                        id: `${msg.id}-a`,
+                        role: "assistant",
+                        content: msg.assistant.content,
+                        timestamp: new Date(msg.assistant.timestamp),
+                      });
+                    }
+                    return parts;
+                  }
+                  // Legacy single message object fallback
+                  return [
+                    {
+                      id:
+                        msg.id ||
+                        (msg.timestamp
+                          ? `${msg.timestamp}-${idx}`
+                          : `${Date.now()}-${idx}`),
+                      role: msg.role,
+                      content: msg.content,
+                      timestamp: msg.timestamp
+                        ? new Date(msg.timestamp)
+                        : new Date(),
+                    },
+                  ];
+                }),
+              },
+            }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load messages:", err);
+        // fallback: use localStorage if available
+        const localMessages = storageService.getNodeMessages(
+          selectedCanvas,
+          selectedNode
+        );
+        if (localMessages.length > 0) {
+          setConversations((prev) => ({
+            ...prev,
+            [selectedNode]: {
+              nodeId: selectedNode,
+              nodeName: selectedNodeName || `Node ${selectedNode}`,
+              messages: localMessages.map((msg: any, idx: number) => ({
+                id:
+                  msg.id ||
+                  (typeof msg.timestamp === "string"
+                    ? `${msg.timestamp}-${idx}`
+                    : `${Date.now()}-${idx}`),
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+              })),
+            },
+          }));
+        }
+      }
+    })();
+  }, [selectedNode, selectedCanvas, selectedNodeName]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ESC to close fullscreen or panel
+      if (e.key === "Escape") {
+        if (isFullscreen && onToggleFullscreen) {
+          onToggleFullscreen();
+        } else if (onClose) {
+          onClose();
+        }
+      }
+      // Ctrl/Cmd + Shift + C to toggle collapse
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.shiftKey &&
+        e.key === "C" &&
+        onToggleCollapse
+      ) {
+        e.preventDefault();
+        onToggleCollapse();
+      }
+      // F11 or Ctrl/Cmd + Shift + F to toggle fullscreen
+      if (
+        (e.key === "F11" ||
+          ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "F")) &&
+        onToggleFullscreen
+      ) {
+        e.preventDefault();
+        onToggleFullscreen();
+      }
+    };
+
+    if (selectedNode) {
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [
+    selectedNode,
+    isFullscreen,
+    onToggleFullscreen,
+    onToggleCollapse,
+    onClose,
+  ]);
+
+  const currentConversation = selectedNode
+    ? conversations[selectedNode] ?? {
+        nodeId: selectedNode,
+        nodeName: selectedNodeName ?? `Node ${selectedNode}`,
+        messages: [],
+      }
+    : null;
+
+  useEffect(() => {
+    // Auto-scroll to bottom when new messages are added
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [currentConversation?.messages]);
+
+  const getNodeModel = (nodeId: string): string => {
+    // Use the selected model from the dropdown
+    return selectedModel;
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || !selectedNode || !selectedCanvas) return;
+
+    const genId = () =>
+      Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    const newMessage: Message = {
+      id: genId(),
+      role: "user",
+      content: inputValue,
+      timestamp: new Date(),
+    };
+
+    // Add user message to local state
+    setConversations((prev) => {
+      const prevMessages = prev[selectedNode]?.messages || [];
+      return {
+        ...prev,
+        [selectedNode]: {
+          ...(prev[selectedNode] || {
+            nodeId: selectedNode,
+            nodeName: selectedNodeName || `Node ${selectedNode}`,
+          }),
+          messages: [...prevMessages, newMessage],
+        },
+      };
+    });
+
+    setInputValue("");
+    setIsTyping(true);
+
+    // Save user message to database first
+    try {
+      console.log(
+        `Saving user message to: /api/canvases/${selectedCanvas}/nodes/${selectedNode}/messages`
+      );
+      const saveResponse = await fetch(
+        `/api/canvases/${selectedCanvas}/nodes/${selectedNode}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: newMessage.id,
+            role: newMessage.role,
+            content: newMessage.content,
+            timestamp: newMessage.timestamp.toISOString(),
+          }),
+        }
+      );
+
+      if (!saveResponse.ok) {
+        console.error(
+          `Failed to save user message: ${saveResponse.status} ${saveResponse.statusText}`
+        );
+        const errorText = await saveResponse.text();
+        console.error("Error details:", errorText);
+      } else {
+        console.log("User message saved successfully");
+      }
+    } catch (err) {
+      console.error("Failed to save user message:", err);
+    }
+
+    // Call LLM API
+    try {
+      const model = getNodeModel(selectedNode);
+      const payload = {
+        canvasId: selectedCanvas,
+        nodeId: selectedNode,
+        model,
+        message: newMessage.content,
+      };
+
+      const res = await fetch(LLM_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        console.log("LLM API response:", data);
+
+        const botResponse: Message = {
+          id: genId(),
+          role: "assistant",
+          content: data.message || data.response,
+          timestamp: new Date(),
+        };
+
+        // Add assistant message to local state
+        setConversations((prev) => {
+          const prevMessages = prev[selectedNode]?.messages || [];
+          return {
+            ...prev,
+            [selectedNode]: {
+              ...(prev[selectedNode] || {
+                nodeId: selectedNode,
+                nodeName: selectedNodeName || `Node ${selectedNode}`,
+              }),
+              messages: [...prevMessages, botResponse],
+            },
+          };
+        });
+
+        // Save assistant message to database
+        try {
+          await fetch(
+            `/api/canvases/${selectedCanvas}/nodes/${selectedNode}/messages`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: botResponse.id,
+                role: botResponse.role,
+                content: botResponse.content,
+                timestamp: botResponse.timestamp.toISOString(),
+              }),
+            }
+          );
+        } catch (err) {
+          console.error("Failed to save assistant message:", err);
+        }
+      }
+    } catch (err) {
+      console.error("LLM API error:", err);
+
+      // Save user message to localStorage as fallback
+      storageService.saveNodeMessages(selectedCanvas, selectedNode, [
+        ...storageService.getNodeMessages(selectedCanvas, selectedNode),
+        {
+          id: newMessage.id,
+          role: newMessage.role,
+          content: newMessage.content,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+
+      // Add fallback bot response
+      const botResponse: Message = {
+        id: genId(),
+        role: "assistant",
+        content: "Sorry, the LLM API is not available.",
         timestamp: new Date(),
-      \}
-      onSendMessage(assistantMessage.content)
-      setIsLoading(false)
-    \}, 1500)
-  \
-}
+      };
 
-const handleKeyPress = (e: React.KeyboardEvent) => \
-{
-  if (e.key === "Enter" && !e.shiftKey)
-  \
-  e.preventDefault()
-  handleSendMessage()
-  \
-  \
-}
+      setConversations((prev) => {
+        const prevMessages = prev[selectedNode]?.messages || [];
+        return {
+          ...prev,
+          [selectedNode]: {
+            ...(prev[selectedNode] || {
+              nodeId: selectedNode,
+              nodeName: selectedNodeName || `Node ${selectedNode}`,
+            }),
+            messages: [...prevMessages, botResponse],
+          },
+        };
+      });
+    } finally {
+      setIsTyping(false);
+    }
+  };
 
-const copyMessage = (content: string) => \
-{
-  navigator.clipboard.writeText(content)
-  toast(\{
-      title: "Copied to clipboard",
-      description: "Message content has been copied.",
-    \})
-  \
-}
+  const MessageComponent = memo(
+    ({ message }: { message: Message }) => {
+      const isUser = message.role === "user";
+      const [hovered, setHovered] = useState(false);
 
-const toggleFullscreen = () => \
-{
-  setIsFullscreen(!isFullscreen)
-  \
-}
+      const handleFork = async () => {
+        if (!selectedCanvas || !selectedNode) return;
+        // Create a new branch/context node (default to branch) with lineage metadata
+        const newNodeId = `node_${Date.now()}_${Math.random()
+          .toString(36)
+          .slice(2, 8)}`;
+        const newNode = {
+          _id: newNodeId,
+          primary: false,
+          type: "branch",
+          chatMessages: [],
+          runningSummary: "",
+          contextContract: "",
+          model: selectedModel,
+          parentNodeId: selectedNode,
+          forkedFromMessageId: message.id.replace(/-a$/, ""),
+          createdAt: new Date().toISOString(),
+          position: {
+            x: 300 + Math.random() * 150,
+            y: 200 + Math.random() * 150,
+          },
+        } as any;
 
-const selectedModel = availableModels.find((m) => m.id === model)?.name || "GPT-4"
+        try {
+          // Optimistic: dispatch events before network to feel instant
+          const edgeId = `edge_${Date.now()}_${Math.random()
+            .toString(36)
+            .slice(2, 8)}`;
 
-const getNodeTypeName = (type: string) => \
-{
-    switch (type) \{
-      case "mainNode":
-        return "Main Node"
-      case "branchNode":
-        return "Branch Node"
-      case "imageNode":
-        return "Image"
-      default:
-        return "Node"
-    \}
-  \}
+          const edgePayload = {
+            _id: edgeId,
+            from: selectedNode,
+            to: newNodeId,
+            createdAt: new Date().toISOString(),
+            meta: { condition: "Fork" },
+          };
 
-  const toggleTheme = () => \{
-    setTheme(theme === "dark" ? "light" : "dark")
-  \}
+          window.dispatchEvent(
+            new CustomEvent("canvas-fork-node", {
+              detail: {
+                canvasId: selectedCanvas,
+                node: newNode,
+                edge: edgePayload,
+              },
+            })
+          );
 
-  const toggleCollapse = () => \{
-    setIsCollapsed(!isCollapsed)
-  \}
+          // Fire & forget persistence
+          fetch(`/api/canvases/${selectedCanvas}/nodes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(newNode),
+          }).then(async (r) => {
+            if (!r.ok)
+              console.error("Failed to persist fork node", await r.text());
+          });
+          fetch(`/api/canvases/${selectedCanvas}/edges`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(edgePayload),
+          }).then(async (r) => {
+            if (!r.ok)
+              console.error("Failed to persist fork edge", await r.text());
+          });
 
-  const toggleExpand = () => \{
-    setIsExpanded(!isExpanded)
-  \}
+          // Dispatch custom event so canvas updates immediately
+          // Ask canvas to select the new node
+          window.dispatchEvent(
+            new CustomEvent("canvas-select-node", {
+              detail: { nodeId: newNodeId },
+            })
+          );
 
-  const handleDeleteNode = () => \{
-    if (onDeleteNode) \
-      onDeleteNode()
-    \
-  \}
+          // Toast confirmation
+          toast({
+            title: "Fork created",
+            description: `New node ${newNodeId} forked from message`,
+          });
+        } catch (e) {
+          console.error("Error forking node", e);
+        }
+      };
 
-  const handleModelChange = (newModel: string) => \{
-    if (onModelChange) \
-      onModelChange(newModel)
-    \
-  \}
+      return (
+        <div
+          className={`flex ${isUser ? "justify-end" : "justify-start"} mb-6`}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+        >
+          <div className={`max-w-[85%] ${isUser ? "order-2" : "order-1"}`}>
+            <div
+              className={`flex items-start gap-3 ${
+                isUser ? "flex-row-reverse" : ""
+              }`}
+            >
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  isUser
+                    ? "bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-sm"
+                    : "bg-gradient-to-br from-blue-50 to-indigo-50 text-slate-600 border border-slate-200/50"
+                }`}
+              >
+                {isUser ? <User size={16} /> : <Sparkles size={16} />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div
+                  className={`rounded-xl px-4 py-3 ${
+                    isUser
+                      ? "bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-sm"
+                      : "bg-white border border-slate-200/50 text-slate-800 shadow-sm"
+                  }`}
+                >
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {message.content}
+                  </p>
+                  {!isUser && hovered && (
+                    <div className="flex justify-end mt-2">
+                      <button
+                        onClick={handleFork}
+                        className="text-xs px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200/70 transition-colors"
+                        title="Fork new node from this AI response"
+                      >
+                        Fork Node
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p
+                  className={`text-xs mt-2 px-1 ${
+                    isUser ? "text-slate-400" : "text-slate-400"
+                  }`}
+                >
+                  {(() => {
+                    if (!message.timestamp) return "";
+                    const dateObj =
+                      typeof message.timestamp === "string"
+                        ? new Date(message.timestamp)
+                        : message.timestamp;
+                    return isNaN(dateObj.getTime())
+                      ? ""
+                      : dateObj.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                  })()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    },
+    (prev, next) =>
+      prev.message?.id === next.message?.id &&
+      prev.message?.content === next.message?.content
+  );
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => \{
-    setInputValue(e.target.value)
-  \}
-
-  const startResize = (e: React.MouseEvent) => \{
-    e.preventDefault()
-    setIsResizing(true)
-    resizeStartXRef.current = e.clientX
-    resizeStartWidthRef.current = panelWidth
-  \}
-
-  if (!isOpen) return null
+  const TypingIndicator = () => (
+    <div className="flex justify-start mb-6">
+      <div className="max-w-[85%] order-1">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-50 to-indigo-50 text-slate-600 border border-slate-200/50">
+            <Sparkles size={16} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="rounded-xl px-4 py-3 bg-white border border-slate-200/50 text-slate-800 shadow-sm">
+              <div className="flex items-center gap-1">
+                <div className="flex gap-1">
+                  <div
+                    className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  ></div>
+                </div>
+                <span className="text-xs text-slate-500 ml-2">
+                  AI is thinking...
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <>
-      \{/* Overlay for fullscreen mode */\}
-      \{isFullscreen && <div className="chat-panel-overlay" onClick=\{() => setIsFullscreen(false)\} />\}
+    <div
+      className={`h-full flex flex-col ${
+        isFullscreen
+          ? "bg-slate-50"
+          : "bg-white/95 backdrop-blur-sm border-l border-slate-200/80 shadow-sm"
+      }`}
+    >
+      {/* Collapsed State */}
+      {isCollapsed && !isFullscreen ? (
+        <div className="h-full flex flex-col items-center py-4">
+          {/* Collapsed Header */}
+          <div className="flex flex-col items-center gap-3 mb-6">
+            <button
+              onClick={onToggleCollapse}
+              className="w-8 h-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg flex items-center justify-center border border-slate-200/50 hover:bg-gradient-to-br hover:from-blue-100 hover:to-indigo-100 transition-colors cursor-pointer"
+              title="Expand chat panel"
+            >
+              <MessageSquare className="w-4 h-4 text-slate-600" />
+            </button>
+            {selectedNode && (
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+            )}
+          </div>
 
-      <motion.div
-        ref=\{panelRef\}
-        className=\{`relative flex flex-col h-full border-l border-border/60 layout-transition $\{
-          isCollapsed ? "w-12" : ""
-        \} $\{isExpanded ? "fixed right-0 top-0 h-screen z-50 w-full chat-panel-expanded shadow-xl" : ""\}`\}
-        style=\{\{
-          width: isCollapsed ? "48px" : isExpanded ? "100%" : `$\{panelWidth\}px`,
-          marginTop: isExpanded ? "0" : "",
-          height: isExpanded ? "100vh" : "",
-          paddingTop: isExpanded ? "0" : "",
-        \}\}
-        initial=\{isCollapsed ? \{ width: "48px" \} : \{ width: `$\{panelWidth\}px` \}\}
-        animate=\{isCollapsed ? \{ width: "48px" \} : isExpanded ? \{ width: "100%" \} : \{ width: `$\{panelWidth\}px` \}\}
-        transition=\{\{ type: "spring", stiffness: 300, damping: 30 \}\}
-      >
-        \{/* Header for normal mode */\}
-        \{!isExpanded && (
-          <motion.div
-            className=\{`chat-header p-4 border-b border-border/60 flex items-center`\}
-            initial=\{\{ opacity: 0.8 \}\}
-            animate=\{\{ opacity: 1 \}\}
-            transition=\{\{ duration: 0.2 \}\}
-          >
-            <Button variant="ghost" size="icon" className="collapse-button h-8 w-8 mr-2" onClick=\{toggleCollapse\}>
-              \{isCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />\}
-            </Button>
-
-            \{!isCollapsed && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 mr-2"
-                onClick=\{toggleExpand\}
-                aria-label=\{isExpanded ? "Exit full-screen" : "Enter full-screen"\}
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-            )\}
-
-            \{!isCollapsed && (
-              <div className="flex items-center justify-between flex-1">
-                \{isEditingName ? (
-                  <div className="flex items-center gap-2 flex-1">
-                    <Input
-                      value=\{editedName\}
-                      onChange=\{(e) => setEditedName(e.target.value)\}
-                      className="h-8 text-sm"
-                      autoFocus
-                    />
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick=\{handleSaveName\}>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick=\{() => setIsEditingName(false)\}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <h2 className="text-lg font-semibold flex-1 tracking-tight">\{nodeName\}</h2>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick=\{() => setIsEditingName(true)\}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      \{onDeleteNode && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive"
-                          onClick=\{handleDeleteNode\}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )\}
-                    </div>
-                  </>
-                )\}
-              </div>
-            )\}
-          </motion.div>
-        )\}
-        \{/* Enhanced full-screen header */\}
-        \{isExpanded && (
-          <motion.div
-            initial=\{\{ opacity: 0, y: -10 \}\}
-            animate=\{\{ opacity: 1, y: 0 \}\}
-            className=\{`sticky top-0 z-10 w-full flex items-center justify-between p-4 border-b border-border $\{
-              readingMode ? "bg-background/90 backdrop-blur-md" : "bg-card/95 backdrop-blur-md"
-            \} shadow-sm`\}
-          >
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full hover:bg-muted transition-colors"
-                onClick=\{toggleExpand\}
-                aria-label="Exit full-screen"
-              >
-                <Minimize2 className="h-5 w-5" />
-              </Button>
-              <h2 className="text-xl font-semibold tracking-tight">\{nodeName\}</h2>
-              \{model && (
-                <div className="hidden md:flex items-center ml-2">
-                  <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
-                    \{selectedModel\}
-                  </span>
-                </div>
-              )\}
-            </div>
-
-            <div className="flex items-center gap-2">
+          {/* Collapsed Controls */}
+          <div className="flex flex-col gap-2">
+            {selectedNode && onToggleFullscreen && (
               <Button
                 variant="ghost"
                 size="sm"
-                className=\{`h-8 text-xs $\{
-                  readingMode ? "bg-primary/10 text-primary" : ""
-                \} hover:bg-muted transition-colors`\}
-                onClick=\{() => setReadingMode(!readingMode)\}
+                onClick={onToggleFullscreen}
+                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 p-2 h-auto"
+                title="Fullscreen chat"
               >
-                \{readingMode ? "Edit Mode" : "Reading Mode"\}
+                <Maximize2 size={16} />
               </Button>
+            )}
+
+            {onClose && (
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-8 w-8 hover:bg-muted transition-colors"
-                onClick=\{toggleTheme\}
+                size="sm"
+                onClick={onClose}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 h-auto"
+                title="Close chat"
               >
-                \{theme === "dark" ? <X className="h-4 w-4" /> : <Bot className="h-4 w-4" />\}
+                <X size={16} />
               </Button>
-              <div className="hidden md:flex items-center">
-                <KeyboardShortcuts />
+            )}
+          </div>
+
+          {/* Message indicator for collapsed state */}
+          {selectedNode && (
+            <div className="mt-auto mb-4 text-center">
+              <div className="text-xs text-slate-400 font-medium mb-1">
+                {currentConversation?.messages?.length || 0}
+              </div>
+              <div className="text-xs text-slate-500">msgs</div>
+            </div>
+          )}
+
+          {/* Quick compose in collapsed state */}
+          {selectedNode && (
+            <div className="mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleCollapse}
+                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 p-2 h-auto"
+                title="Quick compose"
+              >
+                <Send size={14} />
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Expanded State */
+        <>
+          {/* Header */}
+          <div
+            className={`flex-shrink-0 border-b border-slate-200/80 ${
+              isFullscreen
+                ? "p-6 bg-white/95 backdrop-blur-sm shadow-sm"
+                : "p-4"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                  <h3
+                    className={`font-semibold text-slate-900 truncate ${
+                      isFullscreen ? "text-xl" : "text-base"
+                    }`}
+                  >
+                    {selectedNode
+                      ? currentConversation?.nodeName || "Node Chat"
+                      : "Node Chat"}
+                  </h3>
+                </div>
+                <p className="text-sm text-slate-500">
+                  {selectedNode
+                    ? `${
+                        currentConversation?.messages?.length || 0
+                      } messages • ${
+                        AVAILABLE_MODELS.find((m) => m.value === selectedModel)
+                          ?.label || selectedModel
+                      } • Active session`
+                    : "Select a node to start chatting"}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-1 ml-4">
+                {onToggleCollapse && !isFullscreen && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleCollapse}
+                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                    title="Collapse chat panel"
+                  >
+                    <PanelRightClose size={18} />
+                  </Button>
+                )}
+
+                {selectedNode && onToggleFullscreen && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleFullscreen}
+                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                    title={isFullscreen ? "Exit fullscreen" : "Fullscreen chat"}
+                  >
+                    {isFullscreen ? (
+                      <Minimize2 size={18} />
+                    ) : (
+                      <Maximize2 size={18} />
+                    )}
+                  </Button>
+                )}
+
+                {onClose && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClose}
+                    className="text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                    title="Close chat"
+                  >
+                    <X size={18} />
+                  </Button>
+                )}
               </div>
             </div>
-          </motion.div>
-        )\}
-        \{!isCollapsed && (
-          <AnimatePresence mode="wait">
-            \{!isExpanded && (
-              <motion.div
-                key="chat-header"
-                initial=\{\{ opacity: 0, y: -10 \}\}
-                animate=\{\{ opacity: 1, y: 0 \}\}
-                exit=\{\{ opacity: 0, y: -10 \}\}
-                transition=\{\{ duration: 0.3 \}\}
-                className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between"
-              >
-                <div className="flex-1">
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">AI Model</label>
-                  <Select value=\{model\} onValueChange=\{handleModelChange\}>
-                    <SelectTrigger className="h-9 text-sm bg-background/70 backdrop-blur-sm border-border/60 shadow-sm hover:shadow transition-shadow duration-200">
-                      <SelectValue placeholder="Select model" />
-                    </SelectTrigger>
-                    <SelectContent className="border-border/60 shadow-md">
-                      \{availableModels.map((model) => (
-                        <SelectItem key=\{model.id\} value=\{model.id\} className="focus:bg-primary/10">
-                          \{model.name\} <span className="text-xs text-muted-foreground ml-1">(\{model.provider\})</span>
-                        </SelectItem>
-                      ))\}
-                    </SelectContent>
-                  </Select>
-                </div>
-                \{activeNodeId && onSaveNote && (
-                  <div className="ml-3">
-                    <NodeNotes nodeId=\{activeNodeId\} notes=\{nodeNotes\} onSaveNote=\{onSaveNote\} />
-                  </div>
-                )\}
-              </motion.div>
-            )\}
+          </div>
 
-            \{!isCollapsed && !isExpanded && activeNodeId && (
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key="parent-nodes-panel"
-                  initial=\{\{ opacity: 0, y: -10 \}\}
-                  animate=\{\{ opacity: 1, y: 0 \}\}
-                  exit=\{\{ opacity: 0, y: -10 \}\}
-                  transition=\{\{ duration: 0.3 \}\}
-                  className="px-4 py-2 border-t border-border bg-muted/10"
-                >
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-muted-foreground">Parent Nodes</label>
-                  </div>
-
-                  \{nodes?.find((n) => n.id === activeNodeId)?.data?.parents?.length > 0 ? (
-                    <div className="mt-2 space-y-1.5">
-                      \{nodes
-                        ?.find((n) => n.id === activeNodeId)
-                        ?.data?.parents.map((parent: NodeParentInfo) => (
-                          <Button
-                            key=\{parent.id\}
-                            variant="outline"
-                            size="sm"
-                            className="w-full justify-start text-xs h-7 gap-1.5 bg-transparent"
-                            onClick=\{() => onNavigateToNode && onNavigateToNode(parent.id)\}
-                          >
-                            <div
-                              className=\{`w-2 h-2 rounded-full $\{
-                                parent.type === "mainNode"
-                                  ? "bg-primary"
-                                  : parent.type === "branchNode"
-                                    ? "bg-orange-500"
-                                    : "bg-blue-500"
-                              \}`\}
-                            ></div>
-                            <span className="truncate">\{parent.label\}</span>
-                          </Button>
-                        ))\}
-                    </div>
-                  ) : (
-                    <div className="py-2 text-center text-xs text-muted-foreground">No parent nodes</div>
-                  )\}
-                </motion.div>
-              </AnimatePresence>
-            )\}
-
-            \{/* Enhanced messages container for full-screen mode */\}
-            <motion.div
-              className=\{`flex-1 overflow-auto chat-scrollbar $\{
-                isExpanded
-                  ? readingMode
-                    ? "px-4 md:px-0 py-8 max-w-3xl mx-auto"
-                    : "p-6 md:p-8 max-w-4xl mx-auto"
-                  : "p-4"
-              \} space-y-8 $\{isExpanded ? "max-h-[calc(100vh-140px)]" : ""\}`\}
-              initial=\{\{ opacity: 0 \}\}
-              animate=\{\{ opacity: 1 \}\}
-              transition=\{\{ duration: 0.3, delay: 0.1 \}\}
-            >
-              \{messages.length === 0 ? (
-                <motion.div
-                  className="flex flex-col items-center justify-center h-full text-center p-6"
-                  initial=\{\{ opacity: 0, scale: 0.9 \}\}
-                  animate=\{\{ opacity: 1, scale: 1 \}\}
-                  transition=\{\{ duration: 0.4, type: "spring" \}\}
-                >
-                  <div className="bg-primary/10 p-4 rounded-full mb-4">
-                    <Bot className="h-8 w-8 text-primary" />
-                  </div>
-                  <p className="text-lg font-medium mb-2">No messages yet</p>
-                  <p className="text-muted-foreground text-sm max-w-xs">
-                    Start a conversation by typing a message below. This will be part of your conversation node.
-                  </p>
-                </motion.div>
-              ) : (
-                messages.map((message, index) => \{
-                  const \{ thinking: messageThinking, content \} = extractThinking(message.content)
-
-                  return (
-                    <div key=\{message.id\} className="mb-8">
-                      <motion.div
-                        initial=\{\{ opacity: 0, y: 10 \}\}
-                        animate=\{\{ opacity: 1, y: 0 \}\}
-                        transition=\{\{ duration: 0.3, delay: index * 0.05 \}\}
-                        className=\{`flex flex-col group $\{message.sender === "user" ? "items-end" : "items-start"\}`\}
-                      >
-                        \{/* Thinking section */\}
-                        \{messageThinking && (
-                          <motion.div
-                            initial=\{\{ opacity: 0, height: 0 \}\}
-                            animate=\{\{ opacity: 1, height: "auto" \}\}
-                            className=\{`mb-2 w-full max-w-[85%] md:max-w-[75%] $\{
-                              message.sender === "user" ? "self-end" : "self-start"
-                            \}`\}
-                          >
-                            <details className="bg-muted/30 rounded-lg border border-border/50 text-sm">
-                              <summary className="cursor-pointer p-2 font-medium text-xs flex items-center gap-1.5 text-muted-foreground">
-                                <span className="inline-flex items-center justify-center rounded-full bg-primary/10 p-1">
-                                  <Bot className="h-3 w-3 text-primary" />
-                                </span>
-                                Thinking process
-                              </summary>
-                              <div className="p-3 pt-1 whitespace-pre-wrap font-mono text-xs text-muted-foreground">
-                                \{messageThinking\}
-                              </div>
-                            </details>
-                          </motion.div>
-                        )\}
-
-                        <div className="flex items-end gap-2 relative">
-                          \{message.sender !== "user" && (
-                            <div className="bg-primary/15 p-1.5 rounded-full shadow-sm">
-                              <Bot className="h-3.5 w-3.5 text-primary" />
-                            </div>
-                          )\}
-                          <div
-                            className=\{`$\{
-                              isExpanded
-                                ? message.sender === "user"
-                                  ? "chat-message-user max-w-[85%] md:max-w-[75%] p-4"
-                                  : "chat-message-ai max-w-[85%] md:max-w-[75%] p-4"
-                                : message.sender === "user"
-                                  ? "chat-message-user max-w-[85%] p-3.5"
-                                  : "chat-message-ai max-w-[85%] p-3.5"
-                            \} relative chat-typography`\}
-                          >
-                            \{message.sender === "user" ? (
-                              <p className=\{`$\{isExpanded ? "text-base leading-relaxed" : "text-sm leading-relaxed"\}`\}>
-                                \{content\}
-                              </p>
-                            ) : (
-                              <div className=\{`$\{isExpanded ? "text-base" : "text-sm"\} markdown-content`\}>
-                                <ReactMarkdown
-                                  remarkPlugins=\{[remarkGfm]\}
-                                  components=\{\{
-                                    code(\{ node, inline, className, children, ...props \}) \{
-                                      const match = /language-(\w+)/.exec(className || "")
-                                      return !inline && match ? (
-                                        <SyntaxHighlighter
-                                          style=\{theme === "dark" ? vscDarkPlus : vs\}
-                                          language=\{match[1]\}
-                                          PreTag="div"
-                                          \{...props\}
-                                        >
-                                          \{String(children).replace(/\n$/, "")\}
-                                        </SyntaxHighlighter>
-                                      ) : (
-                                        <code
-                                          className=\{`$\{className\} bg-muted px-1 py-0.5 rounded text-sm font-mono`\}
-                                          \{...props\}
-                                        >
-                                          \{children\}
-                                        </code>
-                                      )
-                                    \},
-                                    p: (\{ children \}) => <p className="mb-4 last:mb-0">\{children\}</p>,
-                                    ul: (\{ children \}) => <ul className="mb-4 list-disc pl-6 last:mb-0">\{children\}</ul>,
-                                    ol: (\{ children \}) => (
-                                      <ol className="mb-4 list-decimal pl-6 last:mb-0">\{children\}</ol>
-                                    ),
-                                    li: (\{ children \}) => <li className="mb-1">\{children\}</li>,
-                                    h1: (\{ children \}) => <h1 className="text-xl font-bold mb-4 mt-6">\{children\}</h1>,
-                                    h2: (\{ children \}) => <h2 className="text-lg font-bold mb-3 mt-5">\{children\}</h2>,
-                                    h3: (\{ children \}) => <h3 className="text-md font-bold mb-2 mt-4">\{children\}</h3>,
-                                    a: (\{ href, children \}) => (
-                                      <a
-                                        href=\{href\}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-primary underline"
-                                      >
-                                        \{children\}
-                                      </a>
-                                    ),
-                                    blockquote: (\{ children \}) => (
-                                      <blockquote className="border-l-4 border-muted-foreground/30 pl-4 italic my-4">
-                                        \{children\}
-                                      </blockquote>
-                                    ),
-                                    hr: () => <hr className="my-4 border-border" />,
-                                    table: (\{ children \}) => (
-                                      <div className="overflow-x-auto my-4">
-                                        <table className="min-w-full divide-y divide-border">\{children\}</table>
-                                      </div>
-                                    ),
-                                    thead: (\{ children \}) => <thead className="bg-muted/50">\{children\}</thead>,
-                                    tbody: (\{ children \}) => (
-                                      <tbody className="divide-y divide-border">\{children\}</tbody>
-                                    ),
-                                    tr: (\{ children \}) => <tr>\{children\}</tr>,
-                                    th: (\{ children \}) => (
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                        \{children\}
-                                      </th>
-                                    ),
-                                    td: (\{ children \}) => <td className="px-3 py-2 whitespace-nowrap">\{children\}</td>,
-                                  \}\}
-                                >
-                                  \{content\}
-                                </ReactMarkdown>
-                              </div>
-                            )\}
-                          </div>
-                          \{message.sender === "user" && (
-                            <div className="bg-primary/15 p-1.5 rounded-full shadow-sm">
-                              <User className="h-3.5 w-3.5 text-primary" />
-                            </div>
-                          )\}
-                        </div>
-                        <span className=\{`text-xs text-muted-foreground mt-1.5 px-2 $\{isExpanded ? "opacity-70" : ""\}`\}>
-                          \{format(new Date(message.timestamp), "h:mm a")\}
-                        </span>
-                      </motion.div>
-
-                      \{/* Branch indicator */\}
-                      \{branchPoints[message.id] && (
-                        <motion.div
-                          initial=\{\{ opacity: 0, y: 5 \}\}
-                          animate=\{\{ opacity: 1, y: 0 \}\}
-                          transition=\{\{ duration: 0.3, delay: 0.1 \}\}
-                          className=\{`flex my-2 $\{message.sender === "user" ? "justify-end" : "justify-start"\}`\}
-                        >
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className=\{`flex items-center gap-1.5 h-7 px-2 py-1 text-xs rounded-md border border-dashed $\{
-                              message.sender === "user"
-                                ? "border-primary/30 text-primary"
-                                : "border-orange-500/30 text-orange-500"
-                            \}`\}
-                            onClick=\{() => onNavigateToNode && onNavigateToNode(branchPoints[message.id])\}
-                          >
-                            <Bot className="h-3 w-3" />
-                            <span>Branch created</span>
-                            <Bot className="h-3 w-3 ml-1" />
-                          </Button>
-                        </motion.div>
-                      )\}
-
-                      \{/* Connection indicator */\}
-                      \{connectionPoints[message.id] && (
-                        <motion.div
-                          initial=\{\{ opacity: 0, y: 5 \}\}
-                          animate=\{\{ opacity: 1, y: 0 \}\}
-                          transition=\{\{ duration: 0.3, delay: 0.1 \}\}
-                          className=\{`flex my-2 $\{message.sender === "user" ? "justify-end" : "justify-start"\}`\}
-                        >
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className=\{`flex items-center gap-1.5 h-7 px-2 py-1 text-xs rounded-md border border-dashed $\{
-                              connectionPoints[message.id].type === "mainNode"
-                                ? "border-primary/30 text-primary"
-                                : connectionPoints[message.id].type === "branchNode"
-                                  ? "border-orange-500/30 text-orange-500"
-                                  : "border-blue-500/30 text-blue-500"
-                            \}`\}
-                            onClick=\{() => onNavigateToNode && onNavigateToNode(connectionPoints[message.id].nodeId)\}
-                          >
-                            <Bot className="h-3 w-3" />
-                            <span>
-                              \{connectionPoints[message.id].direction === "outgoing"
-                                ? "Connected to"
-                                : "Connected from"\}\{" "\}
-                              \{getNodeTypeName(connectionPoints[message.id].type)\}
-                            </span>
-                            \{connectionPoints[message.id].direction === "outgoing" ? (
-                              <Bot className="h-3 w-3 ml-1" />
-                            ) : (
-                              <Bot className="h-3 w-3 ml-1" />
-                            )\}
-                          </Button>
-                        </motion.div>
-                      )\}
-                    </div>
-                  )
-                \})
-              )\}
-              \{thinking && (
-                <motion.div
-                  initial=\{\{ opacity: 0, y: 10 \}\}
-                  animate=\{\{ opacity: 1, y: 0 \}\}
-                  className="flex flex-col items-start"
-                >
-                  <div className="flex items-end gap-2">
-                    <div className="bg-primary/10 p-1.5 rounded-full">
-                      <Bot className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                    <div className="bg-card border border-border shadow-sm rounded-2xl p-3.5">
-                      <ThinkingAnimation />
-                    </div>
-                  </div>
-                </motion.div>
-              )\}
-              <div ref=\{messagesEndRef\} />
-            </motion.div>
-
-            \{/* Enhanced input area for full-screen mode */\}
-            <motion.div
-              className=\{`$\{
-                isExpanded
-                  ? readingMode
-                    ? "hidden"
-                    : "sticky bottom-0 p-6 border-t border-border/60 bg-gradient-to-r from-background/95 to-card/95 backdrop-blur-md max-w-4xl mx-auto w-full shadow-md"
-                  : "p-4 border-t border-border/60 bg-gradient-to-b from-background/80 to-card/80 backdrop-blur-sm"
-              \}`\}
-              initial=\{\{ opacity: 0, y: 10 \}\}
-              animate=\{\{ opacity: 1, y: 0 \}\}
-              transition=\{\{ duration: 0.3, delay: 0.2 \}\}
-            >
-              \{commandFeedback?.active && (
-                <motion.div
-                  initial=\{\{ opacity: 0, height: 0 \}\}
-                  animate=\{\{ opacity: 1, height: "auto" \}\}
-                  exit=\{\{ opacity: 0, height: 0 \}\}
-                  className="px-4 py-2 mb-3 bg-orange-500/10 border border-orange-500/20 rounded-md flex items-center gap-2"
-                >
-                  <Bot className="h-4 w-4 text-orange-500" />
-                  <span className="text-sm font-medium">Creating branch node with content:</span>
-                  <span className="text-sm text-muted-foreground truncate">
-                    \{commandFeedback.content.substring(0, 30)\}
-                    \{commandFeedback.content.length > 30 ? "..." : ""\}
-                  </span>
-                </motion.div>
-              )\}
-              <form onSubmit=\{handleSubmit\} className="flex flex-col gap-2">
-                <div className="flex gap-2">
-                  <Input
-                    ref=\{inputRef\}
-                    value=\{inputValue\}
-                    onChange=\{handleInputChange\}
-                    placeholder="Type your message..."
-                    className=\{`flex-1 chat-input $\{
-                      isExpanded ? "h-12 text-base rounded-xl" : "transition-shadow duration-200"
-                    \}`\}
-                  />
-                  <Button
-                    type="submit"
-                    size=\{isExpanded ? "default" : "icon"\}
-                    className=\{`chat-send-button $\{isExpanded ? "px-6 rounded-xl h-12" : ""\}`\}
+          {/* Chat Content */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {selectedNode ? (
+              <>
+                {/* Messages */}
+                <div className="flex-1 min-h-0 relative">
+                  <ScrollArea
+                    className={`h-full ${isFullscreen ? "p-6" : "p-4"}`}
+                    ref={scrollAreaRef}
                   >
-                    \{isExpanded ? (
-                      <span className="flex items-center gap-2">
-                        <Bot className="h-4 w-4" /> Send
-                      </span>
-                    ) : (
-                      <Bot className="h-4 w-4" />
-                    )\}
-                  </Button>
+                    <div
+                      className={`space-y-1 pb-4 ${
+                        isFullscreen ? "max-w-4xl mx-auto" : ""
+                      }`}
+                    >
+                      {(currentConversation?.messages?.length || 0) === 0 ? (
+                        <div className="text-center py-16">
+                          <div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-200/50">
+                            <MessageSquare className="w-8 h-8 text-slate-400" />
+                          </div>
+                          <h3 className="text-slate-900 text-xl font-semibold mb-2">
+                            Start a conversation
+                          </h3>
+                          <p className="text-slate-500 text-sm max-w-sm mx-auto leading-relaxed">
+                            Ask questions, share thoughts, or explore ideas with
+                            this node
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          {(currentConversation?.messages || []).map(
+                            (message: any) => (
+                              <MessageComponent
+                                key={
+                                  message.id || message.timestamp?.toString()
+                                }
+                                message={message}
+                              />
+                            )
+                          )}
+                          {isTyping && <TypingIndicator />}
+                        </>
+                      )}
+                    </div>
+                  </ScrollArea>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Tip: Type\{" "\}
-                  <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">/branch Your content</span> to
-                  create a new branch node
-                </p>
-              </form>
-            </motion.div>
-          </AnimatePresence>
-        )\}
-        \{/* Resize handle */\}
-        \{!isCollapsed && !isExpanded && (
-          <div
-            className="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-primary/20 active:bg-primary/40 transition-colors"
-            onMouseDown=\{startResize\}
-          />
-        )\}
-      </motion.div>
-    </>
-  )
-\}
 
-// Export both named and default
-export default ChatPanel
+                {/* Model Selection & Input Area */}
+                <div
+                  className={`flex-shrink-0 border-t border-slate-200/80 bg-white/50 backdrop-blur-sm ${
+                    isFullscreen ? "p-6" : "p-4"
+                  }`}
+                >
+                  {/* Model Selector */}
+                  <div className={`mb-3 ${isFullscreen ? "" : "mb-2"}`}>
+                    <div
+                      className={`flex items-center gap-3 ${
+                        isFullscreen ? "" : "gap-2"
+                      }`}
+                    >
+                      <div
+                        className={`flex items-center gap-2 text-slate-500 ${
+                          isFullscreen ? "text-xs" : "text-xs"
+                        }`}
+                      >
+                        <Settings size={isFullscreen ? 14 : 12} />
+                        <span>Model:</span>
+                      </div>
+                      <Select
+                        value={selectedModel}
+                        onValueChange={setSelectedModel}
+                      >
+                        <SelectTrigger
+                          className={`${
+                            isFullscreen ? "w-48 h-8" : "w-40 h-7"
+                          } text-xs`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AVAILABLE_MODELS.map((model) => (
+                            <SelectItem key={model.value} value={model.value}>
+                              <div className="flex items-center justify-between w-full">
+                                <span className="text-xs">{model.label}</span>
+                                <span className="text-xs text-slate-400 ml-2">
+                                  {model.provider}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Message Input */}
+                  <div
+                    className={`flex gap-3 ${
+                      isFullscreen ? "max-w-4xl mx-auto" : ""
+                    }`}
+                  >
+                    <div className="flex-1 relative">
+                      <Input
+                        placeholder={
+                          isTyping
+                            ? "AI is responding..."
+                            : "Type your message..."
+                        }
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyPress={(e) =>
+                          e.key === "Enter" &&
+                          !e.shiftKey &&
+                          !isTyping &&
+                          handleSendMessage()
+                        }
+                        disabled={isTyping}
+                        className="w-full px-4 py-3 bg-white border-slate-200/80 rounded-xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 text-slate-900 placeholder:text-slate-400 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={!inputValue.trim() || isTyping}
+                      className="px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send size={18} />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* No Node Selected State */
+              <div className="flex-1 flex items-center justify-center p-8">
+                <div className="text-center space-y-6 max-w-sm">
+                  <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl flex items-center justify-center mx-auto border border-slate-200/50">
+                    <MessageSquare className="h-10 w-10 text-slate-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-slate-900 font-semibold text-xl mb-3">
+                      No Node Selected
+                    </h3>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      Click on a node in the canvas to start a focused
+                      conversation and explore your ideas
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
