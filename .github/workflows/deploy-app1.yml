@@ -1,0 +1,88 @@
+name: Deploy App1
+
+on:
+  push:
+    branches: [ main ]
+    # Adjust paths if you later introduce a monorepo structure
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'next.config.mjs'
+      - '.github/workflows/deploy-app1.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      PORT: 3001
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build (standalone)
+        run: |
+          npm run build
+          mkdir -p deploy_bundle
+          cp -r .next/standalone/* deploy_bundle/
+          cp -r .next/static deploy_bundle/.next/static
+          if [ -d public ]; then cp -r public deploy_bundle/public; fi
+          # Provide a custom server.js to launch Next from standalone dir
+          cat > deploy_bundle/server.js <<'EOF'
+          const { createServer } = require('http');
+          const next = require('next');
+          const port = parseInt(process.env.PORT || '3001', 10);
+          const app = next({ dev: false, dir: __dirname });
+          const handle = app.getRequestHandler();
+          app.prepare().then(() => {
+            createServer((req, res) => handle(req, res)).listen(port, () => {
+              console.log('App1 running on port', port);
+            });
+          });
+          EOF
+
+      - name: Add SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Create target dir
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo mkdir -p /var/www/app1 && sudo chown ${{ secrets.SSH_USER }}:$${{ secrets.SSH_USER }} /var/www/app1"
+
+      - name: Rsync bundle
+        run: |
+          rsync -az --delete deploy_bundle/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/app1/
+
+      - name: Restart service
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo systemctl restart app1.service || echo 'Service not yet created'"
+
+      - name: Post status
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "systemctl is-active app1.service || true"
+
+# Required repository secrets:
+#   SSH_HOST  -> server IP or hostname
+#   SSH_USER  -> deploy user
+#   SSH_KEY   -> private key for that user
+#
+# Server side steps (once):
+#   1. Create /var/www/app1/.env with production values (not committed)
+#   2. Create systemd unit /etc/systemd/system/app1.service :
+#      [Unit]\nDescription=App1 Next.js\nAfter=network.target\n\n[Service]\nType=simple\nUser=deploy\nWorkingDirectory=/var/www/app1\nEnvironmentFile=/var/www/app1/.env\nExecStart=/usr/bin/node /var/www/app1/server.js\nRestart=always\nRestartSec=5\nEnvironment=NODE_ENV=production\n\n[Install]\nWantedBy=multi-user.target
+#   3. sudo systemctl daemon-reload && sudo systemctl enable app1 && sudo systemctl start app1
+#
+# Nginx example (/etc/nginx/sites-available/app1.conf):
+#   server {\n  listen 80;\n  server_name app1.example.com;\n  location / {\n    proxy_pass http://127.0.0.1:3001;\n    proxy_set_header Host $host;\n    proxy_set_header X-Forwarded-For $remote_addr;\n  }\n}
+#   sudo ln -s /etc/nginx/sites-available/app1.conf /etc/nginx/sites-enabled/ && sudo nginx -t && sudo systemctl reload nginx
