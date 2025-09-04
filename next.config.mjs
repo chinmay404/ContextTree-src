@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable standalone output for slimmer production bundle (Node server)
-  output: 'standalone',
   eslint: {
     ignoreDuringBuilds: true,
   },
