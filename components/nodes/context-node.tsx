@@ -71,9 +71,10 @@ export function ContextNode({ data, selected }: NodeProps<ContextNodeData>) {
         style={{
           background: `linear-gradient(135deg, ${currentColor} 0%, ${currentColor}F5 50%, ${currentColor}E8 100%)`,
           color: textColor,
-          boxShadow: selected || data.isSelected 
-            ? `0 20px 40px -12px ${dotColor}35, 0 8px 24px -8px ${dotColor}25`
-            : "0 8px 32px -8px rgba(0,0,0,0.08)",
+          boxShadow:
+            selected || data.isSelected
+              ? `0 20px 40px -12px ${dotColor}35, 0 8px 24px -8px ${dotColor}25`
+              : "0 8px 32px -8px rgba(0,0,0,0.08)",
         }}
       >
         {/* Enhanced background accent */}
@@ -97,13 +98,19 @@ export function ContextNode({ data, selected }: NodeProps<ContextNodeData>) {
           type="target"
           position={Position.Top}
           className="!w-4 !h-4 !border-3 !border-white !shadow-lg !transition-all !duration-200 hover:!scale-125 hover:!shadow-xl"
-          style={{ backgroundColor: dotColor, boxShadow: `0 0 12px ${dotColor}60` }}
+          style={{
+            backgroundColor: dotColor,
+            boxShadow: `0 0 12px ${dotColor}60`,
+          }}
         />
         <Handle
           type="target"
           position={Position.Left}
           className="!w-4 !h-4 !border-3 !border-white !shadow-lg !transition-all !duration-200 hover:!scale-125 hover:!shadow-xl"
-          style={{ backgroundColor: dotColor, boxShadow: `0 0 12px ${dotColor}60` }}
+          style={{
+            backgroundColor: dotColor,
+            boxShadow: `0 0 12px ${dotColor}60`,
+          }}
         />
 
         {/* Header Section */}
@@ -190,16 +197,21 @@ export function ContextNode({ data, selected }: NodeProps<ContextNodeData>) {
           type="source"
           position={Position.Bottom}
           className="!w-4 !h-4 !border-3 !border-white !shadow-lg !transition-all !duration-200 hover:!scale-125 hover:!shadow-xl"
-          style={{ backgroundColor: dotColor, boxShadow: `0 0 12px ${dotColor}60` }}
+          style={{
+            backgroundColor: dotColor,
+            boxShadow: `0 0 12px ${dotColor}60`,
+          }}
         />
         <Handle
           type="source"
           position={Position.Right}
           className="!w-4 !h-4 !border-3 !border-white !shadow-lg !transition-all !duration-200 hover:!scale-125 hover:!shadow-xl"
-          style={{ backgroundColor: dotColor, boxShadow: `0 0 12px ${dotColor}60` }}
+          style={{
+            backgroundColor: dotColor,
+            boxShadow: `0 0 12px ${dotColor}60`,
+          }}
         />
       </Card>
-      
     </div>
   );
 }

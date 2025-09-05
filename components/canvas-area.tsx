@@ -196,9 +196,12 @@ export function CanvasArea({
                 );
                 // Persist change
                 scheduleParentUpdate(edgeObj.to, { parentNodeId: undefined });
-                toast.info(`Parent relationship cleared for node: ${edgeObj.to}`, {
-                  duration: 2000,
-                });
+                toast.info(
+                  `Parent relationship cleared for node: ${edgeObj.to}`,
+                  {
+                    duration: 2000,
+                  }
+                );
               }
             }
           }
@@ -532,7 +535,9 @@ export function CanvasArea({
       const targetNode = canvas.nodes.find((n) => n._id === params.target);
       const updatedNodes = canvas.nodes.map((n) => {
         if (n._id === params.target) {
-          console.log(`Setting parent ${params.source} for node ${params.target}`);
+          console.log(
+            `Setting parent ${params.source} for node ${params.target}`
+          );
           return { ...n, parentNodeId: params.source } as any;
         }
         return n;
@@ -556,13 +561,18 @@ export function CanvasArea({
       }).catch((err) => console.error("Failed to save edge to MongoDB", err));
 
       // Always persist parent linkage when connecting
-      console.log(`Scheduling parent update: ${params.target} -> parent: ${params.source}`);
+      console.log(
+        `Scheduling parent update: ${params.target} -> parent: ${params.source}`
+      );
       scheduleParentUpdate(params.target, { parentNodeId: params.source });
-      
+
       // Visual feedback for parent relationship
-      toast.success(`Node connected: ${params.target} → parent: ${params.source}`, {
-        duration: 2000,
-      });
+      toast.success(
+        `Node connected: ${params.target} → parent: ${params.source}`,
+        {
+          duration: 2000,
+        }
+      );
 
       // Enhanced React Flow edge styling
       const flowEdge: Edge = {
@@ -988,7 +998,12 @@ export function CanvasArea({
             stroke: "#475569",
             strokeWidth: 3,
           },
-          markerEnd: { type: MarkerType.ArrowClosed, color: "#475569", width: 24, height: 24 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#475569",
+            width: 24,
+            height: 24,
+          },
         }}
       >
         <Controls className="!bg-white/95 !backdrop-blur-sm !border-slate-200/80 !shadow-lg !rounded-xl" />

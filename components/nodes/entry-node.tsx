@@ -71,17 +71,20 @@ export function EntryNode({ data, selected }: NodeProps<EntryNodeData>) {
         style={{
           background: `linear-gradient(135deg, ${currentColor} 0%, ${currentColor}F0 50%, ${currentColor}E0 100%)`,
           color: textColor,
-          boxShadow: selected || data.isSelected 
-            ? `0 20px 40px -12px ${dotColor}40, 0 8px 24px -8px ${dotColor}30`
-            : "0 8px 32px -8px rgba(0,0,0,0.1)",
+          boxShadow:
+            selected || data.isSelected
+              ? `0 20px 40px -12px ${dotColor}40, 0 8px 24px -8px ${dotColor}30`
+              : "0 8px 32px -8px rgba(0,0,0,0.1)",
         }}
       >
         {/* Subtle accent overlay */}
         <div className="absolute inset-0 opacity-30 mix-blend-overlay bg-[radial-gradient(circle_at_20%_30%,rgba(255,255,255,0.8),transparent_70%)]" />
-        
+
         {/* Primary node indicator */}
-        <div className="absolute top-2 left-2 w-3 h-3 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg border-2 border-white/70" 
-             title="Primary Entry Node" />
+        <div
+          className="absolute top-2 left-2 w-3 h-3 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg border-2 border-white/70"
+          title="Primary Entry Node"
+        />
 
         {/* Header Section */}
         <div className="relative p-5">
@@ -94,7 +97,11 @@ export function EntryNode({ data, selected }: NodeProps<EntryNodeData>) {
                 if (data.onSettingsClick) data.onSettingsClick();
               }}
             >
-              <Settings size={16} style={{ color: dotColor }} className="group-hover:rotate-90 transition-transform duration-300" />
+              <Settings
+                size={16}
+                style={{ color: dotColor }}
+                className="group-hover:rotate-90 transition-transform duration-300"
+              />
             </button>
           )}
 
@@ -104,7 +111,9 @@ export function EntryNode({ data, selected }: NodeProps<EntryNodeData>) {
               <Play size={20} style={{ color: dotColor }} className="ml-0.5" />
             </div>
             <div className="flex flex-col gap-1">
-              <p className="text-[10px] uppercase tracking-wider font-medium mt-0.5 text-slate-500">{model}</p>
+              <p className="text-[10px] uppercase tracking-wider font-medium mt-0.5 text-slate-500">
+                {model}
+              </p>
               {(selected || data.isSelected) && (
                 <div className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md shadow-sm w-fit">
                   Active
@@ -152,13 +161,19 @@ export function EntryNode({ data, selected }: NodeProps<EntryNodeData>) {
           type="source"
           position={Position.Bottom}
           className="!w-4 !h-4 !border-3 !border-white !shadow-lg !transition-all !duration-200 hover:!scale-125 hover:!shadow-xl"
-          style={{ backgroundColor: dotColor, boxShadow: `0 0 12px ${dotColor}60` }}
+          style={{
+            backgroundColor: dotColor,
+            boxShadow: `0 0 12px ${dotColor}60`,
+          }}
         />
         <Handle
           type="source"
           position={Position.Right}
           className="!w-4 !h-4 !border-3 !border-white !shadow-lg !transition-all !duration-200 hover:!scale-125 hover:!shadow-xl"
-          style={{ backgroundColor: dotColor, boxShadow: `0 0 12px ${dotColor}60` }}
+          style={{
+            backgroundColor: dotColor,
+            boxShadow: `0 0 12px ${dotColor}60`,
+          }}
         />
       </Card>
     </div>
