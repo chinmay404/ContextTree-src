@@ -5,52 +5,102 @@ import { Pool } from "pg";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // Initialize NextAuth-related tables (idempotent) before any adapter queries.
+// Updated to prevent foreign key constraint issues by creating tables in correct order
 const initPromise = (async () => {
-  await pool.query(`
-    create table if not exists users (
-      id text primary key,
-      email text unique not null,
-      name text,
-      image text,
-      email_verified timestamptz,
-      created_at timestamptz not null default now(),
-      updated_at timestamptz not null default now(),
-      canvas_ids text[] default array[]::text[],
-      canvas_count integer default 0,
-      total_nodes integer default 0
-    );
-    create table if not exists accounts (
-      id text primary key,
-      user_id text not null references users(id) on delete cascade,
-      type text not null,
-      provider text not null,
-      provider_account_id text not null,
-      refresh_token text,
-      access_token text,
-      expires_at bigint,
-      token_type text,
-      scope text,
-      id_token text,
-      session_state text,
-      created_at timestamptz not null default now(),
-      updated_at timestamptz not null default now(),
-      unique(provider, provider_account_id)
-    );
-    create table if not exists sessions (
-      id text primary key,
-      session_token text not null unique,
-      user_id text not null references users(id) on delete cascade,
-      expires timestamptz not null,
-      created_at timestamptz not null default now(),
-      updated_at timestamptz not null default now()
-    );
-    create table if not exists verification_tokens (
-      identifier text not null,
-      token text not null,
-      expires timestamptz not null,
-      primary key (identifier, token)
-    );
-  `);
+  try {
+    // Step 1: Create users table first (no dependencies)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id text PRIMARY KEY,
+        email text UNIQUE NOT NULL,
+        name text,
+        image text,
+        email_verified timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        canvas_ids text[] DEFAULT array[]::text[],
+        canvas_count integer DEFAULT 0,
+        total_nodes integer DEFAULT 0
+      );
+    `);
+
+    // Step 2: Create verification_tokens table (no foreign keys)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS verification_tokens (
+        identifier text NOT NULL,
+        token text NOT NULL,
+        expires timestamptz NOT NULL,
+        PRIMARY KEY (identifier, token)
+      );
+    `);
+
+    // Step 3: Create tables with foreign keys (after users table exists)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS accounts (
+        id text PRIMARY KEY,
+        user_id text NOT NULL,
+        type text NOT NULL,
+        provider text NOT NULL,
+        provider_account_id text NOT NULL,
+        refresh_token text,
+        access_token text,
+        expires_at bigint,
+        token_type text,
+        scope text,
+        id_token text,
+        session_state text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE(provider, provider_account_id)
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id text PRIMARY KEY,
+        session_token text NOT NULL UNIQUE,
+        user_id text NOT NULL,
+        expires timestamptz NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+
+    // Step 4: Add foreign key constraints if they don't exist
+    // This approach prevents constraint conflicts during table creation
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'accounts_user_id_fkey'
+        ) THEN
+          ALTER TABLE accounts 
+          ADD CONSTRAINT accounts_user_id_fkey 
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+        END IF;
+      END $$;
+    `);
+
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'sessions_user_id_fkey'
+        ) THEN
+          ALTER TABLE sessions 
+          ADD CONSTRAINT sessions_user_id_fkey 
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+        END IF;
+      END $$;
+    `);
+
+  } catch (error) {
+    console.error('NextAuth table initialization error:', error);
+    // Log but don't throw - allow the adapter to continue trying
+    // The setup scripts can be run separately to fix issues
+  }
 })();
 
 function pgAdapter() {
