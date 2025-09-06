@@ -2,16 +2,14 @@ import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { Pool } from "pg";
 
-// Enhanced pool configuration for production environments
+// Optimized pool configuration for Supabase Connection Pooler
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl:
-    process.env.NODE_ENV === "production"
-      ? { rejectUnauthorized: false }
-      : false,
-  connectionTimeoutMillis: 10000,
-  idleTimeoutMillis: 30000,
-  max: 5, // Limit connections for serverless environments
+  ssl: { rejectUnauthorized: false }, // Always use SSL for Supabase
+  connectionTimeoutMillis: 20000, // Increased timeout for pooler
+  idleTimeoutMillis: 10000, // Shorter idle timeout for serverless
+  max: 1, // Single connection for serverless to avoid pooling issues
+  allowExitOnIdle: true, // Allow process to exit when idle
 });
 
 // Add error handling for pool
@@ -19,13 +17,25 @@ pool.on("error", (err) => {
   console.error("PostgreSQL pool error:", err);
 });
 
+// Lazy initialization - only connect when needed
+let initializationPromise = null;
+
+function getInitializationPromise() {
+  if (!initializationPromise) {
+    initializationPromise = initializeDatabase();
+  }
+  return initializationPromise;
+}
+
 // Initialize NextAuth-related tables (idempotent) before any adapter queries.
-// Updated to work with existing users table structure and prevent conflicts
-const initPromise = (async () => {
+async function initializeDatabase() {
   let client;
   try {
+    console.log('Initializing NextAuth database tables...');
+    
     // Get a client from the pool with timeout
     client = await pool.connect();
+    console.log('Database connection established');
 
     // Check if users table already exists with different structure
     const existingUsersTable = await client.query(`
@@ -161,7 +171,10 @@ const initPromise = (async () => {
       `);
     } catch (constraintError) {
       // Ignore constraint errors - they may already exist with different names
-      console.log('Foreign key constraints may already exist:', constraintError.message);
+      console.log(
+        "Foreign key constraints may already exist:",
+        constraintError.message
+      );
     }
 
     // Step 4: Ensure sessions table exists and has the right structure
@@ -217,11 +230,13 @@ const initPromise = (async () => {
       `);
     } catch (constraintError) {
       // Ignore constraint errors - they may already exist with different names
-      console.log('Foreign key constraints may already exist:', constraintError.message);
+      console.log(
+        "Foreign key constraints may already exist:",
+        constraintError.message
+      );
     }
-
   } catch (error) {
-    console.error('NextAuth table initialization error:', error);
+    console.error("NextAuth table initialization error:", error);
     // Log but don't throw - allow the adapter to continue trying
     // The setup scripts can be run separately to fix issues
   } finally {
@@ -235,16 +250,16 @@ const initPromise = (async () => {
 function pgAdapter() {
   return {
     createUser: async (user) => {
-      await initPromise;
+      await getInitializationPromise();
 
-      // For existing table structure, let PostgreSQL generate the ID via sequence
-      // Handle the existing users table structure (no password column needed for OAuth)
+      // Generate UUID for the id field (required for Supabase users table)
+      const userId = user.id || crypto.randomUUID();
       const userName = user.name || user.email?.split("@")[0] || "User";
 
-      // Insert without password column since it doesn't exist in this table
+      // Insert with generated ID (no password column needed for OAuth)
       const insertQuery = `
-        insert into users (email, name, image, created_at, updated_at)
-        values ($1,$2,$3,now(),now())
+        insert into users (id, email, name, image, created_at, updated_at)
+        values ($1,$2,$3,$4,now(),now())
         on conflict (email) do update set 
           name=COALESCE(excluded.name, users.name), 
           image=excluded.image, 
@@ -253,16 +268,16 @@ function pgAdapter() {
       `;
 
       const result = await pool.query(insertQuery, [
+        userId,
         user.email,
         userName,
         user.image ?? null,
       ]);
 
-      const userId = result.rows[0].id;
-      return { id: userId, ...user } as any;
+      return { id: result.rows[0].id, ...user } as any;
     },
     getUser: async (id) => {
-      await initPromise;
+      await getInitializationPromise();
       const r = await pool.query(
         "select id, email, name, image, email_verified from users where id=$1",
         [id]
@@ -278,7 +293,7 @@ function pgAdapter() {
         : null;
     },
     getUserByEmail: async (email) => {
-      await initPromise;
+      await getInitializationPromise();
       const r = await pool.query(
         "select id, email, name, image, email_verified from users where email=$1",
         [email]
@@ -294,7 +309,7 @@ function pgAdapter() {
         : null;
     },
     getUserByAccount: async ({ provider, providerAccountId }) => {
-      await initPromise;
+      await getInitializationPromise();
       const r = await pool.query(
         `select u.id, u.email, u.name, u.image, u.email_verified
          from accounts a join users u on u.id=a.user_id
@@ -312,7 +327,7 @@ function pgAdapter() {
         : null;
     },
     updateUser: async (user) => {
-      await initPromise;
+      await getInitializationPromise();
       await pool.query(
         `update users set name=$2, image=$3, updated_at=now() where id=$1`,
         [user.id, user.name ?? null, user.image ?? null]
@@ -320,11 +335,11 @@ function pgAdapter() {
       return user as any;
     },
     deleteUser: async (id) => {
-      await initPromise;
+      await getInitializationPromise();
       await pool.query("delete from users where id=$1", [id]);
     },
     linkAccount: async (account) => {
-      await initPromise;
+      await getInitializationPromise();
       await pool.query(
         `insert into accounts (id, user_id, type, provider, provider_account_id, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, created_at, updated_at)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now(),now())
@@ -346,14 +361,14 @@ function pgAdapter() {
       );
     },
     unlinkAccount: async ({ provider, providerAccountId }) => {
-      await initPromise;
+      await getInitializationPromise();
       await pool.query(
         "delete from accounts where provider=$1 and provider_account_id=$2",
         [provider, providerAccountId]
       );
     },
     createSession: async (session) => {
-      await initPromise;
+      await getInitializationPromise();
       const id = crypto.randomUUID();
       await pool.query(
         `insert into sessions (id, session_token, user_id, expires, created_at, updated_at) values ($1,$2,$3,$4,now(),now())`,
@@ -362,7 +377,7 @@ function pgAdapter() {
       return { ...session, id } as any;
     },
     getSessionAndUser: async (sessionToken) => {
-      await initPromise;
+      await getInitializationPromise();
       const r = await pool.query(
         `select s.id as session_id, s.session_token, s.user_id, s.expires, u.id as u_id, u.email, u.name, u.image, u.email_verified
          from sessions s join users u on u.id=s.user_id where s.session_token=$1`,
@@ -387,7 +402,7 @@ function pgAdapter() {
       } as any;
     },
     updateSession: async (session) => {
-      await initPromise;
+      await getInitializationPromise();
       await pool.query(
         `update sessions set expires=$2, updated_at=now() where session_token=$1`,
         [session.sessionToken, session.expires]
@@ -395,13 +410,13 @@ function pgAdapter() {
       return session as any;
     },
     deleteSession: async (sessionToken) => {
-      await initPromise;
+      await getInitializationPromise();
       await pool.query("delete from sessions where session_token=$1", [
         sessionToken,
       ]);
     },
     createVerificationToken: async (token) => {
-      await initPromise;
+      await getInitializationPromise();
       await pool.query(
         `insert into verification_tokens (identifier, token, expires) values ($1,$2,$3)`,
         [token.identifier, token.token, token.expires]
@@ -409,7 +424,7 @@ function pgAdapter() {
       return token;
     },
     useVerificationToken: async ({ identifier, token }) => {
-      await initPromise;
+      await getInitializationPromise();
       const r = await pool.query(
         `delete from verification_tokens where identifier=$1 and token=$2 returning identifier, token, expires`,
         [identifier, token]
