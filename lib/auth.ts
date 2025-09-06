@@ -245,7 +245,7 @@ async function initializeDatabase() {
       client.release();
     }
   }
-})();
+}
 
 function pgAdapter() {
   return {
