@@ -5,24 +5,44 @@ import { Pool } from "pg";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // Initialize NextAuth-related tables (idempotent) before any adapter queries.
-// Updated to prevent foreign key constraint issues by creating tables in correct order
+// Updated to work with existing users table structure and prevent conflicts
 const initPromise = (async () => {
   try {
-    // Step 1: Create users table first (no dependencies)
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id text PRIMARY KEY,
-        email text UNIQUE NOT NULL,
-        name text,
-        image text,
-        email_verified timestamptz,
-        created_at timestamptz NOT NULL DEFAULT now(),
-        updated_at timestamptz NOT NULL DEFAULT now(),
-        canvas_ids text[] DEFAULT array[]::text[],
-        canvas_count integer DEFAULT 0,
-        total_nodes integer DEFAULT 0
-      );
+    // Check if users table already exists with different structure
+    const existingUsersTable = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' AND table_schema = 'public'
+      AND column_name = 'password'
     `);
+    
+    const hasPasswordColumn = existingUsersTable.rows.length > 0;
+    
+    if (!hasPasswordColumn) {
+      // Step 1: Create users table only if it doesn't exist or doesn't have password column
+      // This means it's the NextAuth-only table structure
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id text PRIMARY KEY,
+          email text UNIQUE NOT NULL,
+          name text,
+          image text,
+          email_verified timestamptz,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          canvas_ids text[] DEFAULT array[]::text[],
+          canvas_count integer DEFAULT 0,
+          total_nodes integer DEFAULT 0
+        );
+      `);
+    } else {
+      // Users table exists with password column - ensure password is nullable
+      await pool.query(`
+        ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
+      `).catch(() => {
+        // Ignore error if already nullable
+      });
+    }
 
     // Step 2: Create verification_tokens table (no foreign keys)
     await pool.query(`
@@ -34,67 +54,92 @@ const initPromise = (async () => {
       );
     `);
 
-    // Step 3: Create tables with foreign keys (after users table exists)
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS accounts (
-        id text PRIMARY KEY,
-        user_id text NOT NULL,
-        type text NOT NULL,
-        provider text NOT NULL,
-        provider_account_id text NOT NULL,
-        refresh_token text,
-        access_token text,
-        expires_at bigint,
-        token_type text,
-        scope text,
-        id_token text,
-        session_state text,
-        created_at timestamptz NOT NULL DEFAULT now(),
-        updated_at timestamptz NOT NULL DEFAULT now(),
-        UNIQUE(provider, provider_account_id)
-      );
+    // Step 3: Ensure accounts table exists and has the right structure
+    // Check if accounts table exists first
+    const accountsTableCheck = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name = 'accounts' AND table_schema = 'public'
     `);
+    
+    if (accountsTableCheck.rows.length === 0) {
+      // Create accounts table if it doesn't exist
+      await pool.query(`
+        CREATE TABLE accounts (
+          id text PRIMARY KEY,
+          user_id text NOT NULL,
+          type text NOT NULL,
+          provider text NOT NULL,
+          provider_account_id text NOT NULL,
+          refresh_token text,
+          access_token text,
+          expires_at bigint,
+          token_type text,
+          scope text,
+          id_token text,
+          session_state text,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          UNIQUE(provider, provider_account_id)
+        );
+      `);
+    }
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS sessions (
-        id text PRIMARY KEY,
-        session_token text NOT NULL UNIQUE,
-        user_id text NOT NULL,
-        expires timestamptz NOT NULL,
-        created_at timestamptz NOT NULL DEFAULT now(),
-        updated_at timestamptz NOT NULL DEFAULT now()
-      );
+    // Step 4: Ensure sessions table exists and has the right structure
+    const sessionsTableCheck = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name = 'sessions' AND table_schema = 'public'
     `);
+    
+    if (sessionsTableCheck.rows.length === 0) {
+      // Create sessions table if it doesn't exist
+      await pool.query(`
+        CREATE TABLE sessions (
+          id text PRIMARY KEY,
+          session_token text NOT NULL UNIQUE,
+          user_id text NOT NULL,
+          expires timestamptz NOT NULL,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+    }
 
-    // Step 4: Add foreign key constraints if they don't exist
-    // This approach prevents constraint conflicts during table creation
-    await pool.query(`
-      DO $$ 
-      BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.table_constraints 
-          WHERE constraint_name = 'accounts_user_id_fkey'
-        ) THEN
-          ALTER TABLE accounts 
-          ADD CONSTRAINT accounts_user_id_fkey 
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-        END IF;
-      END $$;
-    `);
+    // Step 5: Add foreign key constraints if they don't exist (only for new tables)
+    // For existing tables, we assume they may have different constraint names
+    try {
+      await pool.query(`
+        DO $$ 
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints 
+            WHERE constraint_name = 'accounts_user_id_fkey'
+          ) THEN
+            ALTER TABLE accounts 
+            ADD CONSTRAINT accounts_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+          END IF;
+        END $$;
+      `);
 
-    await pool.query(`
-      DO $$ 
-      BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.table_constraints 
-          WHERE constraint_name = 'sessions_user_id_fkey'
-        ) THEN
-          ALTER TABLE sessions 
-          ADD CONSTRAINT sessions_user_id_fkey 
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-        END IF;
-      END $$;
-    `);
+      await pool.query(`
+        DO $$ 
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints 
+            WHERE constraint_name = 'sessions_user_id_fkey'
+          ) THEN
+            ALTER TABLE sessions 
+            ADD CONSTRAINT sessions_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+          END IF;
+        END $$;
+      `);
+    } catch (constraintError) {
+      // Ignore constraint errors - they may already exist with different names
+      console.log('Foreign key constraints may already exist:', constraintError.message);
+    }
 
   } catch (error) {
     console.error('NextAuth table initialization error:', error);
@@ -107,14 +152,32 @@ function pgAdapter() {
   return {
     createUser: async (user) => {
       await initPromise;
-      const id = user.id || crypto.randomUUID();
-      await pool.query(
-        `insert into users (id, email, name, image, created_at, updated_at)
-         values ($1,$2,$3,$4,now(),now())
-         on conflict (email) do update set name=excluded.name, image=excluded.image, updated_at=now()`,
-        [id, user.email, user.name ?? null, user.image ?? null]
-      );
-      return { id, ...user } as any;
+      
+      // For existing table structure, let PostgreSQL generate the ID via sequence
+      // Handle the existing users table structure
+      // password field is now nullable, name field is required but we'll provide a default
+      const userName = user.name || user.email?.split('@')[0] || 'User';
+      
+      // Check if we need to provide an ID or let the sequence handle it
+      const insertQuery = `
+        insert into users (email, name, image, password, created_at, updated_at)
+        values ($1,$2,$3,$4,now(),now())
+        on conflict (email) do update set 
+          name=COALESCE(excluded.name, users.name), 
+          image=excluded.image, 
+          updated_at=now()
+        RETURNING id
+      `;
+      
+      const result = await pool.query(insertQuery, [
+        user.email, 
+        userName, 
+        user.image ?? null, 
+        null
+      ]);
+      
+      const userId = result.rows[0].id;
+      return { id: userId, ...user } as any;
     },
     getUser: async (id) => {
       await initPromise;

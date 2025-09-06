@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/auth-provider";
+import { AOSProvider } from "@/components/aos-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,7 +34,9 @@ html {
         `}</style>
       </head>
       <body className="bg-slate-50 text-slate-900 antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <AOSProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </AOSProvider>
       </body>
     </html>
   );

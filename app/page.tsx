@@ -19,6 +19,7 @@ import UserAuth from "@/components/user-auth";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { LandingPage } from "@/components/landing-page";
 
 export default function ContextTreePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -171,20 +172,7 @@ export default function ContextTreePage() {
 
   // Show sign-in prompt if not authenticated
   if (!isAuthenticated) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center max-w-md mx-auto p-6">
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">
-            Welcome to ContextTree
-          </h1>
-          <p className="text-slate-600 mb-6">
-            Please sign in to access your conversation flow builder and manage
-            your canvases.
-          </p>
-          <UserAuth />
-        </div>
-      </div>
-    );
+    return <LandingPage />;
   }
 
   return (
