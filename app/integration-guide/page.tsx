@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -112,6 +112,12 @@ const CUSTOMIZATION_OPTIONS = [
 
 export default function IntegrationGuidePage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // Ensure client-side rendering for any interactive features
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const copyToClipboard = (code: string, identifier: string) => {
     navigator.clipboard.writeText(code);

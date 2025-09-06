@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,11 +16,10 @@ import {
   Zap
 } from "lucide-react";
 
-// Import our enhanced nodes
-import { EntryNodeEnhanced } from "@/components/nodes/entry-node-enhanced";
-import { ContextNodeEnhanced } from "@/components/nodes/context-node-enhanced";
-import { BranchNodeEnhanced } from "@/components/nodes/branch-node-enhanced";
-import { ColorPicker } from "@/components/node-customization/color-picker";
+// Mock node components for showcase (no ReactFlow dependencies)
+import { EntryNodeShowcase } from "@/components/showcase/entry-node-showcase";
+import { ContextNodeShowcase } from "@/components/showcase/context-node-showcase";
+import { BranchNodeShowcase } from "@/components/showcase/branch-node-showcase";
 
 const DEMO_THEMES = [
   {
@@ -257,7 +256,7 @@ export default function NodeShowcasePage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-center justify-items-center">
                   <div className="transform scale-110">
-                    <EntryNodeEnhanced
+                    <EntryNodeShowcase
                       data={{
                         label: "Welcome Flow",
                         messageCount: 15,
@@ -270,14 +269,11 @@ export default function NodeShowcasePage() {
                         size: nodeSize,
                       }}
                       selected={false}
-                      id="demo-entry-1"
-                      type="entry"
-                      position={{ x: 0, y: 0 }}
                     />
                   </div>
                   
                   <div className="transform scale-110">
-                    <EntryNodeEnhanced
+                    <EntryNodeShowcase
                       data={{
                         label: "Support Chat",
                         messageCount: 8,
@@ -289,14 +285,11 @@ export default function NodeShowcasePage() {
                         size: nodeSize,
                       }}
                       selected={true}
-                      id="demo-entry-2"
-                      type="entry"
-                      position={{ x: 0, y: 0 }}
                     />
                   </div>
                   
                   <div className="transform scale-110">
-                    <EntryNodeEnhanced
+                    <EntryNodeShowcase
                       data={{
                         label: "Quick Start",
                         messageCount: 3,
@@ -308,9 +301,6 @@ export default function NodeShowcasePage() {
                         size: nodeSize,
                       }}
                       selected={false}
-                      id="demo-entry-3"
-                      type="entry"
-                      position={{ x: 0, y: 0 }}
                     />
                   </div>
                 </div>
@@ -327,7 +317,7 @@ export default function NodeShowcasePage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-center justify-items-center">
                   <div className="transform scale-110">
-                    <ContextNodeEnhanced
+                    <ContextNodeShowcase
                       data={{
                         label: "User Profile",
                         messageCount: 25,
@@ -341,14 +331,11 @@ export default function NodeShowcasePage() {
                         size: nodeSize,
                       }}
                       selected={false}
-                      id="demo-context-1"
-                      type="context"
-                      position={{ x: 0, y: 0 }}
                     />
                   </div>
                   
                   <div className="transform scale-110">
-                    <ContextNodeEnhanced
+                    <ContextNodeShowcase
                       data={{
                         label: "Knowledge Base",
                         messageCount: 50,
@@ -362,14 +349,11 @@ export default function NodeShowcasePage() {
                         size: nodeSize,
                       }}
                       selected={true}
-                      id="demo-context-2"
-                      type="context"
-                      position={{ x: 0, y: 0 }}
                     />
                   </div>
                   
                   <div className="transform scale-110">
-                    <ContextNodeEnhanced
+                    <ContextNodeShowcase
                       data={{
                         label: "Image Gallery",
                         messageCount: 12,
@@ -383,9 +367,6 @@ export default function NodeShowcasePage() {
                         size: nodeSize,
                       }}
                       selected={false}
-                      id="demo-context-3"
-                      type="context"
-                      position={{ x: 0, y: 0 }}
                     />
                   </div>
                 </div>
@@ -402,7 +383,7 @@ export default function NodeShowcasePage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-center justify-items-center">
                   <div className="transform scale-110">
-                    <BranchNodeEnhanced
+                    <BranchNodeShowcase
                       data={{
                         label: "User Intent",
                         messageCount: 18,
@@ -417,14 +398,11 @@ export default function NodeShowcasePage() {
                         size: nodeSize,
                       }}
                       selected={false}
-                      id="demo-branch-1"
-                      type="branch"
-                      position={{ x: 0, y: 0 }}
                     />
                   </div>
                   
                   <div className="transform scale-110">
-                    <BranchNodeEnhanced
+                    <BranchNodeShowcase
                       data={{
                         label: "Content Filter",
                         messageCount: 32,
@@ -439,14 +417,11 @@ export default function NodeShowcasePage() {
                         size: nodeSize,
                       }}
                       selected={true}
-                      id="demo-branch-2"
-                      type="branch"
-                      position={{ x: 0, y: 0 }}
                     />
                   </div>
                   
                   <div className="transform scale-110">
-                    <BranchNodeEnhanced
+                    <BranchNodeShowcase
                       data={{
                         label: "Response Type",
                         messageCount: 9,
@@ -461,9 +436,6 @@ export default function NodeShowcasePage() {
                         size: nodeSize,
                       }}
                       selected={false}
-                      id="demo-branch-3"
-                      type="branch"
-                      position={{ x: 0, y: 0 }}
                     />
                   </div>
                 </div>
