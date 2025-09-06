@@ -31,11 +31,11 @@ function getInitializationPromise() {
 async function initializeDatabase() {
   let client;
   try {
-    console.log('Initializing NextAuth database tables...');
-    
+    console.log("Initializing NextAuth database tables...");
+
     // Get a client from the pool with timeout
     client = await pool.connect();
-    console.log('Database connection established');
+    console.log("Database connection established");
 
     // Check if users table already exists with different structure
     const existingUsersTable = await client.query(`

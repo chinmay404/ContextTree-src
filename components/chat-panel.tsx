@@ -325,7 +325,9 @@ export function ChatPanel({
     try {
       // Validate LLM API URL before making the call
       if (!LLM_API_URL || LLM_API_URL.trim() === "") {
-        throw new Error("LLM API URL is not configured. Please set NEXT_PUBLIC_LLM_API_URL in your environment variables.");
+        throw new Error(
+          "LLM API URL is not configured. Please set NEXT_PUBLIC_LLM_API_URL in your environment variables."
+        );
       }
 
       const model = getNodeModel(selectedNode);
@@ -392,13 +394,16 @@ export function ChatPanel({
       } else {
         // Handle HTTP error responses
         const errorText = await res.text();
-        throw new Error(`LLM API responded with status ${res.status}: ${errorText}`);
+        throw new Error(
+          `LLM API responded with status ${res.status}: ${errorText}`
+        );
       }
     } catch (err) {
       console.error("LLM API error:", err);
 
       // Show user-friendly error message
-      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
       toast({
         title: "LLM API Error",
         description: errorMessage,
@@ -420,7 +425,11 @@ export function ChatPanel({
       const botResponse: Message = {
         id: genId(),
         role: "assistant",
-        content: `Sorry, I'm unable to respond right now. ${errorMessage.includes("not configured") ? "The LLM service needs to be configured." : "Please try again later."}`,
+        content: `Sorry, I'm unable to respond right now. ${
+          errorMessage.includes("not configured")
+            ? "The LLM service needs to be configured."
+            : "Please try again later."
+        }`,
         timestamp: new Date(),
       };
 
@@ -889,12 +898,21 @@ export function ChatPanel({
                           ))}
                         </SelectContent>
                       </Select>
-                      
+
                       {/* LLM API Status Indicator */}
                       <div className="flex items-center gap-2 mt-1">
-                        <div className={`w-2 h-2 rounded-full ${LLM_API_URL && LLM_API_URL.trim() !== "" ? "bg-green-500" : "bg-red-500"}`}></div>
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            LLM_API_URL && LLM_API_URL.trim() !== ""
+                              ? "bg-green-500"
+                              : "bg-red-500"
+                          }`}
+                        ></div>
                         <span className="text-xs text-slate-500">
-                          LLM API: {LLM_API_URL && LLM_API_URL.trim() !== "" ? "Connected" : "Not configured"}
+                          LLM API:{" "}
+                          {LLM_API_URL && LLM_API_URL.trim() !== ""
+                            ? "Connected"
+                            : "Not configured"}
                         </span>
                       </div>
                     </div>

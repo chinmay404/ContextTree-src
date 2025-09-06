@@ -24,6 +24,13 @@ import { EntryNode } from "./nodes/entry-node";
 import { BranchNode } from "./nodes/branch-node";
 import { ContextNode } from "./nodes/context-node";
 import { NodePalette } from "./node-palette";
+
+// Enhanced node imports
+import { EntryNodeEnhanced } from "./nodes/entry-node-enhanced";
+import { BranchNodeEnhanced } from "./nodes/branch-node-enhanced";
+import { ContextNodeEnhanced } from "./nodes/context-node-enhanced";
+import { NodePaletteEnhanced } from "./node-palette-enhanced";
+import { NodeCustomizationPanel } from "./node-customization/node-customization-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,10 +64,16 @@ const getColorScheme = (bgColor: string) => {
 };
 
 // Define nodeTypes outside component to prevent recreation
-const nodeTypes: NodeTypes = {
+const basicNodeTypes: NodeTypes = {
   entry: EntryNode,
   branch: BranchNode,
   context: ContextNode,
+};
+
+const enhancedNodeTypes: NodeTypes = {
+  entry: EntryNodeEnhanced,
+  branch: BranchNodeEnhanced,
+  context: ContextNodeEnhanced,
 };
 
 interface CanvasAreaProps {
@@ -79,6 +92,10 @@ export function CanvasArea({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [canvas, setCanvas] = useState<CanvasData | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  // Enhanced node UI state
+  const [useEnhancedNodes, setUseEnhancedNodes] = useState<boolean>(false);
+  const [showCustomizationPanel, setShowCustomizationPanel] = useState<boolean>(false);
+  const [nodeCustomizations, setNodeCustomizations] = useState<Record<string, any>>({});
   // Add state for editing node/edge
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
@@ -115,6 +132,40 @@ export function CanvasArea({
     },
     [canvasId]
   );
+
+  // Handle node customization
+  const handleNodeCustomization = useCallback((nodeId: string, customization: any) => {
+    setNodeCustomizations(prev => ({
+      ...prev,
+      [nodeId]: customization
+    }));
+    
+    // Update node data with customization
+    setNodes(nodes => 
+      nodes.map(node => 
+        node.id === nodeId 
+          ? { 
+              ...node, 
+              data: { 
+                ...node.data, 
+                ...customization,
+                // Preserve existing essential data
+                label: node.data.label,
+                messageCount: node.data.messageCount,
+                isSelected: node.data.isSelected,
+                model: node.data.model,
+                metaTags: node.data.metaTags,
+              } 
+            }
+          : node
+      )
+    );
+  }, [setNodes]);
+
+  // Get current node types based on enhanced mode
+  const currentNodeTypes = useMemo(() => {
+    return useEnhancedNodes ? enhancedNodeTypes : basicNodeTypes;
+  }, [useEnhancedNodes]);
 
   // Handle Delete key for node/edge deletion
   useEffect(() => {
@@ -983,7 +1034,7 @@ export function CanvasArea({
         onConnect={onConnect}
         onNodeClick={onNodeClick}
         onNodeDragStop={onNodeDragStop}
-        nodeTypes={nodeTypes}
+        nodeTypes={currentNodeTypes}
         fitView
         className="bg-white"
         onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
@@ -1180,10 +1231,54 @@ export function CanvasArea({
         )}
       </ReactFlow>
 
+      {/* Enhanced Mode Controls - Top Right */}
+      <div className="absolute top-6 right-6 z-10 flex flex-col gap-3">
+        <div className="bg-white/95 backdrop-blur-sm rounded-lg border border-slate-200/80 shadow-lg p-3">
+          <div className="flex items-center gap-3 mb-3">
+            <Palette size={16} className="text-blue-600" />
+            <span className="text-sm font-medium text-slate-900">Enhanced UI</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useEnhancedNodes}
+                onChange={(e) => setUseEnhancedNodes(e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              <span className="text-xs text-slate-700">Enhanced Nodes</span>
+            </label>
+            {useEnhancedNodes && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowCustomizationPanel(!showCustomizationPanel)}
+                className="text-xs"
+              >
+                <Settings size={12} className="mr-1" />
+                Customize
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Node Palette - Bottom Right */}
       <div className="absolute bottom-6 right-6 z-10">
-        <NodePalette />
+        {useEnhancedNodes ? <NodePaletteEnhanced /> : <NodePalette />}
       </div>
+
+      {/* Customization Panel */}
+      {showCustomizationPanel && useEnhancedNodes && selectedNode && (
+        <div className="absolute top-6 left-6 z-20">
+          <NodeCustomizationPanel
+            nodeId={selectedNode}
+            currentData={nodes.find(n => n.id === selectedNode)?.data || {}}
+            onCustomize={handleNodeCustomization}
+            onClose={() => setShowCustomizationPanel(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
