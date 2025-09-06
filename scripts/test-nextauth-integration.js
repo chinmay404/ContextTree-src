@@ -15,7 +15,13 @@ if (!DATABASE_URL) {
 }
 
 async function testNextAuthIntegration() {
-  const pool = new Pool({ connectionString: DATABASE_URL });
+  const pool = new Pool({ 
+    connectionString: DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+    max: 5
+  });
   
   try {
     console.log('🧪 Testing NextAuth Database Integration...');
@@ -29,8 +35,8 @@ async function testNextAuthIntegration() {
     
     // This simulates what NextAuth does when an OAuth user signs in
     const insertQuery = `
-      INSERT INTO users (email, name, image, password, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, now(), now())
+      INSERT INTO users (email, name, image, created_at, updated_at)
+      VALUES ($1, $2, $3, now(), now())
       ON CONFLICT (email) DO UPDATE SET 
         name=COALESCE(excluded.name, users.name), 
         image=excluded.image, 
@@ -42,7 +48,6 @@ async function testNextAuthIntegration() {
       testEmail,
       testName,
       testImage,
-      null  // This is the key - password is null for OAuth users
     ]);
     
     if (result.rows.length > 0) {

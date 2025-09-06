@@ -2,26 +2,45 @@ import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { Pool } from "pg";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Enhanced pool configuration for production environments
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+  max: 5, // Limit connections for serverless environments
+});
+
+// Add error handling for pool
+pool.on("error", (err) => {
+  console.error("PostgreSQL pool error:", err);
+});
 
 // Initialize NextAuth-related tables (idempotent) before any adapter queries.
 // Updated to work with existing users table structure and prevent conflicts
 const initPromise = (async () => {
+  let client;
   try {
+    // Get a client from the pool with timeout
+    client = await pool.connect();
+
     // Check if users table already exists with different structure
-    const existingUsersTable = await pool.query(`
+    const existingUsersTable = await client.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name = 'users' AND table_schema = 'public'
       AND column_name = 'password'
     `);
-    
+
     const hasPasswordColumn = existingUsersTable.rows.length > 0;
-    
+
     if (!hasPasswordColumn) {
       // Step 1: Create users table only if it doesn't exist or doesn't have password column
       // This means it's the NextAuth-only table structure
-      await pool.query(`
+      await client.query(`
         CREATE TABLE IF NOT EXISTS users (
           id text PRIMARY KEY,
           email text UNIQUE NOT NULL,
@@ -37,15 +56,19 @@ const initPromise = (async () => {
       `);
     } else {
       // Users table exists with password column - ensure password is nullable
-      await pool.query(`
+      await client
+        .query(
+          `
         ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
-      `).catch(() => {
-        // Ignore error if already nullable
-      });
+      `
+        )
+        .catch(() => {
+          // Ignore error if already nullable
+        });
     }
 
     // Step 2: Create verification_tokens table (no foreign keys)
-    await pool.query(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS verification_tokens (
         identifier text NOT NULL,
         token text NOT NULL,
@@ -56,15 +79,15 @@ const initPromise = (async () => {
 
     // Step 3: Ensure accounts table exists and has the right structure
     // Check if accounts table exists first
-    const accountsTableCheck = await pool.query(`
+    const accountsTableCheck = await client.query(`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_name = 'accounts' AND table_schema = 'public'
     `);
-    
+
     if (accountsTableCheck.rows.length === 0) {
       // Create accounts table if it doesn't exist
-      await pool.query(`
+      await client.query(`
         CREATE TABLE accounts (
           id text PRIMARY KEY,
           user_id text NOT NULL,
@@ -86,12 +109,77 @@ const initPromise = (async () => {
     }
 
     // Step 4: Ensure sessions table exists and has the right structure
+    const sessionsTableCheck = await client.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name = 'sessions' AND table_schema = 'public'
+    `);
+
+    if (sessionsTableCheck.rows.length === 0) {
+      // Create sessions table if it doesn't exist
+      await client.query(`
+        CREATE TABLE sessions (
+          id text PRIMARY KEY,
+          session_token text NOT NULL UNIQUE,
+          user_id text NOT NULL,
+          expires timestamptz NOT NULL,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+    }
+
+    // Step 5: Add foreign key constraints if they don't exist (only for new tables)
+    // For existing tables, we assume they may have different constraint names
+    try {
+      await client.query(`
+        DO $$ 
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints 
+            WHERE constraint_name = 'accounts_user_id_fkey'
+          ) THEN
+            ALTER TABLE accounts 
+            ADD CONSTRAINT accounts_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+          END IF;
+        END $$;
+      `);
+
+      await client.query(`
+        DO $$ 
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints 
+            WHERE constraint_name = 'sessions_user_id_fkey'
+          ) THEN
+            ALTER TABLE sessions 
+            ADD CONSTRAINT sessions_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+          END IF;
+        END $$;
+      `);
+    } catch (constraintError) {
+      // Ignore constraint errors - they may already exist with different names
+      console.log('Foreign key constraints may already exist:', constraintError.message);
+    }
+          scope text,
+          id_token text,
+          session_state text,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          UNIQUE(provider, provider_account_id)
+        );
+      `);
+    }
+
+    // Step 4: Ensure sessions table exists and has the right structure
     const sessionsTableCheck = await pool.query(`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_name = 'sessions' AND table_schema = 'public'
     `);
-    
+
     if (sessionsTableCheck.rows.length === 0) {
       // Create sessions table if it doesn't exist
       await pool.query(`
@@ -145,6 +233,11 @@ const initPromise = (async () => {
     console.error('NextAuth table initialization error:', error);
     // Log but don't throw - allow the adapter to continue trying
     // The setup scripts can be run separately to fix issues
+  } finally {
+    // Always release the client back to the pool
+    if (client) {
+      client.release();
+    }
   }
 })();
 
@@ -152,30 +245,28 @@ function pgAdapter() {
   return {
     createUser: async (user) => {
       await initPromise;
-      
+
       // For existing table structure, let PostgreSQL generate the ID via sequence
-      // Handle the existing users table structure
-      // password field is now nullable, name field is required but we'll provide a default
-      const userName = user.name || user.email?.split('@')[0] || 'User';
-      
-      // Check if we need to provide an ID or let the sequence handle it
+      // Handle the existing users table structure (no password column needed for OAuth)
+      const userName = user.name || user.email?.split("@")[0] || "User";
+
+      // Insert without password column since it doesn't exist in this table
       const insertQuery = `
-        insert into users (email, name, image, password, created_at, updated_at)
-        values ($1,$2,$3,$4,now(),now())
+        insert into users (email, name, image, created_at, updated_at)
+        values ($1,$2,$3,now(),now())
         on conflict (email) do update set 
           name=COALESCE(excluded.name, users.name), 
           image=excluded.image, 
           updated_at=now()
         RETURNING id
       `;
-      
+
       const result = await pool.query(insertQuery, [
-        user.email, 
-        userName, 
-        user.image ?? null, 
-        null
+        user.email,
+        userName,
+        user.image ?? null,
       ]);
-      
+
       const userId = result.rows[0].id;
       return { id: userId, ...user } as any;
     },
