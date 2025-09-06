@@ -70,40 +70,6 @@ interface NodeConversation {
   messages: Message[];
 }
 
-const mockNodeConversations: Record<string, NodeConversation> = {
-  "1": {
-    nodeId: "1",
-    nodeName: "Entry Point",
-    messages: [
-      {
-        id: "m1",
-        role: "assistant",
-        content: "Hello! How can I help you today?",
-        timestamp: new Date(Date.now() - 3600000),
-      },
-    ],
-  },
-  "2": {
-    nodeId: "2",
-    nodeName: "Branch Point",
-    messages: [
-      {
-        id: "m2",
-        role: "user",
-        content: "I need help with my order",
-        timestamp: new Date(Date.now() - 3000000),
-      },
-      {
-        id: "m3",
-        role: "assistant",
-        content:
-          "I'd be happy to help you with your order! Could you please provide your order number?",
-        timestamp: new Date(Date.now() - 2000000),
-      },
-    ],
-  },
-};
-
 export function ChatPanel({
   selectedNode,
   selectedNodeName,
@@ -116,7 +82,7 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const [conversations, setConversations] = useState<
     Record<string, NodeConversation>
-  >(mockNodeConversations);
+  >({});
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>("gpt-4");
@@ -357,6 +323,11 @@ export function ChatPanel({
 
     // Call LLM API
     try {
+      // Validate LLM API URL before making the call
+      if (!LLM_API_URL || LLM_API_URL.trim() === "") {
+        throw new Error("LLM API URL is not configured. Please set NEXT_PUBLIC_LLM_API_URL in your environment variables.");
+      }
+
       const model = getNodeModel(selectedNode);
       const payload = {
         canvasId: selectedCanvas,
@@ -364,6 +335,9 @@ export function ChatPanel({
         model,
         message: newMessage.content,
       };
+
+      console.log("Calling LLM API at:", LLM_API_URL);
+      console.log("Payload:", payload);
 
       const res = await fetch(LLM_API_URL, {
         method: "POST",
@@ -415,9 +389,21 @@ export function ChatPanel({
         } catch (err) {
           console.error("Failed to save assistant message:", err);
         }
+      } else {
+        // Handle HTTP error responses
+        const errorText = await res.text();
+        throw new Error(`LLM API responded with status ${res.status}: ${errorText}`);
       }
     } catch (err) {
       console.error("LLM API error:", err);
+
+      // Show user-friendly error message
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
+      toast({
+        title: "LLM API Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
 
       // Save user message to localStorage as fallback
       storageService.saveNodeMessages(selectedCanvas, selectedNode, [
@@ -434,7 +420,7 @@ export function ChatPanel({
       const botResponse: Message = {
         id: genId(),
         role: "assistant",
-        content: "Sorry, the LLM API is not available.",
+        content: `Sorry, I'm unable to respond right now. ${errorMessage.includes("not configured") ? "The LLM service needs to be configured." : "Please try again later."}`,
         timestamp: new Date(),
       };
 
@@ -903,6 +889,14 @@ export function ChatPanel({
                           ))}
                         </SelectContent>
                       </Select>
+                      
+                      {/* LLM API Status Indicator */}
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className={`w-2 h-2 rounded-full ${LLM_API_URL && LLM_API_URL.trim() !== "" ? "bg-green-500" : "bg-red-500"}`}></div>
+                        <span className="text-xs text-slate-500">
+                          LLM API: {LLM_API_URL && LLM_API_URL.trim() !== "" ? "Connected" : "Not configured"}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
