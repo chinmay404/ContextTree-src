@@ -163,24 +163,15 @@ const initPromise = (async () => {
       // Ignore constraint errors - they may already exist with different names
       console.log('Foreign key constraints may already exist:', constraintError.message);
     }
-          scope text,
-          id_token text,
-          session_state text,
-          created_at timestamptz NOT NULL DEFAULT now(),
-          updated_at timestamptz NOT NULL DEFAULT now(),
-          UNIQUE(provider, provider_account_id)
-        );
-      `);
-    }
 
     // Step 4: Ensure sessions table exists and has the right structure
-    const sessionsTableCheck = await pool.query(`
+    const sessionsTableCheck2 = await pool.query(`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_name = 'sessions' AND table_schema = 'public'
     `);
 
-    if (sessionsTableCheck.rows.length === 0) {
+    if (sessionsTableCheck2.rows.length === 0) {
       // Create sessions table if it doesn't exist
       await pool.query(`
         CREATE TABLE sessions (
