@@ -75,7 +75,7 @@ export function CanvasList({
     if (diffDays === 1) return "Today";
     if (diffDays === 2) return "Yesterday";
     if (diffDays <= 7) return `${diffDays - 1} days ago`;
-    
+
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -108,13 +108,13 @@ export function CanvasList({
             </Button>
           )}
         </div>
-        
+
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xs text-slate-500 bg-slate-100/80 px-2 py-1 rounded-full">
             {canvases.length} canvases
           </span>
         </div>
-        
+
         <Button
           onClick={onCreateCanvas}
           className="w-full gap-2 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-sm h-9 rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-md"
@@ -205,7 +205,10 @@ export function CanvasList({
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48 bg-white shadow-lg">
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-48 bg-white shadow-lg"
+                    >
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
@@ -216,12 +219,15 @@ export function CanvasList({
                         <ExternalLink className="h-4 w-4" />
                         Open Canvas
                       </DropdownMenuItem>
-                      
+
                       {onRenameCanvas && (
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
-                            const newTitle = prompt("Enter new canvas title:", canvas.title);
+                            const newTitle = prompt(
+                              "Enter new canvas title:",
+                              canvas.title
+                            );
                             if (newTitle && newTitle.trim()) {
                               onRenameCanvas(canvas._id, newTitle.trim());
                             }
@@ -232,7 +238,7 @@ export function CanvasList({
                           Rename
                         </DropdownMenuItem>
                       )}
-                      
+
                       {onDuplicateCanvas && (
                         <DropdownMenuItem
                           onClick={(e) => {
@@ -245,9 +251,9 @@ export function CanvasList({
                           Duplicate
                         </DropdownMenuItem>
                       )}
-                      
+
                       <DropdownMenuSeparator />
-                      
+
                       {onDeleteCanvas && (
                         <DropdownMenuItem
                           onClick={(e) => {
@@ -277,7 +283,8 @@ export function CanvasList({
                 No canvases yet
               </h3>
               <p className="text-xs text-slate-500 mb-6 leading-relaxed max-w-xs mx-auto">
-                Create your first canvas to start building conversation flows and organize your AI interactions.
+                Create your first canvas to start building conversation flows
+                and organize your AI interactions.
               </p>
               <Button
                 onClick={onCreateCanvas}
@@ -293,13 +300,19 @@ export function CanvasList({
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteCanvasId} onOpenChange={() => setDeleteCanvasId(null)}>
+      <AlertDialog
+        open={!!deleteCanvasId}
+        onOpenChange={() => setDeleteCanvasId(null)}
+      >
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-900">Delete Canvas?</AlertDialogTitle>
+            <AlertDialogTitle className="text-slate-900">
+              Delete Canvas?
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-600">
-              This will permanently delete "{canvases.find(c => c._id === deleteCanvasId)?.title}" and all its content. 
-              This action cannot be undone.
+              This will permanently delete "
+              {canvases.find((c) => c._id === deleteCanvasId)?.title}" and all
+              its content. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

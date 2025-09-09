@@ -248,13 +248,13 @@ class StorageService {
         forkedFromMessageId: undefined,
         createdAt: new Date().toISOString(),
       })),
-      edges: originalCanvas.edges.map(edge => ({
+      edges: originalCanvas.edges.map((edge) => ({
         ...edge,
         _id: this.generateId(),
         createdAt: new Date().toISOString(),
-        // We'd need to map the old node IDs to new ones, but for simplicity, 
+        // We'd need to map the old node IDs to new ones, but for simplicity,
         // we'll clear edges and let user reconnect them
-      }))
+      })),
     };
 
     // Update the primary node ID to match the first node's new ID

@@ -99,13 +99,13 @@ export const PATCH = withAuth(
 
       const { canvasId } = await params;
       const updates = await request.json();
-      
+
       // Add updatedAt timestamp for partial updates
       const partialUpdates = {
         ...updates,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
-      
+
       const updatedCanvas = await mongoService.updateCanvas(
         canvasId,
         partialUpdates,

@@ -173,11 +173,13 @@ export default function ContextTreePage() {
       if (response.ok) {
         // Remove from local storage
         storageService.deleteCanvas(canvasId);
-        
+
         // Update local state
-        const updatedCanvases = canvases.filter(canvas => canvas._id !== canvasId);
+        const updatedCanvases = canvases.filter(
+          (canvas) => canvas._id !== canvasId
+        );
         setCanvases(updatedCanvases);
-        
+
         // If we deleted the selected canvas, select another one or none
         if (selectedCanvas === canvasId) {
           const nextCanvas = updatedCanvases[0];
@@ -190,9 +192,11 @@ export default function ContextTreePage() {
       console.error("Failed to delete canvas", err);
       // Fallback to local deletion
       storageService.deleteCanvas(canvasId);
-      const updatedCanvases = canvases.filter(canvas => canvas._id !== canvasId);
+      const updatedCanvases = canvases.filter(
+        (canvas) => canvas._id !== canvasId
+      );
       setCanvases(updatedCanvases);
-      
+
       if (selectedCanvas === canvasId) {
         const nextCanvas = updatedCanvases[0];
         setSelectedCanvas(nextCanvas ? nextCanvas._id : null);
@@ -205,10 +209,13 @@ export default function ContextTreePage() {
   const handleDuplicateCanvas = async (canvasId: string) => {
     if (!user?.email) return;
 
-    const originalCanvas = canvases.find(canvas => canvas._id === canvasId);
+    const originalCanvas = canvases.find((canvas) => canvas._id === canvasId);
     if (!originalCanvas) return;
 
-    const duplicatedCanvas = storageService.duplicateCanvas(originalCanvas, user.email);
+    const duplicatedCanvas = storageService.duplicateCanvas(
+      originalCanvas,
+      user.email
+    );
     storageService.saveCanvas(duplicatedCanvas);
 
     try {
@@ -233,12 +240,16 @@ export default function ContextTreePage() {
   const handleRenameCanvas = async (canvasId: string, newTitle: string) => {
     if (!user?.email || !newTitle.trim()) return;
 
-    const updatedCanvases = canvases.map(canvas => 
-      canvas._id === canvasId 
-        ? { ...canvas, title: newTitle.trim(), updatedAt: new Date().toISOString() }
+    const updatedCanvases = canvases.map((canvas) =>
+      canvas._id === canvasId
+        ? {
+            ...canvas,
+            title: newTitle.trim(),
+            updatedAt: new Date().toISOString(),
+          }
         : canvas
     );
-    
+
     setCanvases(updatedCanvases);
 
     try {
@@ -253,7 +264,7 @@ export default function ContextTreePage() {
         setCanvases(canvases);
       } else {
         // Update local storage
-        const updatedCanvas = updatedCanvases.find(c => c._id === canvasId);
+        const updatedCanvas = updatedCanvases.find((c) => c._id === canvasId);
         if (updatedCanvas) {
           storageService.saveCanvas(updatedCanvas);
         }

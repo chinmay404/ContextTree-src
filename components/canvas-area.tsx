@@ -18,17 +18,17 @@ import ReactFlow, {
   type NodeTypes,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { Settings, Edit2, Palette, Save, X } from "lucide-react";
+import { Settings, Edit2, Palette, Save, X, Sparkles } from "lucide-react";
 
 import { EntryNode } from "./nodes/entry-node";
 import { BranchNode } from "./nodes/branch-node";
 import { ContextNode } from "./nodes/context-node";
 import { NodePalette } from "./node-palette";
 
-// Enhanced node imports
-import { EntryNodeEnhanced } from "./nodes/entry-node-enhanced";
-import { BranchNodeEnhanced } from "./nodes/branch-node-enhanced";
-import { ContextNodeEnhanced } from "./nodes/context-node-enhanced";
+// Glassmorphic node imports
+import { EntryNodeGlass } from "./nodes/entry-node-glass";
+import { BranchNodeGlass } from "./nodes/branch-node-glass";
+import { ContextNodeGlass } from "./nodes/context-node-glass";
 import { NodePaletteEnhanced } from "./node-palette-enhanced";
 import { NodeCustomizationPanel } from "./node-customization/node-customization-panel";
 import { Button } from "@/components/ui/button";
@@ -70,10 +70,10 @@ const basicNodeTypes: NodeTypes = {
   context: ContextNode,
 };
 
-const enhancedNodeTypes: NodeTypes = {
-  entry: EntryNodeEnhanced,
-  branch: BranchNodeEnhanced,
-  context: ContextNodeEnhanced,
+const glassNodeTypes: NodeTypes = {
+  entry: EntryNodeGlass,
+  branch: BranchNodeGlass,
+  context: ContextNodeGlass,
 };
 
 interface CanvasAreaProps {
@@ -92,8 +92,8 @@ export function CanvasArea({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [canvas, setCanvas] = useState<CanvasData | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
-  // Enhanced node UI state
-  const [useEnhancedNodes, setUseEnhancedNodes] = useState<boolean>(false);
+  // Glassmorphic node UI state
+  const [useGlassNodes, setUseGlassNodes] = useState<boolean>(true);
   const [showCustomizationPanel, setShowCustomizationPanel] =
     useState<boolean>(false);
   const [nodeCustomizations, setNodeCustomizations] = useState<
@@ -168,10 +168,10 @@ export function CanvasArea({
     [setNodes]
   );
 
-  // Get current node types based on enhanced mode
+  // Get current node types based on glass mode
   const currentNodeTypes = useMemo(() => {
-    return useEnhancedNodes ? enhancedNodeTypes : basicNodeTypes;
-  }, [useEnhancedNodes]);
+    return useGlassNodes ? glassNodeTypes : basicNodeTypes;
+  }, [useGlassNodes]);
 
   // Handle Delete key for node/edge deletion
   useEffect(() => {
@@ -1237,26 +1237,26 @@ export function CanvasArea({
         )}
       </ReactFlow>
 
-      {/* Enhanced Mode Controls - Top Right */}
+      {/* Glassmorphic Mode Controls - Top Right */}
       <div className="absolute top-6 right-6 z-10 flex flex-col gap-3">
         <div className="bg-white/95 backdrop-blur-sm rounded-lg border border-slate-200/80 shadow-lg p-3">
           <div className="flex items-center gap-3 mb-3">
-            <Palette size={16} className="text-blue-600" />
+            <Sparkles size={16} className="text-blue-600" />
             <span className="text-sm font-medium text-slate-900">
-              Enhanced UI
+              Glassmorphic UI
             </span>
           </div>
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={useEnhancedNodes}
-                onChange={(e) => setUseEnhancedNodes(e.target.checked)}
+                checked={useGlassNodes}
+                onChange={(e) => setUseGlassNodes(e.target.checked)}
                 className="rounded border-slate-300"
               />
-              <span className="text-xs text-slate-700">Enhanced Nodes</span>
+              <span className="text-xs text-slate-700">Glass Nodes</span>
             </label>
-            {useEnhancedNodes && (
+            {useGlassNodes && (
               <Button
                 size="sm"
                 variant="outline"
@@ -1275,11 +1275,11 @@ export function CanvasArea({
 
       {/* Node Palette - Bottom Right */}
       <div className="absolute bottom-6 right-6 z-10">
-        {useEnhancedNodes ? <NodePaletteEnhanced /> : <NodePalette />}
+        {useGlassNodes ? <NodePaletteEnhanced /> : <NodePalette />}
       </div>
 
       {/* Customization Panel */}
-      {showCustomizationPanel && useEnhancedNodes && selectedNode && (
+      {showCustomizationPanel && useGlassNodes && selectedNode && (
         <div className="absolute top-6 left-6 z-20">
           <NodeCustomizationPanel
             nodeId={selectedNode}
