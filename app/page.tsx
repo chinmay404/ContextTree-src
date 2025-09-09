@@ -318,7 +318,7 @@ export default function ContextTreePage() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar - Canvas List (collapsible) */}
         <div
-          className={`group transition-all duration-300 ease-in-out border-r border-slate-200/80 bg-white/95 backdrop-blur-sm flex flex-col shadow-sm overflow-hidden ${
+          className={`group transition-all duration-300 ease-in-out border-r border-slate-200/60 bg-slate-50/30 backdrop-blur-sm flex flex-col shadow-sm overflow-hidden ${
             leftSidebarCollapsed ? "w-16" : "w-80"
           }`}
         >
@@ -362,44 +362,22 @@ export default function ContextTreePage() {
             </div>
           ) : (
             // Expanded full sidebar
-            <div className="flex-1 p-6 overflow-y-auto">
-              <div className="mb-6 flex items-start justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900 mb-2 tracking-tight">
-                    Your Canvases
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Manage and organize your conversation flows
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setLeftSidebarCollapsed(true)}
-                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-                    title="Collapse (Ctrl+Shift+L)"
-                  >
-                    <PanelLeftClose className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <CanvasList
-                canvases={canvases.map((canvas) => ({
-                  _id: canvas._id,
-                  title: canvas.title,
-                  createdAt: canvas.createdAt,
-                  nodeCount: canvas.nodes.length,
-                  metaTags: canvas.metaTags,
-                }))}
-                selectedCanvas={selectedCanvas || undefined}
-                onSelectCanvas={handleSelectCanvas}
-                onCreateCanvas={handleCreateCanvas}
-                onDeleteCanvas={handleDeleteCanvas}
-                onDuplicateCanvas={handleDuplicateCanvas}
-                onRenameCanvas={handleRenameCanvas}
-              />
-            </div>
+            <CanvasList
+              canvases={canvases.map((canvas) => ({
+                _id: canvas._id,
+                title: canvas.title,
+                createdAt: canvas.createdAt,
+                nodeCount: canvas.nodes.length,
+                metaTags: canvas.metaTags,
+              }))}
+              selectedCanvas={selectedCanvas || undefined}
+              onSelectCanvas={handleSelectCanvas}
+              onCreateCanvas={handleCreateCanvas}
+              onDeleteCanvas={handleDeleteCanvas}
+              onDuplicateCanvas={handleDuplicateCanvas}
+              onRenameCanvas={handleRenameCanvas}
+              onCollapse={() => setLeftSidebarCollapsed(true)}
+            />
           )}
         </div>
 

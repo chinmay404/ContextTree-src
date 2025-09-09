@@ -31,6 +31,7 @@ import {
   Trash2,
   Copy,
   ExternalLink,
+  PanelLeftClose,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -50,6 +51,7 @@ interface CanvasListProps {
   onDeleteCanvas?: (canvasId: string) => void;
   onDuplicateCanvas?: (canvasId: string) => void;
   onRenameCanvas?: (canvasId: string, newTitle: string) => void;
+  onCollapse?: () => void;
 }
 
 export function CanvasList({
@@ -60,6 +62,7 @@ export function CanvasList({
   onDeleteCanvas,
   onDuplicateCanvas,
   onRenameCanvas,
+  onCollapse,
 }: CanvasListProps) {
   const [deleteCanvasId, setDeleteCanvasId] = useState<string | null>(null);
 
@@ -81,13 +84,34 @@ export function CanvasList({
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-transparent">
       {/* Header */}
-      <div className="p-4 border-b border-slate-200/60 bg-white/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-slate-900">Canvases</h2>
-          <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-            {canvases.length}
+      <div className="p-4 border-b border-slate-200/40 bg-transparent">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 mb-1 tracking-tight">
+              Your Canvases
+            </h2>
+            <p className="text-sm text-slate-500">
+              Manage and organize your conversation flows
+            </p>
+          </div>
+          {onCollapse && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onCollapse}
+              className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80"
+              title="Collapse (Ctrl+Shift+L)"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs text-slate-500 bg-slate-100/80 px-2 py-1 rounded-full">
+            {canvases.length} canvases
           </span>
         </div>
         
@@ -101,21 +125,21 @@ export function CanvasList({
       </div>
 
       {/* Canvas List */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden bg-transparent">
         <div className="h-full overflow-y-auto p-3 space-y-2">
           {canvases.map((canvas) => (
             <Card
               key={canvas._id}
               className={`group relative p-3 cursor-pointer transition-all duration-200 border-0 ${
                 selectedCanvas === canvas._id
-                  ? "bg-gradient-to-r from-slate-50 to-slate-100/50 shadow-sm ring-1 ring-slate-200 scale-[1.02]"
-                  : "bg-white/60 backdrop-blur-sm hover:bg-white hover:shadow-md hover:scale-[1.01] hover:ring-1 hover:ring-slate-200/50"
+                  ? "bg-slate-100/60 shadow-sm ring-1 ring-slate-200/60 scale-[1.01]"
+                  : "bg-white/40 backdrop-blur-sm hover:bg-white/70 hover:shadow-sm hover:ring-1 hover:ring-slate-200/40"
               }`}
               onClick={() => onSelectCanvas(canvas._id)}
             >
               {/* Main Content */}
               <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pr-2">
                   {/* Title Row */}
                   <div className="flex items-center gap-2 mb-2">
                     <div
@@ -167,62 +191,78 @@ export function CanvasList({
                 </div>
 
                 {/* Actions Menu */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      onClick={(e) => e.stopPropagation()}
-                      className="opacity-0 group-hover:opacity-100 transition-all duration-200 text-slate-400 hover:text-slate-600 p-1.5 rounded-md hover:bg-slate-100/80 ml-2"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem
-                      onClick={() => onSelectCanvas(canvas._id)}
-                      className="gap-2"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Open Canvas
-                    </DropdownMenuItem>
-                    
-                    {onRenameCanvas && (
-                      <DropdownMenuItem
-                        onClick={() => {
-                          const newTitle = prompt("Enter new canvas title:", canvas.title);
-                          if (newTitle && newTitle.trim()) {
-                            onRenameCanvas(canvas._id, newTitle.trim());
-                          }
+                <div className="flex-shrink-0">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
                         }}
-                        className="gap-2"
+                        className="opacity-0 group-hover:opacity-100 transition-all duration-200 text-slate-400 hover:text-slate-600 p-1.5 rounded-md hover:bg-slate-100/80 focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                        title="Canvas options"
                       >
-                        <Edit2 className="h-4 w-4" />
-                        Rename
-                      </DropdownMenuItem>
-                    )}
-                    
-                    {onDuplicateCanvas && (
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48 bg-white shadow-lg">
                       <DropdownMenuItem
-                        onClick={() => onDuplicateCanvas(canvas._id)}
-                        className="gap-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectCanvas(canvas._id);
+                        }}
+                        className="gap-2 cursor-pointer"
                       >
-                        <Copy className="h-4 w-4" />
-                        Duplicate
+                        <ExternalLink className="h-4 w-4" />
+                        Open Canvas
                       </DropdownMenuItem>
-                    )}
-                    
-                    <DropdownMenuSeparator />
-                    
-                    {onDeleteCanvas && (
-                      <DropdownMenuItem
-                        onClick={() => setDeleteCanvasId(canvas._id)}
-                        className="gap-2 text-red-600 focus:text-red-600 focus:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      
+                      {onRenameCanvas && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newTitle = prompt("Enter new canvas title:", canvas.title);
+                            if (newTitle && newTitle.trim()) {
+                              onRenameCanvas(canvas._id, newTitle.trim());
+                            }
+                          }}
+                          className="gap-2 cursor-pointer"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                          Rename
+                        </DropdownMenuItem>
+                      )}
+                      
+                      {onDuplicateCanvas && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDuplicateCanvas(canvas._id);
+                          }}
+                          className="gap-2 cursor-pointer"
+                        >
+                          <Copy className="h-4 w-4" />
+                          Duplicate
+                        </DropdownMenuItem>
+                      )}
+                      
+                      <DropdownMenuSeparator />
+                      
+                      {onDeleteCanvas && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteCanvasId(canvas._id);
+                          }}
+                          className="gap-2 text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </Card>
           ))}
