@@ -359,44 +359,120 @@ export function BranchNodeGlass({ data, selected }: NodeProps<BranchNodeData>) {
           )}
         </div>
 
-        {/* Connection Handles */}
+        {/* Flexible Connection Handles for Branch Node */}
+        {/* Target handles (inputs) */}
         <Handle
           type="target"
           position={Position.Left}
+          id="left"
+          className="!w-3 !h-3 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
+          style={{
+            background: `linear-gradient(135deg, ${baseColor}, ${baseColor}dd)`,
+            boxShadow: `0 0 12px ${glowColor}`,
+            top: "40%",
+          }}
+        />
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="left-bottom"
+          className="!w-3 !h-3 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
+          style={{
+            background: `linear-gradient(135deg, ${baseColor}, ${baseColor}dd)`,
+            boxShadow: `0 0 12px ${glowColor}`,
+            top: "60%",
+          }}
+        />
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="top"
+          className="!w-3 !h-3 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
+          style={{
+            background: `linear-gradient(135deg, ${baseColor}, ${baseColor}dd)`,
+            boxShadow: `0 0 12px ${glowColor}`,
+            left: "50%",
+          }}
+        />
+
+        {/* Source handles (outputs) - Multiple for branching */}
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="right-1"
           className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
           style={{
             background: `linear-gradient(135deg, ${baseColor}, ${baseColor}dd)`,
             boxShadow: `0 0 12px ${glowColor}`,
+            top: "25%",
           }}
         />
         <Handle
           type="source"
           position={Position.Right}
+          id="right-2"
           className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
           style={{
             background: `linear-gradient(135deg, ${baseColor}, ${baseColor}dd)`,
             boxShadow: `0 0 12px ${glowColor}`,
+            top: "50%",
+          }}
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="right-3"
+          className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
+          style={{
+            background: `linear-gradient(135deg, ${baseColor}, ${baseColor}dd)`,
+            boxShadow: `0 0 12px ${glowColor}`,
+            top: "75%",
           }}
         />
         <Handle
           type="source"
           position={Position.Bottom}
+          id="bottom-1"
           className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
           style={{
             background: `linear-gradient(135deg, ${baseColor}, ${baseColor}dd)`,
             boxShadow: `0 0 12px ${glowColor}`,
+            left: "30%",
+          }}
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="bottom-2"
+          className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
+          style={{
+            background: `linear-gradient(135deg, ${baseColor}, ${baseColor}dd)`,
+            boxShadow: `0 0 12px ${glowColor}`,
+            left: "70%",
           }}
         />
 
-        {/* Additional output handle for multiple branches */}
+        {/* Additional branch outputs */}
         <Handle
           type="source"
           position={Position.Top}
+          id="top-right"
           className="!w-3 !h-3 !border-2 !border-white !shadow-md !transition-all !duration-300 hover:!scale-125"
           style={{
             background: `linear-gradient(135deg, ${baseColor}, ${baseColor}dd)`,
             boxShadow: `0 0 8px ${baseColor}30`,
             left: "75%",
+          }}
+        />
+        <Handle
+          type="source"
+          position={Position.Top}
+          id="top-left"
+          className="!w-3 !h-3 !border-2 !border-white !shadow-md !transition-all !duration-300 hover:!scale-125"
+          style={{
+            background: `linear-gradient(135deg, ${baseColor}, ${baseColor}dd)`,
+            boxShadow: `0 0 8px ${baseColor}30`,
+            left: "25%",
           }}
         />
       </Card>

@@ -313,32 +313,85 @@ export function ContextNodeGlass({
           )}
         </div>
 
-        {/* Connection Handles */}
+        {/* Flexible Connection Handles for Context Node */}
+        {/* Target handles (inputs) */}
         <Handle
           type="target"
           position={Position.Left}
+          id="left"
+          className="!w-3 !h-3 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
+          style={{
+            background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+            boxShadow: "0 0 12px rgba(139, 92, 246, 0.4)",
+            top: "35%",
+          }}
+        />
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="left-center"
+          className="!w-3 !h-3 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
+          style={{
+            background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+            boxShadow: "0 0 12px rgba(139, 92, 246, 0.4)",
+            top: "65%",
+          }}
+        />
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="top"
+          className="!w-3 !h-3 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
+          style={{
+            background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+            boxShadow: "0 0 12px rgba(139, 92, 246, 0.4)",
+            left: "50%",
+          }}
+        />
+
+        {/* Source handles (outputs) */}
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="right"
           className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
           style={{
             background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
             boxShadow: "0 0 12px rgba(139, 92, 246, 0.4)",
+            top: "35%",
           }}
         />
         <Handle
           type="source"
           position={Position.Right}
+          id="right-center"
           className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
           style={{
             background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
             boxShadow: "0 0 12px rgba(139, 92, 246, 0.4)",
+            top: "65%",
           }}
         />
         <Handle
           type="source"
           position={Position.Bottom}
+          id="bottom"
           className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
           style={{
             background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
             boxShadow: "0 0 12px rgba(139, 92, 246, 0.4)",
+            left: "35%",
+          }}
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="bottom-right"
+          className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
+          style={{
+            background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+            boxShadow: "0 0 12px rgba(139, 92, 246, 0.4)",
+            left: "65%",
           }}
         />
       </Card>

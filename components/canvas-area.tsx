@@ -92,8 +92,7 @@ export function CanvasArea({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [canvas, setCanvas] = useState<CanvasData | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
-  // Glassmorphic node UI state
-  const [useGlassNodes, setUseGlassNodes] = useState<boolean>(true);
+  // Glass nodes are default (no toggle needed)
   const [showCustomizationPanel, setShowCustomizationPanel] =
     useState<boolean>(false);
   const [nodeCustomizations, setNodeCustomizations] = useState<
@@ -168,10 +167,10 @@ export function CanvasArea({
     [setNodes]
   );
 
-  // Get current node types based on glass mode
+  // Always use glass node types
   const currentNodeTypes = useMemo(() => {
-    return useGlassNodes ? glassNodeTypes : basicNodeTypes;
-  }, [useGlassNodes]);
+    return glassNodeTypes;
+  }, []);
 
   // Handle Delete key for node/edge deletion
   useEffect(() => {
@@ -1026,6 +1025,85 @@ export function CanvasArea({
     setNodeColorInput(String(node?.style?.background || "#A3A3A3"));
   };
 
+  // Auto-layout function to organize nodes
+  const handleAutoLayout = useCallback(() => {
+    if (nodes.length === 0) return;
+
+    // Find entry nodes (nodes with no incoming edges)
+    const entryNodes = nodes.filter(node => 
+      !edges.some(edge => edge.target === node.id)
+    );
+
+    // Create a simple hierarchical layout
+    const layoutedNodes = [...nodes];
+    const visited = new Set<string>();
+    const levels: string[][] = [];
+    
+    // BFS to organize nodes by levels
+    const queue: { nodeId: string; level: number }[] = [];
+    
+    // Start with entry nodes at level 0
+    entryNodes.forEach(node => {
+      queue.push({ nodeId: node.id, level: 0 });
+    });
+
+    while (queue.length > 0) {
+      const { nodeId, level } = queue.shift()!;
+      
+      if (visited.has(nodeId)) continue;
+      visited.add(nodeId);
+
+      if (!levels[level]) levels[level] = [];
+      levels[level].push(nodeId);
+
+      // Add connected nodes to next level
+      const connectedEdges = edges.filter(edge => edge.source === nodeId);
+      connectedEdges.forEach(edge => {
+        if (!visited.has(edge.target)) {
+          queue.push({ nodeId: edge.target, level: level + 1 });
+        }
+      });
+    }
+
+    // Position nodes based on levels
+    const nodeSpacing = { x: 300, y: 150 };
+    const startPosition = { x: 100, y: 100 };
+
+    levels.forEach((levelNodes, levelIndex) => {
+      levelNodes.forEach((nodeId, nodeIndex) => {
+        const nodeIndex_in_layoutedNodes = layoutedNodes.findIndex(n => n.id === nodeId);
+        if (nodeIndex_in_layoutedNodes !== -1) {
+          const totalNodesInLevel = levelNodes.length;
+          const centerOffset = (totalNodesInLevel - 1) * nodeSpacing.y / 2;
+          
+          layoutedNodes[nodeIndex_in_layoutedNodes] = {
+            ...layoutedNodes[nodeIndex_in_layoutedNodes],
+            position: {
+              x: startPosition.x + levelIndex * nodeSpacing.x,
+              y: startPosition.y + nodeIndex * nodeSpacing.y - centerOffset,
+            },
+          };
+        }
+      });
+    });
+
+    setNodes(layoutedNodes);
+    
+    // Save to storage
+    if (canvas) {
+      const updatedCanvas = {
+        ...canvas,
+        nodes: layoutedNodes.map(node => ({
+          id: node.id,
+          type: node.type as any,
+          position: node.position,
+          data: node.data,
+        })),
+      };
+      storageService.updateCanvas(canvas._id, updatedCanvas);
+    }
+  }, [nodes, edges, canvas, setNodes]);
+
   return (
     <div
       className="w-full h-full bg-slate-50"
@@ -1237,49 +1315,47 @@ export function CanvasArea({
         )}
       </ReactFlow>
 
-      {/* Glassmorphic Mode Controls - Top Right */}
+      {/* Canvas Controls - Top Right */}
       <div className="absolute top-6 right-6 z-10 flex flex-col gap-3">
         <div className="bg-white/95 backdrop-blur-sm rounded-lg border border-slate-200/80 shadow-lg p-3">
           <div className="flex items-center gap-3 mb-3">
-            <Sparkles size={16} className="text-blue-600" />
+            <Settings size={16} className="text-blue-600" />
             <span className="text-sm font-medium text-slate-900">
-              Glassmorphic UI
+              Canvas Tools
             </span>
           </div>
           <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={useGlassNodes}
-                onChange={(e) => setUseGlassNodes(e.target.checked)}
-                className="rounded border-slate-300"
-              />
-              <span className="text-xs text-slate-700">Glass Nodes</span>
-            </label>
-            {useGlassNodes && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  setShowCustomizationPanel(!showCustomizationPanel)
-                }
-                className="text-xs"
-              >
-                <Settings size={12} className="mr-1" />
-                Customize
-              </Button>
-            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleAutoLayout}
+              className="text-xs"
+            >
+              <Sparkles size={12} className="mr-1" />
+              Auto Layout
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                setShowCustomizationPanel(!showCustomizationPanel)
+              }
+              className="text-xs"
+            >
+              <Palette size={12} className="mr-1" />
+              Customize
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Node Palette - Bottom Right */}
       <div className="absolute bottom-6 right-6 z-10">
-        {useGlassNodes ? <NodePaletteEnhanced /> : <NodePalette />}
+        <NodePaletteEnhanced />
       </div>
 
       {/* Customization Panel */}
-      {showCustomizationPanel && useGlassNodes && selectedNode && (
+      {showCustomizationPanel && selectedNode && (
         <div className="absolute top-6 left-6 z-20">
           <NodeCustomizationPanel
             nodeId={selectedNode}
