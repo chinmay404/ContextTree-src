@@ -172,7 +172,7 @@ export function CanvasArea({
     return glassNodeTypes;
   }, []);
 
-  // Handle Delete key for node/edge deletion
+  // Handle Delete key for node/edge deletion and auto-layout shortcut
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Delete") {
@@ -274,6 +274,12 @@ export function CanvasArea({
             method: "DELETE",
           });
         }
+      }
+
+      // Auto Layout shortcut (Ctrl/Cmd + L)
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "l") {
+        event.preventDefault();
+        handleAutoLayout();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -1030,26 +1036,26 @@ export function CanvasArea({
     if (nodes.length === 0) return;
 
     // Find entry nodes (nodes with no incoming edges)
-    const entryNodes = nodes.filter(node => 
-      !edges.some(edge => edge.target === node.id)
+    const entryNodes = nodes.filter(
+      (node) => !edges.some((edge) => edge.target === node.id)
     );
 
     // Create a simple hierarchical layout
     const layoutedNodes = [...nodes];
     const visited = new Set<string>();
     const levels: string[][] = [];
-    
+
     // BFS to organize nodes by levels
     const queue: { nodeId: string; level: number }[] = [];
-    
+
     // Start with entry nodes at level 0
-    entryNodes.forEach(node => {
+    entryNodes.forEach((node) => {
       queue.push({ nodeId: node.id, level: 0 });
     });
 
     while (queue.length > 0) {
       const { nodeId, level } = queue.shift()!;
-      
+
       if (visited.has(nodeId)) continue;
       visited.add(nodeId);
 
@@ -1057,8 +1063,8 @@ export function CanvasArea({
       levels[level].push(nodeId);
 
       // Add connected nodes to next level
-      const connectedEdges = edges.filter(edge => edge.source === nodeId);
-      connectedEdges.forEach(edge => {
+      const connectedEdges = edges.filter((edge) => edge.source === nodeId);
+      connectedEdges.forEach((edge) => {
         if (!visited.has(edge.target)) {
           queue.push({ nodeId: edge.target, level: level + 1 });
         }
@@ -1071,11 +1077,13 @@ export function CanvasArea({
 
     levels.forEach((levelNodes, levelIndex) => {
       levelNodes.forEach((nodeId, nodeIndex) => {
-        const nodeIndex_in_layoutedNodes = layoutedNodes.findIndex(n => n.id === nodeId);
+        const nodeIndex_in_layoutedNodes = layoutedNodes.findIndex(
+          (n) => n.id === nodeId
+        );
         if (nodeIndex_in_layoutedNodes !== -1) {
           const totalNodesInLevel = levelNodes.length;
-          const centerOffset = (totalNodesInLevel - 1) * nodeSpacing.y / 2;
-          
+          const centerOffset = ((totalNodesInLevel - 1) * nodeSpacing.y) / 2;
+
           layoutedNodes[nodeIndex_in_layoutedNodes] = {
             ...layoutedNodes[nodeIndex_in_layoutedNodes],
             position: {
@@ -1088,12 +1096,12 @@ export function CanvasArea({
     });
 
     setNodes(layoutedNodes);
-    
+
     // Save to storage
     if (canvas) {
       const updatedCanvas = {
         ...canvas,
-        nodes: layoutedNodes.map(node => ({
+        nodes: layoutedNodes.map((node) => ({
           id: node.id,
           type: node.type as any,
           position: node.position,
@@ -1314,40 +1322,6 @@ export function CanvasArea({
           </div>
         )}
       </ReactFlow>
-
-      {/* Canvas Controls - Top Right */}
-      <div className="absolute top-6 right-6 z-10 flex flex-col gap-3">
-        <div className="bg-white/95 backdrop-blur-sm rounded-lg border border-slate-200/80 shadow-lg p-3">
-          <div className="flex items-center gap-3 mb-3">
-            <Settings size={16} className="text-blue-600" />
-            <span className="text-sm font-medium text-slate-900">
-              Canvas Tools
-            </span>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleAutoLayout}
-              className="text-xs"
-            >
-              <Sparkles size={12} className="mr-1" />
-              Auto Layout
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                setShowCustomizationPanel(!showCustomizationPanel)
-              }
-              className="text-xs"
-            >
-              <Palette size={12} className="mr-1" />
-              Customize
-            </Button>
-          </div>
-        </div>
-      </div>
 
       {/* Node Palette - Bottom Right */}
       <div className="absolute bottom-6 right-6 z-10">
