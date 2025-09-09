@@ -94,8 +94,11 @@ export function CanvasArea({
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   // Enhanced node UI state
   const [useEnhancedNodes, setUseEnhancedNodes] = useState<boolean>(false);
-  const [showCustomizationPanel, setShowCustomizationPanel] = useState<boolean>(false);
-  const [nodeCustomizations, setNodeCustomizations] = useState<Record<string, any>>({});
+  const [showCustomizationPanel, setShowCustomizationPanel] =
+    useState<boolean>(false);
+  const [nodeCustomizations, setNodeCustomizations] = useState<
+    Record<string, any>
+  >({});
   // Add state for editing node/edge
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
@@ -134,33 +137,36 @@ export function CanvasArea({
   );
 
   // Handle node customization
-  const handleNodeCustomization = useCallback((nodeId: string, customization: any) => {
-    setNodeCustomizations(prev => ({
-      ...prev,
-      [nodeId]: customization
-    }));
-    
-    // Update node data with customization
-    setNodes(nodes => 
-      nodes.map(node => 
-        node.id === nodeId 
-          ? { 
-              ...node, 
-              data: { 
-                ...node.data, 
-                ...customization,
-                // Preserve existing essential data
-                label: node.data.label,
-                messageCount: node.data.messageCount,
-                isSelected: node.data.isSelected,
-                model: node.data.model,
-                metaTags: node.data.metaTags,
-              } 
-            }
-          : node
-      )
-    );
-  }, [setNodes]);
+  const handleNodeCustomization = useCallback(
+    (nodeId: string, customization: any) => {
+      setNodeCustomizations((prev) => ({
+        ...prev,
+        [nodeId]: customization,
+      }));
+
+      // Update node data with customization
+      setNodes((nodes) =>
+        nodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  ...customization,
+                  // Preserve existing essential data
+                  label: node.data.label,
+                  messageCount: node.data.messageCount,
+                  isSelected: node.data.isSelected,
+                  model: node.data.model,
+                  metaTags: node.data.metaTags,
+                },
+              }
+            : node
+        )
+      );
+    },
+    [setNodes]
+  );
 
   // Get current node types based on enhanced mode
   const currentNodeTypes = useMemo(() => {
@@ -1236,7 +1242,9 @@ export function CanvasArea({
         <div className="bg-white/95 backdrop-blur-sm rounded-lg border border-slate-200/80 shadow-lg p-3">
           <div className="flex items-center gap-3 mb-3">
             <Palette size={16} className="text-blue-600" />
-            <span className="text-sm font-medium text-slate-900">Enhanced UI</span>
+            <span className="text-sm font-medium text-slate-900">
+              Enhanced UI
+            </span>
           </div>
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -1252,7 +1260,9 @@ export function CanvasArea({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setShowCustomizationPanel(!showCustomizationPanel)}
+                onClick={() =>
+                  setShowCustomizationPanel(!showCustomizationPanel)
+                }
                 className="text-xs"
               >
                 <Settings size={12} className="mr-1" />
@@ -1273,7 +1283,7 @@ export function CanvasArea({
         <div className="absolute top-6 left-6 z-20">
           <NodeCustomizationPanel
             nodeId={selectedNode}
-            currentData={nodes.find(n => n.id === selectedNode)?.data || {}}
+            currentData={nodes.find((n) => n.id === selectedNode)?.data || {}}
             onCustomize={handleNodeCustomization}
             onClose={() => setShowCustomizationPanel(false)}
           />

@@ -2,16 +2,16 @@
 import { Handle, Position, type NodeProps } from "reactflow";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Play, 
-  MessageCircle, 
-  Settings, 
+import {
+  Play,
+  MessageCircle,
+  Settings,
   Activity,
   Sparkles,
   Zap,
   ArrowRight,
   Eye,
-  Star
+  Star,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -36,7 +36,10 @@ interface EntryNodeData {
   opacity?: number;
 }
 
-export function EntryNodeEnhanced({ data, selected }: NodeProps<EntryNodeData>) {
+export function EntryNodeEnhanced({
+  data,
+  selected,
+}: NodeProps<EntryNodeData>) {
   const [hovered, setHovered] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [pulseAnimation, setPulseAnimation] = useState(false);
@@ -73,9 +76,24 @@ export function EntryNodeEnhanced({ data, selected }: NodeProps<EntryNodeData>) 
 
   // Size configurations
   const sizeConfig = {
-    small: { width: "min-w-[180px] max-w-[200px]", padding: "p-4", iconSize: 16, titleSize: "text-sm" },
-    medium: { width: "min-w-[220px] max-w-[260px]", padding: "p-5", iconSize: 18, titleSize: "text-base" },
-    large: { width: "min-w-[280px] max-w-[320px]", padding: "p-6", iconSize: 20, titleSize: "text-lg" },
+    small: {
+      width: "min-w-[180px] max-w-[200px]",
+      padding: "p-4",
+      iconSize: 16,
+      titleSize: "text-sm",
+    },
+    medium: {
+      width: "min-w-[220px] max-w-[260px]",
+      padding: "p-5",
+      iconSize: 18,
+      titleSize: "text-base",
+    },
+    large: {
+      width: "min-w-[280px] max-w-[320px]",
+      padding: "p-6",
+      iconSize: 20,
+      titleSize: "text-lg",
+    },
   };
 
   const config = sizeConfig[nodeSize];
@@ -83,7 +101,7 @@ export function EntryNodeEnhanced({ data, selected }: NodeProps<EntryNodeData>) 
   // Style configurations
   const getStyleClasses = () => {
     const baseClasses = `${config.width} cursor-pointer relative overflow-hidden transition-all duration-500 transform-gpu`;
-    
+
     switch (nodeStyle) {
       case "minimal":
         return `${baseClasses} border-2 border-slate-200 bg-white shadow-sm hover:shadow-md`;
@@ -140,15 +158,19 @@ export function EntryNodeEnhanced({ data, selected }: NodeProps<EntryNodeData>) 
         style={{
           borderRadius: `${borderRadius}px`,
           ringColor: `${dotColor}40`,
-          boxShadow: selected || data.isSelected
-            ? `0 0 0 4px ${dotColor}20, 0 0 32px -4px ${dotColor}50, 0 20px 40px -12px ${dotColor}30`
-            : undefined,
+          boxShadow:
+            selected || data.isSelected
+              ? `0 0 0 4px ${dotColor}20, 0 0 32px -4px ${dotColor}50, 0 20px 40px -12px ${dotColor}30`
+              : undefined,
         }}
       />
 
       {/* Floating Particles Effect */}
       {(hovered || selected || data.isSelected) && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ borderRadius: `${borderRadius}px` }}>
+        <div
+          className="absolute inset-0 pointer-events-none overflow-hidden"
+          style={{ borderRadius: `${borderRadius}px` }}
+        >
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
@@ -170,29 +192,41 @@ export function EntryNodeEnhanced({ data, selected }: NodeProps<EntryNodeData>) 
           selected || data.isSelected
             ? "scale-[1.03] ring-2 ring-opacity-30"
             : "hover:scale-[1.02]"
-        } ${isAnimating ? "scale-[0.98]" : ""} ${pulseAnimation ? "animate-pulse" : ""}`}
+        } ${isAnimating ? "scale-[0.98]" : ""} ${
+          pulseAnimation ? "animate-pulse" : ""
+        }`}
         onClick={handleClick}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
           ...getBackgroundStyle(),
-          boxShadow: selected || data.isSelected
-            ? `0 25px 50px -12px ${dotColor}25, 0 0 0 1px ${dotColor}20`
-            : hovered
-            ? `0 20px 40px -8px ${dotColor}20`
-            : undefined,
+          boxShadow:
+            selected || data.isSelected
+              ? `0 25px 50px -12px ${dotColor}25, 0 0 0 1px ${dotColor}20`
+              : hovered
+              ? `0 20px 40px -8px ${dotColor}20`
+              : undefined,
         }}
       >
         {/* Background Pattern */}
         {nodeStyle !== "minimal" && (
           <div className="absolute inset-0 opacity-[0.03]">
-            <div className="absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-16 translate-x-16" style={{ backgroundColor: dotColor }} />
-            <div className="absolute bottom-0 left-0 w-20 h-20 rounded-full translate-y-10 -translate-x-10" style={{ backgroundColor: dotColor }} />
+            <div
+              className="absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-16 translate-x-16"
+              style={{ backgroundColor: dotColor }}
+            />
+            <div
+              className="absolute bottom-0 left-0 w-20 h-20 rounded-full translate-y-10 -translate-x-10"
+              style={{ backgroundColor: dotColor }}
+            />
           </div>
         )}
 
         {/* Subtle Light Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" style={{ borderRadius: `${borderRadius}px` }} />
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent"
+          style={{ borderRadius: `${borderRadius}px` }}
+        />
 
         {/* Primary Node Indicator */}
         {data.primary && (
@@ -204,17 +238,25 @@ export function EntryNodeEnhanced({ data, selected }: NodeProps<EntryNodeData>) 
 
         {/* Activity Indicator */}
         <div className="absolute top-3 right-3">
-          <div className={`w-3 h-3 rounded-full transition-all duration-300 ${
-            data.messageCount > 0 ? "bg-green-400 shadow-lg animate-pulse" : "bg-slate-300"
-          }`} />
+          <div
+            className={`w-3 h-3 rounded-full transition-all duration-300 ${
+              data.messageCount > 0
+                ? "bg-green-400 shadow-lg animate-pulse"
+                : "bg-slate-300"
+            }`}
+          />
         </div>
 
         {/* Main Content */}
         <div className={`relative ${config.padding}`}>
           {/* Settings Button */}
-          <div className={`absolute top-0 right-0 transition-all duration-300 ${
-            hovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
-          }`}>
+          <div
+            className={`absolute top-0 right-0 transition-all duration-300 ${
+              hovered
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-2 pointer-events-none"
+            }`}
+          >
             <button
               className="bg-white/95 backdrop-blur-sm border border-slate-200/60 rounded-xl p-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:bg-white hover:scale-110 group"
               onClick={(e) => {
@@ -251,14 +293,14 @@ export function EntryNodeEnhanced({ data, selected }: NodeProps<EntryNodeData>) 
                   borderRadius: `${borderRadius * 0.6}px`,
                 }}
               />
-              
+
               {/* Main Icon */}
               <Play
                 className="relative z-10 transition-all duration-300 group-hover:scale-110"
                 size={config.iconSize}
                 style={{ color: dotColor }}
               />
-              
+
               {/* Sparkle Effect */}
               {hovered && (
                 <Sparkles
@@ -276,10 +318,13 @@ export function EntryNodeEnhanced({ data, selected }: NodeProps<EntryNodeData>) 
               >
                 {data.label || "Entry Point"}
               </h3>
-              
+
               <div className="flex items-center gap-2 mb-2">
                 <Zap size={12} style={{ color: dotColor }} />
-                <span className="text-xs font-medium opacity-80" style={{ color: textColor }}>
+                <span
+                  className="text-xs font-medium opacity-80"
+                  style={{ color: textColor }}
+                >
                   Entry Node
                 </span>
               </div>
@@ -290,11 +335,14 @@ export function EntryNodeEnhanced({ data, selected }: NodeProps<EntryNodeData>) 
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <MessageCircle size={12} style={{ color: dotColor }} />
-              <span className="text-sm font-medium" style={{ color: textColor }}>
+              <span
+                className="text-sm font-medium"
+                style={{ color: textColor }}
+              >
                 {data.messageCount} messages
               </span>
             </div>
-            
+
             <Badge
               className="text-xs font-medium border-0 shadow-sm"
               style={{
@@ -323,14 +371,19 @@ export function EntryNodeEnhanced({ data, selected }: NodeProps<EntryNodeData>) 
           )}
 
           {/* Activity Footer */}
-          <div className="flex items-center justify-between text-xs" style={{ color: `${textColor}80` }}>
+          <div
+            className="flex items-center justify-between text-xs"
+            style={{ color: `${textColor}80` }}
+          >
             <div className="flex items-center gap-1">
               <Activity size={10} />
               <span>
-                {lastActivity ? new Date(lastActivity).toLocaleDateString() : "No activity"}
+                {lastActivity
+                  ? new Date(lastActivity).toLocaleDateString()
+                  : "No activity"}
               </span>
             </div>
-            
+
             {hovered && (
               <div className="flex items-center gap-1 animate-fade-in">
                 <Eye size={10} />

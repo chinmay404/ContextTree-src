@@ -37,7 +37,10 @@ interface ContextNodeData {
   contextSize?: number;
 }
 
-export function ContextNodeEnhanced({ data, selected }: NodeProps<ContextNodeData>) {
+export function ContextNodeEnhanced({
+  data,
+  selected,
+}: NodeProps<ContextNodeData>) {
   const [hovered, setHovered] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [dataFlowAnimation, setDataFlowAnimation] = useState(false);
@@ -74,9 +77,24 @@ export function ContextNodeEnhanced({ data, selected }: NodeProps<ContextNodeDat
 
   // Size configurations
   const sizeConfig = {
-    small: { width: "min-w-[180px] max-w-[220px]", padding: "p-4", iconSize: 16, titleSize: "text-sm" },
-    medium: { width: "min-w-[220px] max-w-[280px]", padding: "p-5", iconSize: 18, titleSize: "text-base" },
-    large: { width: "min-w-[280px] max-w-[340px]", padding: "p-6", iconSize: 20, titleSize: "text-lg" },
+    small: {
+      width: "min-w-[180px] max-w-[220px]",
+      padding: "p-4",
+      iconSize: 16,
+      titleSize: "text-sm",
+    },
+    medium: {
+      width: "min-w-[220px] max-w-[280px]",
+      padding: "p-5",
+      iconSize: 18,
+      titleSize: "text-base",
+    },
+    large: {
+      width: "min-w-[280px] max-w-[340px]",
+      padding: "p-6",
+      iconSize: 20,
+      titleSize: "text-lg",
+    },
   };
 
   const config = sizeConfig[nodeSize];
@@ -84,26 +102,34 @@ export function ContextNodeEnhanced({ data, selected }: NodeProps<ContextNodeDat
   // Data type configurations
   const getDataTypeIcon = () => {
     switch (data.dataType) {
-      case "image": return Archive;
-      case "audio": return Brain;
-      case "mixed": return Layers3;
-      default: return FileText;
+      case "image":
+        return Archive;
+      case "audio":
+        return Brain;
+      case "mixed":
+        return Layers3;
+      default:
+        return FileText;
     }
   };
 
   const getDataTypeColor = () => {
     switch (data.dataType) {
-      case "image": return "#ef4444";
-      case "audio": return "#f59e0b";
-      case "mixed": return "#8b5cf6";
-      default: return dotColor;
+      case "image":
+        return "#ef4444";
+      case "audio":
+        return "#f59e0b";
+      case "mixed":
+        return "#8b5cf6";
+      default:
+        return dotColor;
     }
   };
 
   // Style configurations
   const getStyleClasses = () => {
     const baseClasses = `${config.width} cursor-pointer relative overflow-hidden transition-all duration-500 transform-gpu`;
-    
+
     switch (nodeStyle) {
       case "minimal":
         return `${baseClasses} border-2 border-slate-200 bg-white shadow-sm hover:shadow-md`;
@@ -162,15 +188,19 @@ export function ContextNodeEnhanced({ data, selected }: NodeProps<ContextNodeDat
         style={{
           borderRadius: `${borderRadius}px`,
           ringColor: `${dotColor}30`,
-          boxShadow: selected || data.isSelected
-            ? `0 0 0 4px ${dotColor}15, 0 0 32px -4px ${dotColor}40, 0 20px 40px -12px ${dotColor}25`
-            : undefined,
+          boxShadow:
+            selected || data.isSelected
+              ? `0 0 0 4px ${dotColor}15, 0 0 32px -4px ${dotColor}40, 0 20px 40px -12px ${dotColor}25`
+              : undefined,
         }}
       />
 
       {/* Data Flow Animation */}
       {dataFlowAnimation && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ borderRadius: `${borderRadius}px` }}>
+        <div
+          className="absolute inset-0 pointer-events-none overflow-hidden"
+          style={{ borderRadius: `${borderRadius}px` }}
+        >
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
@@ -197,57 +227,77 @@ export function ContextNodeEnhanced({ data, selected }: NodeProps<ContextNodeDat
         onMouseLeave={() => setHovered(false)}
         style={{
           ...getBackgroundStyle(),
-          boxShadow: selected || data.isSelected
-            ? `0 25px 50px -12px ${dotColor}20, 0 0 0 1px ${dotColor}15`
-            : hovered
-            ? `0 20px 40px -8px ${dotColor}15`
-            : undefined,
+          boxShadow:
+            selected || data.isSelected
+              ? `0 25px 50px -12px ${dotColor}20, 0 0 0 1px ${dotColor}15`
+              : hovered
+              ? `0 20px 40px -8px ${dotColor}15`
+              : undefined,
         }}
       >
         {/* Animated Background Pattern */}
         {nodeStyle !== "minimal" && (
           <div className="absolute inset-0 opacity-[0.04] overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-16 translate-x-16" style={{ backgroundColor: dotColor }} />
-            <div className="absolute bottom-0 left-0 w-20 h-20 rounded-full translate-y-10 -translate-x-10" style={{ backgroundColor: dotColor }} />
-            
+            <div
+              className="absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-16 translate-x-16"
+              style={{ backgroundColor: dotColor }}
+            />
+            <div
+              className="absolute bottom-0 left-0 w-20 h-20 rounded-full translate-y-10 -translate-x-10"
+              style={{ backgroundColor: dotColor }}
+            />
+
             {/* Data pattern */}
-            <div className={`absolute inset-0 flex items-center justify-center opacity-5 transition-transform duration-1000 ${dataFlowAnimation ? "rotate-12" : "rotate-0"}`}>
+            <div
+              className={`absolute inset-0 flex items-center justify-center opacity-5 transition-transform duration-1000 ${
+                dataFlowAnimation ? "rotate-12" : "rotate-0"
+              }`}
+            >
               <Layers3 size={80} style={{ color: dotColor }} />
             </div>
-            <div className={`absolute inset-0 flex items-center justify-center opacity-5 transition-transform duration-1000 ${dataFlowAnimation ? "-rotate-12" : "rotate-0"}`}>
+            <div
+              className={`absolute inset-0 flex items-center justify-center opacity-5 transition-transform duration-1000 ${
+                dataFlowAnimation ? "-rotate-12" : "rotate-0"
+              }`}
+            >
               <Database size={60} style={{ color: dotColor }} />
             </div>
           </div>
         )}
 
         {/* Subtle Light Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/8 via-transparent to-transparent" style={{ borderRadius: `${borderRadius}px` }} />
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-white/8 via-transparent to-transparent"
+          style={{ borderRadius: `${borderRadius}px` }}
+        />
 
         {/* Data Type Indicator */}
         <div className="absolute top-3 left-3">
-          <div 
+          <div
             className="w-8 h-2 rounded-full opacity-80 transition-all duration-300"
-            style={{ 
+            style={{
               backgroundColor: dataTypeColor,
-              boxShadow: `0 0 8px ${dataTypeColor}40`
+              boxShadow: `0 0 8px ${dataTypeColor}40`,
             }}
           />
         </div>
 
         {/* Processing Indicator */}
         <div className="absolute top-3 right-3">
-          <div className={`flex items-center gap-1 transition-all duration-300 ${
-            data.messageCount > 0 ? "opacity-100" : "opacity-40"
-          }`}>
+          <div
+            className={`flex items-center gap-1 transition-all duration-300 ${
+              data.messageCount > 0 ? "opacity-100" : "opacity-40"
+            }`}
+          >
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
                 className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
                   dataFlowAnimation ? "animate-bounce" : ""
                 }`}
-                style={{ 
+                style={{
                   backgroundColor: dotColor,
-                  animationDelay: `${i * 0.2}s`
+                  animationDelay: `${i * 0.2}s`,
                 }}
               />
             ))}
@@ -257,9 +307,13 @@ export function ContextNodeEnhanced({ data, selected }: NodeProps<ContextNodeDat
         {/* Main Content */}
         <div className={`relative ${config.padding}`}>
           {/* Settings Button */}
-          <div className={`absolute top-0 right-0 transition-all duration-300 ${
-            hovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
-          }`}>
+          <div
+            className={`absolute top-0 right-0 transition-all duration-300 ${
+              hovered
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-2 pointer-events-none"
+            }`}
+          >
             <button
               className="bg-white/95 backdrop-blur-sm border border-slate-200/60 rounded-xl p-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:bg-white hover:scale-110 group"
               onClick={(e) => {
@@ -296,14 +350,14 @@ export function ContextNodeEnhanced({ data, selected }: NodeProps<ContextNodeDat
                   borderRadius: `${borderRadius * 0.7}px`,
                 }}
               />
-              
+
               {/* Main Icon */}
               <DataIcon
                 className="relative z-10 transition-all duration-300 group-hover:scale-110"
                 size={config.iconSize}
                 style={{ color: dotColor }}
               />
-              
+
               {/* Data Flow Indicators */}
               {dataFlowAnimation && (
                 <>
@@ -331,10 +385,13 @@ export function ContextNodeEnhanced({ data, selected }: NodeProps<ContextNodeDat
               >
                 {data.label || "Context Data"}
               </h3>
-              
+
               <div className="flex items-center gap-2 mb-2">
                 <Database size={12} style={{ color: dotColor }} />
-                <span className="text-xs font-medium opacity-80" style={{ color: textColor }}>
+                <span
+                  className="text-xs font-medium opacity-80"
+                  style={{ color: textColor }}
+                >
                   {data.dataType || "text"} data
                 </span>
               </div>
@@ -345,15 +402,23 @@ export function ContextNodeEnhanced({ data, selected }: NodeProps<ContextNodeDat
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="flex items-center gap-2">
               <MessageCircle size={12} style={{ color: dotColor }} />
-              <span className="text-sm font-medium" style={{ color: textColor }}>
+              <span
+                className="text-sm font-medium"
+                style={{ color: textColor }}
+              >
                 {data.messageCount}
               </span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Hash size={12} style={{ color: dotColor }} />
-              <span className="text-sm font-medium" style={{ color: textColor }}>
-                {contextSize > 0 ? `${Math.round(contextSize/1024)}KB` : "Empty"}
+              <span
+                className="text-sm font-medium"
+                style={{ color: textColor }}
+              >
+                {contextSize > 0
+                  ? `${Math.round(contextSize / 1024)}KB`
+                  : "Empty"}
               </span>
             </div>
           </div>
@@ -369,9 +434,12 @@ export function ContextNodeEnhanced({ data, selected }: NodeProps<ContextNodeDat
             >
               {model}
             </Badge>
-            
+
             {hovered && (
-              <div className="flex items-center gap-1 text-xs opacity-70" style={{ color: textColor }}>
+              <div
+                className="flex items-center gap-1 text-xs opacity-70"
+                style={{ color: textColor }}
+              >
                 <Sparkles size={10} />
                 <span>Rich context</span>
               </div>
@@ -395,21 +463,25 @@ export function ContextNodeEnhanced({ data, selected }: NodeProps<ContextNodeDat
           )}
 
           {/* Activity Footer */}
-          <div className="flex items-center justify-between text-xs" style={{ color: `${textColor}70` }}>
+          <div
+            className="flex items-center justify-between text-xs"
+            style={{ color: `${textColor}70` }}
+          >
             <div className="flex items-center gap-1">
               <Clock size={10} />
               <span>
-                {data.lastMessageAt ? 
-                  `Updated ${new Date(data.lastMessageAt).toLocaleDateString()}` : 
-                  "No recent activity"
-                }
+                {data.lastMessageAt
+                  ? `Updated ${new Date(
+                      data.lastMessageAt
+                    ).toLocaleDateString()}`
+                  : "No recent activity"}
               </span>
             </div>
-            
+
             {contextSize > 0 && (
               <div className="flex items-center gap-1">
                 <Brain size={10} />
-                <span>{Math.round(contextSize/1024)}KB</span>
+                <span>{Math.round(contextSize / 1024)}KB</span>
               </div>
             )}
           </div>

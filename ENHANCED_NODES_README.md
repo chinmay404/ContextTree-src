@@ -7,17 +7,20 @@ This project includes a complete enhanced node system that transforms the basic 
 ## 🚀 Features
 
 ### Enhanced Node Components
+
 - **EntryNodeEnhanced**: Starting points with pulse animations and particle effects
 - **ContextNodeEnhanced**: Data sources with flow animations and type indicators
 - **BranchNodeEnhanced**: Decision points with dynamic branching visualization
 
 ### Customization System
+
 - **Full Color Control**: Background, text, accent colors with preset themes
 - **Style Variants**: Minimal, Modern, Glass, and Gradient styles
 - **Size Options**: Small, Medium, and Large with auto-sizing
 - **Animation Effects**: Hover states, pulse animations, data flow indicators
 
 ### UI Enhancements
+
 - **Enhanced Node Palette**: Modern drag-drop interface with categories
 - **Customization Panel**: Real-time preview and adjustment controls
 - **Color Picker**: 15+ preset themes plus custom color support
@@ -57,10 +60,10 @@ import { EntryNodeEnhanced } from "@/components/nodes/entry-node-enhanced";
     style: "modern",
     size: "medium",
     color: "#e0f2fe",
-    textColor: "#0891b2"
+    textColor: "#0891b2",
   }}
   id="welcome-node"
-/>
+/>;
 ```
 
 ### 2. Enable Enhanced Mode
@@ -77,9 +80,9 @@ const nodeTypes = useEnhancedNodes ? enhancedNodeTypes : basicNodeTypes;
 
 ```tsx
 const handleNodeCustomization = (nodeId: string, customization: any) => {
-  setNodes(nodes => 
-    nodes.map(node => 
-      node.id === nodeId 
+  setNodes((nodes) =>
+    nodes.map((node) =>
+      node.id === nodeId
         ? { ...node, data: { ...node.data, ...customization } }
         : node
     )
@@ -90,23 +93,27 @@ const handleNodeCustomization = (nodeId: string, customization: any) => {
 ## 🎯 Customization Options
 
 ### Colors
+
 - **Background Colors**: Full spectrum with preset themes
 - **Text Colors**: Automatic contrast or manual selection
 - **Accent Colors**: Dots, borders, and highlights
 - **Gradient Themes**: Ocean, Purple, Forest, Sunset, and more
 
 ### Styles
+
 - **Minimal**: Clean, simple borders with subtle effects
 - **Modern**: Contemporary design with shadow and depth
 - **Glass**: Frosted glass effect with backdrop blur
 - **Gradient**: Smooth color transitions and dynamic backgrounds
 
 ### Sizes
+
 - **Small**: Compact for dense workflows (120px width)
-- **Medium**: Default balanced size (160px width)  
+- **Medium**: Default balanced size (160px width)
 - **Large**: Detailed view with extra information (200px width)
 
 ### Animations
+
 - **Pulse Effects**: Breathing animations for active states
 - **Hover Transitions**: Smooth scale and glow effects
 - **Data Flow**: Animated indicators for information movement
@@ -117,15 +124,17 @@ const handleNodeCustomization = (nodeId: string, customization: any) => {
 ### From Basic to Enhanced
 
 1. **Update Imports**:
+
    ```tsx
    // Before
    import { EntryNode } from "./nodes/entry-node";
-   
-   // After  
+
+   // After
    import { EntryNodeEnhanced } from "./nodes/entry-node-enhanced";
    ```
 
 2. **Update Node Types**:
+
    ```tsx
    const enhancedNodeTypes = {
      entry: EntryNodeEnhanced,
@@ -138,14 +147,20 @@ const handleNodeCustomization = (nodeId: string, customization: any) => {
    Include the enhanced animations in your `globals.css`:
    ```css
    @keyframes nodeGlow {
-     0%, 100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); }
-     50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
+     0%,
+     100% {
+       box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+     }
+     50% {
+       box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+     }
    }
    ```
 
 ## 🔧 Backward Compatibility
 
 The enhanced components are fully backward compatible:
+
 - All existing node data properties continue to work
 - New customization features are opt-in
 - Default values match original styling
@@ -154,21 +169,25 @@ The enhanced components are fully backward compatible:
 ## 🎨 Theme Presets
 
 ### Ocean Breeze
+
 - Entry: Light blue with cyan accents
-- Context: Soft cyan with blue highlights  
+- Context: Soft cyan with blue highlights
 - Branch: Pale green with emerald touches
 
 ### Purple Haze
+
 - Entry: Light purple with violet accents
 - Context: Lavender with purple highlights
 - Branch: Soft purple with magenta touches
 
 ### Forest Green
+
 - Entry: Pale green with emerald accents
 - Context: Light green with forest highlights
 - Branch: Mint green with nature touches
 
 ### Sunset Glow
+
 - Entry: Warm yellow with amber accents
 - Context: Soft orange with warm highlights
 - Branch: Light coral with sunset touches
@@ -176,6 +195,7 @@ The enhanced components are fully backward compatible:
 ## 📱 Responsive Design
 
 All enhanced components are fully responsive:
+
 - Mobile-optimized touch targets
 - Adaptive text sizing
 - Scalable animations

@@ -99,7 +99,9 @@ const QUICK_THEMES = [
 export function NodePaletteEnhanced() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showQuickThemes, setShowQuickThemes] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<"all" | "flow" | "data" | "interaction">("all");
+  const [selectedCategory, setSelectedCategory] = useState<
+    "all" | "flow" | "data" | "interaction"
+  >("all");
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
@@ -108,7 +110,7 @@ export function NodePaletteEnhanced() {
   };
 
   const filteredNodes = NODE_TYPES.filter(
-    node => selectedCategory === "all" || node.category === selectedCategory
+    (node) => selectedCategory === "all" || node.category === selectedCategory
   );
 
   const categories = [
@@ -144,7 +146,7 @@ export function NodePaletteEnhanced() {
             className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[-1]"
             onClick={() => setIsExpanded(false)}
           />
-          
+
           {/* Main Palette Container */}
           <Card className="absolute bottom-16 right-0 w-80 bg-white/95 backdrop-blur-md border-slate-200/80 shadow-2xl overflow-hidden">
             {/* Header */}
@@ -152,7 +154,9 @@ export function NodePaletteEnhanced() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Palette size={18} className="text-slate-600" />
-                  <span className="font-semibold text-slate-900">Node Palette</span>
+                  <span className="font-semibold text-slate-900">
+                    Node Palette
+                  </span>
                 </div>
                 <div className="flex gap-1">
                   <Button
@@ -200,7 +204,9 @@ export function NodePaletteEnhanced() {
               <div className="p-4 border-b border-slate-200/50 bg-slate-50/30">
                 <div className="flex items-center gap-2 mb-3">
                   <Zap size={14} className="text-slate-600" />
-                  <span className="text-sm font-medium text-slate-800">Quick Themes</span>
+                  <span className="text-sm font-medium text-slate-800">
+                    Quick Themes
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {QUICK_THEMES.map((theme) => (

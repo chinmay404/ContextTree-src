@@ -1,16 +1,16 @@
 "use client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Play, 
-  MessageCircle, 
-  Settings, 
+import {
+  Play,
+  MessageCircle,
+  Settings,
   Activity,
   Sparkles,
   Zap,
   ArrowRight,
   Eye,
-  Star
+  Star,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -57,17 +57,36 @@ export function EntryNodeShowcase({ data, selected }: ShowcaseNodeProps) {
 
   // Get size configuration
   const sizeConfig = {
-    small: { width: "120px", height: "90px", padding: "8px", textSize: "text-xs", iconSize: 14 },
-    medium: { width: "160px", height: "120px", padding: "12px", textSize: "text-sm", iconSize: 16 },
-    large: { width: "200px", height: "150px", padding: "16px", textSize: "text-base", iconSize: 18 },
+    small: {
+      width: "120px",
+      height: "90px",
+      padding: "8px",
+      textSize: "text-xs",
+      iconSize: 14,
+    },
+    medium: {
+      width: "160px",
+      height: "120px",
+      padding: "12px",
+      textSize: "text-sm",
+      iconSize: 16,
+    },
+    large: {
+      width: "200px",
+      height: "150px",
+      padding: "16px",
+      textSize: "text-base",
+      iconSize: 18,
+    },
   };
 
   const config = sizeConfig[data.size || "medium"];
 
   // Generate style classes based on style prop
   const getStyleClasses = () => {
-    const baseClasses = "transition-all duration-300 cursor-pointer relative overflow-hidden";
-    
+    const baseClasses =
+      "transition-all duration-300 cursor-pointer relative overflow-hidden";
+
     switch (data.style) {
       case "minimal":
         return `${baseClasses} border-2 bg-white shadow-sm hover:shadow-md`;
@@ -82,7 +101,9 @@ export function EntryNodeShowcase({ data, selected }: ShowcaseNodeProps) {
   };
 
   // Particle animation for enhanced visual appeal
-  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; delay: number }>>([]);
+  const [particles, setParticles] = useState<
+    Array<{ id: number; x: number; y: number; delay: number }>
+  >([]);
 
   useEffect(() => {
     if (selected || hovered) {
@@ -101,46 +122,54 @@ export function EntryNodeShowcase({ data, selected }: ShowcaseNodeProps) {
   const textColor = data.textColor || "#334155";
 
   return (
-    <div className="relative" style={{ width: config.width, height: config.height }}>
+    <div
+      className="relative"
+      style={{ width: config.width, height: config.height }}
+    >
       {/* Mock ReactFlow handles */}
       <div className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-gray-400 rounded-full border-2 border-white shadow-sm"></div>
       <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-gray-400 rounded-full border-2 border-white shadow-sm"></div>
-      
-      <Card 
-        className={`${getStyleClasses()} ${selected ? 'ring-2 ring-blue-400 ring-opacity-60' : ''} ${
-          hovered ? 'scale-105' : ''
-        } ${isAnimating ? 'scale-95' : ''} ${pulseAnimation ? 'animate-pulse' : ''}`}
-        style={{ 
+
+      <Card
+        className={`${getStyleClasses()} ${
+          selected ? "ring-2 ring-blue-400 ring-opacity-60" : ""
+        } ${hovered ? "scale-105" : ""} ${isAnimating ? "scale-95" : ""} ${
+          pulseAnimation ? "animate-pulse" : ""
+        }`}
+        style={{
           backgroundColor,
           borderColor: selected ? borderColor : undefined,
           borderRadius: `${data.borderRadius || 12}px`,
           opacity: data.opacity || 1,
           padding: config.padding,
-          width: '100%',
-          height: '100%'
+          width: "100%",
+          height: "100%",
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         onClick={handleClick}
       >
         {/* Floating particles for visual interest */}
-        {(selected || hovered) && particles.map((particle) => (
-          <div
-            key={particle.id}
-            className="absolute w-1 h-1 bg-blue-400 rounded-full animate-ping opacity-60"
-            style={{
-              left: `${particle.x}%`,
-              top: `${particle.y}%`,
-              animationDelay: `${particle.delay}s`,
-            }}
-          />
-        ))}
+        {(selected || hovered) &&
+          particles.map((particle) => (
+            <div
+              key={particle.id}
+              className="absolute w-1 h-1 bg-blue-400 rounded-full animate-ping opacity-60"
+              style={{
+                left: `${particle.x}%`,
+                top: `${particle.y}%`,
+                animationDelay: `${particle.delay}s`,
+              }}
+            />
+          ))}
 
         {/* Header with icon and settings */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <div 
-              className={`p-1.5 rounded-lg ${selected ? 'bg-blue-100' : 'bg-gray-100'} transition-colors`}
+            <div
+              className={`p-1.5 rounded-lg ${
+                selected ? "bg-blue-100" : "bg-gray-100"
+              } transition-colors`}
               style={{ color: selected ? borderColor : textColor }}
             >
               <Play size={config.iconSize} />
@@ -152,8 +181,8 @@ export function EntryNodeShowcase({ data, selected }: ShowcaseNodeProps) {
               </Badge>
             )}
           </div>
-          
-          <button 
+
+          <button
             onClick={(e) => {
               e.stopPropagation();
               data.onSettingsClick?.();
@@ -166,13 +195,13 @@ export function EntryNodeShowcase({ data, selected }: ShowcaseNodeProps) {
 
         {/* Main content */}
         <div className="space-y-2">
-          <h3 
+          <h3
             className={`font-semibold ${config.textSize} leading-tight truncate`}
             style={{ color: textColor }}
           >
             {data.label}
           </h3>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <MessageCircle size={12} style={{ color: borderColor }} />
@@ -180,7 +209,7 @@ export function EntryNodeShowcase({ data, selected }: ShowcaseNodeProps) {
                 {data.messageCount}
               </span>
             </div>
-            
+
             {data.model && (
               <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                 {data.model}
@@ -200,12 +229,18 @@ export function EntryNodeShowcase({ data, selected }: ShowcaseNodeProps) {
           {data.metaTags && data.metaTags.length > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">
               {data.metaTags.slice(0, 2).map((tag, index) => (
-                <Badge key={index} variant="secondary" className="text-xs px-1 py-0">
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="text-xs px-1 py-0"
+                >
                   {tag}
                 </Badge>
               ))}
               {data.metaTags.length > 2 && (
-                <span className="text-xs text-gray-500">+{data.metaTags.length - 2}</span>
+                <span className="text-xs text-gray-500">
+                  +{data.metaTags.length - 2}
+                </span>
               )}
             </div>
           )}
@@ -214,9 +249,9 @@ export function EntryNodeShowcase({ data, selected }: ShowcaseNodeProps) {
         {/* Highlight tier indicator */}
         {data.highlightTier !== undefined && data.highlightTier > 0 && (
           <div className="absolute top-2 right-2">
-            <div 
+            <div
               className={`w-2 h-2 rounded-full ${
-                data.highlightTier === 1 ? 'bg-yellow-400' : 'bg-red-400'
+                data.highlightTier === 1 ? "bg-yellow-400" : "bg-red-400"
               }`}
             />
           </div>
@@ -224,7 +259,7 @@ export function EntryNodeShowcase({ data, selected }: ShowcaseNodeProps) {
 
         {/* Selection glow effect */}
         {selected && (
-          <div 
+          <div
             className="absolute inset-0 rounded-lg pointer-events-none"
             style={{
               boxShadow: `0 0 0 2px ${borderColor}40, 0 0 20px ${borderColor}20`,

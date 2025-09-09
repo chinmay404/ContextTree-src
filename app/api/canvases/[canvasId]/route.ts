@@ -81,6 +81,55 @@ export const PUT = withAuth(
   }
 );
 
+export const PATCH = withAuth(
+  async (
+    request: NextRequest,
+    { params }: { params: Promise<{ canvasId: string }> }
+  ) => {
+    try {
+      const user = await getCurrentUser();
+      if (!user?.email) {
+        return NextResponse.json(
+          { error: "User not authenticated" },
+          { status: 401 }
+        );
+      }
+
+      await mongoService.connect();
+
+      const { canvasId } = await params;
+      const updates = await request.json();
+      
+      // Add updatedAt timestamp for partial updates
+      const partialUpdates = {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      
+      const updatedCanvas = await mongoService.updateCanvas(
+        canvasId,
+        partialUpdates,
+        user.email
+      );
+
+      if (!updatedCanvas) {
+        return NextResponse.json(
+          { error: "Canvas not found or access denied" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({ canvas: updatedCanvas });
+    } catch (error) {
+      console.error("Error updating canvas:", error);
+      return NextResponse.json(
+        { error: "Failed to update canvas" },
+        { status: 500 }
+      );
+    }
+  }
+);
+
 export const DELETE = withAuth(
   async (
     request: NextRequest,

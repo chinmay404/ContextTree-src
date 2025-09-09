@@ -4,16 +4,16 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Palette, 
-  Sparkles, 
-  Settings, 
-  Eye, 
-  Play, 
+import {
+  Palette,
+  Sparkles,
+  Settings,
+  Eye,
+  Play,
   RotateCcw,
   Download,
   Share2,
-  Zap
+  Zap,
 } from "lucide-react";
 
 // Mock node components for showcase (no ReactFlow dependencies)
@@ -53,8 +53,12 @@ const SIZE_OPTIONS = ["small", "medium", "large"] as const;
 
 export default function NodeShowcasePage() {
   const [selectedTheme, setSelectedTheme] = useState(DEMO_THEMES[0]);
-  const [nodeStyle, setNodeStyle] = useState<"minimal" | "modern" | "glass" | "gradient">("modern");
-  const [nodeSize, setNodeSize] = useState<"small" | "medium" | "large">("medium");
+  const [nodeStyle, setNodeStyle] = useState<
+    "minimal" | "modern" | "glass" | "gradient"
+  >("modern");
+  const [nodeSize, setNodeSize] = useState<"small" | "medium" | "large">(
+    "medium"
+  );
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [animationsEnabled, setAnimationsEnabled] = useState(true);
   const [customColors, setCustomColors] = useState({
@@ -63,7 +67,7 @@ export default function NodeShowcasePage() {
     branch: selectedTheme.branch,
   });
 
-  const handleThemeChange = (theme: typeof DEMO_THEMES[0]) => {
+  const handleThemeChange = (theme: (typeof DEMO_THEMES)[0]) => {
     setSelectedTheme(theme);
     setCustomColors({
       entry: theme.entry,
@@ -79,7 +83,7 @@ export default function NodeShowcasePage() {
       size: nodeSize,
       colors: customColors,
     };
-    
+
     const blob = new Blob([JSON.stringify(themeData, null, 2)], {
       type: "application/json",
     });
@@ -100,10 +104,10 @@ export default function NodeShowcasePage() {
             Enhanced Node Components
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Beautiful, customizable, and interactive node components with smooth animations 
-            and modern design principles.
+            Beautiful, customizable, and interactive node components with smooth
+            animations and modern design principles.
           </p>
-          
+
           <div className="flex justify-center gap-4 mt-8">
             <Button
               onClick={() => setShowCustomizer(!showCustomizer)}
@@ -112,7 +116,7 @@ export default function NodeShowcasePage() {
               <Palette className="mr-2" size={16} />
               {showCustomizer ? "Hide" : "Show"} Customizer
             </Button>
-            
+
             <Button
               variant="outline"
               onClick={() => setAnimationsEnabled(!animationsEnabled)}
@@ -120,7 +124,7 @@ export default function NodeShowcasePage() {
               <Sparkles className="mr-2" size={16} />
               {animationsEnabled ? "Disable" : "Enable"} Animations
             </Button>
-            
+
             <Button variant="outline" onClick={exportTheme}>
               <Download className="mr-2" size={16} />
               Export Theme
@@ -155,15 +159,15 @@ export default function NodeShowcasePage() {
                             {theme.name}
                           </div>
                           <div className="flex gap-1">
-                            <div 
+                            <div
                               className="w-4 h-4 rounded border"
                               style={{ backgroundColor: theme.entry.color }}
                             />
-                            <div 
+                            <div
                               className="w-4 h-4 rounded border"
                               style={{ backgroundColor: theme.context.color }}
                             />
-                            <div 
+                            <div
                               className="w-4 h-4 rounded border"
                               style={{ backgroundColor: theme.branch.color }}
                             />
@@ -248,12 +252,15 @@ export default function NodeShowcasePage() {
               {/* Entry Node Section */}
               <div>
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">Entry Nodes</h2>
+                  <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                    Entry Nodes
+                  </h2>
                   <p className="text-slate-600">
-                    Starting points for conversation flows with engaging animations and clear indicators.
+                    Starting points for conversation flows with engaging
+                    animations and clear indicators.
                   </p>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-center justify-items-center">
                   <div className="transform scale-110">
                     <EntryNodeShowcase
@@ -271,7 +278,7 @@ export default function NodeShowcasePage() {
                       selected={false}
                     />
                   </div>
-                  
+
                   <div className="transform scale-110">
                     <EntryNodeShowcase
                       data={{
@@ -287,7 +294,7 @@ export default function NodeShowcasePage() {
                       selected={true}
                     />
                   </div>
-                  
+
                   <div className="transform scale-110">
                     <EntryNodeShowcase
                       data={{
@@ -309,12 +316,15 @@ export default function NodeShowcasePage() {
               {/* Context Node Section */}
               <div>
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">Context Nodes</h2>
+                  <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                    Context Nodes
+                  </h2>
                   <p className="text-slate-600">
-                    Data sources and knowledge bases with type indicators and flow animations.
+                    Data sources and knowledge bases with type indicators and
+                    flow animations.
                   </p>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-center justify-items-center">
                   <div className="transform scale-110">
                     <ContextNodeShowcase
@@ -333,7 +343,7 @@ export default function NodeShowcasePage() {
                       selected={false}
                     />
                   </div>
-                  
+
                   <div className="transform scale-110">
                     <ContextNodeShowcase
                       data={{
@@ -351,7 +361,7 @@ export default function NodeShowcasePage() {
                       selected={true}
                     />
                   </div>
-                  
+
                   <div className="transform scale-110">
                     <ContextNodeShowcase
                       data={{
@@ -375,12 +385,15 @@ export default function NodeShowcasePage() {
               {/* Branch Node Section */}
               <div>
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">Branch Nodes</h2>
+                  <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                    Branch Nodes
+                  </h2>
                   <p className="text-slate-600">
-                    Decision points with path indicators and dynamic branching animations.
+                    Decision points with path indicators and dynamic branching
+                    animations.
                   </p>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-center justify-items-center">
                   <div className="transform scale-110">
                     <BranchNodeShowcase
@@ -400,7 +413,7 @@ export default function NodeShowcasePage() {
                       selected={false}
                     />
                   </div>
-                  
+
                   <div className="transform scale-110">
                     <BranchNodeShowcase
                       data={{
@@ -419,7 +432,7 @@ export default function NodeShowcasePage() {
                       selected={true}
                     />
                   </div>
-                  
+
                   <div className="transform scale-110">
                     <BranchNodeShowcase
                       data={{
@@ -447,43 +460,51 @@ export default function NodeShowcasePage() {
                   <h2 className="text-2xl font-bold text-slate-900 mb-6 text-center">
                     Enhanced Features
                   </h2>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="text-center">
                       <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
                         <Sparkles className="text-blue-600" size={20} />
                       </div>
-                      <h3 className="font-semibold text-slate-900 mb-2">Smooth Animations</h3>
+                      <h3 className="font-semibold text-slate-900 mb-2">
+                        Smooth Animations
+                      </h3>
                       <p className="text-sm text-slate-600">
                         Fluid transitions and engaging micro-interactions
                       </p>
                     </div>
-                    
+
                     <div className="text-center">
                       <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-3">
                         <Palette className="text-purple-600" size={20} />
                       </div>
-                      <h3 className="font-semibold text-slate-900 mb-2">Full Customization</h3>
+                      <h3 className="font-semibold text-slate-900 mb-2">
+                        Full Customization
+                      </h3>
                       <p className="text-sm text-slate-600">
                         Colors, styles, sizes, and effects - all configurable
                       </p>
                     </div>
-                    
+
                     <div className="text-center">
                       <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3">
                         <Settings className="text-green-600" size={20} />
                       </div>
-                      <h3 className="font-semibold text-slate-900 mb-2">Smart Interactions</h3>
+                      <h3 className="font-semibold text-slate-900 mb-2">
+                        Smart Interactions
+                      </h3>
                       <p className="text-sm text-slate-600">
                         Context-aware hover states and click feedback
                       </p>
                     </div>
-                    
+
                     <div className="text-center">
                       <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-3">
                         <Eye className="text-orange-600" size={20} />
                       </div>
-                      <h3 className="font-semibold text-slate-900 mb-2">Visual Feedback</h3>
+                      <h3 className="font-semibold text-slate-900 mb-2">
+                        Visual Feedback
+                      </h3>
                       <p className="text-sm text-slate-600">
                         Clear status indicators and progress visualization
                       </p>

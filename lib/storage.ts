@@ -232,6 +232,45 @@ class StorageService {
       return false;
     }
   }
+
+  duplicateCanvas(originalCanvas: CanvasData, userId: string): CanvasData {
+    const duplicatedCanvas: CanvasData = {
+      ...originalCanvas,
+      _id: this.generateId(),
+      userId,
+      title: `${originalCanvas.title} (Copy)`,
+      createdAt: new Date().toISOString(),
+      primaryNodeId: this.generateId(), // Generate new primary node ID
+      nodes: originalCanvas.nodes.map((node, index) => ({
+        ...node,
+        _id: index === 0 ? this.generateId() : this.generateId(), // New IDs for all nodes
+        parentNodeId: undefined, // Clear parent relationships for the copy
+        forkedFromMessageId: undefined,
+        createdAt: new Date().toISOString(),
+      })),
+      edges: originalCanvas.edges.map(edge => ({
+        ...edge,
+        _id: this.generateId(),
+        createdAt: new Date().toISOString(),
+        // We'd need to map the old node IDs to new ones, but for simplicity, 
+        // we'll clear edges and let user reconnect them
+      }))
+    };
+
+    // Update the primary node ID to match the first node's new ID
+    if (duplicatedCanvas.nodes.length > 0) {
+      duplicatedCanvas.primaryNodeId = duplicatedCanvas.nodes[0]._id;
+    }
+
+    // Clear edges for now to avoid broken references
+    duplicatedCanvas.edges = [];
+
+    return duplicatedCanvas;
+  }
+
+  private generateId(): string {
+    return Math.random().toString(36).substr(2, 9);
+  }
 }
 
 export const storageService = new StorageService();

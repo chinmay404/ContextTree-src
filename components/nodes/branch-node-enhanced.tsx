@@ -40,7 +40,10 @@ interface BranchNodeData {
   activeThreads?: number;
 }
 
-export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>) {
+export function BranchNodeEnhanced({
+  data,
+  selected,
+}: NodeProps<BranchNodeData>) {
   const [hovered, setHovered] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [branchAnimation, setBranchAnimation] = useState(false);
@@ -77,9 +80,24 @@ export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>
 
   // Size configurations
   const sizeConfig = {
-    small: { width: "min-w-[180px] max-w-[210px]", padding: "p-4", iconSize: 16, titleSize: "text-sm" },
-    medium: { width: "min-w-[210px] max-w-[250px]", padding: "p-5", iconSize: 18, titleSize: "text-base" },
-    large: { width: "min-w-[280px] max-w-[320px]", padding: "p-6", iconSize: 20, titleSize: "text-lg" },
+    small: {
+      width: "min-w-[180px] max-w-[210px]",
+      padding: "p-4",
+      iconSize: 16,
+      titleSize: "text-sm",
+    },
+    medium: {
+      width: "min-w-[210px] max-w-[250px]",
+      padding: "p-5",
+      iconSize: 18,
+      titleSize: "text-base",
+    },
+    large: {
+      width: "min-w-[280px] max-w-[320px]",
+      padding: "p-6",
+      iconSize: 20,
+      titleSize: "text-lg",
+    },
   };
 
   const config = sizeConfig[nodeSize];
@@ -87,7 +105,7 @@ export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>
   // Style configurations
   const getStyleClasses = () => {
     const baseClasses = `${config.width} cursor-pointer relative overflow-hidden transition-all duration-500 transform-gpu`;
-    
+
     switch (nodeStyle) {
       case "minimal":
         return `${baseClasses} border-2 border-slate-200 bg-white shadow-sm hover:shadow-md`;
@@ -145,21 +163,31 @@ export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>
         style={{
           borderRadius: `${borderRadius}px`,
           ringColor: `${dotColor}40`,
-          boxShadow: selected || data.isSelected
-            ? `0 0 0 4px ${dotColor}20, 0 0 32px -4px ${dotColor}50, 0 20px 40px -12px ${dotColor}30`
-            : undefined,
+          boxShadow:
+            selected || data.isSelected
+              ? `0 0 0 4px ${dotColor}20, 0 0 32px -4px ${dotColor}50, 0 20px 40px -12px ${dotColor}30`
+              : undefined,
         }}
       />
 
       {/* Branch Lines Animation */}
       {branchAnimation && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ borderRadius: `${borderRadius}px` }}>
+        <div
+          className="absolute inset-0 pointer-events-none overflow-hidden"
+          style={{ borderRadius: `${borderRadius}px` }}
+        >
           {/* Animated branch lines */}
           <svg className="absolute inset-0 w-full h-full opacity-30">
             <defs>
-              <linearGradient id="branchGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={dotColor} stopOpacity="0.8"/>
-                <stop offset="100%" stopColor={dotColor} stopOpacity="0.1"/>
+              <linearGradient
+                id="branchGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop offset="0%" stopColor={dotColor} stopOpacity="0.8" />
+                <stop offset="100%" stopColor={dotColor} stopOpacity="0.1" />
               </linearGradient>
             </defs>
             {Array.from({ length: 3 }).map((_, i) => (
@@ -179,7 +207,10 @@ export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>
 
       {/* Floating Connection Indicators */}
       {(hovered || selected || data.isSelected) && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ borderRadius: `${borderRadius}px` }}>
+        <div
+          className="absolute inset-0 pointer-events-none overflow-hidden"
+          style={{ borderRadius: `${borderRadius}px` }}
+        >
           {Array.from({ length: branchCount || 2 }).map((_, i) => (
             <div
               key={i}
@@ -207,47 +238,65 @@ export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>
         onMouseLeave={() => setHovered(false)}
         style={{
           ...getBackgroundStyle(),
-          boxShadow: selected || data.isSelected
-            ? `0 25px 50px -12px ${dotColor}25, 0 0 0 1px ${dotColor}20`
-            : hovered
-            ? `0 20px 40px -8px ${dotColor}20`
-            : undefined,
+          boxShadow:
+            selected || data.isSelected
+              ? `0 25px 50px -12px ${dotColor}25, 0 0 0 1px ${dotColor}20`
+              : hovered
+              ? `0 20px 40px -8px ${dotColor}20`
+              : undefined,
         }}
       >
         {/* Background Pattern */}
         {nodeStyle !== "minimal" && (
           <div className="absolute inset-0 opacity-[0.03]">
-            <div className="absolute top-0 right-0 w-28 h-28 rounded-full -translate-y-14 translate-x-14" style={{ backgroundColor: dotColor }} />
-            <div className="absolute bottom-0 left-0 w-16 h-16 rounded-full translate-y-8 -translate-x-8" style={{ backgroundColor: dotColor }} />
-            
+            <div
+              className="absolute top-0 right-0 w-28 h-28 rounded-full -translate-y-14 translate-x-14"
+              style={{ backgroundColor: dotColor }}
+            />
+            <div
+              className="absolute bottom-0 left-0 w-16 h-16 rounded-full translate-y-8 -translate-x-8"
+              style={{ backgroundColor: dotColor }}
+            />
+
             {/* Branch pattern */}
-            <div className={`absolute inset-0 flex items-center justify-center opacity-5 transition-transform duration-1000 ${branchAnimation ? "rotate-6" : "rotate-0"}`}>
+            <div
+              className={`absolute inset-0 flex items-center justify-center opacity-5 transition-transform duration-1000 ${
+                branchAnimation ? "rotate-6" : "rotate-0"
+              }`}
+            >
               <Route size={70} style={{ color: dotColor }} />
             </div>
           </div>
         )}
 
         {/* Subtle Light Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/8 via-transparent to-transparent" style={{ borderRadius: `${borderRadius}px` }} />
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-white/8 via-transparent to-transparent"
+          style={{ borderRadius: `${borderRadius}px` }}
+        />
 
         {/* Branch Tier Indicator */}
         <div className="absolute top-3 left-3">
           <div className="flex gap-1">
-            {Array.from({ length: (data.highlightTier || 0) + 1 }).map((_, i) => (
-              <div
-                key={i}
-                className="w-1 h-6 rounded-full opacity-60"
-                style={{ backgroundColor: dotColor }}
-              />
-            ))}
+            {Array.from({ length: (data.highlightTier || 0) + 1 }).map(
+              (_, i) => (
+                <div
+                  key={i}
+                  className="w-1 h-6 rounded-full opacity-60"
+                  style={{ backgroundColor: dotColor }}
+                />
+              )
+            )}
           </div>
         </div>
 
         {/* Activity Indicator */}
         <div className="absolute top-3 right-3">
-          <div className={`flex items-center gap-1 transition-all duration-300 ${
-            activeThreads > 1 ? "opacity-100" : "opacity-60"
-          }`}>
+          <div
+            className={`flex items-center gap-1 transition-all duration-300 ${
+              activeThreads > 1 ? "opacity-100" : "opacity-60"
+            }`}
+          >
             <Share2 size={12} style={{ color: dotColor }} />
             <span className="text-xs font-medium" style={{ color: textColor }}>
               {activeThreads}
@@ -258,9 +307,13 @@ export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>
         {/* Main Content */}
         <div className={`relative ${config.padding}`}>
           {/* Settings Button */}
-          <div className={`absolute top-0 right-0 transition-all duration-300 ${
-            hovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
-          }`}>
+          <div
+            className={`absolute top-0 right-0 transition-all duration-300 ${
+              hovered
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-2 pointer-events-none"
+            }`}
+          >
             <button
               className="bg-white/95 backdrop-blur-sm border border-slate-200/60 rounded-xl p-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:bg-white hover:scale-110 group"
               onClick={(e) => {
@@ -297,14 +350,14 @@ export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>
                   borderRadius: `${borderRadius * 0.6}px`,
                 }}
               />
-              
+
               {/* Main Icon */}
               <GitBranch
                 className="relative z-10 transition-all duration-300 group-hover:scale-110"
                 size={config.iconSize}
                 style={{ color: dotColor }}
               />
-              
+
               {/* Branch Animation Indicator */}
               {branchAnimation && (
                 <div className="absolute -top-1 -right-1">
@@ -324,10 +377,13 @@ export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>
               >
                 {data.label || "Branch Point"}
               </h3>
-              
+
               <div className="flex items-center gap-2 mb-2">
                 <Route size={12} style={{ color: dotColor }} />
-                <span className="text-xs font-medium opacity-80" style={{ color: textColor }}>
+                <span
+                  className="text-xs font-medium opacity-80"
+                  style={{ color: textColor }}
+                >
                   Decision Branch
                 </span>
               </div>
@@ -338,14 +394,20 @@ export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="flex items-center gap-2">
               <MessageCircle size={12} style={{ color: dotColor }} />
-              <span className="text-sm font-medium" style={{ color: textColor }}>
+              <span
+                className="text-sm font-medium"
+                style={{ color: textColor }}
+              >
                 {data.messageCount}
               </span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Users size={12} style={{ color: dotColor }} />
-              <span className="text-sm font-medium" style={{ color: textColor }}>
+              <span
+                className="text-sm font-medium"
+                style={{ color: textColor }}
+              >
                 {branchCount} paths
               </span>
             </div>
@@ -362,9 +424,12 @@ export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>
             >
               {model}
             </Badge>
-            
+
             {activeThreads > 1 && (
-              <div className="flex items-center gap-1 text-xs" style={{ color: textColor }}>
+              <div
+                className="flex items-center gap-1 text-xs"
+                style={{ color: textColor }}
+              >
                 <Zap size={10} style={{ color: dotColor }} />
                 <span>Active</span>
               </div>
@@ -388,17 +453,19 @@ export function BranchNodeEnhanced({ data, selected }: NodeProps<BranchNodeData>
           )}
 
           {/* Activity Footer */}
-          <div className="flex items-center justify-between text-xs" style={{ color: `${textColor}80` }}>
+          <div
+            className="flex items-center justify-between text-xs"
+            style={{ color: `${textColor}80` }}
+          >
             <div className="flex items-center gap-1">
               <Clock size={10} />
               <span>
-                {data.lastMessageAt ? 
-                  new Date(data.lastMessageAt).toLocaleDateString() : 
-                  "No activity"
-                }
+                {data.lastMessageAt
+                  ? new Date(data.lastMessageAt).toLocaleDateString()
+                  : "No activity"}
               </span>
             </div>
-            
+
             {hovered && (
               <div className="flex items-center gap-1 animate-fade-in">
                 <ArrowRight size={10} />

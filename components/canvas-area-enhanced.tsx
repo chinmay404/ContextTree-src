@@ -84,9 +84,11 @@ export function CanvasAreaEnhanced({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [canvas, setCanvas] = useState<CanvasData | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
-  
+
   // Enhanced customization states
-  const [customizingNodeId, setCustomizingNodeId] = useState<string | null>(null);
+  const [customizingNodeId, setCustomizingNodeId] = useState<string | null>(
+    null
+  );
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
   const [nodeNameInput, setNodeNameInput] = useState<string>("");
@@ -97,7 +99,9 @@ export function CanvasAreaEnhanced({
 
   // Animation and effects
   const [isCreatingNode, setIsCreatingNode] = useState(false);
-  const [lastCreatedNodeId, setLastCreatedNodeId] = useState<string | null>(null);
+  const [lastCreatedNodeId, setLastCreatedNodeId] = useState<string | null>(
+    null
+  );
 
   // Batched updates
   const parentUpdateQueueRef = useRef<Record<string, any>>({});
@@ -156,7 +160,8 @@ export function CanvasAreaEnhanced({
               dotColor: node.dotColor || getDefaultDotColor(node.type),
               size: node.size || "medium",
               style: node.style || "modern",
-              borderRadius: node.borderRadius || getDefaultBorderRadius(node.type),
+              borderRadius:
+                node.borderRadius || getDefaultBorderRadius(node.type),
               opacity: node.opacity || 100,
               // Enhanced properties
               model: node.model || "gpt-4",
@@ -171,7 +176,9 @@ export function CanvasAreaEnhanced({
             },
             style: {
               background: node.color || getDefaultNodeColor(node.type),
-              borderRadius: `${node.borderRadius || getDefaultBorderRadius(node.type)}px`,
+              borderRadius: `${
+                node.borderRadius || getDefaultBorderRadius(node.type)
+              }px`,
             },
           }));
 
@@ -302,7 +309,7 @@ export function CanvasAreaEnhanced({
 
       try {
         const colorScheme = getColorScheme(customData.color);
-        
+
         // Update backend
         await fetch(`/api/canvases/${canvasId}/nodes/${nodeId}`, {
           method: "PATCH",
@@ -400,7 +407,7 @@ export function CanvasAreaEnhanced({
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       onEdgesChange(changes);
-      
+
       changes.forEach((change) => {
         if (change.type === "select") {
           setSelectedEdge(change.selected ? change.id : null);
@@ -428,7 +435,7 @@ export function CanvasAreaEnhanced({
         if (!response.ok) throw new Error("Failed to create edge");
 
         const newEdge = await response.json();
-        
+
         const flowEdge: Edge = {
           id: newEdge._id,
           source: connection.source,
@@ -468,48 +475,70 @@ export function CanvasAreaEnhanced({
   // Helper functions
   const getDefaultNodeColor = (type: string) => {
     switch (type) {
-      case "entry": return "#f0f9ff";
-      case "branch": return "#f0fdf4"; 
-      case "context": return "#f3e8ff";
-      default: return "#f8fafc";
+      case "entry":
+        return "#f0f9ff";
+      case "branch":
+        return "#f0fdf4";
+      case "context":
+        return "#f3e8ff";
+      default:
+        return "#f8fafc";
     }
   };
 
   const getDefaultTextColor = (type: string) => {
     switch (type) {
-      case "entry": return "#0f172a";
-      case "branch": return "#14532d";
-      case "context": return "#7c3aed";
-      default: return "#475569";
+      case "entry":
+        return "#0f172a";
+      case "branch":
+        return "#14532d";
+      case "context":
+        return "#7c3aed";
+      default:
+        return "#475569";
     }
   };
 
   const getDefaultDotColor = (type: string) => {
     switch (type) {
-      case "entry": return "#3b82f6";
-      case "branch": return "#16a34a";
-      case "context": return "#8b5cf6";
-      default: return "#64748b";
+      case "entry":
+        return "#3b82f6";
+      case "branch":
+        return "#16a34a";
+      case "context":
+        return "#8b5cf6";
+      default:
+        return "#64748b";
     }
   };
 
   const getDefaultBorderRadius = (type: string) => {
     switch (type) {
-      case "entry": return 20;
-      case "branch": return 20;
-      case "context": return 24;
-      default: return 16;
+      case "entry":
+        return 20;
+      case "branch":
+        return 20;
+      case "context":
+        return 24;
+      default:
+        return 16;
     }
   };
 
   const getDefaultNodeName = (type: string) => {
     switch (type) {
-      case "entry": return "Entry Point";
-      case "branch": return "Branch Point";
-      case "context": return "Context Data";
-      case "user-message": return "User Input";
-      case "bot-response": return "Bot Response";
-      default: return "New Node";
+      case "entry":
+        return "Entry Point";
+      case "branch":
+        return "Branch Point";
+      case "context":
+        return "Context Data";
+      case "user-message":
+        return "User Input";
+      case "bot-response":
+        return "Bot Response";
+      default:
+        return "New Node";
     }
   };
 
@@ -618,7 +647,9 @@ export function CanvasAreaEnhanced({
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl border border-slate-200/80">
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-slate-700 font-medium">Creating node...</span>
+              <span className="text-slate-700 font-medium">
+                Creating node...
+              </span>
             </div>
           </div>
         </div>

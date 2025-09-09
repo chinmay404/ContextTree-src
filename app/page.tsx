@@ -161,6 +161,110 @@ export default function ContextTreePage() {
     setSelectedNodeName(undefined);
   };
 
+  const handleDeleteCanvas = async (canvasId: string) => {
+    if (!user?.email) return;
+
+    try {
+      // Remove from server
+      const response = await fetch(`/api/canvases/${canvasId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Remove from local storage
+        storageService.deleteCanvas(canvasId);
+        
+        // Update local state
+        const updatedCanvases = canvases.filter(canvas => canvas._id !== canvasId);
+        setCanvases(updatedCanvases);
+        
+        // If we deleted the selected canvas, select another one or none
+        if (selectedCanvas === canvasId) {
+          const nextCanvas = updatedCanvases[0];
+          setSelectedCanvas(nextCanvas ? nextCanvas._id : null);
+          setSelectedNode(null);
+          setSelectedNodeName(undefined);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to delete canvas", err);
+      // Fallback to local deletion
+      storageService.deleteCanvas(canvasId);
+      const updatedCanvases = canvases.filter(canvas => canvas._id !== canvasId);
+      setCanvases(updatedCanvases);
+      
+      if (selectedCanvas === canvasId) {
+        const nextCanvas = updatedCanvases[0];
+        setSelectedCanvas(nextCanvas ? nextCanvas._id : null);
+        setSelectedNode(null);
+        setSelectedNodeName(undefined);
+      }
+    }
+  };
+
+  const handleDuplicateCanvas = async (canvasId: string) => {
+    if (!user?.email) return;
+
+    const originalCanvas = canvases.find(canvas => canvas._id === canvasId);
+    if (!originalCanvas) return;
+
+    const duplicatedCanvas = storageService.duplicateCanvas(originalCanvas, user.email);
+    storageService.saveCanvas(duplicatedCanvas);
+
+    try {
+      const response = await fetch("/api/canvases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(duplicatedCanvas),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCanvases([...canvases, data.canvas]);
+      } else {
+        setCanvases([...canvases, duplicatedCanvas]);
+      }
+    } catch (err) {
+      console.error("Failed to save duplicated canvas", err);
+      setCanvases([...canvases, duplicatedCanvas]);
+    }
+  };
+
+  const handleRenameCanvas = async (canvasId: string, newTitle: string) => {
+    if (!user?.email || !newTitle.trim()) return;
+
+    const updatedCanvases = canvases.map(canvas => 
+      canvas._id === canvasId 
+        ? { ...canvas, title: newTitle.trim(), updatedAt: new Date().toISOString() }
+        : canvas
+    );
+    
+    setCanvases(updatedCanvases);
+
+    try {
+      const response = await fetch(`/api/canvases/${canvasId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle.trim() }),
+      });
+
+      if (!response.ok) {
+        // Revert on failure
+        setCanvases(canvases);
+      } else {
+        // Update local storage
+        const updatedCanvas = updatedCanvases.find(c => c._id === canvasId);
+        if (updatedCanvas) {
+          storageService.saveCanvas(updatedCanvas);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to rename canvas", err);
+      // Revert on failure
+      setCanvases(canvases);
+    }
+  };
+
   // Show loading state while authentication is being checked
   if (isLoading) {
     return (
@@ -291,6 +395,9 @@ export default function ContextTreePage() {
                 selectedCanvas={selectedCanvas || undefined}
                 onSelectCanvas={handleSelectCanvas}
                 onCreateCanvas={handleCreateCanvas}
+                onDeleteCanvas={handleDeleteCanvas}
+                onDuplicateCanvas={handleDuplicateCanvas}
+                onRenameCanvas={handleRenameCanvas}
               />
             </div>
           )}

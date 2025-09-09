@@ -18,22 +18,22 @@ const COLOR_PRESETS = [
   { name: "Ocean Blue", color: "#e0f2fe", text: "#0891b2", dot: "#06b6d4" },
   { name: "Sky Blue", color: "#dbeafe", text: "#1d4ed8", dot: "#3b82f6" },
   { name: "Midnight", color: "#1e293b", text: "#cbd5e1", dot: "#64748b" },
-  
+
   // Warm Purples
   { name: "Lavender", color: "#f3e8ff", text: "#7c3aed", dot: "#8b5cf6" },
   { name: "Royal Purple", color: "#e9d5ff", text: "#6b21a8", dot: "#a855f7" },
   { name: "Deep Purple", color: "#581c87", text: "#e9d5ff", dot: "#c084fc" },
-  
+
   // Fresh Greens
   { name: "Mint", color: "#dcfce7", text: "#14532d", dot: "#16a34a" },
   { name: "Emerald", color: "#d1fae5", text: "#065f46", dot: "#10b981" },
   { name: "Forest", color: "#14532d", text: "#dcfce7", dot: "#22c55e" },
-  
+
   // Warm Oranges
   { name: "Sunset", color: "#fed7aa", text: "#9a3412", dot: "#ea580c" },
   { name: "Amber", color: "#fef3c7", text: "#92400e", dot: "#f59e0b" },
   { name: "Peach", color: "#fecaca", text: "#991b1b", dot: "#ef4444" },
-  
+
   // Elegant Grays
   { name: "Silver", color: "#f8fafc", text: "#334155", dot: "#64748b" },
   { name: "Charcoal", color: "#374151", text: "#f9fafb", dot: "#9ca3af" },
@@ -41,19 +41,44 @@ const COLOR_PRESETS = [
 ];
 
 const GRADIENT_PRESETS = [
-  { name: "Ocean", gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" },
-  { name: "Sunset", gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" },
-  { name: "Forest", gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" },
-  { name: "Aurora", gradient: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)" },
-  { name: "Cosmic", gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" },
-  { name: "Fire", gradient: "linear-gradient(135deg, #ff9a56 0%, #ffad56 100%)" },
+  {
+    name: "Ocean",
+    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+  },
+  {
+    name: "Sunset",
+    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+  },
+  {
+    name: "Forest",
+    gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+  },
+  {
+    name: "Aurora",
+    gradient: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+  },
+  {
+    name: "Cosmic",
+    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+  },
+  {
+    name: "Fire",
+    gradient: "linear-gradient(135deg, #ff9a56 0%, #ffad56 100%)",
+  },
 ];
 
-export function ColorPicker({ value, onChange, label = "Color", showPreview = true }: ColorPickerProps) {
-  const [activeTab, setActiveTab] = useState<"presets" | "gradients" | "custom">("presets");
+export function ColorPicker({
+  value,
+  onChange,
+  label = "Color",
+  showPreview = true,
+}: ColorPickerProps) {
+  const [activeTab, setActiveTab] = useState<
+    "presets" | "gradients" | "custom"
+  >("presets");
   const [customColor, setCustomColor] = useState(value);
 
-  const handlePresetSelect = (preset: typeof COLOR_PRESETS[0]) => {
+  const handlePresetSelect = (preset: (typeof COLOR_PRESETS)[0]) => {
     onChange(preset.color);
   };
 
@@ -74,7 +99,7 @@ export function ColorPicker({ value, onChange, label = "Color", showPreview = tr
           {showPreview && (
             <div className="flex items-center gap-2">
               <Eye size={14} className="text-slate-500" />
-              <div 
+              <div
                 className="w-6 h-6 rounded-lg border-2 border-white shadow-md"
                 style={{ backgroundColor: value }}
               />
@@ -130,7 +155,7 @@ export function ColorPicker({ value, onChange, label = "Color", showPreview = tr
                       {preset.name}
                     </Badge>
                   </div>
-                  <div 
+                  <div
                     className="absolute top-2 right-2 w-3 h-3 rounded-full border border-white/50"
                     style={{ backgroundColor: preset.dot }}
                   />
@@ -184,12 +209,23 @@ export function ColorPicker({ value, onChange, label = "Color", showPreview = tr
                   />
                 </div>
               </div>
-              
+
               {/* Quick Custom Colors */}
               <div className="space-y-2">
-                <span className="text-sm font-medium text-slate-700">Recent Colors</span>
+                <span className="text-sm font-medium text-slate-700">
+                  Recent Colors
+                </span>
                 <div className="flex gap-2 flex-wrap">
-                  {["#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#feca57", "#ff9ff3", "#54a0ff", "#5f27cd"].map((color) => (
+                  {[
+                    "#ff6b6b",
+                    "#4ecdc4",
+                    "#45b7d1",
+                    "#96ceb4",
+                    "#feca57",
+                    "#ff9ff3",
+                    "#54a0ff",
+                    "#5f27cd",
+                  ].map((color) => (
                     <button
                       key={color}
                       onClick={() => handleCustomColorChange(color)}

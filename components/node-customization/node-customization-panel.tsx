@@ -7,17 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { 
-  X, 
-  Palette, 
-  Type, 
-  Layers, 
-  Sparkles, 
+import {
+  X,
+  Palette,
+  Type,
+  Layers,
+  Sparkles,
   Settings,
   Eye,
   RotateCcw,
   Save,
-  Wand2
+  Wand2,
 } from "lucide-react";
 import { ColorPicker } from "./color-picker";
 
@@ -44,39 +44,41 @@ const SIZE_OPTIONS = [
 ];
 
 const STYLE_OPTIONS = [
-  { 
-    id: "minimal", 
-    label: "Minimal", 
+  {
+    id: "minimal",
+    label: "Minimal",
     description: "Clean and simple",
-    preview: "border border-slate-200 bg-white"
+    preview: "border border-slate-200 bg-white",
   },
-  { 
-    id: "modern", 
-    label: "Modern", 
+  {
+    id: "modern",
+    label: "Modern",
     description: "Sleek with shadows",
-    preview: "border-0 bg-white shadow-lg"
+    preview: "border-0 bg-white shadow-lg",
   },
-  { 
-    id: "glass", 
-    label: "Glass", 
+  {
+    id: "glass",
+    label: "Glass",
     description: "Frosted glass effect",
-    preview: "border border-white/20 bg-white/80 backdrop-blur-md"
+    preview: "border border-white/20 bg-white/80 backdrop-blur-md",
   },
-  { 
-    id: "gradient", 
-    label: "Gradient", 
+  {
+    id: "gradient",
+    label: "Gradient",
     description: "Vibrant gradients",
-    preview: "border-0 bg-gradient-to-br from-blue-400 to-purple-500"
+    preview: "border-0 bg-gradient-to-br from-blue-400 to-purple-500",
   },
 ];
 
-export function NodeCustomizationPanel({ 
-  nodeId, 
-  currentData, 
-  onSave, 
-  onClose 
+export function NodeCustomizationPanel({
+  nodeId,
+  currentData,
+  onSave,
+  onClose,
 }: NodeCustomizationPanelProps) {
-  const [activeTab, setActiveTab] = useState<"appearance" | "layout" | "effects">("appearance");
+  const [activeTab, setActiveTab] = useState<
+    "appearance" | "layout" | "effects"
+  >("appearance");
   const [formData, setFormData] = useState({
     label: currentData.label || "",
     color: currentData.color || "#f8fafc",
@@ -87,11 +89,11 @@ export function NodeCustomizationPanel({
     size: currentData.size || "medium",
     style: currentData.style || "modern",
   });
-  
+
   const [previewMode, setPreviewMode] = useState(false);
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSave = () => {
@@ -103,7 +105,7 @@ export function NodeCustomizationPanel({
     setFormData({
       label: currentData.label || "",
       color: "#f8fafc",
-      textColor: "#1e293b", 
+      textColor: "#1e293b",
       dotColor: "#6366f1",
       borderRadius: 16,
       opacity: 100,
@@ -121,11 +123,11 @@ export function NodeCustomizationPanel({
       { color: "#fecaca", textColor: "#991b1b", dotColor: "#ef4444" },
     ];
     const randomTheme = themes[Math.floor(Math.random() * themes.length)];
-    setFormData(prev => ({ ...prev, ...randomTheme }));
+    setFormData((prev) => ({ ...prev, ...randomTheme }));
   };
 
   const NodePreview = () => (
-    <Card 
+    <Card
       className={`w-48 h-28 relative overflow-hidden transition-all duration-300 ${
         formData.style === "glass" ? "backdrop-blur-md" : ""
       }`}
@@ -134,18 +136,18 @@ export function NodeCustomizationPanel({
         borderRadius: `${formData.borderRadius}px`,
         opacity: formData.opacity / 100,
         ...(formData.style === "gradient" && {
-          background: `linear-gradient(135deg, ${formData.color}, ${formData.dotColor})`
-        })
+          background: `linear-gradient(135deg, ${formData.color}, ${formData.dotColor})`,
+        }),
       }}
     >
       <div className="p-4">
         <div className="flex items-center gap-3 mb-2">
-          <div 
+          <div
             className="w-6 h-6 rounded-full shadow-sm"
             style={{ backgroundColor: formData.dotColor }}
           />
           <div className="flex-1">
-            <h4 
+            <h4
               className="font-medium text-sm truncate"
               style={{ color: formData.textColor }}
             >
@@ -153,11 +155,11 @@ export function NodeCustomizationPanel({
             </h4>
           </div>
         </div>
-        <Badge 
-          className="text-xs" 
-          style={{ 
+        <Badge
+          className="text-xs"
+          style={{
             backgroundColor: `${formData.dotColor}20`,
-            color: formData.textColor 
+            color: formData.textColor,
           }}
         >
           Preview
@@ -191,7 +193,9 @@ export function NodeCustomizationPanel({
             {/* Preview */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-slate-700">Preview</span>
+                <span className="text-sm font-medium text-slate-700">
+                  Preview
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -266,7 +270,9 @@ export function NodeCustomizationPanel({
                     </Label>
                     <Input
                       value={formData.label}
-                      onChange={(e) => handleInputChange("label", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("label", e.target.value)
+                      }
                       placeholder="Enter node label..."
                       className="bg-white border-slate-200 focus:border-slate-400 rounded-xl"
                     />
@@ -275,28 +281,38 @@ export function NodeCustomizationPanel({
                   {/* Colors */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium text-slate-700">Background</Label>
+                      <Label className="text-sm font-medium text-slate-700">
+                        Background
+                      </Label>
                       <ColorPicker
                         value={formData.color}
                         onChange={(color) => handleInputChange("color", color)}
                         label="Background Color"
                       />
                     </div>
-                    
+
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium text-slate-700">Text Color</Label>
+                      <Label className="text-sm font-medium text-slate-700">
+                        Text Color
+                      </Label>
                       <ColorPicker
                         value={formData.textColor}
-                        onChange={(color) => handleInputChange("textColor", color)}
+                        onChange={(color) =>
+                          handleInputChange("textColor", color)
+                        }
                         label="Text Color"
                       />
                     </div>
-                    
+
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium text-slate-700">Accent Color</Label>
+                      <Label className="text-sm font-medium text-slate-700">
+                        Accent Color
+                      </Label>
                       <ColorPicker
                         value={formData.dotColor}
-                        onChange={(color) => handleInputChange("dotColor", color)}
+                        onChange={(color) =>
+                          handleInputChange("dotColor", color)
+                        }
                         label="Accent Color"
                       />
                     </div>
@@ -304,7 +320,9 @@ export function NodeCustomizationPanel({
 
                   {/* Style Options */}
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium text-slate-700">Style</Label>
+                    <Label className="text-sm font-medium text-slate-700">
+                      Style
+                    </Label>
                     <div className="grid grid-cols-2 gap-3">
                       {STYLE_OPTIONS.map((style) => (
                         <button
@@ -316,9 +334,15 @@ export function NodeCustomizationPanel({
                               : "border-slate-200 hover:border-slate-300"
                           }`}
                         >
-                          <div className={`w-full h-12 rounded-lg mb-2 ${style.preview}`} />
-                          <div className="font-medium text-sm text-slate-900">{style.label}</div>
-                          <div className="text-xs text-slate-500">{style.description}</div>
+                          <div
+                            className={`w-full h-12 rounded-lg mb-2 ${style.preview}`}
+                          />
+                          <div className="font-medium text-sm text-slate-900">
+                            {style.label}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {style.description}
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -330,7 +354,9 @@ export function NodeCustomizationPanel({
                 <div className="space-y-6">
                   {/* Size Options */}
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium text-slate-700">Size</Label>
+                    <Label className="text-sm font-medium text-slate-700">
+                      Size
+                    </Label>
                     <div className="grid grid-cols-3 gap-3">
                       {SIZE_OPTIONS.map((size) => (
                         <button
@@ -342,8 +368,12 @@ export function NodeCustomizationPanel({
                               : "border-slate-200 hover:border-slate-300"
                           }`}
                         >
-                          <div className="font-medium text-sm text-slate-900">{size.label}</div>
-                          <div className="text-xs text-slate-500">{size.width}px</div>
+                          <div className="font-medium text-sm text-slate-900">
+                            {size.label}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {size.width}px
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -356,7 +386,9 @@ export function NodeCustomizationPanel({
                     </Label>
                     <Slider
                       value={[formData.borderRadius]}
-                      onValueChange={([value]) => handleInputChange("borderRadius", value)}
+                      onValueChange={([value]) =>
+                        handleInputChange("borderRadius", value)
+                      }
                       max={32}
                       min={0}
                       step={2}
@@ -375,7 +407,9 @@ export function NodeCustomizationPanel({
                     </Label>
                     <Slider
                       value={[formData.opacity]}
-                      onValueChange={([value]) => handleInputChange("opacity", value)}
+                      onValueChange={([value]) =>
+                        handleInputChange("opacity", value)
+                      }
                       max={100}
                       min={10}
                       step={5}
