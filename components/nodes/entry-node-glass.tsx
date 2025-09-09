@@ -281,51 +281,35 @@ export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
           )}
         </div>
 
-        {/* Flexible Connection Handles */}
+        {/* Invisible Connection Handles */}
         {/* Target handles (inputs) */}
         <Handle
           type="target"
           position={Position.Left}
           id="left"
-          className="!w-3 !h-3 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
-          style={{
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
-            top: "30%",
-          }}
+          className="!w-0 !h-0 !border-0 !opacity-0"
+          style={{ top: "30%" }}
         />
         <Handle
           type="target"
           position={Position.Left}
           id="left-center"
-          className="!w-3 !h-3 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
-          style={{
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
-            top: "50%",
-          }}
+          className="!w-0 !h-0 !border-0 !opacity-0"
+          style={{ top: "50%" }}
         />
         <Handle
           type="target"
           position={Position.Left}
           id="left-bottom"
-          className="!w-3 !h-3 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
-          style={{
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
-            top: "70%",
-          }}
+          className="!w-0 !h-0 !border-0 !opacity-0"
+          style={{ top: "70%" }}
         />
         <Handle
           type="target"
           position={Position.Top}
           id="top"
-          className="!w-3 !h-3 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
-          style={{
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
-            left: "50%",
-          }}
+          className="!w-0 !h-0 !border-0 !opacity-0"
+          style={{ left: "50%" }}
         />
 
         {/* Source handles (outputs) */}
@@ -333,67 +317,43 @@ export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
           type="source"
           position={Position.Right}
           id="right"
-          className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
-          style={{
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
-            top: "30%",
-          }}
+          className="!w-0 !h-0 !border-0 !opacity-0"
+          style={{ top: "30%" }}
         />
         <Handle
           type="source"
           position={Position.Right}
           id="right-center"
-          className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
-          style={{
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
-            top: "50%",
-          }}
+          className="!w-0 !h-0 !border-0 !opacity-0"
+          style={{ top: "50%" }}
         />
         <Handle
           type="source"
           position={Position.Right}
           id="right-bottom"
-          className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
-          style={{
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
-            top: "70%",
-          }}
+          className="!w-0 !h-0 !border-0 !opacity-0"
+          style={{ top: "70%" }}
         />
         <Handle
           type="source"
           position={Position.Bottom}
           id="bottom"
-          className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
-          style={{
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
-            left: "30%",
-          }}
+          className="!w-0 !h-0 !border-0 !opacity-0"
+          style={{ left: "30%" }}
         />
         <Handle
           type="source"
           position={Position.Bottom}
           id="bottom-center"
-          className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
-          style={{
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
-            left: "50%",
-          }}
+          className="!w-0 !h-0 !border-0 !opacity-0"
+          style={{ left: "50%" }}
         />
         <Handle
           type="source"
           position={Position.Bottom}
           id="bottom-right"
-          className="!w-4 !h-4 !border-2 !border-white !shadow-lg !transition-all !duration-300 hover:!scale-125"
-          style={{
-            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-            boxShadow: "0 0 12px rgba(59, 130, 246, 0.4)",
-            left: "70%",
-          }}
+          className="!w-0 !h-0 !border-0 !opacity-0"
+          style={{ left: "70%" }}
         />
       </Card>
     </div>
