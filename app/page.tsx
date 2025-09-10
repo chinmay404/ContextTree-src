@@ -295,31 +295,69 @@ export default function ContextTreePage() {
       {/* Header */}
       <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur-sm px-6 py-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
-              className="text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-            >
-              {leftSidebarCollapsed ? (
-                <PanelLeftOpen className="h-4 w-4" />
-              ) : (
-                <PanelLeftClose className="h-4 w-4" />
-              )}
-            </Button>
-            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 text-slate-900 transition-transform duration-300 hover:scale-110">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 100 100"
+                xmlns="http://www.w3.org/2000/svg"
+                className="drop-shadow-sm"
+              >
+                {/* Root node (top) */}
+                <rect
+                  x="35"
+                  y="10"
+                  width="30"
+                  height="20"
+                  rx="4"
+                  ry="4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
+
+                {/* Connection lines */}
+                <path
+                  d="M50 30 L50 45 M35 55 L50 45 L65 55"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+
+                {/* Left child node */}
+                <rect
+                  x="15"
+                  y="65"
+                  width="25"
+                  height="20"
+                  rx="4"
+                  ry="4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
+
+                {/* Right child node */}
+                <rect
+                  x="60"
+                  y="65"
+                  width="25"
+                  height="20"
+                  rx="4"
+                  ry="4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-light text-slate-900 tracking-tight">
               ContextTree
             </h1>
           </div>
           <div className="flex items-center gap-4">
-            <Button
-              onClick={handleCreateCanvas}
-              className="gap-2 bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
-            >
-              <Plus className="h-4 w-4" />
-              New Canvas
-            </Button>
             <UserAuth />
           </div>
         </div>
@@ -327,69 +365,24 @@ export default function ContextTreePage() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Sidebar - Canvas List (collapsible) */}
-        <div
-          className={`group transition-all duration-300 ease-in-out border-r border-slate-200/60 bg-slate-50/30 backdrop-blur-sm flex flex-col shadow-sm overflow-hidden ${
-            leftSidebarCollapsed ? "w-16" : "w-80"
-          }`}
-        >
-          {leftSidebarCollapsed ? (
-            // Collapsed mini sidebar
-            <div className="flex-1 flex flex-col items-center py-4 px-2">
-              <div className="flex flex-col items-center gap-3 mb-6">
-                <button
-                  onClick={() => setLeftSidebarCollapsed(false)}
-                  className="w-8 h-8 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg flex items-center justify-center border border-slate-200/70 hover:from-slate-100 hover:to-slate-200 transition-colors"
-                  title="Expand canvases panel (Ctrl+Shift+L)"
-                >
-                  <PanelLeftOpen className="w-4 h-4 text-slate-600" />
-                </button>
-                {canvases.length > 0 && (
-                  <div className="text-[10px] font-medium text-slate-500 tracking-wide">
-                    {canvases.length}
-                  </div>
-                )}
-              </div>
-              {/* New Canvas Shortcut */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCreateCanvas}
-                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 p-0 w-8 h-8 rounded-lg"
-                title="Create canvas"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-              {/* Selected indicator */}
-              {selectedCanvas && (
-                <div className="mt-4 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              )}
-              {/* Spacer */}
-              <div className="mt-auto flex flex-col items-center gap-2 pb-2">
-                <span className="text-[10px] text-slate-400 rotate-180 [writing-mode:vertical-rl] select-none">
-                  CANVASES
-                </span>
-              </div>
-            </div>
-          ) : (
-            // Expanded full sidebar
-            <CanvasList
-              canvases={canvases.map((canvas) => ({
-                _id: canvas._id,
-                title: canvas.title,
-                createdAt: canvas.createdAt,
-                nodeCount: canvas.nodes.length,
-                metaTags: canvas.metaTags,
-              }))}
-              selectedCanvas={selectedCanvas || undefined}
-              onSelectCanvas={handleSelectCanvas}
-              onCreateCanvas={handleCreateCanvas}
-              onDeleteCanvas={handleDeleteCanvas}
-              onDuplicateCanvas={handleDuplicateCanvas}
-              onRenameCanvas={handleRenameCanvas}
-              onCollapse={() => setLeftSidebarCollapsed(true)}
-            />
-          )}
+        {/* Left Sidebar - Canvas List (always visible with premium styling) */}
+        <div className="w-80 transition-all duration-500 ease-out border-r border-slate-200/60 bg-gradient-to-b from-slate-50/30 to-white/50 backdrop-blur-sm flex flex-col shadow-sm overflow-hidden">
+          <CanvasList
+            canvases={canvases.map((canvas) => ({
+              _id: canvas._id,
+              title: canvas.title,
+              createdAt: canvas.createdAt,
+              nodeCount: canvas.nodes.length,
+              metaTags: canvas.metaTags,
+            }))}
+            selectedCanvas={selectedCanvas || undefined}
+            onSelectCanvas={handleSelectCanvas}
+            onCreateCanvas={handleCreateCanvas}
+            onDeleteCanvas={handleDeleteCanvas}
+            onDuplicateCanvas={handleDuplicateCanvas}
+            onRenameCanvas={handleRenameCanvas}
+            onCollapse={() => setLeftSidebarCollapsed(true)}
+          />
         </div>
 
         {/* Center Canvas */}
@@ -409,22 +402,22 @@ export default function ContextTreePage() {
               />
             </ReactFlowProvider>
           ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto">
-                  <Plus className="w-8 h-8 text-slate-400" />
+            <div className="flex items-center justify-center h-full bg-gradient-to-br from-slate-50/30 to-white/50">
+              <div className="text-center space-y-8 animate-in fade-in duration-500">
+                <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto shadow-sm">
+                  <Plus className="w-10 h-10 text-slate-400" />
                 </div>
                 <div>
-                  <p className="text-slate-600 text-lg font-medium mb-3">
+                  <p className="text-slate-900 text-xl font-light mb-4">
                     No canvas selected
                   </p>
-                  <p className="text-slate-400 text-sm mb-6 max-w-md">
+                  <p className="text-slate-500 text-base mb-8 max-w-md mx-auto font-light leading-relaxed">
                     Create your first canvas to start building conversational
-                    flows
+                    flows and organize your AI interactions
                   </p>
                   <Button
                     onClick={handleCreateCanvas}
-                    className="gap-2 bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
+                    className="gap-3 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-md px-6 py-3 rounded-xl font-light transition-all duration-300 hover:shadow-lg hover:scale-105"
                   >
                     <Plus className="h-4 w-4" />
                     Create Your First Canvas

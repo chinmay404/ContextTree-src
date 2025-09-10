@@ -19,7 +19,6 @@ import { useState, useEffect } from "react";
 
 interface ContextNodeData {
   label: string;
-  messageCount: number;
   isSelected: boolean;
   onClick?: () => void;
   onSettingsClick?: () => void;
@@ -262,24 +261,15 @@ export function ContextNodeGlass({
             </Badge>
           </div>
 
-          {/* Context Stats */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <MessageCircle size={12} className="text-purple-500" />
+          {/* Context Info */}
+          {data.dataSize && (
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Archive size={12} className="text-purple-500" />
               <span className="text-sm font-medium text-slate-700">
-                {data.messageCount || 0}
+                {data.dataSize}
               </span>
             </div>
-
-            {data.dataSize && (
-              <div className="flex items-center gap-2">
-                <Archive size={12} className="text-purple-500" />
-                <span className="text-sm font-medium text-slate-700">
-                  {data.dataSize}
-                </span>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Meta Tags */}
           {data.metaTags && data.metaTags.length > 0 && (

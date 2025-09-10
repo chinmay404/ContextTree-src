@@ -19,7 +19,6 @@ import { useState, useEffect } from "react";
 
 interface BranchNodeData {
   label: string;
-  messageCount: number;
   isSelected: boolean;
   onClick?: () => void;
   onSettingsClick?: () => void;
@@ -295,20 +294,11 @@ export function BranchNodeGlass({ data, selected }: NodeProps<BranchNodeData>) {
           </div>
 
           {/* Branch Stats */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <MessageCircle size={12} style={{ color: baseColor }} />
-              <span className="text-sm font-medium text-slate-700">
-                {data.messageCount || 0}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Share2 size={12} style={{ color: baseColor }} />
-              <span className="text-sm font-medium text-slate-700">
-                {data.branchCount || 2} paths
-              </span>
-            </div>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Share2 size={12} style={{ color: baseColor }} />
+            <span className="text-sm font-medium text-slate-700">
+              {data.branchCount || 2} paths
+            </span>
           </div>
 
           {/* Conditions Preview */}

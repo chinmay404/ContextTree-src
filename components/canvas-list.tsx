@@ -87,37 +87,17 @@ export function CanvasList({
     <div className="h-full flex flex-col bg-transparent">
       {/* Header */}
       <div className="p-4 border-b border-slate-200/40 bg-transparent">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 mb-1 tracking-tight">
+            <h2 className="text-xl font-light text-slate-900 mb-1 tracking-tight">
               Your Canvases
             </h2>
-            <p className="text-sm text-slate-500">
-              Manage and organize your conversation flows
-            </p>
           </div>
-          {onCollapse && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onCollapse}
-              className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80"
-              title="Collapse (Ctrl+Shift+L)"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs text-slate-500 bg-slate-100/80 px-2 py-1 rounded-full">
-            {canvases.length} canvases
-          </span>
         </div>
 
         <Button
           onClick={onCreateCanvas}
-          className="w-full gap-2 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-sm h-9 rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-md"
+          className="w-full gap-3 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-md h-11 rounded-xl text-sm font-light transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
         >
           <Plus className="h-4 w-4" />
           New Canvas
@@ -127,53 +107,56 @@ export function CanvasList({
       {/* Canvas List */}
       <div className="flex-1 overflow-hidden bg-transparent">
         <div className="h-full overflow-y-auto p-3 space-y-2">
-          {canvases.map((canvas) => (
+          {canvases.map((canvas, index) => (
             <Card
               key={canvas._id}
-              className={`group relative p-3 cursor-pointer transition-all duration-200 border-0 ${
+              className={`group relative p-4 cursor-pointer transition-all duration-300 ease-out border-0 ${
                 selectedCanvas === canvas._id
-                  ? "bg-slate-100/60 shadow-sm ring-1 ring-slate-200/60 scale-[1.01]"
-                  : "bg-white/40 backdrop-blur-sm hover:bg-white/70 hover:shadow-sm hover:ring-1 hover:ring-slate-200/40"
+                  ? "bg-gradient-to-br from-slate-100/80 to-white shadow-lg ring-2 ring-slate-200/60 scale-[1.02]"
+                  : "bg-white/60 backdrop-blur-sm hover:bg-white/90 hover:shadow-md hover:ring-1 hover:ring-slate-200/40 hover:scale-[1.01]"
               }`}
               onClick={() => onSelectCanvas(canvas._id)}
+              style={{
+                animationDelay: `${index * 50}ms`,
+              }}
             >
               {/* Main Content */}
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0 pr-2">
                   {/* Title Row */}
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-3 mb-3">
                     <div
-                      className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors ${
+                      className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all duration-300 ${
                         selectedCanvas === canvas._id
-                          ? "bg-slate-700 shadow-sm"
-                          : "bg-slate-400 group-hover:bg-slate-500"
+                          ? "bg-slate-700 shadow-sm ring-2 ring-slate-300/30"
+                          : "bg-slate-400 group-hover:bg-slate-500 group-hover:scale-110"
                       }`}
                     />
-                    <h4 className="font-medium text-slate-900 truncate text-sm leading-tight">
+                    <h4 className="font-light text-slate-900 truncate text-base leading-tight">
                       {canvas.title}
                     </h4>
                   </div>
 
                   {/* Meta Information */}
-                  <div className="flex items-center gap-3 text-xs text-slate-500 mb-2">
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-4 text-xs text-slate-500 mb-3">
+                    <div className="flex items-center gap-1.5">
                       <Calendar className="h-3 w-3" />
-                      <span>{formatDate(canvas.createdAt)}</span>
+                      <span className="font-light">{formatDate(canvas.createdAt)}</span>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <Hash className="h-3 w-3" />
-                      <span>{canvas.nodeCount} nodes</span>
+                      <span className="font-light">{canvas.nodeCount} nodes</span>
                     </div>
                   </div>
 
                   {/* Tags */}
                   {canvas.metaTags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {canvas.metaTags.slice(0, 2).map((tag) => (
                         <Badge
                           key={tag}
                           variant="outline"
-                          className="text-xs px-2 py-0.5 bg-slate-50/80 border-slate-200/80 text-slate-600 h-5 font-normal"
+                          className="text-xs px-2.5 py-1 bg-slate-50/90 border-slate-200/80 text-slate-600 h-6 font-light rounded-md"
                         >
                           {tag}
                         </Badge>
@@ -181,7 +164,7 @@ export function CanvasList({
                       {canvas.metaTags.length > 2 && (
                         <Badge
                           variant="outline"
-                          className="text-xs px-2 py-0.5 bg-slate-50/80 border-slate-200/80 text-slate-400 h-5 font-normal"
+                          className="text-xs px-2.5 py-1 bg-slate-50/90 border-slate-200/80 text-slate-400 h-6 font-light rounded-md"
                         >
                           +{canvas.metaTags.length - 2}
                         </Badge>
@@ -199,7 +182,7 @@ export function CanvasList({
                           e.stopPropagation();
                           e.preventDefault();
                         }}
-                        className="opacity-0 group-hover:opacity-100 transition-all duration-200 text-slate-400 hover:text-slate-600 p-1.5 rounded-md hover:bg-slate-100/80 focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                        className="opacity-0 group-hover:opacity-100 transition-all duration-300 text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-100/80 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-300/30"
                         title="Canvas options"
                       >
                         <MoreHorizontal className="h-4 w-4" />
@@ -275,23 +258,23 @@ export function CanvasList({
 
           {/* Empty State */}
           {canvases.length === 0 && (
-            <div className="text-center py-12 px-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                <FileText className="h-7 w-7 text-slate-400" />
+            <div className="text-center py-16 px-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <FileText className="h-8 w-8 text-slate-400" />
               </div>
-              <h3 className="text-slate-900 font-semibold text-sm mb-2">
+              <h3 className="text-slate-900 font-light text-lg mb-3">
                 No canvases yet
               </h3>
-              <p className="text-xs text-slate-500 mb-6 leading-relaxed max-w-xs mx-auto">
+              <p className="text-sm text-slate-500 mb-8 leading-relaxed max-w-xs mx-auto font-light">
                 Create your first canvas to start building conversation flows
                 and organize your AI interactions.
               </p>
               <Button
                 onClick={onCreateCanvas}
-                size="sm"
-                className="gap-2 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-sm text-xs font-medium"
+                size="default"
+                className="gap-3 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-md text-sm font-light px-6 py-3 rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-105"
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-4 w-4" />
                 Create Your First Canvas
               </Button>
             </div>

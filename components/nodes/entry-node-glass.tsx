@@ -17,7 +17,6 @@ import { useState, useEffect } from "react";
 
 interface EntryNodeData {
   label: string;
-  messageCount: number;
   isSelected: boolean;
   onClick?: () => void;
   onSettingsClick?: () => void;
@@ -230,24 +229,15 @@ export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
             </Badge>
           </div>
 
-          {/* Stats */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <MessageCircle size={12} className="text-blue-500" />
-              <span className="text-sm font-medium text-slate-700">
-                {data.messageCount || 0}
+          {/* Model Info */}
+          {data.model && (
+            <div className="flex items-center justify-center gap-1 mb-3">
+              <Sparkles size={10} className="text-blue-400" />
+              <span className="text-xs text-slate-600 font-medium">
+                {data.model}
               </span>
             </div>
-
-            {data.model && (
-              <div className="flex items-center gap-1">
-                <Sparkles size={10} className="text-blue-400" />
-                <span className="text-xs text-slate-600 font-medium">
-                  {data.model}
-                </span>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Meta Tags */}
           {data.metaTags && data.metaTags.length > 0 && (

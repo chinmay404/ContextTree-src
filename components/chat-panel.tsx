@@ -27,6 +27,10 @@ import {
 } from "lucide-react";
 import { storageService } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import "highlight.js/styles/github.css";
 
 const LLM_API_URL = process.env.NEXT_PUBLIC_LLM_API_URL || "";
 
@@ -568,14 +572,97 @@ export function ChatPanel({
                       : "bg-white border border-slate-200/50 text-slate-800 shadow-sm"
                   }`}
                 >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {message.content}
-                  </p>
+                  {isUser ? (
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap font-light">
+                      {message.content}
+                    </p>
+                  ) : (
+                    <div className="text-sm leading-relaxed font-light prose prose-sm max-w-none prose-slate prose-headings:font-light prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 prose-strong:font-medium prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeHighlight]}
+                        components={{
+                          h1: ({ children }) => (
+                            <h1 className="text-lg font-light text-slate-900 mt-4 mb-2 first:mt-0">
+                              {children}
+                            </h1>
+                          ),
+                          h2: ({ children }) => (
+                            <h2 className="text-base font-light text-slate-900 mt-3 mb-2 first:mt-0">
+                              {children}
+                            </h2>
+                          ),
+                          h3: ({ children }) => (
+                            <h3 className="text-sm font-medium text-slate-900 mt-3 mb-1 first:mt-0">
+                              {children}
+                            </h3>
+                          ),
+                          p: ({ children }) => (
+                            <p className="text-slate-700 mb-2 last:mb-0 font-light leading-relaxed">
+                              {children}
+                            </p>
+                          ),
+                          code: ({ children, className }) => {
+                            const isInlineCode = !className;
+                            if (isInlineCode) {
+                              return (
+                                <code className="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs font-mono">
+                                  {children}
+                                </code>
+                              );
+                            }
+                            return (
+                              <code className={className}>
+                                {children}
+                              </code>
+                            );
+                          },
+                          pre: ({ children }) => (
+                            <pre className="bg-slate-50 border border-slate-200 rounded-lg p-3 overflow-x-auto text-xs font-mono">
+                              {children}
+                            </pre>
+                          ),
+                          ul: ({ children }) => (
+                            <ul className="list-disc list-inside space-y-1 text-slate-700 font-light">
+                              {children}
+                            </ul>
+                          ),
+                          ol: ({ children }) => (
+                            <ol className="list-decimal list-inside space-y-1 text-slate-700 font-light">
+                              {children}
+                            </ol>
+                          ),
+                          li: ({ children }) => (
+                            <li className="text-slate-700 font-light">
+                              {children}
+                            </li>
+                          ),
+                          blockquote: ({ children }) => (
+                            <blockquote className="border-l-4 border-slate-300 pl-4 py-2 bg-slate-50 rounded-r-lg my-2">
+                              {children}
+                            </blockquote>
+                          ),
+                          strong: ({ children }) => (
+                            <strong className="font-medium text-slate-900">
+                              {children}
+                            </strong>
+                          ),
+                          em: ({ children }) => (
+                            <em className="italic text-slate-700">
+                              {children}
+                            </em>
+                          ),
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                   {!isUser && hovered && (
                     <div className="flex justify-end mt-2">
                       <button
                         onClick={handleFork}
-                        className="text-xs px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200/70 transition-colors"
+                        className="text-xs px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200/70 transition-colors font-light"
                         title="Fork new node from this AI response"
                       >
                         Fork Node
@@ -741,8 +828,8 @@ export function ChatPanel({
                 <div className="flex items-center gap-3 mb-1">
                   <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
                   <h3
-                    className={`font-semibold text-slate-900 truncate ${
-                      isFullscreen ? "text-xl" : "text-base"
+                    className={`font-light text-slate-900 truncate ${
+                      isFullscreen ? "text-xl" : "text-lg"
                     }`}
                   >
                     {selectedNode
@@ -750,7 +837,7 @@ export function ChatPanel({
                       : "Node Chat"}
                   </h3>
                 </div>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 font-light">
                   {selectedNode
                     ? `${
                         currentConversation?.messages?.length || 0
@@ -762,13 +849,13 @@ export function ChatPanel({
                 </p>
               </div>
 
-              <div className="flex items-center gap-1 ml-4">
+              <div className="flex items-center gap-2 ml-4">
                 {onToggleCollapse && !isFullscreen && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={onToggleCollapse}
-                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
                     title="Collapse chat panel"
                   >
                     <PanelRightClose size={18} />
@@ -780,7 +867,7 @@ export function ChatPanel({
                     variant="ghost"
                     size="sm"
                     onClick={onToggleFullscreen}
-                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
                     title={isFullscreen ? "Exit fullscreen" : "Fullscreen chat"}
                   >
                     {isFullscreen ? (
@@ -796,7 +883,7 @@ export function ChatPanel({
                     variant="ghost"
                     size="sm"
                     onClick={onClose}
-                    className="text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                    className="text-slate-400 hover:text-slate-600 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
                     title="Close chat"
                   >
                     <X size={18} />
@@ -898,23 +985,6 @@ export function ChatPanel({
                           ))}
                         </SelectContent>
                       </Select>
-
-                      {/* LLM API Status Indicator */}
-                      <div className="flex items-center gap-2 mt-1">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            LLM_API_URL && LLM_API_URL.trim() !== ""
-                              ? "bg-green-500"
-                              : "bg-red-500"
-                          }`}
-                        ></div>
-                        <span className="text-xs text-slate-500">
-                          LLM API:{" "}
-                          {LLM_API_URL && LLM_API_URL.trim() !== ""
-                            ? "Connected"
-                            : "Not configured"}
-                        </span>
-                      </div>
                     </div>
                   </div>
 
