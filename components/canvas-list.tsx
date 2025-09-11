@@ -141,11 +141,15 @@ export function CanvasList({
                   <div className="flex items-center gap-4 text-xs text-slate-500 mb-3">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-3 w-3" />
-                      <span className="font-light">{formatDate(canvas.createdAt)}</span>
+                      <span className="font-light">
+                        {formatDate(canvas.createdAt)}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Hash className="h-3 w-3" />
-                      <span className="font-light">{canvas.nodeCount} nodes</span>
+                      <span className="font-light">
+                        {canvas.nodeCount} nodes
+                      </span>
                     </div>
                   </div>
 

@@ -32,8 +32,6 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github.css";
 
-const LLM_API_URL = process.env.NEXT_PUBLIC_LLM_API_URL || "";
-
 // Available AI models
 const AVAILABLE_MODELS = [
   { value: "gpt-4", label: "GPT-4", provider: "OpenAI" },
@@ -325,15 +323,8 @@ export function ChatPanel({
       console.error("Failed to save user message:", err);
     }
 
-    // Call LLM API
+    // Call LLM API through internal proxy
     try {
-      // Validate LLM API URL before making the call
-      if (!LLM_API_URL || LLM_API_URL.trim() === "") {
-        throw new Error(
-          "LLM API URL is not configured. Please set NEXT_PUBLIC_LLM_API_URL in your environment variables."
-        );
-      }
-
       const model = getNodeModel(selectedNode);
       const payload = {
         canvasId: selectedCanvas,
@@ -342,10 +333,8 @@ export function ChatPanel({
         message: newMessage.content,
       };
 
-      console.log("Calling LLM API at:", LLM_API_URL);
-      console.log("Payload:", payload);
-
-      const res = await fetch(LLM_API_URL, {
+      // Use internal API proxy instead of direct external call
+      const res = await fetch("/api/llm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -353,12 +342,11 @@ export function ChatPanel({
 
       if (res.ok) {
         const data = await res.json();
-        console.log("LLM API response:", data);
 
         const botResponse: Message = {
           id: genId(),
           role: "assistant",
-          content: data.message || data.response,
+          content: data.message,
           timestamp: new Date(),
         };
 
@@ -397,19 +385,17 @@ export function ChatPanel({
         }
       } else {
         // Handle HTTP error responses
-        const errorText = await res.text();
-        throw new Error(
-          `LLM API responded with status ${res.status}: ${errorText}`
-        );
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Service error (${res.status})`);
       }
     } catch (err) {
-      console.error("LLM API error:", err);
+      console.error("Chat service error:", err);
 
       // Show user-friendly error message
       const errorMessage =
-        err instanceof Error ? err.message : "Unknown error occurred";
+        err instanceof Error ? err.message : "Unable to get AI response";
       toast({
-        title: "LLM API Error",
+        title: "Chat Error",
         description: errorMessage,
         variant: "destructive",
       });
@@ -612,9 +598,7 @@ export function ChatPanel({
                               );
                             }
                             return (
-                              <code className={className}>
-                                {children}
-                              </code>
+                              <code className={className}>{children}</code>
                             );
                           },
                           pre: ({ children }) => (

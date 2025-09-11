@@ -21,14 +21,16 @@ const nodeTypes = [
     id: "branch",
     label: "Branch",
     icon: GitBranch,
-    color: "bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-sm",
+    color:
+      "bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-sm",
     emoji: "🔀",
   },
   {
     id: "context",
     label: "Context",
     icon: FileText,
-    color: "bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-sm",
+    color:
+      "bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-sm",
     emoji: "📄",
   },
 ];
