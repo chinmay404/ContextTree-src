@@ -32,7 +32,13 @@ export async function GET(request: NextRequest) {
   // Test 2: Try to connect to the LLM service
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+    // SSL handling logic matching main route
+    const isUntrustedSSL =
+      LLM_API_URL.includes("18.213.206.235") ||
+      LLM_API_URL.includes("localhost") ||
+      LLM_API_URL.includes("127.0.0.1");
 
     const response = await fetch(LLM_API_URL, {
       method: "POST",
@@ -47,10 +53,9 @@ export async function GET(request: NextRequest) {
         message: "Health check ping",
       }),
       signal: controller.signal,
-      // @ts-ignore - For SSL bypass in development
+      // @ts-ignore - For SSL bypass in development with IP addresses only
       agent:
-        process.env.NODE_ENV !== "production" &&
-        LLM_API_URL.includes("18.213.206.235")
+        process.env.NODE_ENV !== "production" && isUntrustedSSL
           ? new (require("https").Agent)({ rejectUnauthorized: false })
           : undefined,
     });
@@ -91,10 +96,11 @@ export async function GET(request: NextRequest) {
       error: error.name,
     });
 
-    // Test HTTP fallback if HTTPS failed
+    // Test HTTP fallback ONLY for IP addresses in development
     if (
       LLM_API_URL.startsWith("https://") &&
-      process.env.NODE_ENV !== "production"
+      process.env.NODE_ENV !== "production" &&
+      isUntrustedSSL
     ) {
       try {
         const httpUrl = LLM_API_URL.replace("https://", "http://");
