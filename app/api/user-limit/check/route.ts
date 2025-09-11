@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-utils";
 import { userLimitService } from "@/lib/user-limit";
 
+// Force Node.js runtime for user limit functionality
+export const runtime = "nodejs";
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();

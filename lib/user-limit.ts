@@ -182,6 +182,5 @@ class UserLimitService {
 // Create singleton instance
 export const userLimitService = new UserLimitService();
 
-// Cleanup on process exit
-process.on("SIGTERM", () => userLimitService.destroy());
-process.on("SIGINT", () => userLimitService.destroy());
+// Note: Cleanup handlers removed for Edge Runtime compatibility
+// In production, sessions will be cleaned up automatically via timeout mechanism

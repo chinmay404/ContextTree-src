@@ -1,5 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+// Force Node.js runtime for HTTPS agent functionality
+export const runtime = "nodejs";
+
 const LLM_API_URL =
   process.env.LLM_API_URL || process.env.NEXT_PUBLIC_LLM_API_URL;
 

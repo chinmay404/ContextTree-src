@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-utils";
 import { userLimitService } from "@/lib/user-limit";
 
+// Force Node.js runtime for user limit functionality
+export const runtime = "nodejs";
+
 // List of admin emails (you can move this to environment variables)
 const ADMIN_EMAILS = [
   "admin@contexttree.com",

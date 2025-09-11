@@ -2,6 +2,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-utils";
 import https from "https";
 
+// Force Node.js runtime for HTTPS agent functionality
+export const runtime = "nodejs";
+
 // Server-side LLM API endpoint (not exposed to client)
 const LLM_API_URL =
   process.env.LLM_API_URL || process.env.NEXT_PUBLIC_LLM_API_URL;

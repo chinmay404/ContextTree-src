@@ -119,6 +119,35 @@ export default function ContextTreePage() {
     }
   }, [isAuthenticated, user?.email]);
 
+  // Check user limits
+  useEffect(() => {
+    if (!isAuthenticated || !user?.email) return;
+
+    const checkUserLimit = async () => {
+      try {
+        const response = await fetch("/api/user-limit/check");
+        if (response.ok) {
+          const data = await response.json();
+          if (!data.canAccess) {
+            // Redirect to user limit page
+            window.location.href = `/user-limit-reached?message=${encodeURIComponent(
+              data.message || ""
+            )}`;
+          }
+        }
+      } catch (error) {
+        console.error("Error checking user limit:", error);
+        // Continue silently on error
+      }
+    };
+
+    checkUserLimit();
+
+    // Check user limits periodically (every 5 minutes)
+    const interval = setInterval(checkUserLimit, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user?.email]);
+
   const handleNodeSelect = (nodeId: string | null, nodeName?: string) => {
     setSelectedNode(nodeId);
     setSelectedNodeName(nodeName);

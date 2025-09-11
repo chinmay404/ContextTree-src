@@ -1,25 +1,11 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
-import { userLimitService } from "@/lib/user-limit";
 
 export default withAuth(
   function middleware(req) {
-    // Check user limits for authenticated requests
-    if (req.nextauth.token?.email) {
-      const userEmail = req.nextauth.token.email;
-      const accessCheck = userLimitService.canUserAccess(userEmail);
-
-      if (!accessCheck.success) {
-        // Redirect to user limit page
-        const url = req.nextUrl.clone();
-        url.pathname = "/user-limit-reached";
-        url.searchParams.set("message", accessCheck.message || "");
-        return NextResponse.redirect(url);
-      }
-
-      // Update user activity
-      userLimitService.updateUserActivity(userEmail);
-    }
+    // User limit checking is now handled via API routes
+    // to maintain Edge Runtime compatibility
+    // The actual limit checking happens in API endpoints
   },
   {
     callbacks: {

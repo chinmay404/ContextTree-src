@@ -1,33 +1,28 @@
 "use client";
 
-import { Suspense } from "react";
-import UserLimitReachedContent from "./content";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Users, Clock, RefreshCw, Home } from "lucide-react";
 
-export default function UserLimitReachedPage() {
-  return (
-    <Suspense fallback={<UserLimitReachedFallback />}>
-      <UserLimitReachedContent />
-    </Suspense>
-  );
-}
+export default function UserLimitReachedContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [countdown, setCountdown] = useState(30);
+  const [isRetrying, setIsRetrying] = useState(false);
 
-function UserLimitReachedFallback() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="border-0 shadow-xl bg-white/95 backdrop-blur-sm rounded-lg p-6">
-          <div className="text-center">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
-              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-            </div>
-            <h3 className="text-xl font-light text-slate-900 mb-2">Loading...</h3>
-            <p className="text-slate-600 text-sm">Checking system status</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+  const message =
+    searchParams.get("message") ||
+    "Thank you! Maximum user limit reached on system. Please wait, we are upgrading our services.";
 
   // Countdown timer for auto-retry
   useEffect(() => {
@@ -92,7 +87,7 @@ function UserLimitReachedFallback() {
               System at Capacity
             </CardTitle>
             <CardDescription className="text-slate-600 mt-2">
-              We're currently at maximum capacity
+              We&apos;re currently at maximum capacity
             </CardDescription>
           </CardHeader>
 
@@ -144,7 +139,7 @@ function UserLimitReachedFallback() {
 
             <div className="text-center">
               <p className="text-xs text-slate-500">
-                We're working hard to increase capacity. <br />
+                We&apos;re working hard to increase capacity. <br />
                 Thank you for your patience! 🚀
               </p>
             </div>
