@@ -1,8 +1,25 @@
 import { withAuth } from "next-auth/middleware";
+import { NextResponse } from "next/server";
+import { userLimitService } from "@/lib/user-limit";
 
 export default withAuth(
   function middleware(req) {
-    // Add any additional middleware logic here
+    // Check user limits for authenticated requests
+    if (req.nextauth.token?.email) {
+      const userEmail = req.nextauth.token.email;
+      const accessCheck = userLimitService.canUserAccess(userEmail);
+
+      if (!accessCheck.success) {
+        // Redirect to user limit page
+        const url = req.nextUrl.clone();
+        url.pathname = "/user-limit-reached";
+        url.searchParams.set("message", accessCheck.message || "");
+        return NextResponse.redirect(url);
+      }
+
+      // Update user activity
+      userLimitService.updateUserActivity(userEmail);
+    }
   },
   {
     callbacks: {
@@ -18,6 +35,7 @@ export default withAuth(
           pathname === "/" ||
           pathname === "/waitlist" || // Allow waitlist page
           pathname === "/profile" || // Allow profile page (it handles auth internally)
+          pathname === "/user-limit-reached" || // Allow user limit page
           pathname.startsWith("/_next/") ||
           pathname.startsWith("/favicon.ico")
         ) {

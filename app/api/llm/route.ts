@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-utils";
+import https from "https";
 
 // Server-side LLM API endpoint (not exposed to client)
 const LLM_API_URL =
@@ -16,6 +17,13 @@ interface LLMResponse {
   message: string;
   model?: string;
 }
+
+// Create an HTTPS agent that bypasses SSL verification for development
+const createHttpsAgent = () => {
+  return new https.Agent({
+    rejectUnauthorized: false,
+  });
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,7 +58,13 @@ export async function POST(request: NextRequest) {
     // Add rate limiting check (optional)
     // You can implement rate limiting logic here
 
-    // Prepare fetch options
+    // Prepare fetch options with SSL handling
+    const isDevelopment = process.env.NODE_ENV !== "production";
+    const isUntrustedSSL =
+      LLM_API_URL.includes("18.213.206.235") ||
+      LLM_API_URL.includes("localhost") ||
+      LLM_API_URL.includes("127.0.0.1");
+
     const fetchOptions: RequestInit = {
       method: "POST",
       headers: {
@@ -60,47 +74,68 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(payload),
     };
 
-    // Handle SSL certificate issues for development
-    // In production, ensure your LLM API has a valid SSL certificate
-    const isDevelopment = process.env.NODE_ENV !== "production";
-    const isUntrustedSSL =
-      LLM_API_URL.includes("18.213.206.235") ||
-      LLM_API_URL.includes("localhost");
-
+    // Add SSL bypass for development with untrusted certificates
     if (isDevelopment && isUntrustedSSL && LLM_API_URL.startsWith("https://")) {
-      // Only bypass SSL in development for known test endpoints
-      const originalRejectUnauthorized =
-        process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+      // @ts-ignore - Node.js specific agent property
+      fetchOptions.agent = createHttpsAgent();
+    }
 
-      try {
-        const response = await fetch(LLM_API_URL, fetchOptions);
-        return await handleLLMResponse(response);
-      } finally {
-        // Restore original setting
-        if (originalRejectUnauthorized !== undefined) {
-          process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalRejectUnauthorized;
-        } else {
-          delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-        }
-      }
-    } else {
-      // Normal fetch for production with valid SSL
+    console.log(`LLM API call to: ${LLM_API_URL.replace(/\/[^\/]*$/, "/***")}`);
+
+    try {
       const response = await fetch(LLM_API_URL, fetchOptions);
       return await handleLLMResponse(response);
+    } catch (fetchError) {
+      console.error("LLM fetch error:", fetchError);
+
+      // Try alternative approach for SSL issues
+      if (isDevelopment && LLM_API_URL.startsWith("https://")) {
+        console.log("Attempting HTTP fallback for development...");
+        const httpUrl = LLM_API_URL.replace("https://", "http://");
+        try {
+          const httpResponse = await fetch(httpUrl, {
+            ...fetchOptions,
+            // Remove agent for HTTP
+            agent: undefined,
+          });
+          return await handleLLMResponse(httpResponse);
+        } catch (httpError) {
+          console.error("HTTP fallback also failed:", httpError);
+        }
+      }
+
+      throw fetchError;
     }
   } catch (error) {
     console.error("LLM proxy error:", error);
 
-    // Don't expose internal error details to client
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    // Provide more specific error information for debugging
+    let errorMessage = "Internal server error";
+
+    if (error instanceof Error) {
+      if (error.message.includes("CERT") || error.message.includes("SSL")) {
+        errorMessage = "SSL certificate error";
+        console.error(
+          "SSL Certificate issue. In development, this should be handled automatically."
+        );
+      } else if (error.message.includes("ECONNREFUSED")) {
+        errorMessage = "LLM service unavailable";
+        console.error(
+          "Cannot connect to LLM service. Check if the service is running."
+        );
+      } else if (error.message.includes("timeout")) {
+        errorMessage = "Request timeout";
+        console.error("LLM service request timed out.");
+      }
+    }
+
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
 async function handleLLMResponse(response: Response): Promise<NextResponse> {
+  console.log(`LLM API response status: ${response.status}`);
+
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`LLM API error (${response.status}):`, errorText);
@@ -117,14 +152,32 @@ async function handleLLMResponse(response: Response): Promise<NextResponse> {
     );
   }
 
-  const data = await response.json();
+  try {
+    const data = await response.json();
+    console.log("LLM API response received successfully");
 
-  // Sanitize response data before returning
-  const sanitizedResponse: LLMResponse = {
-    message:
-      data.message || data.response || data.content || "No response received",
-    model: data.model,
-  };
+    // Sanitize response data before returning
+    const sanitizedResponse: LLMResponse = {
+      message:
+        data.message || data.response || data.content || "No response received",
+      model: data.model,
+    };
 
-  return NextResponse.json(sanitizedResponse);
+    return NextResponse.json(sanitizedResponse);
+  } catch (parseError) {
+    console.error("Failed to parse LLM response as JSON:", parseError);
+
+    // Try to get response as text
+    try {
+      const textResponse = await response.text();
+      return NextResponse.json({
+        message: textResponse || "Received empty response",
+      });
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid response format from LLM service" },
+        { status: 502 }
+      );
+    }
+  }
 }
