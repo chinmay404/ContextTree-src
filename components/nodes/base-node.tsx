@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Settings, Zap, Clock, Hash } from "lucide-react";
 import { useState, memo, type ReactNode } from "react";
+import { getDefaultModel } from "@/lib/models";
 
 interface BaseNodeData {
   label: string;
@@ -47,7 +48,7 @@ function BaseNodeComponent({
     }
   };
 
-  const model = data.model || "gpt-4";
+  const model = data.model || getDefaultModel();
   const tags = (data.metaTags || []).slice(0, 2);
   const messageCount = data.messageCount || 0;
   const lastActivity = data.lastMessageAt || data.createdAt;

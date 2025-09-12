@@ -1,5 +1,7 @@
 "use client";
 
+import { getDefaultModel } from "./models";
+
 export interface CanvasData {
   _id: string;
   userId: string;
@@ -181,7 +183,7 @@ class StorageService {
       chatMessages: [],
       runningSummary: "",
       contextContract: "",
-      model: "gpt-4",
+      model: getDefaultModel(),
       parentNodeId: undefined,
       forkedFromMessageId: undefined,
       createdAt: new Date().toISOString(),
@@ -197,7 +199,7 @@ class StorageService {
       metaTags: [],
       settings: {
         description: "",
-        defaultModel: "gpt-4",
+        defaultModel: getDefaultModel(),
       },
       nodes: [entryNode],
       edges: [],

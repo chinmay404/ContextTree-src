@@ -27,26 +27,14 @@ import {
 } from "lucide-react";
 import { storageService } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
+import { ALL_MODELS, getDefaultModel } from "@/lib/models";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github.css";
 
-// Available AI models
-const AVAILABLE_MODELS = [
-  { value: "gpt-4", label: "GPT-4", provider: "OpenAI" },
-  { value: "gpt-4-turbo", label: "GPT-4 Turbo", provider: "OpenAI" },
-  { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo", provider: "OpenAI" },
-  { value: "claude-3-opus", label: "Claude 3 Opus", provider: "Anthropic" },
-  { value: "claude-3-sonnet", label: "Claude 3 Sonnet", provider: "Anthropic" },
-  { value: "claude-3-haiku", label: "Claude 3 Haiku", provider: "Anthropic" },
-  { value: "gemini-pro", label: "Gemini Pro", provider: "Google" },
-  {
-    value: "gemini-pro-vision",
-    label: "Gemini Pro Vision",
-    provider: "Google",
-  },
-] as const;
+// Available AI models (excluding TTS and Speech-to-text models)
+const AVAILABLE_MODELS = ALL_MODELS;
 
 interface ChatPanelProps {
   selectedNode: string | null;
@@ -87,7 +75,7 @@ export function ChatPanel({
   >({});
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string>("gpt-4");
+  const [selectedModel, setSelectedModel] = useState<string>(getDefaultModel());
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Ensure a conversation object exists for the selected node so the UI can render immediately
@@ -956,13 +944,20 @@ export function ChatPanel({
                         >
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-[300px]">
                           {AVAILABLE_MODELS.map((model) => (
-                            <SelectItem key={model.value} value={model.value}>
-                              <div className="flex items-center justify-between w-full">
-                                <span className="text-xs">{model.label}</span>
-                                <span className="text-xs text-slate-400 ml-2">
-                                  {model.provider}
+                            <SelectItem key={model.id} value={model.id}>
+                              <div className="flex flex-col items-start gap-1 w-full">
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="text-xs font-medium">
+                                    {model.name}
+                                  </span>
+                                  <span className="text-xs text-slate-400 ml-2">
+                                    {model.provider}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-slate-500 leading-tight">
+                                  {model.description}
                                 </span>
                               </div>
                             </SelectItem>

@@ -1,30 +1,39 @@
-"use client"
-import { Handle, Position, type NodeProps } from "reactflow"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Settings, Edit3, Thermometer, Zap, Eye } from "lucide-react"
-import { useState } from "react"
+"use client";
+import { Handle, Position, type NodeProps } from "reactflow";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Settings, Edit3, Thermometer, Zap, Eye } from "lucide-react";
+import { useState } from "react";
+import { MODEL_PROVIDERS, getDefaultModel } from "@/lib/models";
 
 interface LLMCallNodeData {
-  label: string
-  model: string
-  temperature: number
-  maxTokens: number
-  isSelected: boolean
-  callId?: string
-  connectedContexts?: string[]
+  label: string;
+  model: string;
+  temperature: number;
+  maxTokens: number;
+  isSelected: boolean;
+  callId?: string;
+  connectedContexts?: string[];
 }
 
 export function LLMCallNode({ data, selected }: NodeProps<LLMCallNodeData>) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [showPromptPreview, setShowPromptPreview] = useState(false)
-  const [model, setModel] = useState(data.model || "gpt-4")
-  const [temperature, setTemperature] = useState(data.temperature || 0.7)
-  const [maxTokens, setMaxTokens] = useState(data.maxTokens || 1000)
+  const [isEditing, setIsEditing] = useState(false);
+  const [showPromptPreview, setShowPromptPreview] = useState(false);
+  const [model, setModel] = useState(data.model || getDefaultModel());
+  const [temperature, setTemperature] = useState(data.temperature || 0.7);
+  const [maxTokens, setMaxTokens] = useState(data.maxTokens || 1000);
 
   return (
-    <Card className={`min-w-[240px] max-w-[320px] ${selected ? "ring-2 ring-red-500" : ""}`}>
-      <Handle type="target" position={Position.Left} className="w-3 h-3 bg-red-500 border-2 border-background" />
+    <Card
+      className={`min-w-[240px] max-w-[320px] ${
+        selected ? "ring-2 ring-red-500" : ""
+      }`}
+    >
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="w-3 h-3 bg-red-500 border-2 border-background"
+      />
 
       <div className="p-4">
         <div className="flex items-center gap-2 mb-3">
@@ -32,12 +41,20 @@ export function LLMCallNode({ data, selected }: NodeProps<LLMCallNodeData>) {
             <Settings className="h-4 w-4 text-red-700" />
           </div>
           <div className="flex-1">
-            <h3 className="font-medium text-sm text-red-900">{data.label || "LLM Call"}</h3>
+            <h3 className="font-medium text-sm text-red-900">
+              {data.label || "LLM Call"}
+            </h3>
             <div className="flex gap-1">
-              <Badge variant="secondary" className="text-xs bg-red-50 text-red-700">
+              <Badge
+                variant="secondary"
+                className="text-xs bg-red-50 text-red-700"
+              >
                 LLM Call
               </Badge>
-              <Badge variant="outline" className="text-xs border-red-200 text-red-600">
+              <Badge
+                variant="outline"
+                className="text-xs border-red-200 text-red-600"
+              >
                 {model}
               </Badge>
             </div>
@@ -50,7 +67,10 @@ export function LLMCallNode({ data, selected }: NodeProps<LLMCallNodeData>) {
             >
               <Eye className="h-3 w-3 text-red-600" />
             </button>
-            <button onClick={() => setIsEditing(!isEditing)} className="p-1 hover:bg-red-50 rounded">
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className="p-1 hover:bg-red-50 rounded"
+            >
               <Edit3 className="h-3 w-3 text-red-600" />
             </button>
           </div>
@@ -65,33 +85,46 @@ export function LLMCallNode({ data, selected }: NodeProps<LLMCallNodeData>) {
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full text-xs p-2 border rounded mt-1"
               >
-                <option value="gpt-4">GPT-4</option>
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                <option value="claude-3">Claude 3</option>
-                <option value="gemini-pro">Gemini Pro</option>
+                {Object.entries(MODEL_PROVIDERS).map(([key, provider]) => (
+                  <optgroup key={key} label={provider.name}>
+                    {provider.models.map((modelItem) => (
+                      <option key={modelItem.id} value={modelItem.id}>
+                        {modelItem.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-medium text-gray-700">Temperature</label>
+                <label className="text-xs font-medium text-gray-700">
+                  Temperature
+                </label>
                 <input
                   type="number"
                   min="0"
                   max="2"
                   step="0.1"
                   value={temperature}
-                  onChange={(e) => setTemperature(Number.parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    setTemperature(Number.parseFloat(e.target.value))
+                  }
                   className="w-full text-xs p-2 border rounded mt-1"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-700">Max Tokens</label>
+                <label className="text-xs font-medium text-gray-700">
+                  Max Tokens
+                </label>
                 <input
                   type="number"
                   min="1"
                   max="4000"
                   value={maxTokens}
-                  onChange={(e) => setMaxTokens(Number.parseInt(e.target.value))}
+                  onChange={(e) =>
+                    setMaxTokens(Number.parseInt(e.target.value))
+                  }
                   className="w-full text-xs p-2 border rounded mt-1"
                 />
               </div>
@@ -105,7 +138,9 @@ export function LLMCallNode({ data, selected }: NodeProps<LLMCallNodeData>) {
               <Zap className="h-3 w-3" />
               <span>Max: {maxTokens}</span>
             </div>
-            <div className="text-gray-600">Connected contexts: {data.connectedContexts?.length || 0}</div>
+            <div className="text-gray-600">
+              Connected contexts: {data.connectedContexts?.length || 0}
+            </div>
           </div>
         )}
 
@@ -125,7 +160,11 @@ export function LLMCallNode({ data, selected }: NodeProps<LLMCallNodeData>) {
         </div>
       </div>
 
-      <Handle type="source" position={Position.Right} className="w-3 h-3 bg-red-500 border-2 border-background" />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="w-3 h-3 bg-red-500 border-2 border-background"
+      />
     </Card>
-  )
+  );
 }

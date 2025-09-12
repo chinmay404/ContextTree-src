@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(payload),
     };
 
-    // Add SSL bypass ONLY for development with untrusted certificates (IP addresses)
+    // Add SSL bypass for development with untrusted certificates
     if (isDevelopment && isUntrustedSSL && LLM_API_URL.startsWith("https://")) {
       // @ts-ignore - Node.js specific agent property
       fetchOptions.agent = createHttpsAgent();
@@ -91,8 +91,8 @@ export async function POST(request: NextRequest) {
     } catch (fetchError) {
       console.error("LLM fetch error:", fetchError);
 
-      // Try HTTP fallback ONLY for development with IP addresses (not proper domains)
-      if (isDevelopment && isUntrustedSSL && LLM_API_URL.startsWith("https://")) {
+      // Try alternative approach for SSL issues
+      if (isDevelopment && LLM_API_URL.startsWith("https://")) {
         console.log("Attempting HTTP fallback for development...");
         const httpUrl = LLM_API_URL.replace("https://", "http://");
         try {
