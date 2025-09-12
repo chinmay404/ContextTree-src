@@ -85,7 +85,15 @@ export function LLMCallNode({ data, selected }: NodeProps<LLMCallNodeData>) {
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full text-xs p-2 border rounded mt-1"
               >
-                {Object.entries(MODEL_PROVIDERS).map(([key, provider]) => (
+                <optgroup label="🔥 Popular & Recommended">
+                  {MODEL_PROVIDERS.top.models.map((modelItem) => (
+                    <option key={modelItem.id} value={modelItem.id}>
+                      {modelItem.name}
+                    </option>
+                  ))}
+                </optgroup>
+                
+                {Object.entries(MODEL_PROVIDERS).filter(([key]) => key !== 'top').map(([key, provider]) => (
                   <optgroup key={key} label={provider.name}>
                     {provider.models.map((modelItem) => (
                       <option key={modelItem.id} value={modelItem.id}>

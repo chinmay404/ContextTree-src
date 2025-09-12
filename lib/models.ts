@@ -15,9 +15,61 @@ export interface ModelProvider {
 }
 
 // Model providers and their available models (excluding TTS and Speech-to-text)
+// Organized with most popular and recommended models first
 export const MODEL_PROVIDERS = {
+  // Top/Popular Models - Most Recommended
+  top: {
+    name: "🔥 Popular & Recommended",
+    models: [
+      {
+        id: "openai/gpt-oss-120b",
+        name: "GPT OSS 120B (Recommended)",
+        description: "🌟 Best for coding and complex tasks - Default choice",
+        provider: "OpenAI",
+      },
+      {
+        id: "llama-3.3-70b-versatile",
+        name: "LLaMA 3.3 70B Versatile",
+        description: "🚀 Most capable LLaMA model, excellent for complex tasks",
+        provider: "Meta",
+      },
+      {
+        id: "groq/compound",
+        name: "Groq Compound",
+        description: "⚡ Ultra-fast reasoning and complex problem solving",
+        provider: "Groq",
+      },
+      {
+        id: "llama-3.1-8b-instant",
+        name: "LLaMA 3.1 8B Instant",
+        description: "💨 Lightning fast responses for quick tasks",
+        provider: "Meta",
+      },
+    ],
+  },
+  
+  // OpenAI Models
+  openai: {
+    name: "OpenAI",
+    models: [
+      {
+        id: "openai/gpt-oss-120b",
+        name: "GPT OSS 120B",
+        description: "Large open-source GPT variant - Best for coding",
+        provider: "OpenAI",
+      },
+      {
+        id: "openai/gpt-oss-20b",
+        name: "GPT OSS 20B",
+        description: "Smaller open-source GPT variant",
+        provider: "OpenAI",
+      },
+    ],
+  },
+  
+  // Meta LLaMA Models
   meta: {
-    name: "Meta",
+    name: "Meta LLaMA",
     models: [
       {
         id: "llama-3.3-70b-versatile",
@@ -51,73 +103,8 @@ export const MODEL_PROVIDERS = {
       },
     ],
   },
-  openai: {
-    name: "OpenAI",
-    models: [
-      {
-        id: "openai/gpt-oss-120b",
-        name: "GPT OSS 120B",
-        description: "Large open-source GPT variant",
-        provider: "OpenAI",
-      },
-      {
-        id: "openai/gpt-oss-20b",
-        name: "GPT OSS 20B",
-        description: "Smaller open-source GPT variant",
-        provider: "OpenAI",
-      },
-    ],
-  },
-  google: {
-    name: "Google",
-    models: [
-      {
-        id: "gemma2-9b-it",
-        name: "Gemma 2 9B IT",
-        description: "Google's efficient instruction-tuned model",
-        provider: "Google",
-      },
-    ],
-  },
-  deepseek: {
-    name: "DeepSeek",
-    models: [
-      {
-        id: "deepseek-r1-distill-llama-70b",
-        name: "DeepSeek R1 Distill 70B",
-        description: "Reasoning-focused large model",
-        provider: "DeepSeek",
-      },
-    ],
-  },
-  alibaba: {
-    name: "Alibaba Cloud",
-    models: [
-      {
-        id: "qwen/qwen3-32b",
-        name: "Qwen 3 32B",
-        description: "Alibaba's multilingual model",
-        provider: "Alibaba Cloud",
-      },
-    ],
-  },
-  moonshot: {
-    name: "Moonshot AI",
-    models: [
-      {
-        id: "moonshotai/kimi-k2-instruct",
-        name: "Kimi K2 Instruct",
-        description: "Chinese AI company's instruction model",
-        provider: "Moonshot AI",
-      },
-      {
-        id: "moonshotai/kimi-k2-instruct-0905",
-        name: "Kimi K2 Instruct (Sept 2024)",
-        description: "Updated version with improvements",
-        provider: "Moonshot AI",
-      },
-    ],
-  },
+  
+  // Groq Models
   groq: {
     name: "Groq",
     models: [
@@ -135,6 +122,66 @@ export const MODEL_PROVIDERS = {
       },
     ],
   },
+  
+  // Google Models
+  google: {
+    name: "Google",
+    models: [
+      {
+        id: "gemma2-9b-it",
+        name: "Gemma 2 9B IT",
+        description: "Google's efficient instruction-tuned model",
+        provider: "Google",
+      },
+    ],
+  },
+  
+  // DeepSeek Models
+  deepseek: {
+    name: "DeepSeek",
+    models: [
+      {
+        id: "deepseek-r1-distill-llama-70b",
+        name: "DeepSeek R1 Distill 70B",
+        description: "Reasoning-focused large model",
+        provider: "DeepSeek",
+      },
+    ],
+  },
+  
+  // Alibaba Cloud Models
+  alibaba: {
+    name: "Alibaba Cloud",
+    models: [
+      {
+        id: "qwen/qwen3-32b",
+        name: "Qwen 3 32B",
+        description: "Alibaba's multilingual model",
+        provider: "Alibaba Cloud",
+      },
+    ],
+  },
+  
+  // Moonshot AI Models
+  moonshot: {
+    name: "Moonshot AI",
+    models: [
+      {
+        id: "moonshotai/kimi-k2-instruct",
+        name: "Kimi K2 Instruct",
+        description: "Chinese AI company's instruction model",
+        provider: "Moonshot AI",
+      },
+      {
+        id: "moonshotai/kimi-k2-instruct-0905",
+        name: "Kimi K2 Instruct (Sept 2024)",
+        description: "Updated version with improvements",
+        provider: "Moonshot AI",
+      },
+    ],
+  },
+  
+  // SDAIA Models
   sdaia: {
     name: "SDAIA",
     models: [
@@ -155,7 +202,7 @@ export const ALL_MODELS: ModelConfig[] = Object.values(MODEL_PROVIDERS).flatMap(
 
 // Model recommendations based on use case
 export const MODEL_RECOMMENDATIONS = {
-  general_chat: "llama-3.3-70b-versatile",
+  general_chat: "openai/gpt-oss-120b",
   fast_responses: "llama-3.1-8b-instant",
   complex_reasoning: "groq/compound",
   coding: "openai/gpt-oss-120b",

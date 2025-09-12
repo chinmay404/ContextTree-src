@@ -6,10 +6,11 @@ import { Pool } from "pg";
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }, // Always use SSL for Supabase
-  connectionTimeoutMillis: 20000, // Increased timeout for pooler
+  connectionTimeoutMillis: 30000, // Increased timeout for database initialization
   idleTimeoutMillis: 10000, // Shorter idle timeout for serverless
-  max: 1, // Single connection for serverless to avoid pooling issues
+  max: 2, // Allow 2 connections for better concurrency
   allowExitOnIdle: true, // Allow process to exit when idle
+  statement_timeout: 60000, // 60 second statement timeout
 });
 
 // Add error handling for pool
@@ -33,8 +34,11 @@ async function initializeDatabase() {
   try {
     console.log("Initializing NextAuth database tables...");
 
-    // Get a client from the pool with timeout
+    // Get a client from the pool with extended timeout
     client = await pool.connect();
+    
+    // Set a longer statement timeout for initialization
+    await client.query('SET statement_timeout = 60000'); // 60 seconds
     console.log("Database connection established");
 
     // Check if users table already exists with different structure
@@ -66,15 +70,11 @@ async function initializeDatabase() {
       `);
     } else {
       // Users table exists with password column - ensure password is nullable
-      await client
-        .query(
-          `
-        ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
-      `
-        )
-        .catch(() => {
-          // Ignore error if already nullable
-        });
+      try {
+        await client.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL;`);
+      } catch {
+        // Ignore error if already nullable
+      }
     }
 
     // Step 2: Create verification_tokens table (no foreign keys)
@@ -88,66 +88,47 @@ async function initializeDatabase() {
     `);
 
     // Step 3: Ensure accounts table exists and has the right structure
-    // Check if accounts table exists first
-    const accountsTableCheck = await client.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_name = 'accounts' AND table_schema = 'public'
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS accounts (
+        id text PRIMARY KEY,
+        user_id text NOT NULL,
+        type text NOT NULL,
+        provider text NOT NULL,
+        provider_account_id text NOT NULL,
+        refresh_token text,
+        access_token text,
+        expires_at bigint,
+        token_type text,
+        scope text,
+        id_token text,
+        session_state text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE(provider, provider_account_id)
+      );
     `);
-
-    if (accountsTableCheck.rows.length === 0) {
-      // Create accounts table if it doesn't exist
-      await client.query(`
-        CREATE TABLE accounts (
-          id text PRIMARY KEY,
-          user_id text NOT NULL,
-          type text NOT NULL,
-          provider text NOT NULL,
-          provider_account_id text NOT NULL,
-          refresh_token text,
-          access_token text,
-          expires_at bigint,
-          token_type text,
-          scope text,
-          id_token text,
-          session_state text,
-          created_at timestamptz NOT NULL DEFAULT now(),
-          updated_at timestamptz NOT NULL DEFAULT now(),
-          UNIQUE(provider, provider_account_id)
-        );
-      `);
-    }
 
     // Step 4: Ensure sessions table exists and has the right structure
-    const sessionsTableCheck = await client.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_name = 'sessions' AND table_schema = 'public'
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id text PRIMARY KEY,
+        session_token text NOT NULL UNIQUE,
+        user_id text NOT NULL,
+        expires timestamptz NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
     `);
 
-    if (sessionsTableCheck.rows.length === 0) {
-      // Create sessions table if it doesn't exist
-      await client.query(`
-        CREATE TABLE sessions (
-          id text PRIMARY KEY,
-          session_token text NOT NULL UNIQUE,
-          user_id text NOT NULL,
-          expires timestamptz NOT NULL,
-          created_at timestamptz NOT NULL DEFAULT now(),
-          updated_at timestamptz NOT NULL DEFAULT now()
-        );
-      `);
-    }
-
     // Step 5: Add foreign key constraints if they don't exist (only for new tables)
-    // For existing tables, we assume they may have different constraint names
+    // Use IF NOT EXISTS pattern for better performance
     try {
       await client.query(`
         DO $$ 
         BEGIN
           IF NOT EXISTS (
             SELECT 1 FROM information_schema.table_constraints 
-            WHERE constraint_name = 'accounts_user_id_fkey'
+            WHERE constraint_name LIKE '%accounts%user_id%' AND table_name = 'accounts'
           ) THEN
             ALTER TABLE accounts 
             ADD CONSTRAINT accounts_user_id_fkey 
@@ -161,7 +142,7 @@ async function initializeDatabase() {
         BEGIN
           IF NOT EXISTS (
             SELECT 1 FROM information_schema.table_constraints 
-            WHERE constraint_name = 'sessions_user_id_fkey'
+            WHERE constraint_name LIKE '%sessions%user_id%' AND table_name = 'sessions'
           ) THEN
             ALTER TABLE sessions 
             ADD CONSTRAINT sessions_user_id_fkey 
@@ -171,70 +152,10 @@ async function initializeDatabase() {
       `);
     } catch (constraintError) {
       // Ignore constraint errors - they may already exist with different names
-      console.log(
-        "Foreign key constraints may already exist:",
-        constraintError.message
-      );
+      console.log("Foreign key constraints may already exist:", constraintError.message);
     }
 
-    // Step 4: Ensure sessions table exists and has the right structure
-    const sessionsTableCheck2 = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_name = 'sessions' AND table_schema = 'public'
-    `);
-
-    if (sessionsTableCheck2.rows.length === 0) {
-      // Create sessions table if it doesn't exist
-      await pool.query(`
-        CREATE TABLE sessions (
-          id text PRIMARY KEY,
-          session_token text NOT NULL UNIQUE,
-          user_id text NOT NULL,
-          expires timestamptz NOT NULL,
-          created_at timestamptz NOT NULL DEFAULT now(),
-          updated_at timestamptz NOT NULL DEFAULT now()
-        );
-      `);
-    }
-
-    // Step 5: Add foreign key constraints if they don't exist (only for new tables)
-    // For existing tables, we assume they may have different constraint names
-    try {
-      await pool.query(`
-        DO $$ 
-        BEGIN
-          IF NOT EXISTS (
-            SELECT 1 FROM information_schema.table_constraints 
-            WHERE constraint_name = 'accounts_user_id_fkey'
-          ) THEN
-            ALTER TABLE accounts 
-            ADD CONSTRAINT accounts_user_id_fkey 
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-          END IF;
-        END $$;
-      `);
-
-      await pool.query(`
-        DO $$ 
-        BEGIN
-          IF NOT EXISTS (
-            SELECT 1 FROM information_schema.table_constraints 
-            WHERE constraint_name = 'sessions_user_id_fkey'
-          ) THEN
-            ALTER TABLE sessions 
-            ADD CONSTRAINT sessions_user_id_fkey 
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-          END IF;
-        END $$;
-      `);
-    } catch (constraintError) {
-      // Ignore constraint errors - they may already exist with different names
-      console.log(
-        "Foreign key constraints may already exist:",
-        constraintError.message
-      );
-    }
+    console.log("NextAuth database tables initialized successfully");
   } catch (error) {
     console.error("NextAuth table initialization error:", error);
     // Log but don't throw - allow the adapter to continue trying
@@ -242,6 +163,9 @@ async function initializeDatabase() {
   } finally {
     // Always release the client back to the pool
     if (client) {
+      try {
+        await client.query('RESET statement_timeout');
+      } catch {}
       client.release();
     }
   }

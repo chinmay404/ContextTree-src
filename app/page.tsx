@@ -85,37 +85,85 @@ export default function ContextTreePage() {
     e.preventDefault();
   };
 
+  // Add a state to force refresh canvases
+  const [canvasRefreshTrigger, setCanvasRefreshTrigger] = useState(0);
+
   useEffect(() => {
     const loadCanvases = async () => {
-      if (!isAuthenticated || !user?.email) return;
+      if (!isAuthenticated || !user?.email) {
+        console.log("Not authenticated or no user email, skipping canvas load");
+        return;
+      }
+
+      console.log("Loading canvases for user:", user.email);
 
       try {
         // Fetch user's canvases from API (with user isolation)
-        const response = await fetch("/api/canvases");
+        const response = await fetch("/api/canvases", {
+          // Add cache busting to ensure fresh data
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        
         if (response.ok) {
           const data = await response.json();
+          console.log("Fetched canvases from API:", data.canvases?.length || 0);
+          
           setCanvases(data.canvases || []);
 
-          // Select first canvas if available
+          // Select first canvas if available and no canvas is currently selected
           if (data.canvases?.length > 0 && !selectedCanvas) {
+            console.log("Auto-selecting first canvas:", data.canvases[0]._id);
             setSelectedCanvas(data.canvases[0]._id);
+          } else if (data.canvases?.length === 0) {
+            console.log("No canvases found, clearing selection");
+            setSelectedCanvas(null);
           }
         } else {
-          console.error("Failed to fetch canvases");
-          // Fallback to local storage for now
+          console.error("Failed to fetch canvases, status:", response.status);
+          
+          // Check if it's an authentication error
+          if (response.status === 401) {
+            console.log("Authentication error, clearing canvases");
+            setCanvases([]);
+            setSelectedCanvas(null);
+            return;
+          }
+          
+          // Fallback to local storage for other errors
           const allCanvases = storageService.getAllCanvases();
+          console.log("Fallback to local storage, found:", allCanvases.length);
           setCanvases(allCanvases);
         }
       } catch (error) {
         console.error("Error loading canvases:", error);
         // Fallback to local storage
         const allCanvases = storageService.getAllCanvases();
+        console.log("Error fallback to local storage, found:", allCanvases.length);
         setCanvases(allCanvases);
       }
     };
 
-    if (isAuthenticated) {
+    if (isAuthenticated && user?.email) {
       loadCanvases();
+    } else if (!isAuthenticated) {
+      // Clear canvases when not authenticated
+      console.log("User not authenticated, clearing canvases");
+      setCanvases([]);
+      setSelectedCanvas(null);
+    }
+  }, [isAuthenticated, user?.email, canvasRefreshTrigger]);
+
+  // Trigger canvas refresh when user authentication status changes
+  useEffect(() => {
+    if (isAuthenticated && user?.email) {
+      // Small delay to ensure authentication is fully established
+      const timer = setTimeout(() => {
+        setCanvasRefreshTrigger(prev => prev + 1);
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, user?.email]);
 
