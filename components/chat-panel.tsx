@@ -950,7 +950,9 @@ export function ChatPanel({
                             <SelectItem key={model.id} value={model.id}>
                               <div className="flex flex-col items-start gap-1 w-full">
                                 <div className="flex items-center justify-between w-full">
-                                  <span className="text-xs font-semibold text-blue-700">{model.name}</span>
+                                  <span className="text-xs font-semibold text-blue-700">
+                                    {model.name}
+                                  </span>
                                   <span className="text-xs text-blue-500 ml-2">
                                     {model.provider}
                                   </span>
@@ -961,36 +963,44 @@ export function ChatPanel({
                               </div>
                             </SelectItem>
                           ))}
-                          
+
                           {/* Separator */}
                           <div className="px-2 py-1">
                             <div className="border-t border-slate-200"></div>
-                            <span className="text-xs text-slate-400 mt-1 block">All Models</span>
+                            <span className="text-xs text-slate-400 mt-1 block">
+                              All Models
+                            </span>
                           </div>
-                          
+
                           {/* All other models grouped by provider */}
-                          {Object.entries(MODEL_PROVIDERS).filter(([key]) => key !== 'top').map(([key, provider]) => (
-                            <div key={key}>
-                              <div className="px-2 py-1">
-                                <span className="text-xs font-medium text-slate-600">{provider.name}</span>
-                              </div>
-                              {provider.models.map((model) => (
-                                <SelectItem key={model.id} value={model.id}>
-                                  <div className="flex flex-col items-start gap-1 w-full pl-2">
-                                    <div className="flex items-center justify-between w-full">
-                                      <span className="text-xs font-medium">{model.name}</span>
-                                      <span className="text-xs text-slate-400 ml-2">
-                                        {model.provider}
+                          {Object.entries(MODEL_PROVIDERS)
+                            .filter(([key]) => key !== "top")
+                            .map(([key, provider]) => (
+                              <div key={key}>
+                                <div className="px-2 py-1">
+                                  <span className="text-xs font-medium text-slate-600">
+                                    {provider.name}
+                                  </span>
+                                </div>
+                                {provider.models.map((model) => (
+                                  <SelectItem key={model.id} value={model.id}>
+                                    <div className="flex flex-col items-start gap-1 w-full pl-2">
+                                      <div className="flex items-center justify-between w-full">
+                                        <span className="text-xs font-medium">
+                                          {model.name}
+                                        </span>
+                                        <span className="text-xs text-slate-400 ml-2">
+                                          {model.provider}
+                                        </span>
+                                      </div>
+                                      <span className="text-xs text-slate-500 leading-tight">
+                                        {model.description}
                                       </span>
                                     </div>
-                                    <span className="text-xs text-slate-500 leading-tight">
-                                      {model.description}
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </div>
-                          ))}
+                                  </SelectItem>
+                                ))}
+                              </div>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>

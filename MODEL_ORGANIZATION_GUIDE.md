@@ -3,6 +3,7 @@
 ## Changes Made
 
 ### 1. **Default Model Changed to GPT OSS 120B**
+
 - Changed default model from LLaMA 3.3 70B to `openai/gpt-oss-120b`
 - Updated in `lib/models.ts` in MODEL_RECOMMENDATIONS
 - This is now the recommended default for general chat and coding
@@ -10,6 +11,7 @@
 ### 2. **Reorganized Model List for Better UX**
 
 #### **Popular & Recommended Section at Top**
+
 - Created a special "🔥 Popular & Recommended" section
 - Features the top 4 most useful models:
   1. **GPT OSS 120B (Recommended)** - Best for coding and complex tasks (Default)
@@ -18,17 +20,20 @@
   4. **LLaMA 3.1 8B Instant** - Lightning fast responses
 
 #### **Visual Enhancements**
+
 - Popular models have blue styling to stand out
 - Added emojis and clear descriptions (🌟, 🚀, ⚡, 💨)
 - Clear separator between popular and all models
 - Better grouping by provider
 
 ### 3. **Improved Model Descriptions**
+
 - Added performance indicators (speed, capability)
 - Clear use case descriptions
 - Better visual hierarchy
 
 ### 4. **Updated Components**
+
 - **Chat Panel**: Enhanced dropdown with popular models first
 - **LLM Call Node**: Updated to match new organization
 - **Models Config**: Centralized and organized by popularity

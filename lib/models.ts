@@ -47,7 +47,7 @@ export const MODEL_PROVIDERS = {
       },
     ],
   },
-  
+
   // OpenAI Models
   openai: {
     name: "OpenAI",
@@ -66,7 +66,7 @@ export const MODEL_PROVIDERS = {
       },
     ],
   },
-  
+
   // Meta LLaMA Models
   meta: {
     name: "Meta LLaMA",
@@ -103,7 +103,7 @@ export const MODEL_PROVIDERS = {
       },
     ],
   },
-  
+
   // Groq Models
   groq: {
     name: "Groq",
@@ -122,7 +122,7 @@ export const MODEL_PROVIDERS = {
       },
     ],
   },
-  
+
   // Google Models
   google: {
     name: "Google",
@@ -135,7 +135,7 @@ export const MODEL_PROVIDERS = {
       },
     ],
   },
-  
+
   // DeepSeek Models
   deepseek: {
     name: "DeepSeek",
@@ -148,7 +148,7 @@ export const MODEL_PROVIDERS = {
       },
     ],
   },
-  
+
   // Alibaba Cloud Models
   alibaba: {
     name: "Alibaba Cloud",
@@ -161,7 +161,7 @@ export const MODEL_PROVIDERS = {
       },
     ],
   },
-  
+
   // Moonshot AI Models
   moonshot: {
     name: "Moonshot AI",
@@ -180,7 +180,7 @@ export const MODEL_PROVIDERS = {
       },
     ],
   },
-  
+
   // SDAIA Models
   sdaia: {
     name: "SDAIA",

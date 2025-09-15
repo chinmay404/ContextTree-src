@@ -92,16 +92,18 @@ export function LLMCallNode({ data, selected }: NodeProps<LLMCallNodeData>) {
                     </option>
                   ))}
                 </optgroup>
-                
-                {Object.entries(MODEL_PROVIDERS).filter(([key]) => key !== 'top').map(([key, provider]) => (
-                  <optgroup key={key} label={provider.name}>
-                    {provider.models.map((modelItem) => (
-                      <option key={modelItem.id} value={modelItem.id}>
-                        {modelItem.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
+
+                {Object.entries(MODEL_PROVIDERS)
+                  .filter(([key]) => key !== "top")
+                  .map(([key, provider]) => (
+                    <optgroup key={key} label={provider.name}>
+                      {provider.models.map((modelItem) => (
+                        <option key={modelItem.id} value={modelItem.id}>
+                          {modelItem.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">

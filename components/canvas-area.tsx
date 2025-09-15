@@ -288,35 +288,62 @@ export function CanvasArea({
 
   useEffect(() => {
     const loadCanvas = async () => {
-      // First, try to load from localStorage
-      let canvasData = storageService.getCanvas(canvasId);
+      console.log("Loading canvas:", canvasId);
+      let canvasData: CanvasData | null = null;
 
-      if (canvasData) {
-        setCanvas(canvasData);
+      // First, try to fetch from API/database
+      try {
+        console.log("Fetching canvas from API:", canvasId);
+        const dbResponse = await fetch(`/api/canvases/${canvasId}`, {
+          cache: "no-cache",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        });
 
-        // Sync to MongoDB if not already there
-        try {
-          const dbResponse = await fetch(`/api/canvases/${canvasId}`);
-          if (!dbResponse.ok) {
-            // Canvas doesn't exist in DB, create it
-            console.log("Syncing canvas to database:", canvasId);
+        if (dbResponse.ok) {
+          const responseData = await dbResponse.json();
+          canvasData = responseData.canvas;
+          console.log("Canvas loaded from API:", canvasId, "with", canvasData?.nodes?.length || 0, "nodes");
+          
+          // Save to localStorage for offline access
+          if (canvasData) {
+            storageService.saveCanvas(canvasData);
+          }
+        } else {
+          console.log("Canvas not found in API, trying localStorage:", canvasId);
+          // Fallback to localStorage
+          canvasData = storageService.getCanvas(canvasId);
+          
+          if (canvasData) {
+            console.log("Canvas found in localStorage, syncing to database:", canvasId);
+            // Canvas exists in localStorage but not in DB, create it
             const syncResponse = await fetch("/api/canvases", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(canvasData),
             });
             if (syncResponse.ok) {
-              console.log("Canvas synced successfully");
+              console.log("Canvas synced successfully to database");
             } else {
               console.error(
-                "Failed to sync canvas:",
+                "Failed to sync canvas to database:",
                 await syncResponse.text()
               );
             }
           }
-        } catch (err) {
-          console.error("Failed to sync canvas to database:", err);
         }
+      } catch (err) {
+        console.error("Failed to fetch canvas from API, trying localStorage:", err);
+        // Fallback to localStorage
+        canvasData = storageService.getCanvas(canvasId);
+      }
+
+      if (canvasData) {
+        console.log("Setting canvas data with", canvasData.nodes?.length || 0, "nodes");
+        setCanvas(canvasData);
+
+        setCanvas(canvasData);
 
         // Convert NodeData to React Flow nodes (enhanced metadata)
         const flowNodes: Node[] = canvasData.nodes.map((node) => {
@@ -401,10 +428,16 @@ export function CanvasArea({
 
         setNodes(flowNodes);
         setEdges(flowEdges);
+      } else {
+        console.log("No canvas data found for:", canvasId);
+        setCanvas(null);
+        setNodes([]);
+        setEdges([]);
       }
     };
 
     if (canvasId) {
+      console.log("Canvas ID changed, loading:", canvasId);
       loadCanvas();
     }
   }, [canvasId, selectedNode, onNodeSelect, setNodes, setEdges]);

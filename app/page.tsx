@@ -101,16 +101,16 @@ export default function ContextTreePage() {
         // Fetch user's canvases from API (with user isolation)
         const response = await fetch("/api/canvases", {
           // Add cache busting to ensure fresh data
-          cache: 'no-cache',
+          cache: "no-cache",
           headers: {
-            'Cache-Control': 'no-cache',
+            "Cache-Control": "no-cache",
           },
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log("Fetched canvases from API:", data.canvases?.length || 0);
-          
+
           setCanvases(data.canvases || []);
 
           // Select first canvas if available and no canvas is currently selected
@@ -123,7 +123,7 @@ export default function ContextTreePage() {
           }
         } else {
           console.error("Failed to fetch canvases, status:", response.status);
-          
+
           // Check if it's an authentication error
           if (response.status === 401) {
             console.log("Authentication error, clearing canvases");
@@ -131,7 +131,7 @@ export default function ContextTreePage() {
             setSelectedCanvas(null);
             return;
           }
-          
+
           // Fallback to local storage for other errors
           const allCanvases = storageService.getAllCanvases();
           console.log("Fallback to local storage, found:", allCanvases.length);
@@ -141,7 +141,10 @@ export default function ContextTreePage() {
         console.error("Error loading canvases:", error);
         // Fallback to local storage
         const allCanvases = storageService.getAllCanvases();
-        console.log("Error fallback to local storage, found:", allCanvases.length);
+        console.log(
+          "Error fallback to local storage, found:",
+          allCanvases.length
+        );
         setCanvases(allCanvases);
       }
     };
@@ -161,7 +164,7 @@ export default function ContextTreePage() {
     if (isAuthenticated && user?.email) {
       // Small delay to ensure authentication is fully established
       const timer = setTimeout(() => {
-        setCanvasRefreshTrigger(prev => prev + 1);
+        setCanvasRefreshTrigger((prev) => prev + 1);
       }, 100);
       return () => clearTimeout(timer);
     }

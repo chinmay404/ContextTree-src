@@ -36,9 +36,9 @@ async function initializeDatabase() {
 
     // Get a client from the pool with extended timeout
     client = await pool.connect();
-    
+
     // Set a longer statement timeout for initialization
-    await client.query('SET statement_timeout = 60000'); // 60 seconds
+    await client.query("SET statement_timeout = 60000"); // 60 seconds
     console.log("Database connection established");
 
     // Check if users table already exists with different structure
@@ -71,7 +71,9 @@ async function initializeDatabase() {
     } else {
       // Users table exists with password column - ensure password is nullable
       try {
-        await client.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL;`);
+        await client.query(
+          `ALTER TABLE users ALTER COLUMN password DROP NOT NULL;`
+        );
       } catch {
         // Ignore error if already nullable
       }
@@ -152,7 +154,10 @@ async function initializeDatabase() {
       `);
     } catch (constraintError) {
       // Ignore constraint errors - they may already exist with different names
-      console.log("Foreign key constraints may already exist:", constraintError.message);
+      console.log(
+        "Foreign key constraints may already exist:",
+        constraintError.message
+      );
     }
 
     console.log("NextAuth database tables initialized successfully");
@@ -164,7 +169,7 @@ async function initializeDatabase() {
     // Always release the client back to the pool
     if (client) {
       try {
-        await client.query('RESET statement_timeout');
+        await client.query("RESET statement_timeout");
       } catch {}
       client.release();
     }
