@@ -1,11 +1,8 @@
 import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
 
 export default withAuth(
   function middleware(req) {
-    // User limit checking is now handled via API routes
-    // to maintain Edge Runtime compatibility
-    // The actual limit checking happens in API endpoints
+    // Add any additional middleware logic here
   },
   {
     callbacks: {
@@ -21,7 +18,6 @@ export default withAuth(
           pathname === "/" ||
           pathname === "/waitlist" || // Allow waitlist page
           pathname === "/profile" || // Allow profile page (it handles auth internally)
-          pathname === "/user-limit-reached" || // Allow user limit page
           pathname.startsWith("/_next/") ||
           pathname.startsWith("/favicon.ico")
         ) {

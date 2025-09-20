@@ -4,7 +4,9 @@ import rateLimit from "@/lib/rate-limit";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
-  console.warn("DATABASE_URL not set. Set it to your Postgres connection string.");
+  console.warn(
+    "DATABASE_URL not set. Set it to your Postgres connection string."
+  );
 }
 
 const pool = new Pool({ connectionString: DATABASE_URL });
@@ -46,10 +48,11 @@ initWaitlistTable();
 export async function POST(request: NextRequest) {
   try {
     // Rate limiting
-    const ip = request.headers.get("x-forwarded-for") || 
-               request.headers.get("x-real-ip") || 
-               "127.0.0.1";
-    
+    const ip =
+      request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "127.0.0.1";
+
     try {
       await limiter.check(NextResponse, 5, ip); // 5 requests per interval
     } catch {
@@ -124,9 +127,9 @@ export async function POST(request: NextRequest) {
       if (existingUser.rows.length > 0) {
         await client.query("ROLLBACK");
         return NextResponse.json(
-          { 
+          {
             error: "This email is already on our waitlist",
-            details: "You'll be notified when we launch!"
+            details: "You'll be notified when we launch!",
           },
           { status: 409 }
         );
@@ -145,7 +148,9 @@ export async function POST(request: NextRequest) {
       const newEntry = result.rows[0];
 
       // Log successful signup (for monitoring)
-      console.log(`New waitlist signup: ${sanitizedEmail} (ID: ${newEntry.id})`);
+      console.log(
+        `New waitlist signup: ${sanitizedEmail} (ID: ${newEntry.id})`
+      );
 
       return NextResponse.json(
         {
@@ -159,11 +164,10 @@ export async function POST(request: NextRequest) {
         },
         { status: 201 }
       );
-
     } catch (error) {
       await client.query("ROLLBACK");
       console.error("Database error during waitlist signup:", error);
-      
+
       // Check for specific database errors
       if (error instanceof Error && error.message.includes("duplicate key")) {
         return NextResponse.json(
@@ -179,7 +183,6 @@ export async function POST(request: NextRequest) {
     } finally {
       client.release();
     }
-
   } catch (error) {
     console.error("Unexpected error in waitlist API:", error);
     return NextResponse.json(
@@ -209,7 +212,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       stats: result.rows[0],
     });
-
   } catch (error) {
     console.error("Error fetching waitlist stats:", error);
     return NextResponse.json(

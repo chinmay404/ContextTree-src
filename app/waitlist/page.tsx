@@ -47,16 +47,16 @@ export default function WaitlistPage() {
   };
 
   const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear errors when user starts typing
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setIsSubmitting(true);
@@ -81,7 +81,10 @@ export default function WaitlistPage() {
     } catch (error) {
       console.error("Waitlist submission error:", error);
       setErrors({
-        submit: error instanceof Error ? error.message : "An unexpected error occurred"
+        submit:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
       });
     } finally {
       setIsSubmitting(false);
@@ -92,7 +95,7 @@ export default function WaitlistPage() {
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
       {/* LiquidEther Background */}
       <div className="absolute inset-0 z-0">
-        <LiquidEther 
+        <LiquidEther
           colors={["#F8FAFC", "#F1F5F9", "#E2E8F0"]}
           mouseForce={3}
           cursorSize={60}
@@ -111,7 +114,7 @@ export default function WaitlistPage() {
           style={{ width: "100%", height: "100%" }}
         />
       </div>
-      
+
       {/* Content */}
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
@@ -122,28 +125,69 @@ export default function WaitlistPage() {
           className="p-6 flex items-center justify-between"
         >
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push("/")}
             className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors group"
           >
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             <span className="font-medium">Back to Home</span>
           </button>
-          
+
           {/* Tree Logo */}
           <div className="flex items-center">
             <div className="w-8 h-8 text-slate-600">
-              <svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 100 100"
+                xmlns="http://www.w3.org/2000/svg"
+              >
                 {/* Root node (top) */}
-                <rect x="35" y="10" width="30" height="20" rx="4" ry="4" fill="none" stroke="currentColor" strokeWidth="3"/>
-                
+                <rect
+                  x="35"
+                  y="10"
+                  width="30"
+                  height="20"
+                  rx="4"
+                  ry="4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
+
                 {/* Connection lines */}
-                <path d="M50 30 L50 45 M35 55 L50 45 L65 55" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-                
+                <path
+                  d="M50 30 L50 45 M35 55 L50 45 L65 55"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+
                 {/* Left child node */}
-                <rect x="15" y="65" width="25" height="20" rx="4" ry="4" fill="none" stroke="currentColor" strokeWidth="3"/>
-                
+                <rect
+                  x="15"
+                  y="65"
+                  width="25"
+                  height="20"
+                  rx="4"
+                  ry="4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
+
                 {/* Right child node */}
-                <rect x="60" y="65" width="25" height="20" rx="4" ry="4" fill="none" stroke="currentColor" strokeWidth="3"/>
+                <rect
+                  x="60"
+                  y="65"
+                  width="25"
+                  height="20"
+                  rx="4"
+                  ry="4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
               </svg>
             </div>
           </div>
@@ -177,7 +221,8 @@ export default function WaitlistPage() {
                       Join the Waitlist
                     </h1>
                     <p className="text-slate-600">
-                      Be among the first to experience the future of AI conversation design
+                      Be among the first to experience the future of AI
+                      conversation design
                     </p>
                   </motion.div>
 
@@ -187,7 +232,10 @@ export default function WaitlistPage() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.4, delay: 0.4 }}
                     >
-                      <Label htmlFor="name" className="text-slate-700 font-medium">
+                      <Label
+                        htmlFor="name"
+                        className="text-slate-700 font-medium"
+                      >
                         Full Name
                       </Label>
                       <div className="relative mt-2">
@@ -196,10 +244,14 @@ export default function WaitlistPage() {
                           id="name"
                           type="text"
                           value={formData.name}
-                          onChange={(e) => handleInputChange("name", e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange("name", e.target.value)
+                          }
                           placeholder="Enter your full name"
                           className={`pl-10 h-12 bg-white/30 border-white/40 focus:border-white/60 backdrop-blur-sm ${
-                            errors.name ? "border-red-300 focus:border-red-400" : ""
+                            errors.name
+                              ? "border-red-300 focus:border-red-400"
+                              : ""
                           }`}
                           disabled={isSubmitting}
                         />
@@ -220,7 +272,10 @@ export default function WaitlistPage() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.4, delay: 0.5 }}
                     >
-                      <Label htmlFor="email" className="text-slate-700 font-medium">
+                      <Label
+                        htmlFor="email"
+                        className="text-slate-700 font-medium"
+                      >
                         Email Address
                       </Label>
                       <div className="relative mt-2">
@@ -229,10 +284,14 @@ export default function WaitlistPage() {
                           id="email"
                           type="email"
                           value={formData.email}
-                          onChange={(e) => handleInputChange("email", e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange("email", e.target.value)
+                          }
                           placeholder="Enter your email address"
                           className={`pl-10 h-12 bg-white/30 border-white/40 focus:border-white/60 backdrop-blur-sm ${
-                            errors.email ? "border-red-300 focus:border-red-400" : ""
+                            errors.email
+                              ? "border-red-300 focus:border-red-400"
+                              : ""
                           }`}
                           disabled={isSubmitting}
                         />
@@ -254,7 +313,9 @@ export default function WaitlistPage() {
                         animate={{ opacity: 1, scale: 1 }}
                         className="p-4 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-xl"
                       >
-                        <p className="text-red-700 text-sm text-center">{errors.submit}</p>
+                        <p className="text-red-700 text-sm text-center">
+                          {errors.submit}
+                        </p>
                       </motion.div>
                     )}
 
@@ -303,12 +364,17 @@ export default function WaitlistPage() {
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    transition={{ duration: 0.6, delay: 0.2, type: "spring", bounce: 0.6 }}
+                    transition={{
+                      duration: 0.6,
+                      delay: 0.2,
+                      type: "spring",
+                      bounce: 0.6,
+                    }}
                     className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center"
                   >
                     <CheckCircle className="w-10 h-10 text-green-600" />
                   </motion.div>
-                  
+
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -318,11 +384,12 @@ export default function WaitlistPage() {
                       Thank You!
                     </h2>
                     <p className="text-slate-600 mb-6">
-                      You've been successfully added to our waitlist. We'll notify you as soon as ContextTree is ready!
+                      You've been successfully added to our waitlist. We'll
+                      notify you as soon as ContextTree is ready!
                     </p>
-                    
+
                     <Button
-                      onClick={() => router.push('/')}
+                      onClick={() => router.push("/")}
                       className="bg-slate-800 hover:bg-slate-900 text-white"
                     >
                       Back to Home

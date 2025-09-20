@@ -21,7 +21,11 @@ class RateLimit {
     this.buckets = new Map();
   }
 
-  async check(response: typeof NextResponse, limit: number, token: string): Promise<void> {
+  async check(
+    response: typeof NextResponse,
+    limit: number,
+    token: string
+  ): Promise<void> {
     const now = Date.now();
     const bucket = this.buckets.get(token);
 
@@ -36,7 +40,7 @@ class RateLimit {
 
     // Calculate how much time has passed since last refill
     const timePassed = now - bucket.lastRefill;
-    
+
     // If interval has passed, reset the bucket
     if (timePassed >= this.interval) {
       bucket.count = 1;

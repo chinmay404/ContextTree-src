@@ -82,7 +82,7 @@ function SignInContent() {
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
       {/* LiquidEther Background */}
       <div className="absolute inset-0 z-0">
-        <LiquidEther 
+        <LiquidEther
           colors={["#F8FAFC", "#F1F5F9", "#E2E8F0"]}
           mouseForce={3}
           cursorSize={60}
@@ -101,7 +101,7 @@ function SignInContent() {
           style={{ width: "100%", height: "100%" }}
         />
       </div>
-      
+
       {/* Content */}
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
@@ -112,28 +112,69 @@ function SignInContent() {
           className="p-6 flex items-center justify-between"
         >
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push("/")}
             className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors group"
           >
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             <span className="font-medium">Back to Home</span>
           </button>
-          
+
           {/* Tree Logo */}
           <div className="flex items-center">
             <div className="w-8 h-8 text-slate-600">
-              <svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 100 100"
+                xmlns="http://www.w3.org/2000/svg"
+              >
                 {/* Root node (top) */}
-                <rect x="35" y="10" width="30" height="20" rx="4" ry="4" fill="none" stroke="currentColor" strokeWidth="3"/>
-                
+                <rect
+                  x="35"
+                  y="10"
+                  width="30"
+                  height="20"
+                  rx="4"
+                  ry="4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
+
                 {/* Connection lines */}
-                <path d="M50 30 L50 45 M35 55 L50 45 L65 55" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-                
+                <path
+                  d="M50 30 L50 45 M35 55 L50 45 L65 55"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+
                 {/* Left child node */}
-                <rect x="15" y="65" width="25" height="20" rx="4" ry="4" fill="none" stroke="currentColor" strokeWidth="3"/>
-                
+                <rect
+                  x="15"
+                  y="65"
+                  width="25"
+                  height="20"
+                  rx="4"
+                  ry="4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
+
                 {/* Right child node */}
-                <rect x="60" y="65" width="25" height="20" rx="4" ry="4" fill="none" stroke="currentColor" strokeWidth="3"/>
+                <rect
+                  x="60"
+                  y="65"
+                  width="25"
+                  height="20"
+                  rx="4"
+                  ry="4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
               </svg>
             </div>
           </div>
@@ -219,7 +260,9 @@ function SignInContent() {
                           {loading ? (
                             <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                           ) : (
-                            <span className="font-medium">Sign in with {provider.name}</span>
+                            <span className="font-medium">
+                              Sign in with {provider.name}
+                            </span>
                           )}
                         </div>
                       </Button>
@@ -234,7 +277,8 @@ function SignInContent() {
                 className="mt-8 text-center"
               >
                 <p className="text-sm text-slate-600">
-                  By signing in, you agree to our terms of service and privacy policy
+                  By signing in, you agree to our terms of service and privacy
+                  policy
                 </p>
               </motion.div>
             </div>

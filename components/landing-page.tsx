@@ -20,7 +20,7 @@ export function LandingPage() {
   };
 
   return (
-    <div className="h-screen relative overflow-hidden bg-slate-50">
+    <div className="h-screen relative overflow-hidden bg-white">
       {/* LiquidEther Background */}
       <div className="absolute inset-0 z-0">
         <LiquidEther
@@ -42,9 +42,6 @@ export function LandingPage() {
           style={{ width: "100%", height: "100%" }}
         />
       </div>
-
-      {/* Subtle dark overlay for depth */}
-      <div className="absolute inset-0 z-5 bg-slate-900/[0.02] pointer-events-none"></div>
 
       {/* Content Overlay */}
       <div className="relative z-10">
