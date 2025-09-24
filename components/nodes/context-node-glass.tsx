@@ -374,28 +374,31 @@ export function ContextNodeGlass({
           )}
         </div>
 
-        {/* Invisible Connection Handles for Context Node */}
+        {/* Beautiful Connection Handles for Context Node */}
         {/* Target handles (inputs) */}
         <Handle
           type="target"
           position={Position.Left}
           id="left"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ top: "35%" }}
-        />
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="left-center"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ top: "65%" }}
+          className="!w-3 !h-3 !border-2 !border-white !bg-amber-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
+          style={{ 
+            top: "50%", 
+            left: "-6px",
+            backgroundColor: data.dotColor || "#f59e0b",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          }}
         />
         <Handle
           type="target"
           position={Position.Top}
           id="top"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ left: "50%" }}
+          className="!w-3 !h-3 !border-2 !border-white !bg-amber-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
+          style={{ 
+            left: "50%", 
+            top: "-6px",
+            backgroundColor: data.dotColor || "#f59e0b",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          }}
         />
 
         {/* Source handles (outputs) */}
@@ -403,29 +406,25 @@ export function ContextNodeGlass({
           type="source"
           position={Position.Right}
           id="right"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ top: "35%" }}
-        />
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="right-center"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ top: "65%" }}
+          className="!w-3 !h-3 !border-2 !border-white !bg-amber-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
+          style={{ 
+            top: "50%", 
+            right: "-6px",
+            backgroundColor: data.dotColor || "#f59e0b",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          }}
         />
         <Handle
           type="source"
           position={Position.Bottom}
           id="bottom"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ left: "35%" }}
-        />
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="bottom-right"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ left: "65%" }}
+          className="!w-3 !h-3 !border-2 !border-white !bg-amber-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
+          style={{ 
+            left: "50%", 
+            bottom: "-6px",
+            backgroundColor: data.dotColor || "#f59e0b",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          }}
         />
       </Card>
     </div>

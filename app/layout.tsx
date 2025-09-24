@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/auth-provider";
 import { AOSProvider } from "@/components/aos-provider";
+import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -35,7 +36,10 @@ html {
       </head>
       <body className="bg-slate-50 text-slate-900 antialiased">
         <AOSProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
         </AOSProvider>
       </body>
     </html>

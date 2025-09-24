@@ -16,6 +16,7 @@ import { ChatPanel } from "@/components/chat-panel";
 import { CanvasList } from "@/components/canvas-list";
 import { storageService, type CanvasData } from "@/lib/storage";
 import UserAuth from "@/components/user-auth";
+import { BugReportForm } from "@/components/bug-report-form";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -438,6 +439,7 @@ export default function ContextTreePage() {
             </h1>
           </div>
           <div className="flex items-center gap-4">
+            {isAuthenticated && <BugReportForm />}
             <UserAuth />
           </div>
         </div>

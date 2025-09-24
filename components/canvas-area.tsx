@@ -536,17 +536,16 @@ export function CanvasArea({
                 }
               },
             },
-            type: "custom",
+            type: "smoothstep",
             style: {
               stroke: edgeColor,
               strokeWidth: 2,
-              strokeOpacity: 0.8,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
               color: edgeColor,
-              width: 20,
-              height: 20,
+              width: 24,
+              height: 24,
             },
             animated: false,
             selectable: true,
@@ -1467,33 +1466,45 @@ export function CanvasArea({
         onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
         onNodeMouseLeave={(_, node) => setHoveredNodeId(null)}
         connectionLineStyle={{
-          stroke: "#6366f1",
-          strokeWidth: 2,
-          strokeDasharray: "8 4",
+          stroke: "#3b82f6",
+          strokeWidth: 3,
+          strokeDasharray: "5,5",
         }}
         defaultEdgeOptions={{
-          type: "custom",
+          type: "smoothstep",
           style: {
-            stroke: "#94a3b8",
+            stroke: "#64748b",
             strokeWidth: 2,
-            strokeOpacity: 0.8,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: "#94a3b8",
-            width: 20,
-            height: 20,
+            color: "#64748b",
+            width: 24,
+            height: 24,
           },
           animated: false,
         }}
+        panOnDrag={true}
+        selectionOnDrag={false}
+        panOnScroll={true}
+        zoomOnScroll={true}
+        zoomOnPinch={true}
+        zoomOnDoubleClick={true}
+        preventScrolling={true}
+        nodesDragOnlyWhenActive={false}
+        snapToGrid={false}
+        snapGrid={[15, 15]}
+        minZoom={0.1}
+        maxZoom={4}
+        deleteKeyCode="Delete"
       >
         <Controls className="!bg-white/95 !backdrop-blur-sm !border-slate-200/80 !shadow-lg !rounded-xl" />
         <Background
           variant={BackgroundVariant.Dots}
-          gap={24}
-          size={1}
-          className="opacity-30"
-          color="#e2e8f0"
+          gap={20}
+          size={1.5}
+          color="#cbd5e1"
+          className="opacity-40"
         />
         {/* Node settings button on hover */}
         {hoveredNodeId && (

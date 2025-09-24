@@ -336,35 +336,31 @@ export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
           )}
         </div>
 
-        {/* Invisible Connection Handles */}
+        {/* Beautiful Connection Handles */}
         {/* Target handles (inputs) */}
         <Handle
           type="target"
           position={Position.Left}
           id="left"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ top: "30%" }}
-        />
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="left-center"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ top: "50%" }}
-        />
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="left-bottom"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ top: "70%" }}
+          className="!w-3 !h-3 !border-2 !border-white !bg-blue-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
+          style={{ 
+            top: "50%", 
+            left: "-6px",
+            backgroundColor: data.dotColor || "#3b82f6",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          }}
         />
         <Handle
           type="target"
           position={Position.Top}
           id="top"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ left: "50%" }}
+          className="!w-3 !h-3 !border-2 !border-white !bg-blue-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
+          style={{ 
+            left: "50%", 
+            top: "-6px",
+            backgroundColor: data.dotColor || "#3b82f6",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          }}
         />
 
         {/* Source handles (outputs) */}
@@ -372,43 +368,25 @@ export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
           type="source"
           position={Position.Right}
           id="right"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ top: "30%" }}
-        />
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="right-center"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ top: "50%" }}
-        />
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="right-bottom"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ top: "70%" }}
+          className="!w-3 !h-3 !border-2 !border-white !bg-blue-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
+          style={{ 
+            top: "50%", 
+            right: "-6px",
+            backgroundColor: data.dotColor || "#3b82f6",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          }}
         />
         <Handle
           type="source"
           position={Position.Bottom}
           id="bottom"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ left: "30%" }}
-        />
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="bottom-center"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ left: "50%" }}
-        />
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="bottom-right"
-          className="!w-0 !h-0 !border-0 !opacity-0"
-          style={{ left: "70%" }}
+          className="!w-3 !h-3 !border-2 !border-white !bg-blue-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
+          style={{ 
+            left: "50%", 
+            bottom: "-6px",
+            backgroundColor: data.dotColor || "#3b82f6",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          }}
         />
       </Card>
     </div>

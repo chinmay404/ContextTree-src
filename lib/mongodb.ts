@@ -90,6 +90,26 @@ async function init() {
   alter table if exists messages add column if not exists timestamp timestamptz default now();
     create index if not exists idx_messages_node on messages(node_id);
     create index if not exists idx_messages_canvas on messages(canvas_id);
+    create table if not exists bug_reports (
+      id text primary key,
+      user_email text not null references users(email) on delete cascade,
+      user_name text not null,
+      title text not null,
+      description text not null,
+      severity text not null check (severity in ('low', 'medium', 'high', 'critical')),
+      steps_to_reproduce text not null,
+      expected_behavior text not null,
+      actual_behavior text not null,
+      browser_info text,
+      additional_info text,
+      status text not null default 'open' check (status in ('open', 'investigating', 'resolved', 'closed')),
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+    create index if not exists idx_bug_reports_user on bug_reports(user_email);
+    create index if not exists idx_bug_reports_severity on bug_reports(severity);
+    create index if not exists idx_bug_reports_status on bug_reports(status);
+    create index if not exists idx_bug_reports_created on bug_reports(created_at);
   -- Backfill: ensure columns exist if an older version created canvases without them
   alter table if exists canvases add column if not exists data jsonb;
   alter table if exists canvases add column if not exists user_email text;
@@ -733,6 +753,110 @@ export class MongoDBService {
       }
     }
     return out;
+  }
+
+  // Bug Reports methods
+  async createBugReport(reportData: {
+    id: string;
+    userEmail: string;
+    userName: string;
+    title: string;
+    description: string;
+    severity: "low" | "medium" | "high" | "critical";
+    stepsToReproduce: string;
+    expectedBehavior: string;
+    actualBehavior: string;
+    browserInfo?: string;
+    additionalInfo?: string;
+  }) {
+    try {
+      await pool.query(
+        `INSERT INTO bug_reports (
+          id, user_email, user_name, title, description, severity,
+          steps_to_reproduce, expected_behavior, actual_behavior,
+          browser_info, additional_info
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          reportData.id,
+          reportData.userEmail,
+          reportData.userName,
+          reportData.title,
+          reportData.description,
+          reportData.severity,
+          reportData.stepsToReproduce,
+          reportData.expectedBehavior,
+          reportData.actualBehavior,
+          reportData.browserInfo || null,
+          reportData.additionalInfo || null,
+        ]
+      );
+      return reportData;
+    } catch (error) {
+      console.error("Error creating bug report:", error);
+      throw error;
+    }
+  }
+
+  async getBugReportsByUser(userEmail: string) {
+    try {
+      const result = await pool.query(
+        `SELECT * FROM bug_reports 
+         WHERE user_email = $1 
+         ORDER BY created_at DESC`,
+        [userEmail]
+      );
+      return result.rows;
+    } catch (error) {
+      console.error("Error fetching user bug reports:", error);
+      throw error;
+    }
+  }
+
+  async getAllBugReports(limit = 50, offset = 0) {
+    try {
+      const result = await pool.query(
+        `SELECT * FROM bug_reports 
+         ORDER BY created_at DESC 
+         LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      );
+      return result.rows;
+    } catch (error) {
+      console.error("Error fetching bug reports:", error);
+      throw error;
+    }
+  }
+
+  async updateBugReportStatus(
+    id: string,
+    status: "open" | "investigating" | "resolved" | "closed"
+  ) {
+    try {
+      const result = await pool.query(
+        `UPDATE bug_reports 
+         SET status = $1, updated_at = now() 
+         WHERE id = $2 
+         RETURNING *`,
+        [status, id]
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating bug report status:", error);
+      throw error;
+    }
+  }
+
+  async getBugReportById(id: string) {
+    try {
+      const result = await pool.query(
+        `SELECT * FROM bug_reports WHERE id = $1`,
+        [id]
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error fetching bug report by ID:", error);
+      throw error;
+    }
   }
 }
 

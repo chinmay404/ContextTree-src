@@ -1297,11 +1297,40 @@ export function ChatPanel({
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
                     <h3
-                      className={`font-light text-slate-900 truncate ${
+                      className={`font-medium text-slate-900 truncate cursor-pointer hover:text-blue-600 transition-colors duration-200 ${
                         isFullscreen ? "text-xl" : "text-lg"
                       }`}
+                      onClick={() => {
+                        if (selectedNode) {
+                          const newName = prompt(
+                            "Enter new node name:",
+                            currentConversation?.nodeName || "Node"
+                          );
+                          if (newName && newName.trim()) {
+                            // Update node name in canvas
+                            fetch(`/api/canvases/${selectedCanvas}/nodes/${selectedNode}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ name: newName.trim() }),
+                            }).then(() => {
+                              // Update local conversation
+                              setConversations(prev => ({
+                                ...prev,
+                                [selectedNode]: {
+                                  ...prev[selectedNode],
+                                  nodeName: newName.trim()
+                                }
+                              }));
+                              // Trigger canvas refresh
+                              window.dispatchEvent(new CustomEvent('node-updated', {
+                                detail: { nodeId: selectedNode, name: newName.trim() }
+                              }));
+                            });
+                          }
+                        }
+                      }}
+                      title="Click to rename node"
                     >
                       {selectedNode
                         ? currentConversation?.nodeName || "Node Chat"
@@ -1310,13 +1339,9 @@ export function ChatPanel({
                   </div>
                   <p className="text-sm text-slate-500 font-light">
                     {selectedNode
-                      ? `${
-                          currentConversation?.messages?.length || 0
-                        } messages • ${
-                          AVAILABLE_MODELS.find(
-                            (m) => m.value === getNodeModel(selectedNode)
-                          )?.label || getNodeModel(selectedNode)
-                        } • Active session`
+                      ? AVAILABLE_MODELS.find(
+                          (m) => m.value === getNodeModel(selectedNode)
+                        )?.label || getNodeModel(selectedNode)
                       : "Select a node to start chatting"}
                   </p>
                 </div>
@@ -1341,10 +1366,10 @@ export function ChatPanel({
                           // The useEffect will reload it automatically
                         }
                       }}
-                      className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
+                      className="text-slate-400 hover:text-slate-600 hover:bg-slate-50 p-2 rounded-md transition-colors duration-200"
                       title="Refresh conversation"
                     >
-                      <Settings size={16} />
+                      <Settings size={14} />
                     </Button>
                   )}
 
