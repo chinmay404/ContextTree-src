@@ -38,7 +38,19 @@ import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github.css";
 
 // Available AI models (excluding TTS and Speech-to-text models)
-const AVAILABLE_MODELS = ALL_MODELS;
+const AVAILABLE_MODELS = ALL_MODELS.map((model) => ({
+  value: model.id,
+  label: model.name,
+  description: model.description,
+  provider: model.provider,
+}));
+
+// Debug log to verify models are loaded
+console.log(
+  "Available models:",
+  AVAILABLE_MODELS.length,
+  AVAILABLE_MODELS.slice(0, 3)
+);
 
 interface ChatPanelProps {
   selectedNode: string | null;
@@ -98,14 +110,14 @@ export function ChatPanel({
     const handleClickOutside = (event: MouseEvent) => {
       if (showModelDetails) {
         const target = event.target as Element;
-        if (!target.closest('.model-selector-container')) {
+        if (!target.closest(".model-selector-container")) {
           setShowModelDetails(false);
         }
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showModelDetails]);
 
   // Load canvas data to detect forked nodes (client-side only)
@@ -331,9 +343,9 @@ export function ChatPanel({
 
   // Auto-resize textarea function
   const autoResizeTextarea = (textarea: HTMLTextAreaElement) => {
-    textarea.style.height = 'auto';
+    textarea.style.height = "auto";
     const newHeight = Math.min(textarea.scrollHeight, 120); // Max height of ~5 lines
-    textarea.style.height = newHeight + 'px';
+    textarea.style.height = newHeight + "px";
   };
 
   // Handle input change with auto-resize
@@ -372,7 +384,7 @@ export function ChatPanel({
     setInputValue("");
     // Reset textarea height
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = "auto";
     }
     setIsTyping(true);
 
@@ -536,16 +548,14 @@ export function ChatPanel({
     if (forkedNodes.length === 0) return null;
 
     return (
-      <div className="mt-3 pt-3 border-t border-slate-100/60">
-        <div className="flex items-center gap-2 mb-2">
-          <GitBranch size={12} className="text-slate-400" />
-          <span className="text-xs text-slate-500 font-medium">
-            {forkedNodes.length === 1
-              ? "1 branch created"
-              : `${forkedNodes.length} branches created`}
+      <div className="mt-2 pt-2 border-t border-slate-100/40">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <GitBranch size={10} className="text-slate-400" />
+          <span className="text-xs text-slate-500">
+            Forked {forkedNodes.length}x
           </span>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1">
           {forkedNodes.map((node: any) => {
             const nodeTypeIcon =
               node.type === "branch"
@@ -555,6 +565,9 @@ export function ChatPanel({
                 : "▶️";
             const nodeTypeName =
               node.type.charAt(0).toUpperCase() + node.type.slice(1);
+
+            // Display short node ID for identification
+            const shortNodeId = node._id.slice(-8);
 
             return (
               <button
@@ -569,30 +582,16 @@ export function ChatPanel({
                     title: "Navigated to branch",
                     description: `Switched to ${
                       node.name || nodeTypeName
-                    } node`,
+                    } node (${shortNodeId})`,
                   });
                 }}
-                className="group inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg bg-gradient-to-r from-slate-50 to-slate-100/80 border border-slate-200/70 text-slate-700 hover:from-indigo-50 hover:to-blue-50 hover:border-indigo-200/70 hover:text-indigo-700 transition-all duration-200 hover:shadow-sm"
-                title={`Navigate to ${node.name || nodeTypeName} node - ${
-                  node.chatMessages?.length || 0
-                } messages`}
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                title={`Navigate to ${node.name || nodeTypeName} node (ID: ${
+                  node._id
+                }) - ${node.chatMessages?.length || 0} messages`}
               >
-                <span className="text-sm">{nodeTypeIcon}</span>
-                <div className="flex flex-col items-start min-w-0">
-                  <span className="font-medium truncate max-w-[120px]">
-                    {node.name || `${nodeTypeName} Node`}
-                  </span>
-                  {node.chatMessages?.length > 0 && (
-                    <span className="text-slate-400 group-hover:text-indigo-500/70 text-xs">
-                      {node.chatMessages.length} message
-                      {node.chatMessages.length !== 1 ? "s" : ""}
-                    </span>
-                  )}
-                </div>
-                <ArrowRight
-                  size={10}
-                  className="text-slate-400 group-hover:text-indigo-500 transition-colors flex-shrink-0"
-                />
+                <span className="text-xs">{nodeTypeIcon}</span>
+                <span className="font-mono text-xs">{shortNodeId}</span>
               </button>
             );
           })}
@@ -858,9 +857,9 @@ export function ChatPanel({
       <div className="max-w-[85%] order-1">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-50 to-indigo-50 text-slate-600 border border-slate-200/50">
-            <img 
-              src="/contexttree-symbol.svg" 
-              alt="ContextTree" 
+            <img
+              src="/contexttree-symbol.svg"
+              alt="ContextTree"
               className="w-4 h-4"
             />
           </div>
@@ -1091,6 +1090,58 @@ export function ChatPanel({
                         isFullscreen ? "max-w-4xl mx-auto" : ""
                       }`}
                     >
+                      {/* Show fork origin info if this node was forked */}
+                      {canvasData?.nodes &&
+                        selectedNode &&
+                        (() => {
+                          const currentNode = canvasData.nodes.find(
+                            (n: any) => n._id === selectedNode
+                          );
+                          if (
+                            currentNode?.parentNodeId &&
+                            currentNode?.forkedFromMessageId
+                          ) {
+                            const parentNode = canvasData.nodes.find(
+                              (n: any) => n._id === currentNode.parentNodeId
+                            );
+                            const shortCurrentId = selectedNode.slice(-8);
+                            const shortParentId =
+                              currentNode.parentNodeId.slice(-8);
+                            const shortMessageId =
+                              currentNode.forkedFromMessageId.slice(-8);
+
+                            return (
+                              <div className="mb-2 p-2 bg-slate-50/60 border border-slate-100 rounded-md">
+                                <div className="flex items-center gap-2 text-xs text-slate-600">
+                                  <GitBranch
+                                    size={10}
+                                    className="text-slate-500"
+                                  />
+                                  <span>Forked from</span>
+                                  <button
+                                    onClick={() => {
+                                      props.onNodeSelect?.(
+                                        currentNode.parentNodeId,
+                                        parentNode?.name || "Parent Node"
+                                      );
+                                      toast({
+                                        title: "Navigated to parent",
+                                        description: `Switched to parent node (${shortParentId})`,
+                                      });
+                                    }}
+                                    className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs hover:bg-slate-200 transition-colors"
+                                    title={`Navigate to parent node: ${currentNode.parentNodeId}`}
+                                  >
+                                    {parentNode?.name || "Parent"} (
+                                    {shortParentId})
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+
                       {(currentConversation?.messages?.length || 0) === 0 ? (
                         <div className="text-center py-16">
                           <div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-200/50">
@@ -1129,8 +1180,6 @@ export function ChatPanel({
                     isFullscreen ? "p-6" : "p-4"
                   } z-10`}
                 >
-
-
                   {/* Floating Glass Message Input */}
                   <div
                     className={`relative ${
@@ -1151,79 +1200,110 @@ export function ChatPanel({
                             value={inputValue}
                             onChange={handleInputChange}
                             onKeyPress={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey && !isTyping) {
+                              if (
+                                e.key === "Enter" &&
+                                !e.shiftKey &&
+                                !isTyping
+                              ) {
                                 e.preventDefault();
                                 handleSendMessage();
                               }
                             }}
                             disabled={isTyping}
                             className="min-h-[40px] max-h-[120px] w-full px-4 py-3 bg-transparent border-0 resize-none focus:ring-0 focus:outline-none text-slate-900 placeholder:text-slate-500 text-sm leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed rounded-full"
-                            style={{ height: 'auto' }}
+                            style={{ height: "auto" }}
                           />
                         </div>
-                        
+
                         {/* Model Selector Button */}
                         <div className="relative model-selector-container">
                           <button
-                            onClick={() => setShowModelDetails(!showModelDetails)}
+                            onClick={() =>
+                              setShowModelDetails(!showModelDetails)
+                            }
                             className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/30 backdrop-blur-sm border border-slate-300/50 hover:bg-white/40 hover:border-slate-400/70 transition-all duration-200 shadow-lg"
                             title="Select Model"
                           >
                             <div className="flex items-center gap-1">
                               <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
-                              <ChevronDown 
-                                size={12} 
+                              <ChevronDown
+                                size={12}
                                 className={`text-slate-600 transition-transform duration-200 ${
-                                  showModelDetails ? 'rotate-180' : ''
-                                }`} 
+                                  showModelDetails ? "rotate-180" : ""
+                                }`}
                               />
                             </div>
                           </button>
-                          
+
                           {/* Model Selection Dropdown */}
                           {showModelDetails && (
-                            <div className="absolute bottom-full right-0 mb-2 w-80 p-3 bg-white backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl z-50 max-h-[400px] overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-200">
+                            <div className="absolute bottom-full right-0 mb-2 w-96 p-3 bg-white backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl z-50 max-h-[400px] overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-200">
                               <div className="mb-3">
-                                <h3 className="text-sm font-semibold text-slate-800 mb-2">Select Model</h3>
+                                <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                                  Select Model
+                                </h3>
                                 <div className="text-xs text-slate-500 mb-3">
-                                  Current: {AVAILABLE_MODELS.find((m) => m.value === selectedModel)?.label || selectedModel}
+                                  Current:{" "}
+                                  {AVAILABLE_MODELS.find(
+                                    (m) => m.value === selectedModel
+                                  )?.label || selectedModel}
                                 </div>
                               </div>
                               <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                                {AVAILABLE_MODELS.map((model) => {
-                                  const isSelected = selectedModel === model.value;
-                                  return (
-                                    <button
-                                      key={model.value}
-                                      onClick={() => {
-                                        setSelectedModel(model.value);
-                                        setShowModelDetails(false);
-                                      }}
-                                      className={`w-full text-left px-3 py-2.5 rounded-xl transition-all duration-150 group border ${
-                                        isSelected 
-                                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-slate-900' 
-                                          : 'hover:bg-slate-50 text-slate-800 hover:shadow-sm border-transparent hover:border-slate-200'
-                                      }`}
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                          <div className={`w-2 h-2 rounded-full ${
-                                            isSelected ? 'bg-blue-500' : 'bg-slate-300 group-hover:bg-slate-400'
-                                          }`}></div>
-                                          <span className="font-medium text-sm">{model.label}</span>
+                                {AVAILABLE_MODELS.length === 0 ? (
+                                  <div className="text-center py-4 text-slate-500 text-sm">
+                                    No models available
+                                  </div>
+                                ) : (
+                                  AVAILABLE_MODELS.map((model) => {
+                                    const isSelected =
+                                      selectedModel === model.value;
+                                    return (
+                                      <button
+                                        key={model.value}
+                                        onClick={() => {
+                                          setSelectedModel(model.value);
+                                          setShowModelDetails(false);
+                                        }}
+                                        className={`w-full text-left px-3 py-2.5 rounded-xl transition-all duration-150 group border ${
+                                          isSelected
+                                            ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-slate-900"
+                                            : "hover:bg-slate-50 text-slate-800 hover:shadow-sm border-transparent hover:border-slate-200"
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-3">
+                                            <div
+                                              className={`w-2 h-2 rounded-full ${
+                                                isSelected
+                                                  ? "bg-blue-500"
+                                                  : "bg-slate-300 group-hover:bg-slate-400"
+                                              }`}
+                                            ></div>
+                                            <div className="flex flex-col items-start">
+                                              <span className="font-medium text-sm">
+                                                {model.label}
+                                              </span>
+                                              {model.description && (
+                                                <span className="text-xs text-slate-500 mt-0.5">
+                                                  {model.description}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                          {isSelected && (
+                                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                                          )}
                                         </div>
-                                        {isSelected && (
-                                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                                        )}
-                                      </div>
-                                    </button>
-                                  );
-                                })}
+                                      </button>
+                                    );
+                                  })
+                                )}
                               </div>
                             </div>
                           )}
                         </div>
-                        
+
                         {/* Send Button */}
                         <Button
                           onClick={handleSendMessage}
@@ -1234,7 +1314,7 @@ export function ChatPanel({
                         </Button>
                       </div>
                     </div>
-                    
+
                     {/* Subtle ambient glow effect */}
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-indigo-500/5 rounded-full pointer-events-none blur-xl"></div>
                   </div>
