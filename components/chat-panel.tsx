@@ -24,6 +24,8 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Settings,
+  GitBranch,
+  ArrowRight,
 } from "lucide-react";
 import { storageService } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
@@ -45,6 +47,7 @@ interface ChatPanelProps {
   isCollapsed?: boolean;
   onToggleFullscreen?: () => void;
   onToggleCollapse?: () => void;
+  onNodeSelect?: (nodeId: string, nodeName?: string) => void;
 }
 
 interface Message {
@@ -69,6 +72,7 @@ export function ChatPanel({
   isCollapsed = false,
   onToggleFullscreen,
   onToggleCollapse,
+  onNodeSelect,
 }: ChatPanelProps) {
   const [conversations, setConversations] = useState<
     Record<string, NodeConversation>
@@ -76,7 +80,43 @@ export function ChatPanel({
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>(getDefaultModel());
+  const [canvasData, setCanvasData] = useState<any>(null);
+  const [isClient, setIsClient] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Ensure client-side rendering
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Load canvas data to detect forked nodes (client-side only)
+  useEffect(() => {
+    if (!selectedCanvas || typeof window === 'undefined') return;
+    
+    const loadCanvas = async () => {
+      try {
+        const response = await fetch(`/api/canvases/${selectedCanvas}`);
+        if (response.ok) {
+          const data = await response.json();
+          setCanvasData(data.canvas);
+        }
+      } catch (error) {
+        console.error("Failed to load canvas data:", error);
+      }
+    };
+    
+    loadCanvas();
+  }, [selectedCanvas]);
+
+  // Function to get nodes forked from a specific message
+  const getForkedNodes = (messageId: string) => {
+    if (!canvasData?.nodes) return [];
+    
+    return canvasData.nodes.filter((node: any) => {
+      const forkedFromId = node.forkedFromMessageId;
+      return forkedFromId === messageId || forkedFromId === messageId + "-a";
+    });
+  };
 
   // Ensure a conversation object exists for the selected node so the UI can render immediately
   useEffect(() => {
@@ -142,7 +182,7 @@ export function ChatPanel({
                         msg.id ||
                         (msg.timestamp
                           ? `${msg.timestamp}-${idx}`
-                          : `${Date.now()}-${idx}`),
+                          : `msg-${idx}-${selectedNode}`),
                       role: msg.role,
                       content: msg.content,
                       timestamp: msg.timestamp
@@ -173,7 +213,7 @@ export function ChatPanel({
                   msg.id ||
                   (typeof msg.timestamp === "string"
                     ? `${msg.timestamp}-${idx}`
-                    : `${Date.now()}-${idx}`),
+                    : `msg-${idx}-${selectedNode || 'unknown'}`),
                 role: msg.role,
                 content: msg.content,
                 timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
@@ -429,6 +469,64 @@ export function ChatPanel({
     }
   };
 
+  // Fork Indicator Component
+  const ForkIndicator = memo(({ messageId }: { messageId: string }) => {
+    // Only render on client-side to avoid hydration issues
+    if (!isClient) return null;
+    
+    const forkedNodes = getForkedNodes(messageId);
+    
+    if (forkedNodes.length === 0) return null;
+    
+    return (
+      <div className="mt-3 pt-3 border-t border-slate-100/60">
+        <div className="flex items-center gap-2 mb-2">
+          <GitBranch size={12} className="text-slate-400" />
+          <span className="text-xs text-slate-500 font-medium">
+            {forkedNodes.length === 1 ? "1 branch created" : `${forkedNodes.length} branches created`}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {forkedNodes.map((node: any) => {
+            const nodeTypeIcon = node.type === 'branch' ? '🔀' : node.type === 'context' ? '📁' : '▶️';
+            const nodeTypeName = node.type.charAt(0).toUpperCase() + node.type.slice(1);
+            
+            return (
+              <button
+                key={node._id}
+                onClick={() => {
+                  // Navigate to the forked node
+                  props.onNodeSelect?.(node._id, node.name || `${nodeTypeName} Node`);
+                  toast({
+                    title: "Navigated to branch",
+                    description: `Switched to ${node.name || nodeTypeName} node`,
+                  });
+                }}
+                className="group inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg bg-gradient-to-r from-slate-50 to-slate-100/80 border border-slate-200/70 text-slate-700 hover:from-indigo-50 hover:to-blue-50 hover:border-indigo-200/70 hover:text-indigo-700 transition-all duration-200 hover:shadow-sm"
+                title={`Navigate to ${node.name || nodeTypeName} node - ${node.chatMessages?.length || 0} messages`}
+              >
+                <span className="text-sm">{nodeTypeIcon}</span>
+                <div className="flex flex-col items-start min-w-0">
+                  <span className="font-medium truncate max-w-[120px]">
+                    {node.name || `${nodeTypeName} Node`}
+                  </span>
+                  {node.chatMessages?.length > 0 && (
+                    <span className="text-slate-400 group-hover:text-indigo-500/70 text-xs">
+                      {node.chatMessages.length} message{node.chatMessages.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+                <ArrowRight size={10} className="text-slate-400 group-hover:text-indigo-500 transition-colors flex-shrink-0" />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  });
+  
+  ForkIndicator.displayName = "ForkIndicator";
+
   const MessageComponent = memo(
     ({ message }: { message: Message }) => {
       const isUser = message.role === "user";
@@ -630,6 +728,10 @@ export function ChatPanel({
                       </ReactMarkdown>
                     </div>
                   )}
+                  
+                  {/* Fork Indicator - Show forked nodes for both user and assistant messages */}
+                  <ForkIndicator messageId={message.id.replace(/-a$/, "")} />
+                  
                   {!isUser && hovered && (
                     <div className="flex justify-end mt-2">
                       <button

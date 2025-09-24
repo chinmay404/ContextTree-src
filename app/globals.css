@@ -1,6 +1,84 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* ReactFlow Edge Enhancement */
+.react-flow__edge {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.react-flow__edge-path {
+  stroke-width: inherit;
+  stroke: inherit;
+  fill: none;
+  transition: all 0.2s ease;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.4));
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #6366f1;
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.6));
+  animation: edgePulse 2s ease-in-out infinite;
+}
+
+.react-flow__arrowhead {
+  fill: inherit;
+  transition: all 0.2s ease;
+}
+
+.react-flow__edge:hover .react-flow__arrowhead {
+  transform: scale(1.1);
+}
+
+.react-flow__edge.selected .react-flow__arrowhead {
+  fill: #6366f1;
+}
+
+/* Edge creation line styling */
+.react-flow__connectionline {
+  stroke: #6366f1;
+  stroke-width: 2px;
+  stroke-dasharray: 5 5;
+  animation: dashMove 1s linear infinite;
+}
+
+@keyframes edgePulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes dashMove {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 10;
+  }
+}
+
+/* Edge label styling */
+.react-flow__edge-text {
+  font-size: 12px;
+  font-weight: 500;
+  fill: #475569;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* Glassmorphic Node Animations */

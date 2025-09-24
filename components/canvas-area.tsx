@@ -29,6 +29,9 @@ import { NodePalette } from "./node-palette";
 import { EntryNodeGlass } from "./nodes/entry-node-glass";
 import { BranchNodeGlass } from "./nodes/branch-node-glass";
 import { ContextNodeGlass } from "./nodes/context-node-glass";
+
+// Edge imports
+import { CustomEdge } from "./edges/custom-edge";
 import { NodePaletteEnhanced } from "./node-palette-enhanced";
 import { NodeCustomizationPanel } from "./node-customization/node-customization-panel";
 import { Button } from "@/components/ui/button";
@@ -76,6 +79,11 @@ const glassNodeTypes: NodeTypes = {
   context: ContextNodeGlass,
 };
 
+// Define edge types
+const edgeTypes = {
+  custom: CustomEdge,
+};
+
 interface CanvasAreaProps {
   canvasId: string;
   selectedNode: string | null;
@@ -105,10 +113,21 @@ export function CanvasArea({
   const [nodeColorInput, setNodeColorInput] = useState<string>("#A3A3A3");
   const [edgeNameInput, setEdgeNameInput] = useState<string>("");
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  
+  // Canvas viewport state
+  const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
+  const [canvasSettings, setCanvasSettings] = useState({
+    autoSave: true,
+    saveInterval: 2000, // Save every 2 seconds
+  });
 
   // Batched parent lineage updates to minimize network chatter
   const parentUpdateQueueRef = useRef<Record<string, any>>({});
   const parentUpdateTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Canvas save debouncing for optimal performance
+  const canvasSaveQueueRef = useRef<CanvasData | null>(null);
+  const canvasSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const scheduleParentUpdate = useCallback(
     (nodeId: string, updates: any) => {
       parentUpdateQueueRef.current[nodeId] = {
@@ -133,6 +152,42 @@ export function CanvasArea({
       }, 250); // debounce window
     },
     [canvasId]
+  );
+  
+  // Debounced canvas save for optimal performance
+  const scheduleCanvasSave = useCallback(
+    (canvasData: CanvasData) => {
+      if (!canvasSettings.autoSave) return;
+      
+      canvasSaveQueueRef.current = canvasData;
+      if (canvasSaveTimerRef.current) {
+        clearTimeout(canvasSaveTimerRef.current);
+      }
+      
+      canvasSaveTimerRef.current = setTimeout(() => {
+        const dataToSave = canvasSaveQueueRef.current;
+        if (!dataToSave) return;
+        
+        canvasSaveQueueRef.current = null;
+        canvasSaveTimerRef.current = null;
+        
+        // Save to database
+        fetch(`/api/canvases/${canvasId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...dataToSave,
+            viewportState: viewport,
+          }),
+        }).catch((err) => {
+          console.error("Failed to save canvas to database:", err);
+          toast.error("Failed to save canvas changes", {
+            duration: 3000,
+          });
+        });
+      }, canvasSettings.saveInterval);
+    },
+    [canvasId, canvasSettings.autoSave, canvasSettings.saveInterval, viewport]
   );
 
   // Handle node customization
@@ -268,6 +323,10 @@ export function CanvasArea({
           };
           storageService.saveCanvas(updatedCanvas);
           setCanvas(updatedCanvas);
+          
+          // Auto-save edge deletion
+          scheduleCanvasSave(updatedCanvas);
+          
           setEdges((eds) => eds.filter((e) => e.id !== selectedEdge));
           // Delete edge from backend
           fetch(`/api/canvases/${canvasId}/edges/${selectedEdge}`, {
@@ -350,6 +409,15 @@ export function CanvasArea({
           const colorScheme = getColorScheme(node.color || "#f8fafc");
           const lastMessage = [...(node.chatMessages || [])].pop();
           const lastMessageAt = lastMessage?.timestamp || node.createdAt;
+          
+          // Calculate connection counts
+          const outgoingConnections = canvasData.edges.filter(edge => edge.from === node._id).length;
+          const incomingConnections = canvasData.edges.filter(edge => edge.to === node._id).length;
+          const totalConnections = outgoingConnections + incomingConnections;
+          
+          // Calculate branch count (nodes that have this node as parent)
+          const branchCount = canvasData.nodes.filter(n => (n as any).parentNodeId === node._id).length;
+          
           return {
             id: node._id,
             type: node.type,
@@ -374,6 +442,11 @@ export function CanvasArea({
               dotColor: colorScheme.dot,
               parentNodeId: (node as any).parentNodeId,
               forkedFromMessageId: (node as any).forkedFromMessageId,
+              // Enhanced node information
+              connectionCount: totalConnections,
+              branchCount: branchCount,
+              nodeType: node.type,
+              isActive: selectedNode === node._id,
               onClick: () =>
                 onNodeSelect(
                   node._id,
@@ -405,29 +478,70 @@ export function CanvasArea({
           const sourceColorScheme = getColorScheme(
             sourceNode?.color || "#f8fafc"
           );
+          
+          // Ensure edge is visible with fallback colors
+          const edgeColor = sourceColorScheme.edge || "#94a3b8";
 
           return {
             id: edge._id,
             source: edge.from,
             target: edge.to,
-            data: edge.meta,
-            type: "smoothstep",
+            data: { 
+              ...edge.meta,
+              label: edge.meta?.condition || edge.meta?.name || "Connected",
+              onEdit: (edgeId: string) => {
+                setEditingEdgeId(edgeId);
+                const edgeData = canvasData.edges.find(e => e._id === edgeId);
+                setEdgeNameInput(edgeData?.meta?.name || edgeData?.meta?.condition || "");
+              },
+              onDelete: (edgeId: string) => {
+                if (confirm("Delete this connection?")) {
+                  const updatedEdges = canvasData.edges.filter(e => e._id !== edgeId);
+                  const updatedCanvas = { ...canvasData, edges: updatedEdges };
+                  storageService.saveCanvas(updatedCanvas);
+                  setCanvas(updatedCanvas);
+                  setEdges(eds => eds.filter(e => e.id !== edgeId));
+                  fetch(`/api/canvases/${canvasId}/edges/${edgeId}`, { method: "DELETE" });
+                }
+              },
+            },
+            type: "custom",
             style: {
-              stroke: sourceColorScheme.edge,
+              stroke: edgeColor,
               strokeWidth: 2,
+              strokeOpacity: 0.8,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: sourceColorScheme.edge,
+              color: edgeColor,
               width: 20,
               height: 20,
             },
             animated: false,
+            selectable: true,
+            label: edge.meta?.condition || edge.meta?.name,
+            labelStyle: {
+              fontSize: 12,
+              fontWeight: 500,
+              fill: "#475569",
+            },
+            labelBgStyle: {
+              fill: "rgba(255, 255, 255, 0.95)",
+              stroke: "#e2e8f0",
+              strokeWidth: 1,
+              rx: 4,
+              ry: 4,
+            },
           };
         });
 
         setNodes(flowNodes);
         setEdges(flowEdges);
+        
+        // Restore viewport state if available
+        if (canvasData.viewportState) {
+          setViewport(canvasData.viewportState);
+        }
       } else {
         console.log("No canvas data found for:", canvasId);
         setCanvas(null);
@@ -643,10 +757,14 @@ export function CanvasArea({
         ...canvas,
         nodes: updatedNodes,
         edges: [...canvas.edges, newEdge],
+        updatedAt: new Date().toISOString(),
       };
 
       storageService.saveCanvas(updatedCanvas);
       setCanvas(updatedCanvas);
+      
+      // Auto-save to database
+      scheduleCanvasSave(updatedCanvas);
 
       // Persist edge to MongoDB
       fetch(`/api/canvases/${canvasId}/edges`, {
@@ -670,27 +788,73 @@ export function CanvasArea({
       );
 
       // Enhanced React Flow edge styling
+      const sourceNode = canvas.nodes.find(n => n._id === params.source);
+      const sourceColorScheme = getColorScheme(sourceNode?.color || "#f8fafc");
+      const edgeColor = sourceColorScheme.edge || "#94a3b8";
+      
       const flowEdge: Edge = {
         id: newEdge._id,
         source: newEdge.from,
         target: newEdge.to,
-        data: newEdge.meta,
-        type: "smoothstep",
+        data: { 
+          ...newEdge.meta,
+          label: newEdge.meta?.condition || "Connected",
+          onEdit: (edgeId: string) => {
+            setEditingEdgeId(edgeId);
+            const edge = canvas.edges.find(e => e._id === edgeId);
+            setEdgeNameInput(edge?.meta?.name || edge?.meta?.condition || "");
+          },
+          onDelete: (edgeId: string) => {
+            // Delete edge with confirmation
+            if (confirm("Delete this connection?")) {
+              const updatedEdges = canvas.edges.filter(e => e._id !== edgeId);
+              const updatedCanvas = { ...canvas, edges: updatedEdges };
+              storageService.saveCanvas(updatedCanvas);
+              setCanvas(updatedCanvas);
+              setEdges(eds => eds.filter(e => e.id !== edgeId));
+              fetch(`/api/canvases/${canvasId}/edges/${edgeId}`, { method: "DELETE" });
+            }
+          },
+        },
+        type: "custom",
         style: {
-          stroke: "#475569",
-          strokeWidth: 3,
-          strokeDasharray: undefined,
+          stroke: edgeColor,
+          strokeWidth: 2,
+          strokeOpacity: 0.8,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: "#475569",
-          width: 24,
-          height: 24,
+          color: edgeColor,
+          width: 20,
+          height: 20,
         },
-        animated: false,
+        animated: true,
+        selectable: true,
+        label: newEdge.meta?.condition || "Connected",
+        labelStyle: {
+          fontSize: 12,
+          fontWeight: 500,
+          fill: "#475569",
+        },
+        labelBgStyle: {
+          fill: "rgba(255, 255, 255, 0.9)",
+          stroke: "#e2e8f0",
+          strokeWidth: 1,
+        },
       };
 
-      setEdges((eds) => addEdge(flowEdge, eds));
+      setEdges((eds) => {
+        const newEdges = addEdge(flowEdge, eds);
+        // Animate the new edge
+        setTimeout(() => {
+          setEdges(currentEdges => currentEdges.map(e => 
+            e.id === flowEdge.id 
+              ? { ...e, animated: true, style: { ...e.style, strokeOpacity: 1 }}
+              : e
+          ));
+        }, 100);
+        return newEdges;
+      });
     },
     [canvas, setEdges, canvasId]
   );
@@ -752,12 +916,24 @@ export function CanvasArea({
       const updatedCanvas: CanvasData = {
         ...canvas,
         nodes: updatedNodes,
+        // Save viewport state as well
+        viewportState: viewport,
+        updatedAt: new Date().toISOString(),
       };
 
+      // Save to localStorage immediately
       storageService.saveCanvas(updatedCanvas);
       setCanvas(updatedCanvas);
+      
+      // Save to database with debounce
+      scheduleCanvasSave(updatedCanvas);
+      
+      // Visual feedback
+      toast.success(`Node position saved`, {
+        duration: 1000,
+      });
     },
-    [canvas]
+    [canvas, viewport]
   );
 
   // Highlight & animate edges: direct (tier 1) + neighbor edges (tier 2)
@@ -769,7 +945,9 @@ export function CanvasArea({
           animated: false,
           style: {
             ...(e.style || {}),
+            stroke: e.style?.stroke || "#64748b",
             strokeWidth: 2,
+            strokeOpacity: 1,
             filter: "none",
             strokeDasharray: undefined,
           },
@@ -824,6 +1002,7 @@ export function CanvasArea({
               ...e.style,
               stroke,
               strokeWidth: 3,
+              strokeOpacity: 1,
               filter:
                 "drop-shadow(0 0 6px rgba(100,116,139,0.55)) drop-shadow(0 0 2px rgba(100,116,139,0.8))",
               strokeDasharray: undefined,
@@ -838,6 +1017,7 @@ export function CanvasArea({
             ...e.style,
             stroke,
             strokeWidth: 2.5,
+            strokeOpacity: 0.8,
             filter: "drop-shadow(0 0 4px rgba(100,116,139,0.4))",
             strokeDasharray: "6 4",
           },
@@ -916,6 +1096,9 @@ export function CanvasArea({
 
       storageService.saveCanvas(updatedCanvas);
       setCanvas(updatedCanvas);
+      
+      // Auto-save to database
+      scheduleCanvasSave(updatedCanvas);
 
       // Persist node to MongoDB
       fetch(`/api/canvases/${canvasId}/nodes`, {
@@ -1132,16 +1315,24 @@ export function CanvasArea({
 
     // Save to storage
     if (canvas) {
-      const updatedCanvas = {
+      const updatedNodes = canvas.nodes.map((canvasNode) => {
+        const layoutedNode = layoutedNodes.find(n => n.id === canvasNode._id);
+        return layoutedNode ? { ...canvasNode, position: layoutedNode.position } : canvasNode;
+      });
+      
+      const updatedCanvas: CanvasData = {
         ...canvas,
-        nodes: layoutedNodes.map((node) => ({
-          id: node.id,
-          type: node.type as any,
-          position: node.position,
-          data: node.data,
-        })),
+        nodes: updatedNodes,
+        updatedAt: new Date().toISOString(),
       };
-      storageService.updateCanvas(canvas._id, updatedCanvas);
+      
+      storageService.saveCanvas(updatedCanvas);
+      setCanvas(updatedCanvas);
+      scheduleCanvasSave(updatedCanvas);
+      
+      toast.success("Canvas auto-arranged!", {
+        duration: 2000,
+      });
     }
   }, [nodes, edges, canvas, setNodes]);
 
@@ -1159,27 +1350,87 @@ export function CanvasArea({
         onConnect={onConnect}
         onNodeClick={onNodeClick}
         onNodeDragStop={onNodeDragStop}
+        onEdgeClick={(event, edge) => {
+          setSelectedEdge(edge.id);
+          // Show edge info toast
+          const fromNode = nodes.find(n => n.id === edge.source);
+          const toNode = nodes.find(n => n.id === edge.target);
+          toast.info(`Connection: ${fromNode?.data?.label || 'Node'} → ${toNode?.data?.label || 'Node'}`, {
+            duration: 2000,
+          });
+        }}
+        onEdgeMouseEnter={(event, edge) => {
+          // Add hover effect by updating edge style
+          setEdges(eds => eds.map(e => 
+            e.id === edge.id 
+              ? { ...e, style: { ...e.style, strokeWidth: 3, strokeOpacity: 1 }}
+              : e
+          ));
+        }}
+        onEdgeMouseLeave={(event, edge) => {
+          // Remove hover effect
+          setEdges(eds => eds.map(e => 
+            e.id === edge.id 
+              ? { ...e, style: { ...e.style, strokeWidth: 2, strokeOpacity: 0.8 }}
+              : e
+          ));
+        }}
         nodeTypes={currentNodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         className="bg-white"
+        onInit={(instance) => {
+          // Restore viewport state if available
+          if (canvas?.viewportState) {
+            const { x, y, zoom } = canvas.viewportState;
+            instance.setViewport({ x, y, zoom });
+            setViewport({ x, y, zoom });
+          } else {
+            // Focus the canvas and ensure proper viewport for new canvases
+            setTimeout(() => {
+              instance.fitView({ padding: 0.1 });
+              const currentViewport = instance.getViewport();
+              setViewport(currentViewport);
+            }, 100);
+          }
+        }}
+        onMove={(event, newViewport) => {
+          // Track viewport changes for persistence
+          setViewport(newViewport);
+        }}
+        onMoveEnd={(event, newViewport) => {
+          // Save viewport state when movement ends
+          if (canvas && canvasSettings.autoSave) {
+            const updatedCanvas = {
+              ...canvas,
+              viewportState: newViewport,
+              updatedAt: new Date().toISOString(),
+            };
+            storageService.saveCanvas(updatedCanvas);
+            scheduleCanvasSave(updatedCanvas);
+          }
+        }}
         onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
         onNodeMouseLeave={(_, node) => setHoveredNodeId(null)}
         connectionLineStyle={{
-          stroke: "#475569",
-          strokeWidth: 3,
+          stroke: "#6366f1",
+          strokeWidth: 2,
+          strokeDasharray: "8 4",
         }}
         defaultEdgeOptions={{
-          type: "smoothstep",
+          type: "custom",
           style: {
-            stroke: "#475569",
-            strokeWidth: 3,
+            stroke: "#94a3b8",
+            strokeWidth: 2,
+            strokeOpacity: 0.8,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: "#475569",
-            width: 24,
-            height: 24,
+            color: "#94a3b8",
+            width: 20,
+            height: 20,
           },
+          animated: false,
         }}
       >
         <Controls className="!bg-white/95 !backdrop-blur-sm !border-slate-200/80 !shadow-lg !rounded-xl" />
@@ -1355,6 +1606,28 @@ export function CanvasArea({
           </div>
         )}
       </ReactFlow>
+
+      {/* Canvas Status Indicator - Top Right */}
+      <div className="absolute top-6 right-6 z-10">
+        <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl px-3 py-2 shadow-lg">
+          <div className="flex items-center gap-2">
+            <div 
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                canvasSaveTimerRef.current ? 'bg-amber-400 animate-pulse' : 'bg-green-400'
+              }`} 
+            />
+            <span className="text-xs text-slate-600 font-medium">
+              {canvasSaveTimerRef.current ? 'Saving...' : 'Saved'}
+            </span>
+          </div>
+          <div className="w-px h-4 bg-slate-300" />
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-slate-500">
+              {nodes.length} nodes, {edges.length} edges
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* Node Palette - Bottom Right */}
       <div className="absolute bottom-6 right-6 z-10">

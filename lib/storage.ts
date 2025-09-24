@@ -7,6 +7,7 @@ export interface CanvasData {
   userId: string;
   title: string;
   createdAt: string;
+  updatedAt?: string;
   primaryNodeId: string;
   metaTags: string[];
   settings: {
@@ -15,6 +16,12 @@ export interface CanvasData {
   };
   nodes: NodeData[];
   edges: EdgeData[];
+  // Viewport state for canvas position persistence
+  viewportState?: {
+    x: number;
+    y: number;
+    zoom: number;
+  };
 }
 
 export interface NodeData {

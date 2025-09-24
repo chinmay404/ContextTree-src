@@ -558,6 +558,12 @@ export default function ContextTreePage() {
             onToggleCollapse={() =>
               setRightSidebarCollapsed(!rightSidebarCollapsed)
             }
+            onNodeSelect={(nodeId: string, nodeName?: string) => {
+              setSelectedNode(nodeId);
+              setSelectedNodeName(nodeName);
+              // Collapse chat to show the canvas when switching nodes
+              if (chatFullscreen) setChatFullscreen(false);
+            }}
             onClose={() => {
               setSelectedNode(null);
               setSelectedNodeName(undefined);

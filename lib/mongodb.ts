@@ -59,6 +59,19 @@ async function init() {
     create index if not exists idx_nodes_canvas on nodes(canvas_id);
     create index if not exists idx_nodes_parent on nodes(parent_node_id);
     create index if not exists idx_nodes_forked_from on nodes(forked_from_message_id);
+    create table if not exists edges (
+      id text primary key,
+      canvas_id text not null references canvases(id) on delete cascade,
+      user_email text not null references users(email) on delete cascade,
+      from_node text not null,
+      to_node text not null,
+      data jsonb,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+    create index if not exists idx_edges_canvas on edges(canvas_id);
+    create index if not exists idx_edges_from on edges(from_node);
+    create index if not exists idx_edges_to on edges(to_node);
     create table if not exists messages (
       id text primary key,
       node_id text not null references nodes(id) on delete cascade,

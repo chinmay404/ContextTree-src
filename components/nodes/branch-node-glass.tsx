@@ -14,6 +14,8 @@ import {
   Users,
   ArrowRight,
   Palette,
+  Eye,
+  Star,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -28,6 +30,7 @@ interface BranchNodeData {
   branchCount?: number;
   conditions?: string[];
   model?: string;
+  messageCount?: number;
   metaTags?: string[];
   lastMessageAt?: string;
   createdAt?: string;
@@ -38,6 +41,10 @@ interface BranchNodeData {
   style?: "minimal" | "modern" | "glass" | "gradient";
   borderRadius?: number;
   opacity?: number;
+  // Enhanced properties
+  connectionCount?: number;
+  nodeType?: string;
+  isActive?: boolean;
 }
 
 export function BranchNodeGlass({ data, selected }: NodeProps<BranchNodeData>) {
@@ -210,7 +217,7 @@ export function BranchNodeGlass({ data, selected }: NodeProps<BranchNodeData>) {
         <div className="relative z-10">
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               <div
                 className={`flex items-center justify-center rounded-xl transition-all duration-300 ${
                   hovered || selected || data.isSelected ? "shadow-lg" : ""
@@ -242,9 +249,46 @@ export function BranchNodeGlass({ data, selected }: NodeProps<BranchNodeData>) {
                   <span className="text-xs font-medium text-slate-600/80">
                     Branch Node
                   </span>
+                  {/* Message Count */}
+                  {data.messageCount !== undefined && (
+                    <>
+                      <span className="text-slate-400">•</span>
+                      <MessageCircle size={12} className="text-slate-500" />
+                      <span className="text-xs font-medium text-slate-600">
+                        {data.messageCount}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
+
+            {/* Focus Status Badge */}
+            <Badge
+              variant="secondary"
+              className={`px-2 py-1 text-xs font-medium border-0 transition-all duration-300 mr-2 ${
+                data.isSelected || selected ? 'scale-110' : ''
+              }`}
+              style={{
+                background: data.isSelected || selected 
+                  ? `${baseColor}20`
+                  : "rgba(34, 197, 94, 0.15)",
+                backdropFilter: "blur(10px)",
+                color: data.isSelected || selected ? baseColor : "#059669",
+                boxShadow: (data.isSelected || selected || branchAnimation)
+                  ? `0 0 12px ${data.isSelected || selected ? baseColor + '40' : 'rgba(34, 197, 94, 0.4)'}`
+                  : "none",
+              }}
+            >
+              {data.isSelected || selected ? (
+                <div className="flex items-center gap-1">
+                  <Route size={10} style={{ color: baseColor }} />
+                  <span>Active</span>
+                </div>
+              ) : (
+                <span>Ready</span>
+              )}
+            </Badge>
 
             {/* Color Picker Button */}
             <div className="relative">
@@ -290,6 +334,46 @@ export function BranchNodeGlass({ data, selected }: NodeProps<BranchNodeData>) {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Model & Connection Info */}
+          <div className="mb-3 space-y-2">
+            {/* LLM Model */}
+            {data.model && (
+              <div 
+                className="flex items-center justify-between p-2 rounded-lg transition-all duration-200"
+                style={{
+                  background: `${baseColor}08`,
+                  backdropFilter: "blur(10px)",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Zap size={12} style={{ color: baseColor }} />
+                  <span className="text-xs font-semibold text-slate-700">
+                    {data.model.replace('gpt-', 'GPT-').toUpperCase()}
+                  </span>
+                </div>
+                {data.isSelected && (
+                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: baseColor }} />
+                )}
+              </div>
+            )}
+            
+            {/* Connection Stats */}
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1">
+                <ArrowRight size={12} className="text-slate-500" />
+                <span className="text-slate-600 font-medium">
+                  Connections: {data.connectionCount || 0}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Share2 size={12} style={{ color: baseColor }} />
+                <span className="text-slate-600 font-medium">
+                  Branches: {data.branchCount || 0}
+                </span>
+              </div>
             </div>
           </div>
 

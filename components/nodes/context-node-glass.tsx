@@ -14,6 +14,8 @@ import {
   Clock,
   Hash,
   Zap,
+  ArrowRight,
+  Eye,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -28,6 +30,7 @@ interface ContextNodeData {
   contextType?: "database" | "file" | "memory" | "api" | "knowledge";
   dataSize?: string;
   model?: string;
+  messageCount?: number;
   metaTags?: string[];
   lastMessageAt?: string;
   createdAt?: string;
@@ -36,6 +39,11 @@ interface ContextNodeData {
   style?: "minimal" | "modern" | "glass" | "gradient";
   borderRadius?: number;
   opacity?: number;
+  // Enhanced properties
+  connectionCount?: number;
+  branchCount?: number;
+  nodeType?: string;
+  isActive?: boolean;
 }
 
 export function ContextNodeGlass({
@@ -211,7 +219,7 @@ export function ContextNodeGlass({
         <div className="relative z-10">
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               <div
                 className={`flex items-center justify-center rounded-xl transition-all duration-300 ${
                   hovered || selected || data.isSelected
@@ -240,25 +248,86 @@ export function ContextNodeGlass({
                   <span className="text-xs font-medium text-slate-600/80">
                     {data.contextType || "Context"} Node
                   </span>
+                  {/* Message Count */}
+                  {data.messageCount !== undefined && (
+                    <>
+                      <span className="text-slate-400">•</span>
+                      <MessageCircle size={12} className="text-slate-500" />
+                      <span className="text-xs font-medium text-slate-600">
+                        {data.messageCount}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Status Badge */}
+            {/* Focus Status Badge */}
             <Badge
               variant="secondary"
-              className="px-2 py-1 text-xs font-medium border-0"
+              className={`px-2 py-1 text-xs font-medium border-0 transition-all duration-300 ${
+                data.isSelected || selected ? 'scale-110' : ''
+              }`}
               style={{
-                background: "rgba(139, 92, 246, 0.15)",
+                background: data.isSelected || selected 
+                  ? "rgba(139, 92, 246, 0.2)" 
+                  : "rgba(139, 92, 246, 0.15)",
                 backdropFilter: "blur(10px)",
                 color: "#7c3aed",
-                boxShadow: dataFlow
+                boxShadow: (data.isSelected || selected || dataFlow)
                   ? "0 0 12px rgba(139, 92, 246, 0.4)"
                   : "none",
               }}
             >
-              Ready
+              {data.isSelected || selected ? (
+                <div className="flex items-center gap-1">
+                  <Database size={10} className="text-purple-600" />
+                  <span>Active</span>
+                </div>
+              ) : (
+                <span>Ready</span>
+              )}
             </Badge>
+          </div>
+
+          {/* Model & Connection Info */}
+          <div className="mb-3 space-y-2">
+            {/* LLM Model */}
+            {data.model && (
+              <div 
+                className="flex items-center justify-between p-2 rounded-lg transition-all duration-200"
+                style={{
+                  background: "rgba(139, 92, 246, 0.08)",
+                  backdropFilter: "blur(10px)",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Brain size={12} className="text-purple-500" />
+                  <span className="text-xs font-semibold text-slate-700">
+                    {data.model.replace('gpt-', 'GPT-').toUpperCase()}
+                  </span>
+                </div>
+                {data.isSelected && (
+                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" />
+                )}
+              </div>
+            )}
+            
+            {/* Connection Stats */}
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1">
+                <Zap size={12} className="text-slate-500" />
+                <span className="text-slate-600 font-medium">
+                  Connections: {data.connectionCount || 0}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Hash size={12} className="text-purple-500" />
+                <span className="text-slate-600 font-medium">
+                  Context Type: {data.contextType || 'General'}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Context Info */}

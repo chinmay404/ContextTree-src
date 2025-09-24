@@ -24,6 +24,7 @@ interface EntryNodeData {
   textColor?: string;
   dotColor?: string;
   model?: string;
+  messageCount?: number;
   metaTags?: string[];
   lastMessageAt?: string;
   createdAt?: string;
@@ -33,6 +34,11 @@ interface EntryNodeData {
   style?: "minimal" | "modern" | "glass" | "gradient";
   borderRadius?: number;
   opacity?: number;
+  // New enhanced properties
+  branchCount?: number;
+  connectionCount?: number;
+  isActive?: boolean;
+  nodeType?: string;
 }
 
 export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
@@ -179,7 +185,7 @@ export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
         <div className="relative z-10">
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               <div
                 className={`flex items-center justify-center rounded-xl transition-all duration-300 ${
                   hovered || selected || data.isSelected
@@ -208,36 +214,89 @@ export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
                   <span className="text-xs font-medium text-slate-600/80">
                     Entry Node
                   </span>
+                  {/* Message Count */}
+                  {data.messageCount !== undefined && (
+                    <>
+                      <span className="text-slate-400">•</span>
+                      <MessageCircle size={12} className="text-slate-500" />
+                      <span className="text-xs font-medium text-slate-600">
+                        {data.messageCount}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Status Badge */}
+            {/* Focus Status Badge */}
             <Badge
               variant="secondary"
-              className="px-2 py-1 text-xs font-medium border-0"
+              className={`px-2 py-1 text-xs font-medium border-0 transition-all duration-300 ${
+                data.isSelected || selected ? 'scale-110' : ''
+              }`}
               style={{
-                background: "rgba(34, 197, 94, 0.15)",
+                background: data.isSelected || selected 
+                  ? "rgba(59, 130, 246, 0.2)" 
+                  : "rgba(34, 197, 94, 0.15)",
                 backdropFilter: "blur(10px)",
-                color: "#059669",
-                boxShadow: pulseActive
-                  ? "0 0 12px rgba(34, 197, 94, 0.4)"
+                color: data.isSelected || selected ? "#1d4ed8" : "#059669",
+                boxShadow: (data.isSelected || selected || pulseActive)
+                  ? `0 0 12px ${data.isSelected || selected ? 'rgba(59, 130, 246, 0.4)' : 'rgba(34, 197, 94, 0.4)'}`
                   : "none",
               }}
             >
-              Active
+              {data.isSelected || selected ? (
+                <div className="flex items-center gap-1">
+                  <Eye size={10} />
+                  <span>Active</span>
+                </div>
+              ) : (
+                <span>Ready</span>
+              )}
             </Badge>
           </div>
 
-          {/* Model Info */}
-          {data.model && (
-            <div className="flex items-center justify-center gap-1 mb-3">
-              <Sparkles size={10} className="text-blue-400" />
-              <span className="text-xs text-slate-600 font-medium">
-                {data.model}
-              </span>
+          {/* Model & Connection Info */}
+          <div className="mb-3 space-y-2">
+            {/* LLM Model */}
+            {data.model && (
+              <div 
+                className="flex items-center justify-between p-2 rounded-lg transition-all duration-200"
+                style={{
+                  background: "rgba(59, 130, 246, 0.08)",
+                  backdropFilter: "blur(10px)",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles size={12} className="text-blue-500" />
+                  <span className="text-xs font-semibold text-slate-700">
+                    {data.model.replace('gpt-', 'GPT-').toUpperCase()}
+                  </span>
+                </div>
+                {data.isSelected && (
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+                )}
+              </div>
+            )}
+            
+            {/* Connection Stats */}
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1">
+                <ArrowRight size={12} className="text-slate-500" />
+                <span className="text-slate-600 font-medium">
+                  Connections: {data.connectionCount || 0}
+                </span>
+              </div>
+              {data.branchCount !== undefined && (
+                <div className="flex items-center gap-1">
+                  <Star size={12} className="text-amber-500" />
+                  <span className="text-slate-600 font-medium">
+                    Branches: {data.branchCount}
+                  </span>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Meta Tags */}
           {data.metaTags && data.metaTags.length > 0 && (
