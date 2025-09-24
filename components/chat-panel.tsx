@@ -96,7 +96,8 @@ export function ChatPanel({
   const [selectedModel, setSelectedModel] = useState<string>(getDefaultModel());
   const [canvasData, setCanvasData] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
-  const [showModelDetails, setShowModelDetails] = useState(false);
+  const [showForkModelDialog, setShowForkModelDialog] = useState(false);
+  const [pendingForkMessage, setPendingForkMessage] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -104,21 +105,6 @@ export function ChatPanel({
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  // Close model selector on outside click
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showModelDetails) {
-        const target = event.target as Element;
-        if (!target.closest(".model-selector-container")) {
-          setShowModelDetails(false);
-        }
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showModelDetails]);
 
   // Load canvas data to detect forked nodes (client-side only)
   useEffect(() => {
@@ -337,8 +323,15 @@ export function ChatPanel({
   }, [currentConversation?.messages]);
 
   const getNodeModel = (nodeId: string): string => {
-    // Use the selected model from the dropdown
-    return selectedModel;
+    // Get the model from the node's stored data, fallback to default
+    if (canvasData?.nodes) {
+      const node = canvasData.nodes.find((n: any) => n._id === nodeId);
+      if (node?.model) {
+        return node.model;
+      }
+    }
+    // Fallback to default model if node model not found
+    return getDefaultModel();
   };
 
   // Auto-resize textarea function
@@ -609,6 +602,15 @@ export function ChatPanel({
 
       const handleFork = async () => {
         if (!selectedCanvas || !selectedNode) return;
+        
+        // Show model selection dialog instead of immediately creating node
+        setPendingForkMessage(message.id.replace(/-a$/, ""));
+        setShowForkModelDialog(true);
+      };
+
+      const createForkWithModel = async (selectedForkModel: string) => {
+        if (!selectedCanvas || !selectedNode || !pendingForkMessage) return;
+        
         // Create a new branch/context node (default to branch) with lineage metadata
         const newNodeId = `node_${Date.now()}_${Math.random()
           .toString(36)
@@ -620,9 +622,9 @@ export function ChatPanel({
           chatMessages: [],
           runningSummary: "",
           contextContract: "",
-          model: selectedModel,
+          model: selectedForkModel,
           parentNodeId: selectedNode,
-          forkedFromMessageId: message.id.replace(/-a$/, ""),
+          forkedFromMessageId: pendingForkMessage,
           createdAt: new Date().toISOString(),
           position: {
             x: 300 + Math.random() * 150,
@@ -684,9 +686,10 @@ export function ChatPanel({
           );
 
           // Toast confirmation
+          const modelName = AVAILABLE_MODELS.find(m => m.value === selectedForkModel)?.label || selectedForkModel;
           toast({
             title: "Fork created",
-            description: `New node ${newNodeId} forked from message`,
+            description: `New node created with ${modelName}`,
           });
         } catch (e) {
           console.error("Error forking node", e);
@@ -891,7 +894,75 @@ export function ChatPanel({
     </div>
   );
 
+  // Model Selection Dialog for Fork
+  const ModelSelectionDialog = () => {
+    if (!showForkModelDialog) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">
+              Select Model for New Node
+            </h3>
+            <p className="text-sm text-slate-600">
+              Choose which AI model this forked node should use for conversations.
+            </p>
+          </div>
+          
+          <div className="space-y-2 max-h-80 overflow-y-auto mb-6">
+            {AVAILABLE_MODELS.map((model) => (
+              <button
+                key={model.value}
+                onClick={() => {
+                  createForkWithModel(model.value);
+                  setShowForkModelDialog(false);
+                  setPendingForkMessage(null);
+                }}
+                className="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 group-hover:bg-blue-600"></div>
+                  <div>
+                    <div className="font-medium text-slate-800 group-hover:text-blue-800">
+                      {model.label}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1 group-hover:text-blue-600">
+                      {model.description}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+          
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowForkModelDialog(false);
+                setPendingForkMessage(null);
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
+    <>
+      <ModelSelectionDialog />
+      <div
+        className={`h-full flex flex-col ${
+          isFullscreen
+            ? "bg-slate-50"
+            : "bg-white/95 backdrop-blur-sm border-l border-slate-200/80 shadow-sm"
+        }`}
+      >
     <div
       className={`h-full flex flex-col ${
         isFullscreen
@@ -998,8 +1069,8 @@ export function ChatPanel({
                     ? `${
                         currentConversation?.messages?.length || 0
                       } messages • ${
-                        AVAILABLE_MODELS.find((m) => m.value === selectedModel)
-                          ?.label || selectedModel
+                        AVAILABLE_MODELS.find((m) => m.value === getNodeModel(selectedNode))
+                          ?.label || getNodeModel(selectedNode)
                       } • Active session`
                     : "Select a node to start chatting"}
                 </p>
@@ -1215,95 +1286,6 @@ export function ChatPanel({
                           />
                         </div>
 
-                        {/* Model Selector Button */}
-                        <div className="relative model-selector-container">
-                          <button
-                            onClick={() =>
-                              setShowModelDetails(!showModelDetails)
-                            }
-                            className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/30 backdrop-blur-sm border border-slate-300/50 hover:bg-white/40 hover:border-slate-400/70 transition-all duration-200 shadow-lg"
-                            title="Select Model"
-                          >
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
-                              <ChevronDown
-                                size={12}
-                                className={`text-slate-600 transition-transform duration-200 ${
-                                  showModelDetails ? "rotate-180" : ""
-                                }`}
-                              />
-                            </div>
-                          </button>
-
-                          {/* Model Selection Dropdown */}
-                          {showModelDetails && (
-                            <div className="absolute bottom-full right-0 mb-2 w-96 p-3 bg-white backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl z-50 max-h-[400px] overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-200">
-                              <div className="mb-3">
-                                <h3 className="text-sm font-semibold text-slate-800 mb-2">
-                                  Select Model
-                                </h3>
-                                <div className="text-xs text-slate-500 mb-3">
-                                  Current:{" "}
-                                  {AVAILABLE_MODELS.find(
-                                    (m) => m.value === selectedModel
-                                  )?.label || selectedModel}
-                                </div>
-                              </div>
-                              <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                                {AVAILABLE_MODELS.length === 0 ? (
-                                  <div className="text-center py-4 text-slate-500 text-sm">
-                                    No models available
-                                  </div>
-                                ) : (
-                                  AVAILABLE_MODELS.map((model) => {
-                                    const isSelected =
-                                      selectedModel === model.value;
-                                    return (
-                                      <button
-                                        key={model.value}
-                                        onClick={() => {
-                                          setSelectedModel(model.value);
-                                          setShowModelDetails(false);
-                                        }}
-                                        className={`w-full text-left px-3 py-2.5 rounded-xl transition-all duration-150 group border ${
-                                          isSelected
-                                            ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-slate-900"
-                                            : "hover:bg-slate-50 text-slate-800 hover:shadow-sm border-transparent hover:border-slate-200"
-                                        }`}
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-3">
-                                            <div
-                                              className={`w-2 h-2 rounded-full ${
-                                                isSelected
-                                                  ? "bg-blue-500"
-                                                  : "bg-slate-300 group-hover:bg-slate-400"
-                                              }`}
-                                            ></div>
-                                            <div className="flex flex-col items-start">
-                                              <span className="font-medium text-sm">
-                                                {model.label}
-                                              </span>
-                                              {model.description && (
-                                                <span className="text-xs text-slate-500 mt-0.5">
-                                                  {model.description}
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                          {isSelected && (
-                                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                                          )}
-                                        </div>
-                                      </button>
-                                    );
-                                  })
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
                         {/* Send Button */}
                         <Button
                           onClick={handleSendMessage}
@@ -1342,6 +1324,7 @@ export function ChatPanel({
           </div>
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }

@@ -181,7 +181,7 @@ function BranchNodeComponent({ data, selected }: NodeProps<BranchNodeData>) {
                 className="text-[10px] uppercase tracking-wider font-medium mt-0.5 opacity-70"
                 style={{ color: textColor }}
               >
-                {data.parentNodeId ? "Forked" : model}
+                {model}
               </p>
             </div>
           </div>
