@@ -1113,7 +1113,17 @@ export function ChatPanel({
 
   // Model Selection Dialog for Fork
   const ModelSelectionDialog = () => {
+    const [selectedModelForFork, setSelectedModelForFork] = useState<string>(
+      getDefaultModel()
+    );
+
     if (!showForkModelDialog) return null;
+
+    const handleSubmit = () => {
+      createForkWithModel(selectedModelForFork);
+      setShowForkModelDialog(false);
+      setPendingForkMessage(null);
+    };
 
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -1132,20 +1142,38 @@ export function ChatPanel({
             {AVAILABLE_MODELS.map((model) => (
               <button
                 key={model.value}
-                onClick={() => {
-                  createForkWithModel(model.value);
-                  setShowForkModelDialog(false);
-                  setPendingForkMessage(null);
-                }}
-                className="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group"
+                onClick={() => setSelectedModelForFork(model.value)}
+                className={`w-full text-left p-3 rounded-xl border transition-all duration-200 group ${
+                  selectedModelForFork === model.value
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-slate-200 hover:border-blue-300 hover:bg-blue-50"
+                }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 group-hover:bg-blue-600"></div>
+                  <div
+                    className={`w-2 h-2 rounded-full mt-2 ${
+                      selectedModelForFork === model.value
+                        ? "bg-blue-600"
+                        : "bg-blue-500 group-hover:bg-blue-600"
+                    }`}
+                  ></div>
                   <div>
-                    <div className="font-medium text-slate-800 group-hover:text-blue-800">
+                    <div
+                      className={`font-medium ${
+                        selectedModelForFork === model.value
+                          ? "text-blue-800"
+                          : "text-slate-800 group-hover:text-blue-800"
+                      }`}
+                    >
                       {model.label}
                     </div>
-                    <div className="text-xs text-slate-500 mt-1 group-hover:text-blue-600">
+                    <div
+                      className={`text-xs mt-1 ${
+                        selectedModelForFork === model.value
+                          ? "text-blue-600"
+                          : "text-slate-500 group-hover:text-blue-600"
+                      }`}
+                    >
                       {model.description}
                     </div>
                   </div>
@@ -1164,6 +1192,12 @@ export function ChatPanel({
               className="flex-1"
             >
               Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              className="flex-1 bg-blue-600 hover:bg-blue-700"
+            >
+              Create Node
             </Button>
           </div>
         </div>
