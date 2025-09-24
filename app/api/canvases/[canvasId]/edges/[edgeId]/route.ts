@@ -31,7 +31,11 @@ export async function DELETE(
       );
     }
 
-    const success = await mongoService.removeEdge(canvasId, edgeId, session.user.email);
+    const success = await mongoService.removeEdge(
+      canvasId,
+      edgeId,
+      session.user.email
+    );
 
     if (!success) {
       return NextResponse.json(
@@ -47,10 +51,10 @@ export async function DELETE(
   } catch (error) {
     console.error("Error deleting edge:", error);
     return NextResponse.json(
-      { 
-        error: "Internal server error", 
-        details: error instanceof Error ? error.message : String(error)
-      }, 
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }
@@ -74,7 +78,14 @@ export async function PATCH(
 
     const updates = await request.json();
     const { canvasId, edgeId } = await params;
-    console.log("Updating edge:", edgeId, "in canvas:", canvasId, "with:", updates);
+    console.log(
+      "Updating edge:",
+      edgeId,
+      "in canvas:",
+      canvasId,
+      "with:",
+      updates
+    );
 
     // Check if canvas exists and user has access
     const canvas = await mongoService.getCanvas(canvasId, session.user.email);
@@ -85,7 +96,12 @@ export async function PATCH(
       );
     }
 
-    const success = await mongoService.updateEdge(canvasId, edgeId, updates, session.user.email);
+    const success = await mongoService.updateEdge(
+      canvasId,
+      edgeId,
+      updates,
+      session.user.email
+    );
 
     if (!success) {
       return NextResponse.json(
@@ -101,10 +117,10 @@ export async function PATCH(
   } catch (error) {
     console.error("Error updating edge:", error);
     return NextResponse.json(
-      { 
-        error: "Internal server error", 
-        details: error instanceof Error ? error.message : String(error)
-      }, 
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

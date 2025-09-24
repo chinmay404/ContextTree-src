@@ -42,7 +42,11 @@ export async function POST(
       );
     }
 
-    const success = await mongoService.addEdge(canvasId, edge, session.user.email);
+    const success = await mongoService.addEdge(
+      canvasId,
+      edge,
+      session.user.email
+    );
 
     if (!success) {
       return NextResponse.json(
@@ -58,10 +62,10 @@ export async function POST(
   } catch (error) {
     console.error("Error adding edge:", error);
     return NextResponse.json(
-      { 
-        error: "Internal server error", 
-        details: error instanceof Error ? error.message : String(error)
-      }, 
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

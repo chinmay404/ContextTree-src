@@ -267,17 +267,23 @@ export function BranchNodeGlass({ data, selected }: NodeProps<BranchNodeData>) {
             <Badge
               variant="secondary"
               className={`px-2 py-1 text-xs font-medium border-0 transition-all duration-300 mr-2 ${
-                data.isSelected || selected ? 'scale-110' : ''
+                data.isSelected || selected ? "scale-110" : ""
               }`}
               style={{
-                background: data.isSelected || selected 
-                  ? `${baseColor}20`
-                  : "rgba(34, 197, 94, 0.15)",
+                background:
+                  data.isSelected || selected
+                    ? `${baseColor}20`
+                    : "rgba(34, 197, 94, 0.15)",
                 backdropFilter: "blur(10px)",
                 color: data.isSelected || selected ? baseColor : "#059669",
-                boxShadow: (data.isSelected || selected || branchAnimation)
-                  ? `0 0 12px ${data.isSelected || selected ? baseColor + '40' : 'rgba(34, 197, 94, 0.4)'}`
-                  : "none",
+                boxShadow:
+                  data.isSelected || selected || branchAnimation
+                    ? `0 0 12px ${
+                        data.isSelected || selected
+                          ? baseColor + "40"
+                          : "rgba(34, 197, 94, 0.4)"
+                      }`
+                    : "none",
               }}
             >
               {data.isSelected || selected ? (
@@ -341,7 +347,7 @@ export function BranchNodeGlass({ data, selected }: NodeProps<BranchNodeData>) {
           <div className="mb-3 space-y-2">
             {/* LLM Model */}
             {data.model && (
-              <div 
+              <div
                 className="flex items-center justify-between p-2 rounded-lg transition-all duration-200"
                 style={{
                   background: `${baseColor}08`,
@@ -351,15 +357,18 @@ export function BranchNodeGlass({ data, selected }: NodeProps<BranchNodeData>) {
                 <div className="flex items-center gap-2">
                   <Zap size={12} style={{ color: baseColor }} />
                   <span className="text-xs font-semibold text-slate-700">
-                    {data.model.replace('gpt-', 'GPT-').toUpperCase()}
+                    {data.model.replace("gpt-", "GPT-").toUpperCase()}
                   </span>
                 </div>
                 {data.isSelected && (
-                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: baseColor }} />
+                  <div
+                    className="w-2 h-2 rounded-full animate-pulse"
+                    style={{ backgroundColor: baseColor }}
+                  />
                 )}
               </div>
             )}
-            
+
             {/* Connection Stats */}
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-1">

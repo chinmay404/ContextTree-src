@@ -266,17 +266,19 @@ export function ContextNodeGlass({
             <Badge
               variant="secondary"
               className={`px-2 py-1 text-xs font-medium border-0 transition-all duration-300 ${
-                data.isSelected || selected ? 'scale-110' : ''
+                data.isSelected || selected ? "scale-110" : ""
               }`}
               style={{
-                background: data.isSelected || selected 
-                  ? "rgba(139, 92, 246, 0.2)" 
-                  : "rgba(139, 92, 246, 0.15)",
+                background:
+                  data.isSelected || selected
+                    ? "rgba(139, 92, 246, 0.2)"
+                    : "rgba(139, 92, 246, 0.15)",
                 backdropFilter: "blur(10px)",
                 color: "#7c3aed",
-                boxShadow: (data.isSelected || selected || dataFlow)
-                  ? "0 0 12px rgba(139, 92, 246, 0.4)"
-                  : "none",
+                boxShadow:
+                  data.isSelected || selected || dataFlow
+                    ? "0 0 12px rgba(139, 92, 246, 0.4)"
+                    : "none",
               }}
             >
               {data.isSelected || selected ? (
@@ -294,7 +296,7 @@ export function ContextNodeGlass({
           <div className="mb-3 space-y-2">
             {/* LLM Model */}
             {data.model && (
-              <div 
+              <div
                 className="flex items-center justify-between p-2 rounded-lg transition-all duration-200"
                 style={{
                   background: "rgba(139, 92, 246, 0.08)",
@@ -304,7 +306,7 @@ export function ContextNodeGlass({
                 <div className="flex items-center gap-2">
                   <Brain size={12} className="text-purple-500" />
                   <span className="text-xs font-semibold text-slate-700">
-                    {data.model.replace('gpt-', 'GPT-').toUpperCase()}
+                    {data.model.replace("gpt-", "GPT-").toUpperCase()}
                   </span>
                 </div>
                 {data.isSelected && (
@@ -312,7 +314,7 @@ export function ContextNodeGlass({
                 )}
               </div>
             )}
-            
+
             {/* Connection Stats */}
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-1">
@@ -324,7 +326,7 @@ export function ContextNodeGlass({
               <div className="flex items-center gap-1">
                 <Hash size={12} className="text-purple-500" />
                 <span className="text-slate-600 font-medium">
-                  Context Type: {data.contextType || 'General'}
+                  Context Type: {data.contextType || "General"}
                 </span>
               </div>
             </div>

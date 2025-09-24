@@ -1,16 +1,16 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
   type EdgeProps,
   MarkerType,
-} from 'reactflow';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Edit2, Trash2, Zap } from 'lucide-react';
+} from "reactflow";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Edit2, Trash2, Zap } from "lucide-react";
 
 interface CustomEdgeData {
   label?: string;
@@ -47,13 +47,16 @@ export function CustomEdge({
   const edgeStyle = {
     ...style,
     strokeWidth: selected || isHovered ? 3 : 2,
-    stroke: selected ? '#6366f1' : style.stroke || '#94a3b8',
+    stroke: selected ? "#6366f1" : style.stroke || "#94a3b8",
     strokeOpacity: selected || isHovered ? 1 : 0.8,
-    filter: selected || isHovered ? 'drop-shadow(0 0 6px rgba(99, 102, 241, 0.4))' : 'none',
-    transition: 'all 0.2s ease',
+    filter:
+      selected || isHovered
+        ? "drop-shadow(0 0 6px rgba(99, 102, 241, 0.4))"
+        : "none",
+    transition: "all 0.2s ease",
   };
 
-  const label = data?.label || data?.condition || '';
+  const label = data?.label || data?.condition || "";
 
   return (
     <>
@@ -64,40 +67,48 @@ export function CustomEdge({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       />
-      
+
       {(label || selected || isHovered) && (
         <EdgeLabelRenderer>
           <div
             style={{
-              position: 'absolute',
+              position: "absolute",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
               fontSize: 12,
-              pointerEvents: 'all',
+              pointerEvents: "all",
             }}
             className="nodrag nopan"
           >
             {/* Edge Label */}
             {label && (
-              <Badge 
+              <Badge
                 variant={selected ? "default" : "secondary"}
                 className={`
                   mb-2 cursor-pointer transition-all duration-200
-                  ${selected || isHovered ? 'shadow-lg scale-105' : 'shadow-sm'}
-                  ${selected ? 'ring-2 ring-indigo-200' : ''}
+                  ${selected || isHovered ? "shadow-lg scale-105" : "shadow-sm"}
+                  ${selected ? "ring-2 ring-indigo-200" : ""}
                 `}
               >
-                {selected || isHovered ? <Zap size={12} className="mr-1" /> : null}
+                {selected || isHovered ? (
+                  <Zap size={12} className="mr-1" />
+                ) : null}
                 {label}
               </Badge>
             )}
-            
+
             {/* Edge Actions (show on selection or hover) */}
             {(selected || isHovered) && (
-              <div className={`
+              <div
+                className={`
                 flex gap-1 bg-white/95 backdrop-blur-sm border border-gray-200 
                 rounded-lg shadow-lg p-1 transition-all duration-200
-                ${selected || isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}
-              `}>
+                ${
+                  selected || isHovered
+                    ? "opacity-100 scale-100"
+                    : "opacity-0 scale-95"
+                }
+              `}
+              >
                 <Button
                   size="sm"
                   variant="ghost"

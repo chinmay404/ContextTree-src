@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -26,6 +27,7 @@ import {
   Settings,
   GitBranch,
   ArrowRight,
+  ChevronDown,
 } from "lucide-react";
 import { storageService } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
@@ -82,17 +84,34 @@ export function ChatPanel({
   const [selectedModel, setSelectedModel] = useState<string>(getDefaultModel());
   const [canvasData, setCanvasData] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
+  const [showModelDetails, setShowModelDetails] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Ensure client-side rendering
   useEffect(() => {
     setIsClient(true);
   }, []);
 
+  // Close model selector on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showModelDetails) {
+        const target = event.target as Element;
+        if (!target.closest('.model-selector-container')) {
+          setShowModelDetails(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showModelDetails]);
+
   // Load canvas data to detect forked nodes (client-side only)
   useEffect(() => {
-    if (!selectedCanvas || typeof window === 'undefined') return;
-    
+    if (!selectedCanvas || typeof window === "undefined") return;
+
     const loadCanvas = async () => {
       try {
         const response = await fetch(`/api/canvases/${selectedCanvas}`);
@@ -104,14 +123,14 @@ export function ChatPanel({
         console.error("Failed to load canvas data:", error);
       }
     };
-    
+
     loadCanvas();
   }, [selectedCanvas]);
 
   // Function to get nodes forked from a specific message
   const getForkedNodes = (messageId: string) => {
     if (!canvasData?.nodes) return [];
-    
+
     return canvasData.nodes.filter((node: any) => {
       const forkedFromId = node.forkedFromMessageId;
       return forkedFromId === messageId || forkedFromId === messageId + "-a";
@@ -123,7 +142,18 @@ export function ChatPanel({
     if (!selectedNode) return;
 
     setConversations((prev) => {
+      // Don't overwrite existing conversation data, especially if it has messages
+      if (prev[selectedNode] && prev[selectedNode].messages.length > 0) {
+        console.log(
+          `Preserving existing conversation for node ${selectedNode} with ${prev[selectedNode].messages.length} messages`
+        );
+        return prev;
+      }
+
+      // Only create empty conversation if none exists
       if (prev[selectedNode]) return prev;
+
+      console.log(`Creating new empty conversation for node ${selectedNode}`);
       return {
         ...prev,
         [selectedNode]: {
@@ -141,12 +171,22 @@ export function ChatPanel({
     // Load canvas data and extract messages for this node
     (async () => {
       try {
+        console.log(
+          `Loading messages for node ${selectedNode} from canvas ${selectedCanvas}`
+        );
         const res = await fetch(`/api/canvases/${selectedCanvas}`);
         if (res.ok) {
           const data = await res.json();
           const canvas = data.canvas;
           const node = canvas.nodes?.find((n: any) => n._id === selectedNode);
+          console.log(
+            `Found node:`,
+            node ? `yes (${node.chatMessages?.length || 0} messages)` : "no"
+          );
           if (node && node.chatMessages) {
+            console.log(
+              `Setting ${node.chatMessages.length} messages for node ${selectedNode}`
+            );
             setConversations((prev) => ({
               ...prev,
               [selectedNode]: {
@@ -213,7 +253,7 @@ export function ChatPanel({
                   msg.id ||
                   (typeof msg.timestamp === "string"
                     ? `${msg.timestamp}-${idx}`
-                    : `msg-${idx}-${selectedNode || 'unknown'}`),
+                    : `msg-${idx}-${selectedNode || "unknown"}`),
                 role: msg.role,
                 content: msg.content,
                 timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
@@ -289,6 +329,19 @@ export function ChatPanel({
     return selectedModel;
   };
 
+  // Auto-resize textarea function
+  const autoResizeTextarea = (textarea: HTMLTextAreaElement) => {
+    textarea.style.height = 'auto';
+    const newHeight = Math.min(textarea.scrollHeight, 120); // Max height of ~5 lines
+    textarea.style.height = newHeight + 'px';
+  };
+
+  // Handle input change with auto-resize
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+    autoResizeTextarea(e.target);
+  };
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || !selectedNode || !selectedCanvas) return;
 
@@ -317,6 +370,10 @@ export function ChatPanel({
     });
 
     setInputValue("");
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     setIsTyping(true);
 
     // Save user message to database first
@@ -473,37 +530,52 @@ export function ChatPanel({
   const ForkIndicator = memo(({ messageId }: { messageId: string }) => {
     // Only render on client-side to avoid hydration issues
     if (!isClient) return null;
-    
+
     const forkedNodes = getForkedNodes(messageId);
-    
+
     if (forkedNodes.length === 0) return null;
-    
+
     return (
       <div className="mt-3 pt-3 border-t border-slate-100/60">
         <div className="flex items-center gap-2 mb-2">
           <GitBranch size={12} className="text-slate-400" />
           <span className="text-xs text-slate-500 font-medium">
-            {forkedNodes.length === 1 ? "1 branch created" : `${forkedNodes.length} branches created`}
+            {forkedNodes.length === 1
+              ? "1 branch created"
+              : `${forkedNodes.length} branches created`}
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
           {forkedNodes.map((node: any) => {
-            const nodeTypeIcon = node.type === 'branch' ? '🔀' : node.type === 'context' ? '📁' : '▶️';
-            const nodeTypeName = node.type.charAt(0).toUpperCase() + node.type.slice(1);
-            
+            const nodeTypeIcon =
+              node.type === "branch"
+                ? "🔀"
+                : node.type === "context"
+                ? "📁"
+                : "▶️";
+            const nodeTypeName =
+              node.type.charAt(0).toUpperCase() + node.type.slice(1);
+
             return (
               <button
                 key={node._id}
                 onClick={() => {
                   // Navigate to the forked node
-                  props.onNodeSelect?.(node._id, node.name || `${nodeTypeName} Node`);
+                  props.onNodeSelect?.(
+                    node._id,
+                    node.name || `${nodeTypeName} Node`
+                  );
                   toast({
                     title: "Navigated to branch",
-                    description: `Switched to ${node.name || nodeTypeName} node`,
+                    description: `Switched to ${
+                      node.name || nodeTypeName
+                    } node`,
                   });
                 }}
                 className="group inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg bg-gradient-to-r from-slate-50 to-slate-100/80 border border-slate-200/70 text-slate-700 hover:from-indigo-50 hover:to-blue-50 hover:border-indigo-200/70 hover:text-indigo-700 transition-all duration-200 hover:shadow-sm"
-                title={`Navigate to ${node.name || nodeTypeName} node - ${node.chatMessages?.length || 0} messages`}
+                title={`Navigate to ${node.name || nodeTypeName} node - ${
+                  node.chatMessages?.length || 0
+                } messages`}
               >
                 <span className="text-sm">{nodeTypeIcon}</span>
                 <div className="flex flex-col items-start min-w-0">
@@ -512,11 +584,15 @@ export function ChatPanel({
                   </span>
                   {node.chatMessages?.length > 0 && (
                     <span className="text-slate-400 group-hover:text-indigo-500/70 text-xs">
-                      {node.chatMessages.length} message{node.chatMessages.length !== 1 ? 's' : ''}
+                      {node.chatMessages.length} message
+                      {node.chatMessages.length !== 1 ? "s" : ""}
                     </span>
                   )}
                 </div>
-                <ArrowRight size={10} className="text-slate-400 group-hover:text-indigo-500 transition-colors flex-shrink-0" />
+                <ArrowRight
+                  size={10}
+                  className="text-slate-400 group-hover:text-indigo-500 transition-colors flex-shrink-0"
+                />
               </button>
             );
           })}
@@ -524,7 +600,7 @@ export function ChatPanel({
       </div>
     );
   });
-  
+
   ForkIndicator.displayName = "ForkIndicator";
 
   const MessageComponent = memo(
@@ -599,6 +675,9 @@ export function ChatPanel({
 
           // Dispatch custom event so canvas updates immediately
           // Ask canvas to select the new node
+          console.log(
+            `Fork created: switching from node ${selectedNode} to new node ${newNodeId}`
+          );
           window.dispatchEvent(
             new CustomEvent("canvas-select-node", {
               detail: { nodeId: newNodeId },
@@ -638,10 +717,10 @@ export function ChatPanel({
               </div>
               <div className="flex-1 min-w-0">
                 <div
-                  className={`rounded-xl px-4 py-3 ${
+                  className={`rounded-xl px-4 py-3 transition-all duration-300 ${
                     isUser
-                      ? "bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-sm"
-                      : "bg-white border border-slate-200/50 text-slate-800 shadow-sm"
+                      ? "bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-lg hover:shadow-xl"
+                      : "bg-white/90 backdrop-blur-sm border border-slate-200/50 text-slate-800 shadow-lg hover:shadow-xl hover:bg-white"
                   }`}
                 >
                   {isUser ? (
@@ -728,15 +807,15 @@ export function ChatPanel({
                       </ReactMarkdown>
                     </div>
                   )}
-                  
+
                   {/* Fork Indicator - Show forked nodes for both user and assistant messages */}
                   <ForkIndicator messageId={message.id.replace(/-a$/, "")} />
-                  
+
                   {!isUser && hovered && (
                     <div className="flex justify-end mt-2">
                       <button
                         onClick={handleFork}
-                        className="text-xs px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200/70 transition-colors font-light"
+                        className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-slate-50 to-slate-100 hover:from-slate-100 hover:to-slate-150 text-slate-600 border border-slate-200/70 hover:border-slate-300/70 transition-all duration-200 font-medium shadow-sm hover:shadow-md transform hover:scale-105 active:scale-95"
                         title="Fork new node from this AI response"
                       >
                         Fork Node
@@ -775,14 +854,18 @@ export function ChatPanel({
   );
 
   const TypingIndicator = () => (
-    <div className="flex justify-start mb-6">
+    <div className="flex justify-start mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="max-w-[85%] order-1">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-50 to-indigo-50 text-slate-600 border border-slate-200/50">
-            <Sparkles size={16} />
+            <img 
+              src="/contexttree-symbol.svg" 
+              alt="ContextTree" 
+              className="w-4 h-4"
+            />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="rounded-xl px-4 py-3 bg-white border border-slate-200/50 text-slate-800 shadow-sm">
+            <div className="rounded-xl px-4 py-3 bg-white/90 backdrop-blur-sm border border-slate-200/50 text-slate-800 shadow-lg transition-all duration-300">
               <div className="flex items-center gap-1">
                 <div className="flex gap-1">
                   <div
@@ -924,6 +1007,32 @@ export function ChatPanel({
               </div>
 
               <div className="flex items-center gap-2 ml-4">
+                {selectedNode && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      console.log(
+                        "Manual refresh requested for node:",
+                        selectedNode
+                      );
+                      if (selectedNode && selectedCanvas) {
+                        // Force reload conversation by clearing it first
+                        setConversations((prev) => {
+                          const newConv = { ...prev };
+                          delete newConv[selectedNode];
+                          return newConv;
+                        });
+                        // The useEffect will reload it automatically
+                      }
+                    }}
+                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
+                    title="Refresh conversation"
+                  >
+                    <Settings size={16} />
+                  </Button>
+                )}
+
                 {onToggleCollapse && !isFullscreen && (
                   <Button
                     variant="ghost"
@@ -968,7 +1077,7 @@ export function ChatPanel({
           </div>
 
           {/* Chat Content */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
             {selectedNode ? (
               <>
                 {/* Messages */}
@@ -978,7 +1087,7 @@ export function ChatPanel({
                     ref={scrollAreaRef}
                   >
                     <div
-                      className={`space-y-1 pb-4 ${
+                      className={`space-y-1 pb-32 ${
                         isFullscreen ? "max-w-4xl mx-auto" : ""
                       }`}
                     >
@@ -1016,130 +1125,118 @@ export function ChatPanel({
 
                 {/* Model Selection & Input Area */}
                 <div
-                  className={`flex-shrink-0 border-t border-slate-200/80 bg-white/50 backdrop-blur-sm ${
+                  className={`absolute bottom-0 left-0 right-0 bg-transparent ${
                     isFullscreen ? "p-6" : "p-4"
-                  }`}
+                  } z-10`}
                 >
-                  {/* Model Selector */}
-                  <div className={`mb-3 ${isFullscreen ? "" : "mb-2"}`}>
-                    <div
-                      className={`flex items-center gap-3 ${
-                        isFullscreen ? "" : "gap-2"
-                      }`}
-                    >
-                      <div
-                        className={`flex items-center gap-2 text-slate-500 ${
-                          isFullscreen ? "text-xs" : "text-xs"
-                        }`}
-                      >
-                        <Settings size={isFullscreen ? 14 : 12} />
-                        <span>Model:</span>
-                      </div>
-                      <Select
-                        value={selectedModel}
-                        onValueChange={setSelectedModel}
-                      >
-                        <SelectTrigger
-                          className={`${
-                            isFullscreen ? "w-48 h-8" : "w-40 h-7"
-                          } text-xs`}
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[400px]">
-                          {/* Show popular models first */}
-                          {MODEL_PROVIDERS.top.models.map((model) => (
-                            <SelectItem key={model.id} value={model.id}>
-                              <div className="flex flex-col items-start gap-1 w-full">
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="text-xs font-semibold text-blue-700">
-                                    {model.name}
-                                  </span>
-                                  <span className="text-xs text-blue-500 ml-2">
-                                    {model.provider}
-                                  </span>
-                                </div>
-                                <span className="text-xs text-blue-600 leading-tight">
-                                  {model.description}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))}
 
-                          {/* Separator */}
-                          <div className="px-2 py-1">
-                            <div className="border-t border-slate-200"></div>
-                            <span className="text-xs text-slate-400 mt-1 block">
-                              All Models
-                            </span>
-                          </div>
 
-                          {/* All other models grouped by provider */}
-                          {Object.entries(MODEL_PROVIDERS)
-                            .filter(([key]) => key !== "top")
-                            .map(([key, provider]) => (
-                              <div key={key}>
-                                <div className="px-2 py-1">
-                                  <span className="text-xs font-medium text-slate-600">
-                                    {provider.name}
-                                  </span>
-                                </div>
-                                {provider.models.map((model) => (
-                                  <SelectItem key={model.id} value={model.id}>
-                                    <div className="flex flex-col items-start gap-1 w-full pl-2">
-                                      <div className="flex items-center justify-between w-full">
-                                        <span className="text-xs font-medium">
-                                          {model.name}
-                                        </span>
-                                        <span className="text-xs text-slate-400 ml-2">
-                                          {model.provider}
-                                        </span>
-                                      </div>
-                                      <span className="text-xs text-slate-500 leading-tight">
-                                        {model.description}
-                                      </span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </div>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Message Input */}
+                  {/* Floating Glass Message Input */}
                   <div
-                    className={`flex gap-3 ${
+                    className={`relative ${
                       isFullscreen ? "max-w-4xl mx-auto" : ""
                     }`}
                   >
-                    <div className="flex-1 relative">
-                      <Input
-                        placeholder={
-                          isTyping
-                            ? "AI is responding..."
-                            : "Type your message..."
-                        }
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyPress={(e) =>
-                          e.key === "Enter" &&
-                          !e.shiftKey &&
-                          !isTyping &&
-                          handleSendMessage()
-                        }
-                        disabled={isTyping}
-                        className="w-full px-4 py-3 bg-white border-slate-200/80 rounded-xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 text-slate-900 placeholder:text-slate-400 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      />
+                    {/* Floating glass input container */}
+                    <div className="relative backdrop-blur-xl bg-white/20 border border-slate-300/40 rounded-full shadow-2xl shadow-slate-900/10 ring-1 ring-slate-200/50 hover:bg-white/25 hover:border-slate-400/60 transition-all duration-300">
+                      <div className="flex items-center gap-2 p-2">
+                        <div className="flex-1 relative">
+                          <Textarea
+                            ref={textareaRef}
+                            placeholder={
+                              isTyping
+                                ? "AI is responding..."
+                                : "Ask anything..."
+                            }
+                            value={inputValue}
+                            onChange={handleInputChange}
+                            onKeyPress={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey && !isTyping) {
+                                e.preventDefault();
+                                handleSendMessage();
+                              }
+                            }}
+                            disabled={isTyping}
+                            className="min-h-[40px] max-h-[120px] w-full px-4 py-3 bg-transparent border-0 resize-none focus:ring-0 focus:outline-none text-slate-900 placeholder:text-slate-500 text-sm leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed rounded-full"
+                            style={{ height: 'auto' }}
+                          />
+                        </div>
+                        
+                        {/* Model Selector Button */}
+                        <div className="relative model-selector-container">
+                          <button
+                            onClick={() => setShowModelDetails(!showModelDetails)}
+                            className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/30 backdrop-blur-sm border border-slate-300/50 hover:bg-white/40 hover:border-slate-400/70 transition-all duration-200 shadow-lg"
+                            title="Select Model"
+                          >
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
+                              <ChevronDown 
+                                size={12} 
+                                className={`text-slate-600 transition-transform duration-200 ${
+                                  showModelDetails ? 'rotate-180' : ''
+                                }`} 
+                              />
+                            </div>
+                          </button>
+                          
+                          {/* Model Selection Dropdown */}
+                          {showModelDetails && (
+                            <div className="absolute bottom-full right-0 mb-2 w-80 p-3 bg-white backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl z-50 max-h-[400px] overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-200">
+                              <div className="mb-3">
+                                <h3 className="text-sm font-semibold text-slate-800 mb-2">Select Model</h3>
+                                <div className="text-xs text-slate-500 mb-3">
+                                  Current: {AVAILABLE_MODELS.find((m) => m.value === selectedModel)?.label || selectedModel}
+                                </div>
+                              </div>
+                              <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                                {AVAILABLE_MODELS.map((model) => {
+                                  const isSelected = selectedModel === model.value;
+                                  return (
+                                    <button
+                                      key={model.value}
+                                      onClick={() => {
+                                        setSelectedModel(model.value);
+                                        setShowModelDetails(false);
+                                      }}
+                                      className={`w-full text-left px-3 py-2.5 rounded-xl transition-all duration-150 group border ${
+                                        isSelected 
+                                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-slate-900' 
+                                          : 'hover:bg-slate-50 text-slate-800 hover:shadow-sm border-transparent hover:border-slate-200'
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                          <div className={`w-2 h-2 rounded-full ${
+                                            isSelected ? 'bg-blue-500' : 'bg-slate-300 group-hover:bg-slate-400'
+                                          }`}></div>
+                                          <span className="font-medium text-sm">{model.label}</span>
+                                        </div>
+                                        {isSelected && (
+                                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                                        )}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Send Button */}
+                        <Button
+                          onClick={handleSendMessage}
+                          disabled={!inputValue.trim() || isTyping}
+                          className="w-10 h-10 p-0 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white rounded-full shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 border-2 border-white/20"
+                        >
+                          <Send size={16} />
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      onClick={handleSendMessage}
-                      disabled={!inputValue.trim() || isTyping}
-                      className="px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Send size={18} />
-                    </Button>
+                    
+                    {/* Subtle ambient glow effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-indigo-500/5 rounded-full pointer-events-none blur-xl"></div>
                   </div>
                 </div>
               </>
