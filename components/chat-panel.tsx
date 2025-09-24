@@ -6,13 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import {
   Send,
   Bot,
@@ -27,7 +21,8 @@ import {
   Settings,
   GitBranch,
   ArrowRight,
-  ChevronDown,
+  Copy,
+  Check,
 } from "lucide-react";
 import { storageService } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
@@ -228,7 +223,7 @@ export function ChatPanel({
                         : new Date(),
                     },
                   ];
-                }),
+                }).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()),
               },
             }));
           }
@@ -255,7 +250,7 @@ export function ChatPanel({
                 role: msg.role,
                 content: msg.content,
                 timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
-              })),
+              })).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()),
             },
           }));
         }
@@ -595,10 +590,72 @@ export function ChatPanel({
 
   ForkIndicator.displayName = "ForkIndicator";
 
+  // Function to parse and render thinking content
+  const parseThinkingContent = (content: string) => {
+    const thinkingRegex = /<think>([\s\S]*?)<\/think>/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = thinkingRegex.exec(content)) !== null) {
+      // Add content before thinking block
+      if (match.index > lastIndex) {
+        parts.push({
+          type: 'regular',
+          content: content.slice(lastIndex, match.index)
+        });
+      }
+      
+      // Add thinking block
+      parts.push({
+        type: 'thinking',
+        content: match[1].trim()
+      });
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Add remaining content after last thinking block
+    if (lastIndex < content.length) {
+      parts.push({
+        type: 'regular',
+        content: content.slice(lastIndex)
+      });
+    }
+    
+    return parts.length > 0 ? parts : [{ type: 'regular', content }];
+  };
+
   const MessageComponent = memo(
     ({ message }: { message: Message }) => {
       const isUser = message.role === "user";
       const [hovered, setHovered] = useState(false);
+      const [showThinking, setShowThinking] = useState<{[key: string]: boolean}>({});
+      const [copiedCode, setCopiedCode] = useState<{[key: string]: boolean}>({});
+
+      const copyToClipboard = async (text: string, codeId: string) => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopiedCode(prev => ({ ...prev, [codeId]: true }));
+          
+          // Show success toast
+          toast({
+            title: "Code copied!",
+            description: "Code has been copied to clipboard",
+          });
+          
+          // Reset copy status after 2 seconds
+          setTimeout(() => {
+            setCopiedCode(prev => ({ ...prev, [codeId]: false }));
+          }, 2000);
+        } catch (err) {
+          console.error('Failed to copy text: ', err);
+          toast({
+            title: "Copy failed",
+            description: "Failed to copy code to clipboard",
+          });
+        }
+      };
 
       const handleFork = async () => {
         if (!selectedCanvas || !selectedNode) return;
@@ -730,8 +787,43 @@ export function ChatPanel({
                       {message.content}
                     </p>
                   ) : (
-                    <div className="text-sm leading-relaxed font-light prose prose-sm max-w-none prose-slate prose-headings:font-light prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 prose-strong:font-medium prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200">
-                      <ReactMarkdown
+                    <div className="text-sm leading-relaxed font-light">
+                      {parseThinkingContent(message.content).map((part, index) => (
+                        <div key={index}>
+                          {part.type === 'thinking' ? (
+                            <div className="mb-3">
+                              <button
+                                onClick={() => setShowThinking(prev => ({
+                                  ...prev,
+                                  [`${message.id}-${index}`]: !prev[`${message.id}-${index}`]
+                                }))}
+                                className="flex items-center gap-2 text-xs text-purple-600 hover:text-purple-700 font-medium mb-2 transition-colors"
+                              >
+                                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
+                                {showThinking[`${message.id}-${index}`] ? "Hide thinking" : "Show thinking"}
+                                <div className={`transform transition-transform duration-200 ${showThinking[`${message.id}-${index}`] ? "rotate-90" : ""}`}>
+                                  ▶
+                                </div>
+                              </button>
+                              {showThinking[`${message.id}-${index}`] && (
+                                <div className="bg-gradient-to-r from-purple-50/80 to-indigo-50/80 border-l-4 border-purple-300 rounded-r-lg p-3 animate-in slide-in-from-top-2 duration-300 shadow-sm">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-4 h-4 rounded-full bg-purple-100 flex items-center justify-center">
+                                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    </div>
+                                    <span className="text-xs font-medium text-purple-700 uppercase tracking-wide">
+                                      AI Thinking Process
+                                    </span>
+                                  </div>
+                                  <div className="text-sm text-purple-800 leading-relaxed whitespace-pre-wrap italic">
+                                    {part.content}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : part.content.trim() ? (
+                            <div className="prose prose-sm max-w-none prose-slate prose-headings:font-light prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 prose-strong:font-medium prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200">
+                              <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeHighlight]}
                         components={{
@@ -758,21 +850,64 @@ export function ChatPanel({
                           code: ({ children, className }) => {
                             const isInlineCode = !className;
                             if (isInlineCode) {
+                              const codeText = String(children).replace(/\n$/, '');
+                              const codeId = `inline-${message.id}-${codeText.substring(0, 10)}`;
+                              
                               return (
-                                <code className="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs font-mono">
-                                  {children}
-                                </code>
+                                <span className="relative inline-block group">
+                                  <code className="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs font-mono">
+                                    {children}
+                                  </code>
+                                  <button
+                                    onClick={() => copyToClipboard(codeText, codeId)}
+                                    className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 bg-slate-200 hover:bg-slate-300 rounded-full p-1 transition-all duration-200 transform scale-75 hover:scale-100 shadow-sm hover:shadow-md"
+                                    title={copiedCode[codeId] ? "Copied!" : "Copy code"}
+                                  >
+                                    {copiedCode[codeId] ? (
+                                      <Check size={8} className="text-green-600" />
+                                    ) : (
+                                      <Copy size={8} className="text-slate-600" />
+                                    )}
+                                  </button>
+                                </span>
                               );
                             }
                             return (
                               <code className={className}>{children}</code>
                             );
                           },
-                          pre: ({ children }) => (
-                            <pre className="bg-slate-50 border border-slate-200 rounded-lg p-3 overflow-x-auto text-xs font-mono">
-                              {children}
-                            </pre>
-                          ),
+                          pre: ({ children }) => {
+                            // Extract text content from nested React elements
+                            const extractTextContent = (element: any): string => {
+                              if (typeof element === 'string') return element;
+                              if (typeof element === 'number') return String(element);
+                              if (Array.isArray(element)) return element.map(extractTextContent).join('');
+                              if (element?.props?.children) return extractTextContent(element.props.children);
+                              return '';
+                            };
+                            
+                            const codeText = extractTextContent(children).replace(/\n$/, '');
+                            const codeId = `block-${message.id}-${Math.random().toString(36).substr(2, 9)}`;
+                            
+                            return (
+                              <div className="relative group">
+                                <pre className="bg-slate-50 border border-slate-200 rounded-lg p-3 pr-12 overflow-x-auto text-xs font-mono">
+                                  {children}
+                                </pre>
+                                <button
+                                  onClick={() => copyToClipboard(codeText, codeId)}
+                                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-white/80 hover:bg-white border border-slate-200 rounded-md p-1.5 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
+                                  title={copiedCode[codeId] ? "Copied!" : "Copy code"}
+                                >
+                                  {copiedCode[codeId] ? (
+                                    <Check size={14} className="text-green-600" />
+                                  ) : (
+                                    <Copy size={14} className="text-slate-600" />
+                                  )}
+                                </button>
+                              </div>
+                            );
+                          },
                           ul: ({ children }) => (
                             <ul className="list-disc list-inside space-y-1 text-slate-700 font-light">
                               {children}
@@ -803,10 +938,14 @@ export function ChatPanel({
                               {children}
                             </em>
                           ),
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
+                                }}
+                              >
+                                {part.content}
+                              </ReactMarkdown>
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
                     </div>
                   )}
 
