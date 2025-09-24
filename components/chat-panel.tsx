@@ -132,6 +132,95 @@ export function ChatPanel({
     });
   };
 
+  // Function to create a fork with the selected model
+  const createForkWithModel = async (selectedForkModel: string) => {
+    if (!selectedCanvas || !selectedNode || !pendingForkMessage) return;
+
+    // Create a new branch/context node (default to branch) with lineage metadata
+    const newNodeId = `node_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    const newNode = {
+      _id: newNodeId,
+      primary: false,
+      type: "branch",
+      chatMessages: [],
+      runningSummary: "",
+      contextContract: "",
+      model: selectedForkModel,
+      parentNodeId: selectedNode,
+      forkedFromMessageId: pendingForkMessage,
+      createdAt: new Date().toISOString(),
+      position: {
+        x: 300 + Math.random() * 150,
+        y: 200 + Math.random() * 150,
+      },
+    } as any;
+
+    try {
+      // Optimistic: dispatch events before network to feel instant
+      const edgeId = `edge_${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+
+      const edgePayload = {
+        _id: edgeId,
+        from: selectedNode,
+        to: newNodeId,
+        createdAt: new Date().toISOString(),
+        meta: { condition: "Fork" },
+      };
+
+      window.dispatchEvent(
+        new CustomEvent("canvas-fork-node", {
+          detail: {
+            canvasId: selectedCanvas,
+            node: newNode,
+            edge: edgePayload,
+          },
+        })
+      );
+
+      // Fire & forget persistence
+      fetch(`/api/canvases/${selectedCanvas}/nodes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newNode),
+      }).then(async (r) => {
+        if (!r.ok) console.error("Failed to persist fork node", await r.text());
+      });
+      fetch(`/api/canvases/${selectedCanvas}/edges`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(edgePayload),
+      }).then(async (r) => {
+        if (!r.ok) console.error("Failed to persist fork edge", await r.text());
+      });
+
+      // Dispatch custom event so canvas updates immediately
+      // Ask canvas to select the new node
+      console.log(
+        `Fork created: switching from node ${selectedNode} to new node ${newNodeId}`
+      );
+      window.dispatchEvent(
+        new CustomEvent("canvas-select-node", {
+          detail: { nodeId: newNodeId },
+        })
+      );
+
+      // Toast confirmation
+      const modelName =
+        AVAILABLE_MODELS.find((m) => m.value === selectedForkModel)?.label ||
+        selectedForkModel;
+      toast({
+        title: "Fork created",
+        description: `New node created with ${modelName}`,
+      });
+    } catch (e) {
+      console.error("Error forking node", e);
+    }
+  };
+
   // Ensure a conversation object exists for the selected node so the UI can render immediately
   useEffect(() => {
     if (!selectedNode) return;
@@ -677,96 +766,6 @@ export function ChatPanel({
         // Show model selection dialog instead of immediately creating node
         setPendingForkMessage(message.id.replace(/-a$/, ""));
         setShowForkModelDialog(true);
-      };
-
-      const createForkWithModel = async (selectedForkModel: string) => {
-        if (!selectedCanvas || !selectedNode || !pendingForkMessage) return;
-
-        // Create a new branch/context node (default to branch) with lineage metadata
-        const newNodeId = `node_${Date.now()}_${Math.random()
-          .toString(36)
-          .slice(2, 8)}`;
-        const newNode = {
-          _id: newNodeId,
-          primary: false,
-          type: "branch",
-          chatMessages: [],
-          runningSummary: "",
-          contextContract: "",
-          model: selectedForkModel,
-          parentNodeId: selectedNode,
-          forkedFromMessageId: pendingForkMessage,
-          createdAt: new Date().toISOString(),
-          position: {
-            x: 300 + Math.random() * 150,
-            y: 200 + Math.random() * 150,
-          },
-        } as any;
-
-        try {
-          // Optimistic: dispatch events before network to feel instant
-          const edgeId = `edge_${Date.now()}_${Math.random()
-            .toString(36)
-            .slice(2, 8)}`;
-
-          const edgePayload = {
-            _id: edgeId,
-            from: selectedNode,
-            to: newNodeId,
-            createdAt: new Date().toISOString(),
-            meta: { condition: "Fork" },
-          };
-
-          window.dispatchEvent(
-            new CustomEvent("canvas-fork-node", {
-              detail: {
-                canvasId: selectedCanvas,
-                node: newNode,
-                edge: edgePayload,
-              },
-            })
-          );
-
-          // Fire & forget persistence
-          fetch(`/api/canvases/${selectedCanvas}/nodes`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(newNode),
-          }).then(async (r) => {
-            if (!r.ok)
-              console.error("Failed to persist fork node", await r.text());
-          });
-          fetch(`/api/canvases/${selectedCanvas}/edges`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(edgePayload),
-          }).then(async (r) => {
-            if (!r.ok)
-              console.error("Failed to persist fork edge", await r.text());
-          });
-
-          // Dispatch custom event so canvas updates immediately
-          // Ask canvas to select the new node
-          console.log(
-            `Fork created: switching from node ${selectedNode} to new node ${newNodeId}`
-          );
-          window.dispatchEvent(
-            new CustomEvent("canvas-select-node", {
-              detail: { nodeId: newNodeId },
-            })
-          );
-
-          // Toast confirmation
-          const modelName =
-            AVAILABLE_MODELS.find((m) => m.value === selectedForkModel)
-              ?.label || selectedForkModel;
-          toast({
-            title: "Fork created",
-            description: `New node created with ${modelName}`,
-          });
-        } catch (e) {
-          console.error("Error forking node", e);
-        }
       };
 
       return (
