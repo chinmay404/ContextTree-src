@@ -92,7 +92,9 @@ export function ChatPanel({
   const [canvasData, setCanvasData] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
   const [showForkModelDialog, setShowForkModelDialog] = useState(false);
-  const [pendingForkMessage, setPendingForkMessage] = useState<string | null>(null);
+  const [pendingForkMessage, setPendingForkMessage] = useState<string | null>(
+    null
+  );
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -186,44 +188,48 @@ export function ChatPanel({
                 nodeId: selectedNode,
                 nodeName:
                   selectedNodeName || node.name || `Node ${selectedNode}`,
-                messages: node.chatMessages.flatMap((msg: any, idx: number) => {
-                  // New format: turn { id, user?, assistant? }
-                  if (msg.user || msg.assistant) {
-                    const parts: any[] = [];
-                    if (msg.user) {
-                      parts.push({
-                        id: `${msg.id}-u`,
-                        role: "user",
-                        content: msg.user.content,
-                        timestamp: new Date(msg.user.timestamp),
-                      });
+                messages: node.chatMessages
+                  .flatMap((msg: any, idx: number) => {
+                    // New format: turn { id, user?, assistant? }
+                    if (msg.user || msg.assistant) {
+                      const parts: any[] = [];
+                      if (msg.user) {
+                        parts.push({
+                          id: `${msg.id}-u`,
+                          role: "user",
+                          content: msg.user.content,
+                          timestamp: new Date(msg.user.timestamp),
+                        });
+                      }
+                      if (msg.assistant) {
+                        parts.push({
+                          id: `${msg.id}-a`,
+                          role: "assistant",
+                          content: msg.assistant.content,
+                          timestamp: new Date(msg.assistant.timestamp),
+                        });
+                      }
+                      return parts;
                     }
-                    if (msg.assistant) {
-                      parts.push({
-                        id: `${msg.id}-a`,
-                        role: "assistant",
-                        content: msg.assistant.content,
-                        timestamp: new Date(msg.assistant.timestamp),
-                      });
-                    }
-                    return parts;
-                  }
-                  // Legacy single message object fallback
-                  return [
-                    {
-                      id:
-                        msg.id ||
-                        (msg.timestamp
-                          ? `${msg.timestamp}-${idx}`
-                          : `msg-${idx}-${selectedNode}`),
-                      role: msg.role,
-                      content: msg.content,
-                      timestamp: msg.timestamp
-                        ? new Date(msg.timestamp)
-                        : new Date(),
-                    },
-                  ];
-                }).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()),
+                    // Legacy single message object fallback
+                    return [
+                      {
+                        id:
+                          msg.id ||
+                          (msg.timestamp
+                            ? `${msg.timestamp}-${idx}`
+                            : `msg-${idx}-${selectedNode}`),
+                        role: msg.role,
+                        content: msg.content,
+                        timestamp: msg.timestamp
+                          ? new Date(msg.timestamp)
+                          : new Date(),
+                      },
+                    ];
+                  })
+                  .sort(
+                    (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+                  ),
               },
             }));
           }
@@ -241,16 +247,20 @@ export function ChatPanel({
             [selectedNode]: {
               nodeId: selectedNode,
               nodeName: selectedNodeName || `Node ${selectedNode}`,
-              messages: localMessages.map((msg: any, idx: number) => ({
-                id:
-                  msg.id ||
-                  (typeof msg.timestamp === "string"
-                    ? `${msg.timestamp}-${idx}`
-                    : `msg-${idx}-${selectedNode || "unknown"}`),
-                role: msg.role,
-                content: msg.content,
-                timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
-              })).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()),
+              messages: localMessages
+                .map((msg: any, idx: number) => ({
+                  id:
+                    msg.id ||
+                    (typeof msg.timestamp === "string"
+                      ? `${msg.timestamp}-${idx}`
+                      : `msg-${idx}-${selectedNode || "unknown"}`),
+                  role: msg.role,
+                  content: msg.content,
+                  timestamp: msg.timestamp
+                    ? new Date(msg.timestamp)
+                    : new Date(),
+                }))
+                .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()),
             },
           }));
         }
@@ -601,55 +611,59 @@ export function ChatPanel({
       // Add content before thinking block
       if (match.index > lastIndex) {
         parts.push({
-          type: 'regular',
-          content: content.slice(lastIndex, match.index)
+          type: "regular",
+          content: content.slice(lastIndex, match.index),
         });
       }
-      
+
       // Add thinking block
       parts.push({
-        type: 'thinking',
-        content: match[1].trim()
+        type: "thinking",
+        content: match[1].trim(),
       });
-      
+
       lastIndex = match.index + match[0].length;
     }
-    
+
     // Add remaining content after last thinking block
     if (lastIndex < content.length) {
       parts.push({
-        type: 'regular',
-        content: content.slice(lastIndex)
+        type: "regular",
+        content: content.slice(lastIndex),
       });
     }
-    
-    return parts.length > 0 ? parts : [{ type: 'regular', content }];
+
+    return parts.length > 0 ? parts : [{ type: "regular", content }];
   };
 
   const MessageComponent = memo(
     ({ message }: { message: Message }) => {
       const isUser = message.role === "user";
       const [hovered, setHovered] = useState(false);
-      const [showThinking, setShowThinking] = useState<{[key: string]: boolean}>({});
-      const [copiedCode, setCopiedCode] = useState<{[key: string]: boolean}>({});
+      const [showThinking, setShowThinking] = useState<{
+        [key: string]: boolean;
+      }>({});
+      const [copiedCode, setCopiedCode] = useState<{ [key: string]: boolean }>(
+        {}
+      );
 
       const copyToClipboard = async (text: string, codeId: string) => {
         try {
           await navigator.clipboard.writeText(text);
-          setCopiedCode(prev => ({ ...prev, [codeId]: true }));
-          
+          setCopiedCode((prev) => ({ ...prev, [codeId]: true }));
+
           // Show success toast
           toast({
             title: "Code copied!",
             description: "Code has been copied to clipboard",
           });
-          
+
           // Reset copy status after 2 seconds
           setTimeout(() => {
-            setCopiedCode(prev => ({ ...prev, [codeId]: false }));
+            setCopiedCode((prev) => ({ ...prev, [codeId]: false }));
           }, 2000);
         } catch (err) {
-          console.error('Failed to copy text: ', err);
+          console.error("Failed to copy text: ", err);
           toast({
             title: "Copy failed",
             description: "Failed to copy code to clipboard",
@@ -659,7 +673,7 @@ export function ChatPanel({
 
       const handleFork = async () => {
         if (!selectedCanvas || !selectedNode) return;
-        
+
         // Show model selection dialog instead of immediately creating node
         setPendingForkMessage(message.id.replace(/-a$/, ""));
         setShowForkModelDialog(true);
@@ -667,7 +681,7 @@ export function ChatPanel({
 
       const createForkWithModel = async (selectedForkModel: string) => {
         if (!selectedCanvas || !selectedNode || !pendingForkMessage) return;
-        
+
         // Create a new branch/context node (default to branch) with lineage metadata
         const newNodeId = `node_${Date.now()}_${Math.random()
           .toString(36)
@@ -743,7 +757,9 @@ export function ChatPanel({
           );
 
           // Toast confirmation
-          const modelName = AVAILABLE_MODELS.find(m => m.value === selectedForkModel)?.label || selectedForkModel;
+          const modelName =
+            AVAILABLE_MODELS.find((m) => m.value === selectedForkModel)
+              ?.label || selectedForkModel;
           toast({
             title: "Fork created",
             description: `New node created with ${modelName}`,
@@ -788,164 +804,226 @@ export function ChatPanel({
                     </p>
                   ) : (
                     <div className="text-sm leading-relaxed font-light">
-                      {parseThinkingContent(message.content).map((part, index) => (
-                        <div key={index}>
-                          {part.type === 'thinking' ? (
-                            <div className="mb-3">
-                              <button
-                                onClick={() => setShowThinking(prev => ({
-                                  ...prev,
-                                  [`${message.id}-${index}`]: !prev[`${message.id}-${index}`]
-                                }))}
-                                className="flex items-center gap-2 text-xs text-purple-600 hover:text-purple-700 font-medium mb-2 transition-colors"
-                              >
-                                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
-                                {showThinking[`${message.id}-${index}`] ? "Hide thinking" : "Show thinking"}
-                                <div className={`transform transition-transform duration-200 ${showThinking[`${message.id}-${index}`] ? "rotate-90" : ""}`}>
-                                  ▶
-                                </div>
-                              </button>
-                              {showThinking[`${message.id}-${index}`] && (
-                                <div className="bg-gradient-to-r from-purple-50/80 to-indigo-50/80 border-l-4 border-purple-300 rounded-r-lg p-3 animate-in slide-in-from-top-2 duration-300 shadow-sm">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-4 h-4 rounded-full bg-purple-100 flex items-center justify-center">
-                                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                                    </div>
-                                    <span className="text-xs font-medium text-purple-700 uppercase tracking-wide">
-                                      AI Thinking Process
-                                    </span>
-                                  </div>
-                                  <div className="text-sm text-purple-800 leading-relaxed whitespace-pre-wrap italic">
-                                    {part.content}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ) : part.content.trim() ? (
-                            <div className="prose prose-sm max-w-none prose-slate prose-headings:font-light prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 prose-strong:font-medium prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200">
-                              <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeHighlight]}
-                        components={{
-                          h1: ({ children }) => (
-                            <h1 className="text-lg font-light text-slate-900 mt-4 mb-2 first:mt-0">
-                              {children}
-                            </h1>
-                          ),
-                          h2: ({ children }) => (
-                            <h2 className="text-base font-light text-slate-900 mt-3 mb-2 first:mt-0">
-                              {children}
-                            </h2>
-                          ),
-                          h3: ({ children }) => (
-                            <h3 className="text-sm font-medium text-slate-900 mt-3 mb-1 first:mt-0">
-                              {children}
-                            </h3>
-                          ),
-                          p: ({ children }) => (
-                            <p className="text-slate-700 mb-2 last:mb-0 font-light leading-relaxed">
-                              {children}
-                            </p>
-                          ),
-                          code: ({ children, className }) => {
-                            const isInlineCode = !className;
-                            if (isInlineCode) {
-                              const codeText = String(children).replace(/\n$/, '');
-                              const codeId = `inline-${message.id}-${codeText.substring(0, 10)}`;
-                              
-                              return (
-                                <span className="relative inline-block group">
-                                  <code className="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs font-mono">
-                                    {children}
-                                  </code>
-                                  <button
-                                    onClick={() => copyToClipboard(codeText, codeId)}
-                                    className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 bg-slate-200 hover:bg-slate-300 rounded-full p-1 transition-all duration-200 transform scale-75 hover:scale-100 shadow-sm hover:shadow-md"
-                                    title={copiedCode[codeId] ? "Copied!" : "Copy code"}
-                                  >
-                                    {copiedCode[codeId] ? (
-                                      <Check size={8} className="text-green-600" />
-                                    ) : (
-                                      <Copy size={8} className="text-slate-600" />
-                                    )}
-                                  </button>
-                                </span>
-                              );
-                            }
-                            return (
-                              <code className={className}>{children}</code>
-                            );
-                          },
-                          pre: ({ children }) => {
-                            // Extract text content from nested React elements
-                            const extractTextContent = (element: any): string => {
-                              if (typeof element === 'string') return element;
-                              if (typeof element === 'number') return String(element);
-                              if (Array.isArray(element)) return element.map(extractTextContent).join('');
-                              if (element?.props?.children) return extractTextContent(element.props.children);
-                              return '';
-                            };
-                            
-                            const codeText = extractTextContent(children).replace(/\n$/, '');
-                            const codeId = `block-${message.id}-${Math.random().toString(36).substr(2, 9)}`;
-                            
-                            return (
-                              <div className="relative group">
-                                <pre className="bg-slate-50 border border-slate-200 rounded-lg p-3 pr-12 overflow-x-auto text-xs font-mono">
-                                  {children}
-                                </pre>
+                      {parseThinkingContent(message.content).map(
+                        (part, index) => (
+                          <div key={index}>
+                            {part.type === "thinking" ? (
+                              <div className="mb-3">
                                 <button
-                                  onClick={() => copyToClipboard(codeText, codeId)}
-                                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-white/80 hover:bg-white border border-slate-200 rounded-md p-1.5 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
-                                  title={copiedCode[codeId] ? "Copied!" : "Copy code"}
+                                  onClick={() =>
+                                    setShowThinking((prev) => ({
+                                      ...prev,
+                                      [`${message.id}-${index}`]:
+                                        !prev[`${message.id}-${index}`],
+                                    }))
+                                  }
+                                  className="flex items-center gap-2 text-xs text-purple-600 hover:text-purple-700 font-medium mb-2 transition-colors"
                                 >
-                                  {copiedCode[codeId] ? (
-                                    <Check size={14} className="text-green-600" />
-                                  ) : (
-                                    <Copy size={14} className="text-slate-600" />
-                                  )}
+                                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
+                                  {showThinking[`${message.id}-${index}`]
+                                    ? "Hide thinking"
+                                    : "Show thinking"}
+                                  <div
+                                    className={`transform transition-transform duration-200 ${
+                                      showThinking[`${message.id}-${index}`]
+                                        ? "rotate-90"
+                                        : ""
+                                    }`}
+                                  >
+                                    ▶
+                                  </div>
                                 </button>
+                                {showThinking[`${message.id}-${index}`] && (
+                                  <div className="bg-gradient-to-r from-purple-50/80 to-indigo-50/80 border-l-4 border-purple-300 rounded-r-lg p-3 animate-in slide-in-from-top-2 duration-300 shadow-sm">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className="w-4 h-4 rounded-full bg-purple-100 flex items-center justify-center">
+                                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                      </div>
+                                      <span className="text-xs font-medium text-purple-700 uppercase tracking-wide">
+                                        AI Thinking Process
+                                      </span>
+                                    </div>
+                                    <div className="text-sm text-purple-800 leading-relaxed whitespace-pre-wrap italic">
+                                      {part.content}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            );
-                          },
-                          ul: ({ children }) => (
-                            <ul className="list-disc list-inside space-y-1 text-slate-700 font-light">
-                              {children}
-                            </ul>
-                          ),
-                          ol: ({ children }) => (
-                            <ol className="list-decimal list-inside space-y-1 text-slate-700 font-light">
-                              {children}
-                            </ol>
-                          ),
-                          li: ({ children }) => (
-                            <li className="text-slate-700 font-light">
-                              {children}
-                            </li>
-                          ),
-                          blockquote: ({ children }) => (
-                            <blockquote className="border-l-4 border-slate-300 pl-4 py-2 bg-slate-50 rounded-r-lg my-2">
-                              {children}
-                            </blockquote>
-                          ),
-                          strong: ({ children }) => (
-                            <strong className="font-medium text-slate-900">
-                              {children}
-                            </strong>
-                          ),
-                          em: ({ children }) => (
-                            <em className="italic text-slate-700">
-                              {children}
-                            </em>
-                          ),
-                                }}
-                              >
-                                {part.content}
-                              </ReactMarkdown>
-                            </div>
-                          ) : null}
-                        </div>
-                      ))}
+                            ) : part.content.trim() ? (
+                              <div className="prose prose-sm max-w-none prose-slate prose-headings:font-light prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 prose-strong:font-medium prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200">
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  rehypePlugins={[rehypeHighlight]}
+                                  components={{
+                                    h1: ({ children }) => (
+                                      <h1 className="text-lg font-light text-slate-900 mt-4 mb-2 first:mt-0">
+                                        {children}
+                                      </h1>
+                                    ),
+                                    h2: ({ children }) => (
+                                      <h2 className="text-base font-light text-slate-900 mt-3 mb-2 first:mt-0">
+                                        {children}
+                                      </h2>
+                                    ),
+                                    h3: ({ children }) => (
+                                      <h3 className="text-sm font-medium text-slate-900 mt-3 mb-1 first:mt-0">
+                                        {children}
+                                      </h3>
+                                    ),
+                                    p: ({ children }) => (
+                                      <p className="text-slate-700 mb-2 last:mb-0 font-light leading-relaxed">
+                                        {children}
+                                      </p>
+                                    ),
+                                    code: ({ children, className }) => {
+                                      const isInlineCode = !className;
+                                      if (isInlineCode) {
+                                        const codeText = String(
+                                          children
+                                        ).replace(/\n$/, "");
+                                        const codeId = `inline-${
+                                          message.id
+                                        }-${codeText.substring(0, 10)}`;
+
+                                        return (
+                                          <span className="relative inline-block group">
+                                            <code className="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs font-mono">
+                                              {children}
+                                            </code>
+                                            <button
+                                              onClick={() =>
+                                                copyToClipboard(
+                                                  codeText,
+                                                  codeId
+                                                )
+                                              }
+                                              className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 bg-slate-200 hover:bg-slate-300 rounded-full p-1 transition-all duration-200 transform scale-75 hover:scale-100 shadow-sm hover:shadow-md"
+                                              title={
+                                                copiedCode[codeId]
+                                                  ? "Copied!"
+                                                  : "Copy code"
+                                              }
+                                            >
+                                              {copiedCode[codeId] ? (
+                                                <Check
+                                                  size={8}
+                                                  className="text-green-600"
+                                                />
+                                              ) : (
+                                                <Copy
+                                                  size={8}
+                                                  className="text-slate-600"
+                                                />
+                                              )}
+                                            </button>
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <code className={className}>
+                                          {children}
+                                        </code>
+                                      );
+                                    },
+                                    pre: ({ children }) => {
+                                      // Extract text content from nested React elements
+                                      const extractTextContent = (
+                                        element: any
+                                      ): string => {
+                                        if (typeof element === "string")
+                                          return element;
+                                        if (typeof element === "number")
+                                          return String(element);
+                                        if (Array.isArray(element))
+                                          return element
+                                            .map(extractTextContent)
+                                            .join("");
+                                        if (element?.props?.children)
+                                          return extractTextContent(
+                                            element.props.children
+                                          );
+                                        return "";
+                                      };
+
+                                      const codeText = extractTextContent(
+                                        children
+                                      ).replace(/\n$/, "");
+                                      const codeId = `block-${
+                                        message.id
+                                      }-${Math.random()
+                                        .toString(36)
+                                        .substr(2, 9)}`;
+
+                                      return (
+                                        <div className="relative group">
+                                          <pre className="bg-slate-50 border border-slate-200 rounded-lg p-3 pr-12 overflow-x-auto text-xs font-mono">
+                                            {children}
+                                          </pre>
+                                          <button
+                                            onClick={() =>
+                                              copyToClipboard(codeText, codeId)
+                                            }
+                                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-white/80 hover:bg-white border border-slate-200 rounded-md p-1.5 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
+                                            title={
+                                              copiedCode[codeId]
+                                                ? "Copied!"
+                                                : "Copy code"
+                                            }
+                                          >
+                                            {copiedCode[codeId] ? (
+                                              <Check
+                                                size={14}
+                                                className="text-green-600"
+                                              />
+                                            ) : (
+                                              <Copy
+                                                size={14}
+                                                className="text-slate-600"
+                                              />
+                                            )}
+                                          </button>
+                                        </div>
+                                      );
+                                    },
+                                    ul: ({ children }) => (
+                                      <ul className="list-disc list-inside space-y-1 text-slate-700 font-light">
+                                        {children}
+                                      </ul>
+                                    ),
+                                    ol: ({ children }) => (
+                                      <ol className="list-decimal list-inside space-y-1 text-slate-700 font-light">
+                                        {children}
+                                      </ol>
+                                    ),
+                                    li: ({ children }) => (
+                                      <li className="text-slate-700 font-light">
+                                        {children}
+                                      </li>
+                                    ),
+                                    blockquote: ({ children }) => (
+                                      <blockquote className="border-l-4 border-slate-300 pl-4 py-2 bg-slate-50 rounded-r-lg my-2">
+                                        {children}
+                                      </blockquote>
+                                    ),
+                                    strong: ({ children }) => (
+                                      <strong className="font-medium text-slate-900">
+                                        {children}
+                                      </strong>
+                                    ),
+                                    em: ({ children }) => (
+                                      <em className="italic text-slate-700">
+                                        {children}
+                                      </em>
+                                    ),
+                                  }}
+                                >
+                                  {part.content}
+                                </ReactMarkdown>
+                              </div>
+                            ) : null}
+                          </div>
+                        )
+                      )}
                     </div>
                   )}
 
@@ -1045,10 +1123,11 @@ export function ChatPanel({
               Select Model for New Node
             </h3>
             <p className="text-sm text-slate-600">
-              Choose which AI model this forked node should use for conversations.
+              Choose which AI model this forked node should use for
+              conversations.
             </p>
           </div>
-          
+
           <div className="space-y-2 max-h-80 overflow-y-auto mb-6">
             {AVAILABLE_MODELS.map((model) => (
               <button
@@ -1074,7 +1153,7 @@ export function ChatPanel({
               </button>
             ))}
           </div>
-          
+
           <div className="flex gap-3">
             <Button
               variant="outline"
@@ -1102,367 +1181,363 @@ export function ChatPanel({
             : "bg-white/95 backdrop-blur-sm border-l border-slate-200/80 shadow-sm"
         }`}
       >
-    <div
-      className={`h-full flex flex-col ${
-        isFullscreen
-          ? "bg-slate-50"
-          : "bg-white/95 backdrop-blur-sm border-l border-slate-200/80 shadow-sm"
-      }`}
-    >
-      {/* Collapsed State */}
-      {isCollapsed && !isFullscreen ? (
-        <div className="h-full flex flex-col items-center py-4">
-          {/* Collapsed Header */}
-          <div className="flex flex-col items-center gap-3 mb-6">
-            <button
-              onClick={onToggleCollapse}
-              className="w-8 h-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg flex items-center justify-center border border-slate-200/50 hover:bg-gradient-to-br hover:from-blue-100 hover:to-indigo-100 transition-colors cursor-pointer"
-              title="Expand chat panel"
-            >
-              <MessageSquare className="w-4 h-4 text-slate-600" />
-            </button>
-            {selectedNode && (
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-            )}
-          </div>
-
-          {/* Collapsed Controls */}
-          <div className="flex flex-col gap-2">
-            {selectedNode && onToggleFullscreen && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onToggleFullscreen}
-                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 p-2 h-auto"
-                title="Fullscreen chat"
-              >
-                <Maximize2 size={16} />
-              </Button>
-            )}
-
-            {onClose && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 h-auto"
-                title="Close chat"
-              >
-                <X size={16} />
-              </Button>
-            )}
-          </div>
-
-          {/* Message indicator for collapsed state */}
-          {selectedNode && (
-            <div className="mt-auto mb-4 text-center">
-              <div className="text-xs text-slate-400 font-medium mb-1">
-                {currentConversation?.messages?.length || 0}
-              </div>
-              <div className="text-xs text-slate-500">msgs</div>
-            </div>
-          )}
-
-          {/* Quick compose in collapsed state */}
-          {selectedNode && (
-            <div className="mt-2">
-              <Button
-                variant="ghost"
-                size="sm"
+        {/* Collapsed State */}
+        {isCollapsed && !isFullscreen ? (
+          <div className="h-full flex flex-col items-center py-4">
+            {/* Collapsed Header */}
+            <div className="flex flex-col items-center gap-3 mb-6">
+              <button
                 onClick={onToggleCollapse}
-                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 p-2 h-auto"
-                title="Quick compose"
+                className="w-8 h-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg flex items-center justify-center border border-slate-200/50 hover:bg-gradient-to-br hover:from-blue-100 hover:to-indigo-100 transition-colors cursor-pointer"
+                title="Expand chat panel"
               >
-                <Send size={14} />
-              </Button>
+                <MessageSquare className="w-4 h-4 text-slate-600" />
+              </button>
+              {selectedNode && (
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+              )}
             </div>
-          )}
-        </div>
-      ) : (
-        /* Expanded State */
-        <>
-          {/* Header */}
-          <div
-            className={`flex-shrink-0 border-b border-slate-200/80 ${
-              isFullscreen
-                ? "p-6 bg-white/95 backdrop-blur-sm shadow-sm"
-                : "p-4"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-1">
-                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                  <h3
-                    className={`font-light text-slate-900 truncate ${
-                      isFullscreen ? "text-xl" : "text-lg"
-                    }`}
-                  >
-                    {selectedNode
-                      ? currentConversation?.nodeName || "Node Chat"
-                      : "Node Chat"}
-                  </h3>
+
+            {/* Collapsed Controls */}
+            <div className="flex flex-col gap-2">
+              {selectedNode && onToggleFullscreen && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onToggleFullscreen}
+                  className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 p-2 h-auto"
+                  title="Fullscreen chat"
+                >
+                  <Maximize2 size={16} />
+                </Button>
+              )}
+
+              {onClose && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClose}
+                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 h-auto"
+                  title="Close chat"
+                >
+                  <X size={16} />
+                </Button>
+              )}
+            </div>
+
+            {/* Message indicator for collapsed state */}
+            {selectedNode && (
+              <div className="mt-auto mb-4 text-center">
+                <div className="text-xs text-slate-400 font-medium mb-1">
+                  {currentConversation?.messages?.length || 0}
                 </div>
-                <p className="text-sm text-slate-500 font-light">
-                  {selectedNode
-                    ? `${
-                        currentConversation?.messages?.length || 0
-                      } messages • ${
-                        AVAILABLE_MODELS.find((m) => m.value === getNodeModel(selectedNode))
-                          ?.label || getNodeModel(selectedNode)
-                      } • Active session`
-                    : "Select a node to start chatting"}
-                </p>
+                <div className="text-xs text-slate-500">msgs</div>
               </div>
+            )}
 
-              <div className="flex items-center gap-2 ml-4">
-                {selectedNode && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      console.log(
-                        "Manual refresh requested for node:",
-                        selectedNode
-                      );
-                      if (selectedNode && selectedCanvas) {
-                        // Force reload conversation by clearing it first
-                        setConversations((prev) => {
-                          const newConv = { ...prev };
-                          delete newConv[selectedNode];
-                          return newConv;
-                        });
-                        // The useEffect will reload it automatically
+            {/* Quick compose in collapsed state */}
+            {selectedNode && (
+              <div className="mt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onToggleCollapse}
+                  className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 p-2 h-auto"
+                  title="Quick compose"
+                >
+                  <Send size={14} />
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Expanded State */
+          <>
+            {/* Header */}
+            <div
+              className={`flex-shrink-0 border-b border-slate-200/80 ${
+                isFullscreen
+                  ? "p-6 bg-white/95 backdrop-blur-sm shadow-sm"
+                  : "p-4"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                    <h3
+                      className={`font-light text-slate-900 truncate ${
+                        isFullscreen ? "text-xl" : "text-lg"
+                      }`}
+                    >
+                      {selectedNode
+                        ? currentConversation?.nodeName || "Node Chat"
+                        : "Node Chat"}
+                    </h3>
+                  </div>
+                  <p className="text-sm text-slate-500 font-light">
+                    {selectedNode
+                      ? `${
+                          currentConversation?.messages?.length || 0
+                        } messages • ${
+                          AVAILABLE_MODELS.find(
+                            (m) => m.value === getNodeModel(selectedNode)
+                          )?.label || getNodeModel(selectedNode)
+                        } • Active session`
+                      : "Select a node to start chatting"}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 ml-4">
+                  {selectedNode && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        console.log(
+                          "Manual refresh requested for node:",
+                          selectedNode
+                        );
+                        if (selectedNode && selectedCanvas) {
+                          // Force reload conversation by clearing it first
+                          setConversations((prev) => {
+                            const newConv = { ...prev };
+                            delete newConv[selectedNode];
+                            return newConv;
+                          });
+                          // The useEffect will reload it automatically
+                        }
+                      }}
+                      className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
+                      title="Refresh conversation"
+                    >
+                      <Settings size={16} />
+                    </Button>
+                  )}
+
+                  {onToggleCollapse && !isFullscreen && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onToggleCollapse}
+                      className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
+                      title="Collapse chat panel"
+                    >
+                      <PanelRightClose size={18} />
+                    </Button>
+                  )}
+
+                  {selectedNode && onToggleFullscreen && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onToggleFullscreen}
+                      className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
+                      title={
+                        isFullscreen ? "Exit fullscreen" : "Fullscreen chat"
                       }
-                    }}
-                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
-                    title="Refresh conversation"
-                  >
-                    <Settings size={16} />
-                  </Button>
-                )}
+                    >
+                      {isFullscreen ? (
+                        <Minimize2 size={18} />
+                      ) : (
+                        <Maximize2 size={18} />
+                      )}
+                    </Button>
+                  )}
 
-                {onToggleCollapse && !isFullscreen && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onToggleCollapse}
-                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
-                    title="Collapse chat panel"
-                  >
-                    <PanelRightClose size={18} />
-                  </Button>
-                )}
-
-                {selectedNode && onToggleFullscreen && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onToggleFullscreen}
-                    className="text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
-                    title={isFullscreen ? "Exit fullscreen" : "Fullscreen chat"}
-                  >
-                    {isFullscreen ? (
-                      <Minimize2 size={18} />
-                    ) : (
-                      <Maximize2 size={18} />
-                    )}
-                  </Button>
-                )}
-
-                {onClose && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onClose}
-                    className="text-slate-400 hover:text-slate-600 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
-                    title="Close chat"
-                  >
-                    <X size={18} />
-                  </Button>
-                )}
+                  {onClose && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onClose}
+                      className="text-slate-400 hover:text-slate-600 hover:bg-slate-100/80 rounded-lg transition-all duration-200"
+                      title="Close chat"
+                    >
+                      <X size={18} />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Chat Content */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
-            {selectedNode ? (
-              <>
-                {/* Messages */}
-                <div className="flex-1 min-h-0 relative">
-                  <ScrollArea
-                    className={`h-full ${isFullscreen ? "p-6" : "p-4"}`}
-                    ref={scrollAreaRef}
+            {/* Chat Content */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+              {selectedNode ? (
+                <>
+                  {/* Messages */}
+                  <div className="flex-1 min-h-0 relative">
+                    <ScrollArea
+                      className={`h-full ${isFullscreen ? "p-6" : "p-4"}`}
+                      ref={scrollAreaRef}
+                    >
+                      <div
+                        className={`space-y-1 pb-32 ${
+                          isFullscreen ? "max-w-4xl mx-auto" : ""
+                        }`}
+                      >
+                        {/* Show fork origin info if this node was forked */}
+                        {canvasData?.nodes &&
+                          selectedNode &&
+                          (() => {
+                            const currentNode = canvasData.nodes.find(
+                              (n: any) => n._id === selectedNode
+                            );
+                            if (
+                              currentNode?.parentNodeId &&
+                              currentNode?.forkedFromMessageId
+                            ) {
+                              const parentNode = canvasData.nodes.find(
+                                (n: any) => n._id === currentNode.parentNodeId
+                              );
+                              const shortCurrentId = selectedNode.slice(-8);
+                              const shortParentId =
+                                currentNode.parentNodeId.slice(-8);
+                              const shortMessageId =
+                                currentNode.forkedFromMessageId.slice(-8);
+
+                              return (
+                                <div className="mb-2 p-2 bg-slate-50/60 border border-slate-100 rounded-md">
+                                  <div className="flex items-center gap-2 text-xs text-slate-600">
+                                    <GitBranch
+                                      size={10}
+                                      className="text-slate-500"
+                                    />
+                                    <span>Forked from</span>
+                                    <button
+                                      onClick={() => {
+                                        props.onNodeSelect?.(
+                                          currentNode.parentNodeId,
+                                          parentNode?.name || "Parent Node"
+                                        );
+                                        toast({
+                                          title: "Navigated to parent",
+                                          description: `Switched to parent node (${shortParentId})`,
+                                        });
+                                      }}
+                                      className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs hover:bg-slate-200 transition-colors"
+                                      title={`Navigate to parent node: ${currentNode.parentNodeId}`}
+                                    >
+                                      {parentNode?.name || "Parent"} (
+                                      {shortParentId})
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+
+                        {(currentConversation?.messages?.length || 0) === 0 ? (
+                          <div className="text-center py-16">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-200/50">
+                              <MessageSquare className="w-8 h-8 text-slate-400" />
+                            </div>
+                            <h3 className="text-slate-900 text-xl font-semibold mb-2">
+                              Start a conversation
+                            </h3>
+                            <p className="text-slate-500 text-sm max-w-sm mx-auto leading-relaxed">
+                              Ask questions, share thoughts, or explore ideas
+                              with this node
+                            </p>
+                          </div>
+                        ) : (
+                          <>
+                            {(currentConversation?.messages || []).map(
+                              (message: any) => (
+                                <MessageComponent
+                                  key={
+                                    message.id || message.timestamp?.toString()
+                                  }
+                                  message={message}
+                                />
+                              )
+                            )}
+                            {isTyping && <TypingIndicator />}
+                          </>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+
+                  {/* Model Selection & Input Area */}
+                  <div
+                    className={`absolute bottom-0 left-0 right-0 bg-transparent ${
+                      isFullscreen ? "p-6" : "p-4"
+                    } z-10`}
                   >
+                    {/* Floating Glass Message Input */}
                     <div
-                      className={`space-y-1 pb-32 ${
+                      className={`relative ${
                         isFullscreen ? "max-w-4xl mx-auto" : ""
                       }`}
                     >
-                      {/* Show fork origin info if this node was forked */}
-                      {canvasData?.nodes &&
-                        selectedNode &&
-                        (() => {
-                          const currentNode = canvasData.nodes.find(
-                            (n: any) => n._id === selectedNode
-                          );
-                          if (
-                            currentNode?.parentNodeId &&
-                            currentNode?.forkedFromMessageId
-                          ) {
-                            const parentNode = canvasData.nodes.find(
-                              (n: any) => n._id === currentNode.parentNodeId
-                            );
-                            const shortCurrentId = selectedNode.slice(-8);
-                            const shortParentId =
-                              currentNode.parentNodeId.slice(-8);
-                            const shortMessageId =
-                              currentNode.forkedFromMessageId.slice(-8);
-
-                            return (
-                              <div className="mb-2 p-2 bg-slate-50/60 border border-slate-100 rounded-md">
-                                <div className="flex items-center gap-2 text-xs text-slate-600">
-                                  <GitBranch
-                                    size={10}
-                                    className="text-slate-500"
-                                  />
-                                  <span>Forked from</span>
-                                  <button
-                                    onClick={() => {
-                                      props.onNodeSelect?.(
-                                        currentNode.parentNodeId,
-                                        parentNode?.name || "Parent Node"
-                                      );
-                                      toast({
-                                        title: "Navigated to parent",
-                                        description: `Switched to parent node (${shortParentId})`,
-                                      });
-                                    }}
-                                    className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs hover:bg-slate-200 transition-colors"
-                                    title={`Navigate to parent node: ${currentNode.parentNodeId}`}
-                                  >
-                                    {parentNode?.name || "Parent"} (
-                                    {shortParentId})
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-
-                      {(currentConversation?.messages?.length || 0) === 0 ? (
-                        <div className="text-center py-16">
-                          <div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-200/50">
-                            <MessageSquare className="w-8 h-8 text-slate-400" />
-                          </div>
-                          <h3 className="text-slate-900 text-xl font-semibold mb-2">
-                            Start a conversation
-                          </h3>
-                          <p className="text-slate-500 text-sm max-w-sm mx-auto leading-relaxed">
-                            Ask questions, share thoughts, or explore ideas with
-                            this node
-                          </p>
-                        </div>
-                      ) : (
-                        <>
-                          {(currentConversation?.messages || []).map(
-                            (message: any) => (
-                              <MessageComponent
-                                key={
-                                  message.id || message.timestamp?.toString()
-                                }
-                                message={message}
-                              />
-                            )
-                          )}
-                          {isTyping && <TypingIndicator />}
-                        </>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-
-                {/* Model Selection & Input Area */}
-                <div
-                  className={`absolute bottom-0 left-0 right-0 bg-transparent ${
-                    isFullscreen ? "p-6" : "p-4"
-                  } z-10`}
-                >
-                  {/* Floating Glass Message Input */}
-                  <div
-                    className={`relative ${
-                      isFullscreen ? "max-w-4xl mx-auto" : ""
-                    }`}
-                  >
-                    {/* Floating glass input container */}
-                    <div className="relative backdrop-blur-xl bg-white/20 border border-slate-300/40 rounded-full shadow-2xl shadow-slate-900/10 ring-1 ring-slate-200/50 hover:bg-white/25 hover:border-slate-400/60 transition-all duration-300">
-                      <div className="flex items-center gap-2 p-2">
-                        <div className="flex-1 relative">
-                          <Textarea
-                            ref={textareaRef}
-                            placeholder={
-                              isTyping
-                                ? "AI is responding..."
-                                : "Ask anything..."
-                            }
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onKeyPress={(e) => {
-                              if (
-                                e.key === "Enter" &&
-                                !e.shiftKey &&
-                                !isTyping
-                              ) {
-                                e.preventDefault();
-                                handleSendMessage();
+                      {/* Floating glass input container */}
+                      <div className="relative backdrop-blur-xl bg-white/20 border border-slate-300/40 rounded-full shadow-2xl shadow-slate-900/10 ring-1 ring-slate-200/50 hover:bg-white/25 hover:border-slate-400/60 transition-all duration-300">
+                        <div className="flex items-center gap-2 p-2">
+                          <div className="flex-1 relative">
+                            <Textarea
+                              ref={textareaRef}
+                              placeholder={
+                                isTyping
+                                  ? "AI is responding..."
+                                  : "Ask anything..."
                               }
-                            }}
-                            disabled={isTyping}
-                            className="min-h-[40px] max-h-[120px] w-full px-4 py-3 bg-transparent border-0 resize-none focus:ring-0 focus:outline-none text-slate-900 placeholder:text-slate-500 text-sm leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed rounded-full"
-                            style={{ height: "auto" }}
-                          />
+                              value={inputValue}
+                              onChange={handleInputChange}
+                              onKeyPress={(e) => {
+                                if (
+                                  e.key === "Enter" &&
+                                  !e.shiftKey &&
+                                  !isTyping
+                                ) {
+                                  e.preventDefault();
+                                  handleSendMessage();
+                                }
+                              }}
+                              disabled={isTyping}
+                              className="min-h-[40px] max-h-[120px] w-full px-4 py-3 bg-transparent border-0 resize-none focus:ring-0 focus:outline-none text-slate-900 placeholder:text-slate-500 text-sm leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed rounded-full"
+                              style={{ height: "auto" }}
+                            />
+                          </div>
+
+                          {/* Send Button */}
+                          <Button
+                            onClick={handleSendMessage}
+                            disabled={!inputValue.trim() || isTyping}
+                            className="w-10 h-10 p-0 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white rounded-full shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 border-2 border-white/20"
+                          >
+                            <Send size={16} />
+                          </Button>
                         </div>
-
-                        {/* Send Button */}
-                        <Button
-                          onClick={handleSendMessage}
-                          disabled={!inputValue.trim() || isTyping}
-                          className="w-10 h-10 p-0 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white rounded-full shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 border-2 border-white/20"
-                        >
-                          <Send size={16} />
-                        </Button>
                       </div>
-                    </div>
 
-                    {/* Subtle ambient glow effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-indigo-500/5 rounded-full pointer-events-none blur-xl"></div>
+                      {/* Subtle ambient glow effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-indigo-500/5 rounded-full pointer-events-none blur-xl"></div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* No Node Selected State */
+                <div className="flex-1 flex items-center justify-center p-8">
+                  <div className="text-center space-y-6 max-w-sm">
+                    <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl flex items-center justify-center mx-auto border border-slate-200/50">
+                      <MessageSquare className="h-10 w-10 text-slate-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-slate-900 font-semibold text-xl mb-3">
+                        No Node Selected
+                      </h3>
+                      <p className="text-sm text-slate-500 leading-relaxed">
+                        Click on a node in the canvas to start a focused
+                        conversation and explore your ideas
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </>
-            ) : (
-              /* No Node Selected State */
-              <div className="flex-1 flex items-center justify-center p-8">
-                <div className="text-center space-y-6 max-w-sm">
-                  <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl flex items-center justify-center mx-auto border border-slate-200/50">
-                    <MessageSquare className="h-10 w-10 text-slate-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-slate-900 font-semibold text-xl mb-3">
-                      No Node Selected
-                    </h3>
-                    <p className="text-sm text-slate-500 leading-relaxed">
-                      Click on a node in the canvas to start a focused
-                      conversation and explore your ideas
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
+              )}
+            </div>
+          </>
+        )}
       </div>
     </>
   );
