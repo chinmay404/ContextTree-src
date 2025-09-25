@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, memo } from "react";
+import { useState, useEffect, useRef, memo, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -72,7 +72,7 @@ interface NodeConversation {
   messages: Message[];
 }
 
-export function ChatPanel({
+const ChatPanelInternal = ({
   selectedNode,
   selectedNodeName,
   onClose,
@@ -82,7 +82,7 @@ export function ChatPanel({
   onToggleFullscreen,
   onToggleCollapse,
   onNodeSelect,
-}: ChatPanelProps) {
+}: ChatPanelProps) => {
   const [conversations, setConversations] = useState<
     Record<string, NodeConversation>
   >({});
@@ -95,42 +95,50 @@ export function ChatPanel({
   const [pendingForkMessage, setPendingForkMessage] = useState<string | null>(
     null
   );
+  const [loadingNodes, setLoadingNodes] = useState<Set<string>>(new Set());
+  const [messageCache, setMessageCache] = useState<Record<string, Message[]>>(
+    {}
+  );
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastSelectedNodeRef = useRef<string | null>(null);
 
   // Ensure client-side rendering
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Load canvas data to detect forked nodes (client-side only)
-  useEffect(() => {
-    if (!selectedCanvas || typeof window === "undefined") return;
+  // Load canvas data to detect forked nodes (client-side only) - DISABLED TO PREVENT INFINITE LOOP
+  // useEffect(() => {
+  //   if (!selectedCanvas || typeof window === "undefined") return;
 
-    const loadCanvas = async () => {
-      try {
-        const response = await fetch(`/api/canvases/${selectedCanvas}`);
-        if (response.ok) {
-          const data = await response.json();
-          setCanvasData(data.canvas);
-        }
-      } catch (error) {
-        console.error("Failed to load canvas data:", error);
-      }
-    };
+  //   const loadCanvas = async () => {
+  //     try {
+  //       const response = await fetch(`/api/canvases/${selectedCanvas}`);
+  //       if (response.ok) {
+  //         const data = await response.json();
+  //         setCanvasData(data.canvas);
+  //       }
+  //     } catch (error) {
+  //       console.error("Failed to load canvas data:", error);
+  //     }
+  //   };
 
-    loadCanvas();
-  }, [selectedCanvas]);
+  //   loadCanvas();
+  // }, [selectedCanvas]);
 
   // Function to get nodes forked from a specific message
-  const getForkedNodes = (messageId: string) => {
-    if (!canvasData?.nodes) return [];
+  const getForkedNodes = useCallback(
+    (messageId: string) => {
+      if (!canvasData?.nodes) return [];
 
-    return canvasData.nodes.filter((node: any) => {
-      const forkedFromId = node.forkedFromMessageId;
-      return forkedFromId === messageId || forkedFromId === messageId + "-a";
-    });
-  };
+      return canvasData.nodes.filter((node: any) => {
+        const forkedFromId = node.forkedFromMessageId;
+        return forkedFromId === messageId || forkedFromId === messageId + "-a";
+      });
+    },
+    [canvasData]
+  );
 
   // Function to create a fork with the selected model
   const createForkWithModel = async (selectedForkModel: string) => {
@@ -225,6 +233,10 @@ export function ChatPanel({
   useEffect(() => {
     if (!selectedNode) return;
 
+    // Don't recreate conversation if we're just switching back to the same node
+    if (lastSelectedNodeRef.current === selectedNode) return;
+    lastSelectedNodeRef.current = selectedNode;
+
     setConversations((prev) => {
       // Don't overwrite existing conversation data, especially if it has messages
       if (prev[selectedNode] && prev[selectedNode].messages.length > 0) {
@@ -234,10 +246,8 @@ export function ChatPanel({
         return prev;
       }
 
-      // Only create empty conversation if none exists
-      if (prev[selectedNode]) return prev;
-
-      console.log(`Creating new empty conversation for node ${selectedNode}`);
+      // Only create empty conversation if none exists - the message loading useEffect will populate it
+      console.log(`Creating empty conversation for node ${selectedNode}`);
       return {
         ...prev,
         [selectedNode]: {
@@ -249,112 +259,151 @@ export function ChatPanel({
     });
   }, [selectedNode, selectedNodeName]);
 
+  // Robust message loading with caching and error handling
   useEffect(() => {
     if (!selectedNode || !selectedCanvas) return;
 
-    // Load canvas data and extract messages for this node
-    (async () => {
+    // Skip if already loading this node
+    if (loadingNodes.has(selectedNode)) return;
+
+    // Skip if we already have messages cached and loaded for this node
+    if (conversations[selectedNode]?.messages?.length > 0) return;
+
+    const loadMessages = async () => {
+      setLoadingNodes((prev) => new Set(prev).add(selectedNode));
+
       try {
         console.log(
           `Loading messages for node ${selectedNode} from canvas ${selectedCanvas}`
         );
+
         const res = await fetch(`/api/canvases/${selectedCanvas}`);
-        if (res.ok) {
-          const data = await res.json();
-          const canvas = data.canvas;
-          const node = canvas.nodes?.find((n: any) => n._id === selectedNode);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
+        const data = await res.json();
+        const canvas = data.canvas;
+        const node = canvas.nodes?.find((n: any) => n._id === selectedNode);
+
+        if (node && node.chatMessages) {
+          const processedMessages = node.chatMessages
+            .flatMap((msg: any, idx: number) => {
+              // New format: turn { id, user?, assistant? }
+              if (msg.user || msg.assistant) {
+                const parts: any[] = [];
+                if (msg.user) {
+                  parts.push({
+                    id: `${msg.id}-u`,
+                    role: "user",
+                    content: msg.user.content,
+                    timestamp: new Date(msg.user.timestamp),
+                  });
+                }
+                if (msg.assistant) {
+                  parts.push({
+                    id: `${msg.id}-a`,
+                    role: "assistant",
+                    content: msg.assistant.content,
+                    timestamp: new Date(msg.assistant.timestamp),
+                  });
+                }
+                return parts;
+              }
+              // Legacy single message object fallback
+              return [
+                {
+                  id: msg.id || `msg-${idx}-${selectedNode}`,
+                  role: msg.role,
+                  content: msg.content,
+                  timestamp: msg.timestamp
+                    ? new Date(msg.timestamp)
+                    : new Date(),
+                },
+              ];
+            })
+            .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
           console.log(
-            `Found node:`,
-            node ? `yes (${node.chatMessages?.length || 0} messages)` : "no"
+            `Loaded ${processedMessages.length} messages for node ${selectedNode}`
           );
-          if (node && node.chatMessages) {
-            console.log(
-              `Setting ${node.chatMessages.length} messages for node ${selectedNode}`
-            );
+
+          // Update cache
+          setMessageCache((prev) => ({
+            ...prev,
+            [selectedNode]: processedMessages,
+          }));
+
+          // Update conversations only if this node is still selected
+          if (lastSelectedNodeRef.current === selectedNode) {
             setConversations((prev) => ({
               ...prev,
               [selectedNode]: {
                 nodeId: selectedNode,
                 nodeName:
                   selectedNodeName || node.name || `Node ${selectedNode}`,
-                messages: node.chatMessages
-                  .flatMap((msg: any, idx: number) => {
-                    // New format: turn { id, user?, assistant? }
-                    if (msg.user || msg.assistant) {
-                      const parts: any[] = [];
-                      if (msg.user) {
-                        parts.push({
-                          id: `${msg.id}-u`,
-                          role: "user",
-                          content: msg.user.content,
-                          timestamp: new Date(msg.user.timestamp),
-                        });
-                      }
-                      if (msg.assistant) {
-                        parts.push({
-                          id: `${msg.id}-a`,
-                          role: "assistant",
-                          content: msg.assistant.content,
-                          timestamp: new Date(msg.assistant.timestamp),
-                        });
-                      }
-                      return parts;
-                    }
-                    // Legacy single message object fallback
-                    return [
-                      {
-                        id:
-                          msg.id ||
-                          (msg.timestamp
-                            ? `${msg.timestamp}-${idx}`
-                            : `msg-${idx}-${selectedNode}`),
-                        role: msg.role,
-                        content: msg.content,
-                        timestamp: msg.timestamp
-                          ? new Date(msg.timestamp)
-                          : new Date(),
-                      },
-                    ];
-                  })
-                  .sort(
-                    (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-                  ),
+                messages: processedMessages,
               },
             }));
           }
-        }
-      } catch (err) {
-        console.error("Failed to load messages:", err);
-        // fallback: use localStorage if available
-        const localMessages = storageService.getNodeMessages(
-          selectedCanvas,
-          selectedNode
-        );
-        if (localMessages.length > 0) {
+        } else {
+          console.log(`No messages found for node ${selectedNode}`);
+          // Ensure empty conversation exists
           setConversations((prev) => ({
             ...prev,
             [selectedNode]: {
               nodeId: selectedNode,
               nodeName: selectedNodeName || `Node ${selectedNode}`,
-              messages: localMessages
-                .map((msg: any, idx: number) => ({
-                  id:
-                    msg.id ||
-                    (typeof msg.timestamp === "string"
-                      ? `${msg.timestamp}-${idx}`
-                      : `msg-${idx}-${selectedNode || "unknown"}`),
-                  role: msg.role,
-                  content: msg.content,
-                  timestamp: msg.timestamp
-                    ? new Date(msg.timestamp)
-                    : new Date(),
-                }))
-                .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()),
+              messages: [],
             },
           }));
         }
+      } catch (err) {
+        console.error("Failed to load messages:", err);
+
+        // Fallback: use localStorage if available
+        try {
+          const localMessages = storageService.getNodeMessages(
+            selectedCanvas,
+            selectedNode
+          );
+          if (localMessages.length > 0) {
+            const processedMessages = localMessages
+              .map((msg: any, idx: number) => ({
+                id: msg.id || `local-msg-${idx}-${selectedNode}`,
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+              }))
+              .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+            setMessageCache((prev) => ({
+              ...prev,
+              [selectedNode]: processedMessages,
+            }));
+
+            if (lastSelectedNodeRef.current === selectedNode) {
+              setConversations((prev) => ({
+                ...prev,
+                [selectedNode]: {
+                  nodeId: selectedNode,
+                  nodeName: selectedNodeName || `Node ${selectedNode}`,
+                  messages: processedMessages,
+                },
+              }));
+            }
+          }
+        } catch (localErr) {
+          console.error("Local storage fallback failed:", localErr);
+        }
+      } finally {
+        setLoadingNodes((prev) => {
+          const next = new Set(prev);
+          next.delete(selectedNode);
+          return next;
+        });
       }
-    })();
+    };
+
+    loadMessages();
   }, [selectedNode, selectedCanvas, selectedNodeName]);
 
   // Keyboard shortcuts
@@ -401,13 +450,17 @@ export function ChatPanel({
     onClose,
   ]);
 
-  const currentConversation = selectedNode
-    ? conversations[selectedNode] ?? {
-        nodeId: selectedNode,
-        nodeName: selectedNodeName ?? `Node ${selectedNode}`,
-        messages: [],
-      }
-    : null;
+  const currentConversation = useMemo(
+    () =>
+      selectedNode
+        ? conversations[selectedNode] ?? {
+            nodeId: selectedNode,
+            nodeName: selectedNodeName ?? `Node ${selectedNode}`,
+            messages: [],
+          }
+        : null,
+    [selectedNode, selectedNodeName, conversations]
+  );
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages are added
@@ -416,32 +469,38 @@ export function ChatPanel({
     }
   }, [currentConversation?.messages]);
 
-  const getNodeModel = (nodeId: string): string => {
-    // Get the model from the node's stored data, fallback to default
-    if (canvasData?.nodes) {
-      const node = canvasData.nodes.find((n: any) => n._id === nodeId);
-      if (node?.model) {
-        return node.model;
+  const getNodeModel = useCallback(
+    (nodeId: string): string => {
+      // Get the model from the node's stored data, fallback to default
+      if (canvasData?.nodes) {
+        const node = canvasData.nodes.find((n: any) => n._id === nodeId);
+        if (node?.model) {
+          return node.model;
+        }
       }
-    }
-    // Fallback to default model if node model not found
-    return getDefaultModel();
-  };
+      // Fallback to default model if node model not found
+      return getDefaultModel();
+    },
+    [canvasData]
+  );
 
   // Auto-resize textarea function
-  const autoResizeTextarea = (textarea: HTMLTextAreaElement) => {
+  const autoResizeTextarea = useCallback((textarea: HTMLTextAreaElement) => {
     textarea.style.height = "auto";
     const newHeight = Math.min(textarea.scrollHeight, 120); // Max height of ~5 lines
     textarea.style.height = newHeight + "px";
-  };
+  }, []);
 
   // Handle input change with auto-resize
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputValue(e.target.value);
-    autoResizeTextarea(e.target);
-  };
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setInputValue(e.target.value);
+      autoResizeTextarea(e.target);
+    },
+    []
+  );
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = useCallback(async () => {
     if (!inputValue.trim() || !selectedNode || !selectedCanvas) return;
 
     const genId = () =>
@@ -453,9 +512,31 @@ export function ChatPanel({
       timestamp: new Date(),
     };
 
-    // Add user message to local state
+    // Add user message to local state and cache immediately
     setConversations((prev) => {
-      const prevMessages = prev[selectedNode]?.messages || [];
+      const updatedMessages = [
+        ...(prev[selectedNode]?.messages || []),
+        newMessage,
+      ];
+
+      // Update cache immediately
+      setMessageCache((cache) => ({
+        ...cache,
+        [selectedNode]: updatedMessages,
+      }));
+
+      // Save to localStorage as backup
+      storageService.saveNodeMessages(
+        selectedCanvas,
+        selectedNode,
+        updatedMessages.map((msg) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp.toISOString(),
+        }))
+      );
+
       return {
         ...prev,
         [selectedNode]: {
@@ -463,7 +544,7 @@ export function ChatPanel({
             nodeId: selectedNode,
             nodeName: selectedNodeName || `Node ${selectedNode}`,
           }),
-          messages: [...prevMessages, newMessage],
+          messages: updatedMessages,
         },
       };
     });
@@ -503,6 +584,8 @@ export function ChatPanel({
       } else {
         console.log("User message saved successfully");
       }
+
+      // Save to localStorage as backup (will be updated in the state setter)
     } catch (err) {
       console.error("Failed to save user message:", err);
     }
@@ -534,9 +617,31 @@ export function ChatPanel({
           timestamp: new Date(),
         };
 
-        // Add assistant message to local state
+        // Add assistant message to local state and cache
         setConversations((prev) => {
-          const prevMessages = prev[selectedNode]?.messages || [];
+          const updatedMessagesWithBot = [
+            ...(prev[selectedNode]?.messages || []),
+            botResponse,
+          ];
+
+          // Update cache immediately
+          setMessageCache((cache) => ({
+            ...cache,
+            [selectedNode]: updatedMessagesWithBot,
+          }));
+
+          // Save to localStorage as backup
+          storageService.saveNodeMessages(
+            selectedCanvas,
+            selectedNode,
+            updatedMessagesWithBot.map((msg) => ({
+              id: msg.id,
+              role: msg.role,
+              content: msg.content,
+              timestamp: msg.timestamp.toISOString(),
+            }))
+          );
+
           return {
             ...prev,
             [selectedNode]: {
@@ -544,7 +649,7 @@ export function ChatPanel({
                 nodeId: selectedNode,
                 nodeName: selectedNodeName || `Node ${selectedNode}`,
               }),
-              messages: [...prevMessages, botResponse],
+              messages: updatedMessagesWithBot,
             },
           };
         });
@@ -564,6 +669,8 @@ export function ChatPanel({
               }),
             }
           );
+
+          // Save to localStorage as backup (will be updated in the state setter)
         } catch (err) {
           console.error("Failed to save assistant message:", err);
         }
@@ -584,16 +691,7 @@ export function ChatPanel({
         variant: "destructive",
       });
 
-      // Save user message to localStorage as fallback
-      storageService.saveNodeMessages(selectedCanvas, selectedNode, [
-        ...storageService.getNodeMessages(selectedCanvas, selectedNode),
-        {
-          id: newMessage.id,
-          role: newMessage.role,
-          content: newMessage.content,
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      // Save messages to localStorage as fallback (will be updated in the state setter)
 
       // Add fallback bot response
       const botResponse: Message = {
@@ -623,7 +721,13 @@ export function ChatPanel({
     } finally {
       setIsTyping(false);
     }
-  };
+  }, [
+    selectedNode,
+    selectedCanvas,
+    selectedNodeName,
+    inputValue,
+    getNodeModel,
+  ]);
 
   // Fork Indicator Component
   const ForkIndicator = memo(({ messageId }: { messageId: string }) => {
@@ -1076,11 +1180,7 @@ export function ChatPanel({
       <div className="max-w-[85%] order-1">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-blue-50 to-indigo-50 text-slate-600 border border-slate-200/50">
-            <img
-              src="/contexttree-symbol.svg"
-              alt="ContextTree"
-              className="w-4 h-4"
-            />
+            <img src="/tree-icon.svg" alt="ContextTree" className="w-6 h-6" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="rounded-xl px-4 py-3 bg-white/90 backdrop-blur-sm border border-slate-200/50 text-slate-800 shadow-lg transition-all duration-300">
@@ -1494,7 +1594,22 @@ export function ChatPanel({
                             return null;
                           })()}
 
-                        {(currentConversation?.messages?.length || 0) === 0 ? (
+                        {loadingNodes.has(selectedNode) ? (
+                          <div className="text-center py-16">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-200/50">
+                              <div className="animate-spin">
+                                <Sparkles className="w-8 h-8 text-blue-500" />
+                              </div>
+                            </div>
+                            <h3 className="text-slate-900 text-xl font-semibold mb-2">
+                              Loading messages...
+                            </h3>
+                            <p className="text-slate-500 text-sm max-w-sm mx-auto leading-relaxed">
+                              Retrieving conversation history for this node
+                            </p>
+                          </div>
+                        ) : (currentConversation?.messages?.length || 0) ===
+                          0 ? (
                           <div className="text-center py-16">
                             <div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-200/50">
                               <MessageSquare className="w-8 h-8 text-slate-400" />
@@ -1608,4 +1723,8 @@ export function ChatPanel({
       </div>
     </>
   );
-}
+};
+
+// Memoized export to prevent unnecessary re-renders
+export const ChatPanel = memo(ChatPanelInternal);
+ChatPanel.displayName = "ChatPanel";

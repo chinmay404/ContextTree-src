@@ -29,11 +29,9 @@ function BranchNodeComponent({ data, selected }: NodeProps<BranchNodeData>) {
   };
 
   return (
-    <div 
+    <div
       className={`px-4 py-2 shadow-md rounded-md bg-white border-2 cursor-pointer hover:shadow-lg transition-shadow ${
-        selected || data.isSelected 
-          ? 'border-green-500' 
-          : 'border-gray-200'
+        selected || data.isSelected ? "border-green-500" : "border-gray-200"
       }`}
       onClick={handleClick}
     >
@@ -42,11 +40,11 @@ function BranchNodeComponent({ data, selected }: NodeProps<BranchNodeData>) {
         <div>
           <div className="text-sm font-medium">{data.label}</div>
           <div className="text-xs text-gray-500">
-            {data.model || 'gpt-4'} • Branch Node
+            {data.model || "gpt-4"} • Branch Node
           </div>
         </div>
       </div>
-      
+
       <Handle
         type="target"
         position={Position.Top}

@@ -201,8 +201,15 @@ export default function ContextTreePage() {
   }, [isAuthenticated, user?.email]);
 
   const handleNodeSelect = (nodeId: string | null, nodeName?: string) => {
+    console.log(`Selecting node: ${nodeId} (${nodeName})`);
     setSelectedNode(nodeId);
     setSelectedNodeName(nodeName);
+
+    // Ensure chat panel is visible when a node is selected
+    if (nodeId) {
+      setRightSidebarCollapsed(false);
+      setChatFullscreen(false);
+    }
   };
 
   const handleCreateCanvas = async () => {
@@ -447,24 +454,62 @@ export default function ContextTreePage() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Sidebar - Canvas List (always visible with premium styling) */}
-        <div className="w-80 transition-all duration-500 ease-out border-r border-slate-200/60 bg-gradient-to-b from-slate-50/30 to-white/50 backdrop-blur-sm flex flex-col shadow-sm overflow-hidden">
-          <CanvasList
-            canvases={canvases.map((canvas) => ({
-              _id: canvas._id,
-              title: canvas.title,
-              createdAt: canvas.createdAt,
-              nodeCount: canvas.nodes.length,
-              metaTags: canvas.metaTags,
-            }))}
-            selectedCanvas={selectedCanvas || undefined}
-            onSelectCanvas={handleSelectCanvas}
-            onCreateCanvas={handleCreateCanvas}
-            onDeleteCanvas={handleDeleteCanvas}
-            onDuplicateCanvas={handleDuplicateCanvas}
-            onRenameCanvas={handleRenameCanvas}
-            onCollapse={() => setLeftSidebarCollapsed(true)}
-          />
+        {/* Left Sidebar - Canvas List */}
+        <div
+          className={`relative transition-all duration-500 ease-out border-r border-slate-200/60 bg-gradient-to-b from-slate-50/30 to-white/50 backdrop-blur-sm flex flex-col shadow-sm overflow-hidden ${
+            leftSidebarCollapsed ? "w-16" : "w-80"
+          }`}
+        >
+          {leftSidebarCollapsed ? (
+            <div className="h-full flex flex-col items-center justify-between py-6">
+              <div className="flex flex-col items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setLeftSidebarCollapsed(false)}
+                  className="text-slate-500 hover:text-slate-700 hover:bg-white/80 rounded-lg"
+                  title="Expand sidebar"
+                >
+                  <PanelLeftOpen className="w-5 h-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCreateCanvas}
+                  className="text-slate-500 hover:text-slate-700 hover:bg-white/80 rounded-lg"
+                  title="Create new canvas"
+                >
+                  <Plus className="w-5 h-5" />
+                </Button>
+              </div>
+              <div className="flex-1 flex items-center">
+                <span className="text-[10px] font-medium tracking-[0.4em] uppercase text-slate-400 rotate-90">
+                  Canvases
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-2 text-[10px] text-slate-400 font-light">
+                <span>{canvases.length} total</span>
+                {selectedCanvas && <span>Active</span>}
+              </div>
+            </div>
+          ) : (
+            <CanvasList
+              canvases={canvases.map((canvas) => ({
+                _id: canvas._id,
+                title: canvas.title,
+                createdAt: canvas.createdAt,
+                nodeCount: canvas.nodes.length,
+                metaTags: canvas.metaTags,
+              }))}
+              selectedCanvas={selectedCanvas || undefined}
+              onSelectCanvas={handleSelectCanvas}
+              onCreateCanvas={handleCreateCanvas}
+              onDeleteCanvas={handleDeleteCanvas}
+              onDuplicateCanvas={handleDuplicateCanvas}
+              onRenameCanvas={handleRenameCanvas}
+              onCollapse={() => setLeftSidebarCollapsed(true)}
+            />
+          )}
         </div>
 
         {/* Center Canvas */}
@@ -525,7 +570,7 @@ export default function ContextTreePage() {
                 : rightSidebarCollapsed
                 ? { width: "4rem" }
                 : { width: rightSidebarWidth, minWidth: 300, maxWidth: 900 }
-              : { width: 0 }
+              : { width: 0, pointerEvents: "none" }
           }
         >
           {/* Drag handle (left edge) */}

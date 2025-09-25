@@ -3,9 +3,9 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
-  AlertDialogTrigger,
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -32,8 +32,9 @@ import {
   Copy,
   ExternalLink,
   PanelLeftClose,
+  Search,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface Canvas {
   _id: string;
@@ -65,6 +66,20 @@ export function CanvasList({
   onCollapse,
 }: CanvasListProps) {
   const [deleteCanvasId, setDeleteCanvasId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredCanvases = useMemo(() => {
+    if (!searchQuery.trim()) return canvases;
+
+    const query = searchQuery.toLowerCase();
+    return canvases.filter((canvas) => {
+      const titleMatch = canvas.title.toLowerCase().includes(query);
+      const tagMatch = canvas.metaTags.some((tag) =>
+        tag.toLowerCase().includes(query)
+      );
+      return titleMatch || tagMatch;
+    });
+  }, [canvases, searchQuery]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -83,31 +98,74 @@ export function CanvasList({
     });
   };
 
+  const totalCanvases = canvases.length;
+  const hasResults = filteredCanvases.length > 0;
+  const showEmptySearchState = !hasResults && searchQuery.trim().length > 0;
+
   return (
     <div className="h-full flex flex-col bg-transparent">
       {/* Header */}
       <div className="p-4 border-b border-slate-200/40 bg-transparent">
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-light text-slate-900 mb-1 tracking-tight">
+        <div className="flex items-start justify-between mb-4">
+          <div className="space-y-1">
+            <h2 className="text-xl font-light text-slate-900 tracking-tight">
               Your Canvases
             </h2>
+            <p className="text-xs text-slate-500 font-light">
+              Curate and organize the conversations that power your flows.
+            </p>
           </div>
+          {onCollapse && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onCollapse}
+              className="text-slate-400 hover:text-slate-600 hover:bg-slate-100/80 rounded-lg"
+              title="Collapse sidebar"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-slate-500 font-light mb-4">
+          <span>
+            You have
+            <span className="text-slate-900 font-medium mx-1">
+              {totalCanvases}
+            </span>
+            {totalCanvases === 1 ? "canvas" : "canvases"}
+          </span>
+          {totalCanvases > 0 && (
+            <span className="bg-slate-100/70 border border-slate-200/70 text-slate-600 rounded-full px-2 py-0.5">
+              {filteredCanvases.length} shown
+            </span>
+          )}
+        </div>
+
+        <div className="relative mb-4">
+          <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search canvases or tags..."
+            className="pl-9 pr-3 h-10 rounded-xl bg-white/90 border-slate-200/70 focus-visible:ring-slate-200 text-sm"
+          />
         </div>
 
         <Button
           onClick={onCreateCanvas}
-          className="w-full gap-3 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-md h-11 rounded-xl text-sm font-light transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] mb-4"
+          className="w-full gap-3 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-md h-11 rounded-xl text-sm font-light transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
         >
           <Plus className="h-4 w-4" />
-          Create Your First Canvas
+          New Canvas
         </Button>
       </div>
 
       {/* Canvas List */}
       <div className="flex-1 overflow-hidden bg-transparent">
         <div className="h-full overflow-y-auto p-3 space-y-2">
-          {canvases.map((canvas, index) => (
+          {filteredCanvases.map((canvas, index) => (
             <Card
               key={canvas._id}
               className={`group relative p-4 cursor-pointer transition-all duration-300 ease-out border-0 ${
@@ -275,6 +333,21 @@ export function CanvasList({
               </p>
             </div>
           )}
+
+          {showEmptySearchState && (
+            <div className="text-center py-12 px-6">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Search className="h-6 w-6 text-slate-400" />
+              </div>
+              <h3 className="text-slate-900 font-light text-base mb-2">
+                No matching canvases
+              </h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto font-light leading-relaxed">
+                Try a different title or tag to find the canvas you’re looking
+                for.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -289,8 +362,8 @@ export function CanvasList({
               Delete Canvas?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-600">
-              This will permanently delete "
-              {canvases.find((c) => c._id === deleteCanvasId)?.title}" and all
+              This will permanently delete “
+              {canvases.find((c) => c._id === deleteCanvasId)?.title}” and all
               its content. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -6,6 +6,7 @@ import ReactFlow, {
   type Node,
   type Edge,
   type EdgeChange,
+  type NodeChange,
   addEdge,
   type Connection,
   useNodesState,
@@ -113,19 +114,23 @@ export function CanvasAreaEnhanced({
         ...(parentUpdateQueueRef.current[nodeId] || {}),
         ...updates,
       };
-      if (parentUpdateTimerRef.current)
+
+      if (parentUpdateTimerRef.current) {
         clearTimeout(parentUpdateTimerRef.current);
+      }
 
       parentUpdateTimerRef.current = setTimeout(async () => {
         const queuedUpdates = { ...parentUpdateQueueRef.current };
         parentUpdateQueueRef.current = {};
 
-        for (const [nodeId, updates] of Object.entries(queuedUpdates)) {
+        for (const [pendingNodeId, pendingUpdates] of Object.entries(
+          queuedUpdates
+        )) {
           try {
-            await fetch(`/api/canvases/${canvasId}/nodes/${nodeId}`, {
+            await fetch(`/api/canvases/${canvasId}/nodes/${pendingNodeId}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(updates),
+              body: JSON.stringify(pendingUpdates),
             });
           } catch (error) {
             console.error("Failed to update node:", error);
@@ -136,82 +141,139 @@ export function CanvasAreaEnhanced({
     [canvasId]
   );
 
-  // Load canvas data
+  const syncCanvasToFlow = useCallback(
+    (canvasData: CanvasData) => {
+      const flowNodes: Node[] = canvasData.nodes.map((node) => {
+        const color = node.color || getDefaultNodeColor(node.type);
+        const textColor = node.textColor || getDefaultTextColor(node.type);
+        const dotColor = node.dotColor || getDefaultDotColor(node.type);
+        const borderRadius =
+          node.borderRadius ?? getDefaultBorderRadius(node.type);
+
+        return {
+          id: node._id,
+          type: node.type,
+          position: node.position || { x: 0, y: 0 },
+          data: {
+            label: node.name,
+            messageCount: node.chatMessages?.length || 0,
+            isSelected: node._id === selectedNode,
+            onClick: () => onNodeSelect(node._id, node.name),
+            onSettingsClick: () => setCustomizingNodeId(node._id),
+            color,
+            textColor,
+            dotColor,
+            size: node.size || "medium",
+            style: node.style || "modern",
+            borderRadius,
+            opacity: node.opacity ?? 100,
+            model: node.model || "gpt-4",
+            metaTags: node.metaTags || [],
+            primary: node.primary ?? node.type === "entry",
+            dataType: node.dataType || "text",
+            contextSize: node.contextSize || 0,
+            branchCount: node.branchCount || 0,
+            activeThreads: node.activeThreads || 1,
+            lastMessageAt: node.updatedAt || node.createdAt,
+            createdAt: node.createdAt,
+          },
+          style: {
+            background: color,
+            borderRadius: `${borderRadius}px`,
+          },
+        } satisfies Node;
+      });
+
+      const flowEdges: Edge[] = canvasData.edges.map((edge) => ({
+        id: edge._id,
+        source:
+          (edge as any).source ?? (edge as any).from ?? (edge as EdgeData).from,
+        target:
+          (edge as any).target ?? (edge as any).to ?? (edge as EdgeData).to,
+        label:
+          edge.meta?.condition || edge.meta?.label || (edge as any).label || "",
+        type: "smoothstep",
+        animated: showNodeEffects,
+        style: {
+          stroke: edge.meta?.color || (edge as any).color || "#64748b",
+          strokeWidth: 3,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: edge.meta?.color || (edge as any).color || "#64748b",
+          width: 24,
+          height: 24,
+        },
+      }));
+
+      setNodes(flowNodes);
+      setEdges(flowEdges);
+    },
+    [selectedNode, onNodeSelect, showNodeEffects, setNodes, setEdges]
+  );
+
   useEffect(() => {
+    let isMounted = true;
+
+    const loadFromSource = (canvasData: CanvasData | null) => {
+      if (!canvasData || !isMounted) return;
+      setCanvas(canvasData);
+      syncCanvasToFlow(canvasData);
+    };
+
     const loadCanvas = async () => {
       try {
-        const canvasData = await storageService.getCanvas(canvasId);
-        if (canvasData) {
-          setCanvas(canvasData);
-
-          // Convert to ReactFlow format with enhanced styling
-          const flowNodes: Node[] = canvasData.nodes.map((node) => ({
-            id: node._id,
-            type: node.type,
-            position: node.position,
-            data: {
-              label: node.name,
-              messageCount: node.messageCount || 0,
-              isSelected: node._id === selectedNode,
-              onClick: () => onNodeSelect(node._id, node.name),
-              onSettingsClick: () => setCustomizingNodeId(node._id),
-              color: node.color || getDefaultNodeColor(node.type),
-              textColor: node.textColor || getDefaultTextColor(node.type),
-              dotColor: node.dotColor || getDefaultDotColor(node.type),
-              size: node.size || "medium",
-              style: node.style || "modern",
-              borderRadius:
-                node.borderRadius || getDefaultBorderRadius(node.type),
-              opacity: node.opacity || 100,
-              // Enhanced properties
-              model: node.model || "gpt-4",
-              metaTags: node.metaTags || [],
-              lastMessageAt: node.lastMessageAt,
-              createdAt: node.createdAt,
-              primary: node.type === "entry",
-              dataType: node.dataType || "text",
-              contextSize: node.contextSize || 0,
-              branchCount: node.branchCount || 0,
-              activeThreads: node.activeThreads || 1,
-            },
-            style: {
-              background: node.color || getDefaultNodeColor(node.type),
-              borderRadius: `${
-                node.borderRadius || getDefaultBorderRadius(node.type)
-              }px`,
-            },
-          }));
-
-          const flowEdges: Edge[] = canvasData.edges.map((edge) => ({
-            id: edge._id,
-            source: edge.source,
-            target: edge.target,
-            label: edge.label,
-            type: "smoothstep",
-            animated: showNodeEffects,
-            style: {
-              stroke: edge.color || "#64748b",
-              strokeWidth: 3,
-            },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: edge.color || "#64748b",
-              width: 24,
-              height: 24,
-            },
-          }));
-
-          setNodes(flowNodes);
-          setEdges(flowEdges);
+        const localCanvas = storageService.getCanvas(canvasId);
+        if (localCanvas) {
+          loadFromSource(localCanvas);
         }
       } catch (error) {
-        console.error("Failed to load canvas:", error);
-        toast.error("Failed to load canvas");
+        console.error("Failed to read canvas from storage:", error);
+      }
+
+      try {
+        const response = await fetch(`/api/canvases/${canvasId}`);
+        if (response.ok) {
+          const remoteData = await response.json();
+          if (remoteData?.canvas) {
+            storageService.saveCanvas(remoteData.canvas);
+            loadFromSource(remoteData.canvas);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch canvas from API:", error);
       }
     };
 
     loadCanvas();
-  }, [canvasId, selectedNode, onNodeSelect, showNodeEffects]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [canvasId, syncCanvasToFlow]);
+
+  // Update node selection state without refetching canvas data
+  useEffect(() => {
+    setNodes((prev) =>
+      prev.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          isSelected: node.id === selectedNode,
+        },
+      }))
+    );
+  }, [selectedNode, setNodes]);
+
+  // Toggle edge animation based on effect settings without refetching
+  useEffect(() => {
+    setEdges((prev) =>
+      prev.map((edge) => ({
+        ...edge,
+        animated: showNodeEffects,
+      }))
+    );
+  }, [showNodeEffects, setEdges]);
 
   // Enhanced node creation with animations
   const onDrop = useCallback(

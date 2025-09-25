@@ -86,8 +86,16 @@ export function CustomEdge({
                 className={`
                   mb-2 cursor-pointer transition-all duration-200 font-semibold
                   bg-white/95 backdrop-blur-sm border-2 shadow-md
-                  ${selected || isHovered ? "shadow-lg scale-105 border-blue-300" : "shadow-sm border-gray-300"}
-                  ${selected ? "ring-2 ring-indigo-200 bg-blue-50 text-blue-700" : "text-gray-700"}
+                  ${
+                    selected || isHovered
+                      ? "shadow-lg scale-105 border-blue-300"
+                      : "shadow-sm border-gray-300"
+                  }
+                  ${
+                    selected
+                      ? "ring-2 ring-indigo-200 bg-blue-50 text-blue-700"
+                      : "text-gray-700"
+                  }
                   hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300
                 `}
               >
