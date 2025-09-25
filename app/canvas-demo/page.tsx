@@ -1,69 +1,84 @@
 "use client";
 
-import React, { useState } from 'react';
-import { ReactFlowProvider } from 'reactflow';
-import { CanvasAreaSmooth } from '@/components/canvas-area-smooth';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Zap, 
-  GitBranch, 
-  Database, 
-  MousePointer, 
-  Move, 
-  Link, 
+import React, { useState } from "react";
+import { ReactFlowProvider } from "reactflow";
+import { CanvasAreaSmooth } from "@/components/canvas-area-smooth";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Zap,
+  GitBranch,
+  Database,
+  MousePointer,
+  Move,
+  Link,
   Trash2,
   Settings,
   Palette,
-  Save
-} from 'lucide-react';
-import 'reactflow/dist/style.css';
-import '@/styles/canvas-smooth.css';
+  Save,
+} from "lucide-react";
+import "reactflow/dist/style.css";
+import "@/styles/canvas-smooth.css";
 
 export default function CanvasDemoPage() {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [demoCanvasId] = useState('demo-smooth-canvas');
+  const [demoCanvasId] = useState("demo-smooth-canvas");
 
   const features = [
     {
       icon: <Move className="w-5 h-5" />,
       title: "Smooth Node Dragging",
-      description: "Real-time position updates with visual feedback and database persistence"
+      description:
+        "Real-time position updates with visual feedback and database persistence",
     },
     {
       icon: <Link className="w-5 h-5" />,
       title: "Flexible Connections",
-      description: "Connect from any point on nodes - not just predefined handles"
+      description:
+        "Connect from any point on nodes - not just predefined handles",
     },
     {
       icon: <MousePointer className="w-5 h-5" />,
       title: "Interactive Edges",
-      description: "Click edges to select, delete, or edit connection properties"
+      description:
+        "Click edges to select, delete, or edit connection properties",
     },
     {
       icon: <Save className="w-5 h-5" />,
       title: "Real-time Persistence",
-      description: "All changes automatically saved to database with optimistic updates"
+      description:
+        "All changes automatically saved to database with optimistic updates",
     },
     {
       icon: <Palette className="w-5 h-5" />,
       title: "Enhanced Visuals",
-      description: "Smooth animations, hover effects, and connection indicators"
+      description:
+        "Smooth animations, hover effects, and connection indicators",
     },
     {
       icon: <Settings className="w-5 h-5" />,
       title: "Customizable",
-      description: "Flexible connection modes, visual themes, and node customization"
-    }
+      description:
+        "Flexible connection modes, visual themes, and node customization",
+    },
   ];
 
   const shortcuts = [
     { key: "Delete/Backspace", action: "Delete selected node or edge" },
     { key: "Ctrl/Cmd + C", action: "Toggle connection mode (Loose/Strict)" },
     { key: "Drag from palette", action: "Create new node at cursor position" },
-    { key: "Drag from node handle", action: "Create connection to another node" },
+    {
+      key: "Drag from node handle",
+      action: "Create connection to another node",
+    },
     { key: "Click edge", action: "Select edge for editing or deletion" },
     { key: "Hover node", action: "Highlight connected edges" },
   ];
@@ -86,9 +101,12 @@ export default function CanvasDemoPage() {
             </Badge>
             <Badge variant="secondary" className="bg-green-100 text-green-800">
               <GitBranch className="w-3 h-3 mr-1" />
-              Flexible Connections  
+              Flexible Connections
             </Badge>
-            <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+            <Badge
+              variant="secondary"
+              className="bg-purple-100 text-purple-800"
+            >
               <Database className="w-3 h-3 mr-1" />
               Auto-save to DB
             </Badge>
@@ -110,7 +128,8 @@ export default function CanvasDemoPage() {
                   Enhanced Canvas
                 </CardTitle>
                 <CardDescription className="text-blue-100">
-                  Drag nodes smoothly, create flexible connections, and experience real-time updates
+                  Drag nodes smoothly, create flexible connections, and
+                  experience real-time updates
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
@@ -151,7 +170,9 @@ export default function CanvasDemoPage() {
                   {selectedNode ? (
                     <div className="space-y-1">
                       <p className="font-medium">Node: {selectedNode}</p>
-                      <p className="text-gray-600">Click another node to select it</p>
+                      <p className="text-gray-600">
+                        Click another node to select it
+                      </p>
                     </div>
                   ) : (
                     <p className="text-gray-500">No node selected</p>
@@ -179,7 +200,10 @@ export default function CanvasDemoPage() {
           <TabsContent value="features" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {features.map((feature, index) => (
-                <Card key={index} className="border-0 shadow-md hover:shadow-lg transition-shadow">
+                <Card
+                  key={index}
+                  className="border-0 shadow-md hover:shadow-lg transition-shadow"
+                >
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
@@ -207,7 +231,10 @@ export default function CanvasDemoPage() {
               <CardContent>
                 <div className="space-y-4">
                   {shortcuts.map((shortcut, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
                       <div className="flex items-center gap-3">
                         <code className="px-2 py-1 bg-gray-200 rounded text-sm font-mono">
                           {shortcut.key}
@@ -246,12 +273,18 @@ export default function CanvasDemoPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <h4 className="font-medium text-gray-900">Edge States</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-0.5 bg-red-400" style={{ clipPath: 'polygon(0 0, 80% 0, 100% 50%, 80% 100%, 0 100%)' }} />
+                        <div
+                          className="w-8 h-0.5 bg-red-400"
+                          style={{
+                            clipPath:
+                              "polygon(0 0, 80% 0, 100% 50%, 80% 100%, 0 100%)",
+                          }}
+                        />
                         <span>Selected edge (red, dashed)</span>
                       </div>
                       <div className="flex items-center gap-2">

@@ -97,10 +97,10 @@ export function CanvasList({
 
         <Button
           onClick={onCreateCanvas}
-          className="w-full gap-3 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-md h-11 rounded-xl text-sm font-light transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+          className="w-full gap-3 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-md h-11 rounded-xl text-sm font-light transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] mb-4"
         >
           <Plus className="h-4 w-4" />
-          New Canvas
+          Create Your First Canvas
         </Button>
       </div>
 
@@ -269,18 +269,10 @@ export function CanvasList({
               <h3 className="text-slate-900 font-light text-lg mb-3">
                 No canvases yet
               </h3>
-              <p className="text-sm text-slate-500 mb-8 leading-relaxed max-w-xs mx-auto font-light">
-                Create your first canvas to start building conversation flows
-                and organize your AI interactions.
+              <p className="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto font-light">
+                Use the button above to create your first canvas and start
+                building conversation flows.
               </p>
-              <Button
-                onClick={onCreateCanvas}
-                size="default"
-                className="gap-3 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-md text-sm font-light px-6 py-3 rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-105"
-              >
-                <Plus className="h-4 w-4" />
-                Create Your First Canvas
-              </Button>
             </div>
           )}
         </div>

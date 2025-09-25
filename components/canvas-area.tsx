@@ -23,16 +23,11 @@ import { Settings, Edit2, Palette, Save, X, Sparkles } from "lucide-react";
 import { EntryNode } from "./nodes/entry-node";
 import { BranchNode } from "./nodes/branch-node";
 import { ContextNode } from "./nodes/context-node";
-import { NodePalette } from "./node-palette";
 
-// Glassmorphic node imports
-import { EntryNodeGlass } from "./nodes/entry-node-glass";
-import { BranchNodeGlass } from "./nodes/branch-node-glass";
-import { ContextNodeGlass } from "./nodes/context-node-glass";
+// Simplified React Flow nodes only
 
 // Edge imports
 import { CustomEdge } from "./edges/custom-edge";
-import { NodePaletteEnhanced } from "./node-palette-enhanced";
 import { NodeCustomizationPanel } from "./node-customization/node-customization-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,11 +68,7 @@ const basicNodeTypes: NodeTypes = {
   context: ContextNode,
 };
 
-const glassNodeTypes: NodeTypes = {
-  entry: EntryNodeGlass,
-  branch: BranchNodeGlass,
-  context: ContextNodeGlass,
-};
+// Using basic node types only
 
 // Define edge types
 const edgeTypes = {
@@ -222,9 +213,9 @@ export function CanvasArea({
     [setNodes]
   );
 
-  // Always use glass node types
+  // Use basic React Flow node types
   const currentNodeTypes = useMemo(() => {
-    return glassNodeTypes;
+    return basicNodeTypes;
   }, []);
 
   // Handle Delete key for node/edge deletion and auto-layout shortcut
@@ -1463,8 +1454,9 @@ export function CanvasArea({
             setTimeout(() => scheduleCanvasSave(updatedCanvas), 2000);
           }
         }}
-        onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
-        onNodeMouseLeave={(_, node) => setHoveredNodeId(null)}
+        // Node hover events removed since settings button is hidden
+        // onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
+        // onNodeMouseLeave={(_, node) => setHoveredNodeId(null)}
         connectionLineStyle={{
           stroke: "#3b82f6",
           strokeWidth: 3,
@@ -1506,8 +1498,8 @@ export function CanvasArea({
           color="#cbd5e1"
           className="opacity-40"
         />
-        {/* Node settings button on hover */}
-        {hoveredNodeId && (
+        {/* Node settings button on hover - Hidden per user request */}
+        {/* {hoveredNodeId && (
           <button
             className="absolute z-50 bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl p-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:bg-white"
             style={{ left: 40, top: 40 }}
@@ -1520,7 +1512,7 @@ export function CanvasArea({
           >
             <Edit2 size={16} className="text-slate-600" />
           </button>
-        )}
+        )} */}
 
         {/* Improved Node Customization Modal */}
         {editingNodeId && (
@@ -1674,10 +1666,10 @@ export function CanvasArea({
 
       {/* Canvas Status Indicator - Hidden for cleaner UX */}
 
-      {/* Node Palette - Bottom Right */}
-      <div className="absolute bottom-6 right-6 z-10">
+      {/* Node Palette - Bottom Right - Hidden per user request */}
+      {/* <div className="absolute bottom-6 right-6 z-10">
         <NodePaletteEnhanced />
-      </div>
+      </div> */}
 
       {/* Customization Panel */}
       {showCustomizationPanel && selectedNode && (

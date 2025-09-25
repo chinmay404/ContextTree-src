@@ -1309,23 +1309,31 @@ export function ChatPanel({
                           );
                           if (newName && newName.trim()) {
                             // Update node name in canvas
-                            fetch(`/api/canvases/${selectedCanvas}/nodes/${selectedNode}`, {
-                              method: "PATCH",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ name: newName.trim() }),
-                            }).then(() => {
+                            fetch(
+                              `/api/canvases/${selectedCanvas}/nodes/${selectedNode}`,
+                              {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ name: newName.trim() }),
+                              }
+                            ).then(() => {
                               // Update local conversation
-                              setConversations(prev => ({
+                              setConversations((prev) => ({
                                 ...prev,
                                 [selectedNode]: {
                                   ...prev[selectedNode],
-                                  nodeName: newName.trim()
-                                }
+                                  nodeName: newName.trim(),
+                                },
                               }));
                               // Trigger canvas refresh
-                              window.dispatchEvent(new CustomEvent('node-updated', {
-                                detail: { nodeId: selectedNode, name: newName.trim() }
-                              }));
+                              window.dispatchEvent(
+                                new CustomEvent("node-updated", {
+                                  detail: {
+                                    nodeId: selectedNode,
+                                    name: newName.trim(),
+                                  },
+                                })
+                              );
                             });
                           }
                         }
@@ -1347,7 +1355,8 @@ export function ChatPanel({
                 </div>
 
                 <div className="flex items-center gap-2 ml-4">
-                  {selectedNode && (
+                  {/* Refresh conversation button removed per user request */}
+                  {/* {selectedNode && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1371,7 +1380,7 @@ export function ChatPanel({
                     >
                       <Settings size={14} />
                     </Button>
-                  )}
+                  )} */}
 
                   {onToggleCollapse && !isFullscreen && (
                     <Button

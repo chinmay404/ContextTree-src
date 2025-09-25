@@ -494,16 +494,9 @@ export default function ContextTreePage() {
                     No canvas selected
                   </p>
                   <p className="text-slate-500 text-base mb-8 max-w-md mx-auto font-light leading-relaxed">
-                    Create your first canvas to start building conversational
-                    flows and organize your AI interactions
+                    Select a canvas from the list to start working with your
+                    conversational flows
                   </p>
-                  <Button
-                    onClick={handleCreateCanvas}
-                    className="gap-3 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-md px-6 py-3 rounded-xl font-light transition-all duration-300 hover:shadow-lg hover:scale-105"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Your First Canvas
-                  </Button>
                 </div>
               </div>
             </div>

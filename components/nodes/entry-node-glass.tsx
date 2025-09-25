@@ -343,11 +343,11 @@ export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
           position={Position.Left}
           id="left"
           className="!w-3 !h-3 !border-2 !border-white !bg-blue-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
-          style={{ 
-            top: "50%", 
+          style={{
+            top: "50%",
             left: "-6px",
             backgroundColor: data.dotColor || "#3b82f6",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         />
         <Handle
@@ -355,11 +355,11 @@ export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
           position={Position.Top}
           id="top"
           className="!w-3 !h-3 !border-2 !border-white !bg-blue-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
-          style={{ 
-            left: "50%", 
+          style={{
+            left: "50%",
             top: "-6px",
             backgroundColor: data.dotColor || "#3b82f6",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         />
 
@@ -369,11 +369,11 @@ export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
           position={Position.Right}
           id="right"
           className="!w-3 !h-3 !border-2 !border-white !bg-blue-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
-          style={{ 
-            top: "50%", 
+          style={{
+            top: "50%",
             right: "-6px",
             backgroundColor: data.dotColor || "#3b82f6",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         />
         <Handle
@@ -381,11 +381,11 @@ export function EntryNodeGlass({ data, selected }: NodeProps<EntryNodeData>) {
           position={Position.Bottom}
           id="bottom"
           className="!w-3 !h-3 !border-2 !border-white !bg-blue-500 !opacity-100 hover:!scale-125 !transition-all !duration-200"
-          style={{ 
-            left: "50%", 
+          style={{
+            left: "50%",
             bottom: "-6px",
             backgroundColor: data.dotColor || "#3b82f6",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         />
       </Card>
