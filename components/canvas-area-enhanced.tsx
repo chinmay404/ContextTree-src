@@ -17,6 +17,7 @@ import ReactFlow, {
   MarkerType,
   useReactFlow,
   type NodeTypes,
+  type Viewport,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { Settings, Edit2, Palette, Save, X, Sparkles } from "lucide-react";
@@ -69,6 +70,30 @@ const nodeTypes: NodeTypes = {
   context: ContextNodeEnhanced,
 };
 
+const SAVE_DEBOUNCE_MS = 800;
+const VIEWPORT_POSITION_EPSILON = 0.1;
+const VIEWPORT_ZOOM_EPSILON = 0.0001;
+
+type LayoutUpdate = {
+  nodes?: { id: string; position: { x: number; y: number } }[];
+  viewport?: Viewport;
+};
+
+type PendingLayout = {
+  nodes: Map<string, { x: number; y: number }>;
+  viewport?: Viewport;
+};
+
+const isViewportEqual = (a?: Viewport | null, b?: Viewport | null) => {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return (
+    Math.abs(a.x - b.x) < VIEWPORT_POSITION_EPSILON &&
+    Math.abs(a.y - b.y) < VIEWPORT_POSITION_EPSILON &&
+    Math.abs(a.zoom - b.zoom) < VIEWPORT_ZOOM_EPSILON
+  );
+};
+
 interface CanvasAreaProps {
   canvasId: string;
   selectedNode: string | null;
@@ -85,6 +110,104 @@ export function CanvasAreaEnhanced({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [canvas, setCanvas] = useState<CanvasData | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
+
+  const pendingLayoutRef = useRef<PendingLayout | null>(null);
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const flushPendingLayout = useCallback(async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const pending = pendingLayoutRef.current;
+    if (!pending) return;
+
+    const nodesPayload = Array.from(pending.nodes.entries()).map(
+      ([id, position]) => ({ id, position })
+    );
+
+    if (nodesPayload.length === 0 && !pending.viewport) {
+      pendingLayoutRef.current = null;
+      return;
+    }
+
+    const body: LayoutUpdate = {};
+    if (nodesPayload.length) {
+      body.nodes = nodesPayload;
+    }
+    if (pending.viewport) {
+      body.viewport = pending.viewport;
+    }
+
+    pendingLayoutRef.current = null;
+    try {
+      const response = await fetch(`/api/canvases/${canvasId}/layout`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        console.error("Failed to persist canvas layout:", message);
+      }
+    } catch (error) {
+      console.error("Failed to persist canvas layout:", error);
+    }
+  }, [canvasId]);
+
+  const queueLayoutSave = useCallback(
+    (update: LayoutUpdate) => {
+      if (!pendingLayoutRef.current) {
+        pendingLayoutRef.current = { nodes: new Map() };
+      }
+
+      if (update.nodes) {
+        for (const node of update.nodes) {
+          if (!node || typeof node.id !== "string") continue;
+          const { position } = node;
+          if (
+            !position ||
+            typeof position.x !== "number" ||
+            typeof position.y !== "number"
+          ) {
+            continue;
+          }
+          pendingLayoutRef.current.nodes.set(node.id, {
+            x: position.x,
+            y: position.y,
+          });
+        }
+      }
+
+      if (update.viewport) {
+        pendingLayoutRef.current.viewport = update.viewport;
+      }
+
+      const hasWork =
+        pendingLayoutRef.current.nodes.size > 0 ||
+        !!pendingLayoutRef.current.viewport;
+      if (!hasWork) return;
+
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+      saveTimerRef.current = setTimeout(() => {
+        void flushPendingLayout();
+      }, SAVE_DEBOUNCE_MS);
+    },
+    [flushPendingLayout]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      void flushPendingLayout();
+    };
+  }, [flushPendingLayout]);
 
   // Enhanced customization states
   const [customizingNodeId, setCustomizingNodeId] = useState<string | null>(
@@ -218,6 +341,11 @@ export function CanvasAreaEnhanced({
     const loadFromSource = (canvasData: CanvasData | null) => {
       if (!canvasData || !isMounted) return;
       setCanvas(canvasData);
+      if (canvasData.viewportState) {
+        setViewport(canvasData.viewportState);
+      } else {
+        setViewport({ x: 0, y: 0, zoom: 1 });
+      }
       syncCanvasToFlow(canvasData);
     };
 
@@ -251,6 +379,14 @@ export function CanvasAreaEnhanced({
       isMounted = false;
     };
   }, [canvasId, syncCanvasToFlow]);
+
+  useEffect(() => {
+    if (!canvas?.viewportState) return;
+    if (isViewportEqual(canvas.viewportState, viewport)) return;
+
+    setViewport(canvas.viewportState);
+    reactFlowInstance.setViewport(canvas.viewportState);
+  }, [canvas?.viewportState, reactFlowInstance, viewport]);
 
   // Update node selection state without refetching canvas data
   useEffect(() => {
@@ -405,9 +541,13 @@ export function CanvasAreaEnhanced({
             : n
         );
 
-        const updatedCanvas = { ...canvas, nodes: updatedNodes };
-        storageService.saveCanvas(updatedCanvas);
-        setCanvas(updatedCanvas);
+        const nextCanvas: CanvasData = {
+          ...canvas,
+          nodes: updatedNodes,
+          updatedAt: new Date().toISOString(),
+        };
+        setCanvas(nextCanvas);
+        storageService.saveCanvas(nextCanvas);
 
         // Update ReactFlow nodes
         setNodes((nds) =>
@@ -477,6 +617,59 @@ export function CanvasAreaEnhanced({
       });
     },
     [onEdgesChange]
+  );
+
+  const onNodeDragStop = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      let nextCanvas: CanvasData | null = null;
+
+      setCanvas((prev) => {
+        if (!prev) return prev;
+        const updatedNodes = prev.nodes.map((n) =>
+          n._id === node.id ? { ...n, position: { ...node.position } } : n
+        );
+        nextCanvas = {
+          ...prev,
+          nodes: updatedNodes,
+          viewportState: viewport,
+          updatedAt: new Date().toISOString(),
+        };
+        return nextCanvas;
+      });
+
+      if (nextCanvas) {
+        storageService.saveCanvas(nextCanvas);
+        queueLayoutSave({
+          nodes: [{ id: node.id, position: { ...node.position } }],
+          viewport,
+        });
+      }
+    },
+    [viewport, queueLayoutSave]
+  );
+
+  const handleMoveEnd = useCallback(
+    (_: any, nextViewport: Viewport) => {
+      setViewport(nextViewport);
+      let nextCanvas: CanvasData | null = null;
+
+      setCanvas((prev) => {
+        if (!prev) return prev;
+        if (isViewportEqual(prev.viewportState, nextViewport)) return prev;
+        nextCanvas = {
+          ...prev,
+          viewportState: nextViewport,
+          updatedAt: new Date().toISOString(),
+        };
+        return nextCanvas;
+      });
+
+      if (nextCanvas) {
+        storageService.saveCanvas(nextCanvas);
+        queueLayoutSave({ viewport: nextViewport });
+      }
+    },
+    [queueLayoutSave]
   );
 
   const onConnect = useCallback(
@@ -626,8 +819,10 @@ export function CanvasAreaEnhanced({
         onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
+        onNodeDragStop={onNodeDragStop}
+        onMoveEnd={handleMoveEnd}
+        defaultViewport={viewport}
         nodeTypes={nodeTypes}
-        fitView
         className="bg-transparent"
         onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
         onNodeMouseLeave={(_, node) => setHoveredNodeId(null)}

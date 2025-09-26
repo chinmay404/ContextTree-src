@@ -16,6 +16,7 @@ import ReactFlow, {
   MarkerType,
   useReactFlow,
   type NodeTypes,
+  type Viewport,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { Settings, Edit2, Palette, Save, X, Sparkles } from "lucide-react";
@@ -74,6 +75,8 @@ const basicNodeTypes: NodeTypes = {
 const edgeTypes = {
   custom: CustomEdge,
 };
+
+const LAYOUT_SAVE_DEBOUNCE_MS = 800;
 
 interface CanvasAreaProps {
   canvasId: string;
@@ -180,6 +183,115 @@ export function CanvasArea({
     },
     [canvasId, canvasSettings.autoSave, canvasSettings.saveInterval, viewport]
   );
+
+  const layoutSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingLayoutRef = useRef<{
+    nodes: Map<string, { x: number; y: number }>;
+    viewport?: { x: number; y: number; zoom: number };
+  } | null>(null);
+
+  const flushLayoutSave = useCallback(async () => {
+    if (layoutSaveTimerRef.current) {
+      clearTimeout(layoutSaveTimerRef.current);
+      layoutSaveTimerRef.current = null;
+    }
+
+    const pending = pendingLayoutRef.current;
+    if (!pending) return;
+
+    const nodesPayload = Array.from(pending.nodes.entries()).map(
+      ([id, position]) => ({ id, position })
+    );
+
+    if (!nodesPayload.length && !pending.viewport) {
+      pendingLayoutRef.current = null;
+      return;
+    }
+
+    const body: {
+      nodes?: { id: string; position: { x: number; y: number } }[];
+      viewport?: { x: number; y: number; zoom: number };
+    } = {};
+
+    if (nodesPayload.length) {
+      body.nodes = nodesPayload;
+    }
+    if (pending.viewport) {
+      body.viewport = pending.viewport;
+    }
+
+    pendingLayoutRef.current = null;
+
+    try {
+      const response = await fetch(`/api/canvases/${canvasId}/layout`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        console.error("Failed to persist layout:", message);
+      }
+    } catch (error) {
+      console.error("Failed to persist layout:", error);
+    }
+  }, [canvasId]);
+
+  const scheduleLayoutPatch = useCallback(
+    (update: {
+      nodes?: { id: string; position: { x: number; y: number } }[];
+      viewport?: { x: number; y: number; zoom: number };
+    }) => {
+      if (!pendingLayoutRef.current) {
+        pendingLayoutRef.current = { nodes: new Map() };
+      }
+
+      if (update.nodes) {
+        for (const node of update.nodes) {
+          if (!node || typeof node.id !== "string") continue;
+          const { position } = node;
+          if (
+            !position ||
+            typeof position.x !== "number" ||
+            typeof position.y !== "number"
+          ) {
+            continue;
+          }
+          pendingLayoutRef.current.nodes.set(node.id, {
+            x: position.x,
+            y: position.y,
+          });
+        }
+      }
+
+      if (update.viewport) {
+        pendingLayoutRef.current.viewport = update.viewport;
+      }
+
+      const hasWork =
+        pendingLayoutRef.current.nodes.size > 0 ||
+        !!pendingLayoutRef.current.viewport;
+      if (!hasWork) return;
+
+      if (layoutSaveTimerRef.current) {
+        clearTimeout(layoutSaveTimerRef.current);
+      }
+      layoutSaveTimerRef.current = setTimeout(() => {
+        void flushLayoutSave();
+      }, LAYOUT_SAVE_DEBOUNCE_MS);
+    },
+    [flushLayoutSave]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (layoutSaveTimerRef.current) {
+        clearTimeout(layoutSaveTimerRef.current);
+        layoutSaveTimerRef.current = null;
+      }
+      void flushLayoutSave();
+    };
+  }, [flushLayoutSave]);
 
   // Handle node customization
   const handleNodeCustomization = useCallback(
@@ -954,12 +1066,40 @@ export function CanvasArea({
       storageService.saveCanvas(updatedCanvas);
       setCanvas(updatedCanvas);
 
-      // Save to database with debounce
-      scheduleCanvasSave(updatedCanvas);
+      // Save layout via lightweight endpoint
+      scheduleLayoutPatch({
+        nodes: [{ id: node.id, position: { ...node.position } }],
+        viewport,
+      });
 
       // Removed toast for cleaner UX
     },
-    [canvas, viewport]
+    [canvas, viewport, scheduleLayoutPatch]
+  );
+
+  const handleMoveEnd = useCallback(
+    (_: any, newViewport: Viewport) => {
+      setViewport(newViewport);
+      let nextCanvas: CanvasData | null = null;
+
+      setCanvas((prev) => {
+        if (!prev) return prev;
+        nextCanvas = {
+          ...prev,
+          viewportState: newViewport,
+          updatedAt: new Date().toISOString(),
+        };
+        return nextCanvas;
+      });
+
+      if (nextCanvas) {
+        storageService.saveCanvas(nextCanvas);
+        if (canvasSettings.autoSave) {
+          scheduleLayoutPatch({ viewport: newViewport });
+        }
+      }
+    },
+    [canvasSettings.autoSave, scheduleLayoutPatch]
   );
 
   // Highlight & animate edges: direct (tier 1) + neighbor edges (tier 2)
@@ -1356,13 +1496,20 @@ export function CanvasArea({
 
       storageService.saveCanvas(updatedCanvas);
       setCanvas(updatedCanvas);
-      scheduleCanvasSave(updatedCanvas);
+      scheduleLayoutPatch({
+        nodes: updatedNodes
+          .filter((node) => node.position)
+          .map((node) => ({
+            id: node._id,
+            position: node.position as { x: number; y: number },
+          })),
+      });
 
       toast.success("Canvas auto-arranged!", {
         duration: 2000,
       });
     }
-  }, [nodes, edges, canvas, setNodes]);
+  }, [nodes, edges, canvas, setNodes, scheduleLayoutPatch]);
 
   return (
     <div
@@ -1441,19 +1588,7 @@ export function CanvasArea({
           // Track viewport changes for persistence
           setViewport(newViewport);
         }}
-        onMoveEnd={(event, newViewport) => {
-          // Save viewport state when movement ends (optimized timing)
-          if (canvas && canvasSettings.autoSave) {
-            const updatedCanvas = {
-              ...canvas,
-              viewportState: newViewport,
-              updatedAt: new Date().toISOString(),
-            };
-            storageService.saveCanvas(updatedCanvas);
-            // Delay viewport saves to reduce DB calls
-            setTimeout(() => scheduleCanvasSave(updatedCanvas), 2000);
-          }
-        }}
+        onMoveEnd={handleMoveEnd}
         // Node hover events removed since settings button is hidden
         // onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
         // onNodeMouseLeave={(_, node) => setHoveredNodeId(null)}

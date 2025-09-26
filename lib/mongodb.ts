@@ -376,6 +376,87 @@ export class MongoDBService {
     return merged;
   }
 
+  async updateCanvasLayout(
+    canvasId: string,
+    layout: {
+      nodes?: { id: string; position: { x: number; y: number } }[];
+      viewport?: { x: number; y: number; zoom: number };
+    },
+    userEmail?: string
+  ): Promise<CanvasData | null> {
+    await ensureInit();
+    if (!userEmail) return null;
+
+    const nodesArray = Array.isArray(layout.nodes) ? layout.nodes : [];
+    const nodePositionMap = new Map<string, { x: number; y: number }>();
+    for (const item of nodesArray) {
+      if (!item || typeof item.id !== "string") continue;
+      const { position } = item;
+      if (
+        !position ||
+        typeof position.x !== "number" ||
+        typeof position.y !== "number"
+      ) {
+        continue;
+      }
+      nodePositionMap.set(item.id, {
+        x: position.x,
+        y: position.y,
+      });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const canvasRes = await client.query(
+        "select data from canvases where id=$1 and user_email=$2 for update",
+        [canvasId, userEmail]
+      );
+      if (!canvasRes.rowCount) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      const canvas = this.rowToCanvas(canvasRes.rows[0]);
+
+      if (nodePositionMap.size) {
+        canvas.nodes = canvas.nodes.map((node) => {
+          const pos = nodePositionMap.get(node._id);
+          return pos ? { ...node, position: pos } : node;
+        });
+
+        for (const [nodeId, position] of nodePositionMap) {
+          await client.query(
+            `update nodes
+               set data = jsonb_set(coalesce(data, '{}'::jsonb), '{position}', $3::jsonb, true),
+                   updated_at = now()
+             where id=$1 and canvas_id=$2`,
+            [nodeId, canvasId, JSON.stringify(position)]
+          );
+        }
+      }
+
+      if (layout.viewport) {
+        canvas.viewportState = layout.viewport;
+      }
+
+      canvas.updatedAt = new Date().toISOString();
+
+      await client.query(
+        "update canvases set data=$3, updated_at=now() where id=$1 and user_email=$2",
+        [canvasId, userEmail, canvas]
+      );
+
+      await client.query("COMMIT");
+      return canvas;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("updateCanvasLayout error", error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async deleteCanvas(canvasId: string, userEmail?: string): Promise<boolean> {
     const params: any[] = [canvasId];
     if (!userEmail) return false;
