@@ -70,7 +70,8 @@ const nodeTypes: NodeTypes = {
   context: ContextNodeEnhanced,
 };
 
-const SAVE_DEBOUNCE_MS = 800;
+const LAYOUT_SYNC_DEBOUNCE_MS = 5000;
+const LAYOUT_SYNC_INTERVAL_MS = 5000;
 const VIEWPORT_POSITION_EPSILON = 0.1;
 const VIEWPORT_ZOOM_EPSILON = 0.0001;
 
@@ -114,6 +115,7 @@ export function CanvasAreaEnhanced({
 
   const pendingLayoutRef = useRef<PendingLayout | null>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const layoutSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const flushPendingLayout = useCallback(async () => {
     if (saveTimerRef.current) {
@@ -194,17 +196,40 @@ export function CanvasAreaEnhanced({
       }
       saveTimerRef.current = setTimeout(() => {
         void flushPendingLayout();
-      }, SAVE_DEBOUNCE_MS);
+      }, LAYOUT_SYNC_DEBOUNCE_MS);
     },
     [flushPendingLayout]
   );
 
   useEffect(() => {
+    layoutSyncIntervalRef.current = setInterval(() => {
+      void flushPendingLayout();
+    }, LAYOUT_SYNC_INTERVAL_MS);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        void flushPendingLayout();
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      void flushPendingLayout();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
     return () => {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
+      if (layoutSyncIntervalRef.current) {
+        clearInterval(layoutSyncIntervalRef.current);
+        layoutSyncIntervalRef.current = null;
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
       void flushPendingLayout();
     };
   }, [flushPendingLayout]);
@@ -426,11 +451,7 @@ export function CanvasAreaEnhanced({
       const rawType = event.dataTransfer.getData("application/reactflow");
       if (!rawType) return;
 
-      const allowedTypes: NodeData["type"][] = [
-        "entry",
-        "branch",
-        "context",
-      ];
+      const allowedTypes: NodeData["type"][] = ["entry", "branch", "context"];
       const resolvedType = allowedTypes.includes(rawType as NodeData["type"])
         ? (rawType as NodeData["type"])
         : "context";
@@ -561,10 +582,13 @@ export function CanvasAreaEnhanced({
     [canvas, canvasId, onNodeSelect, reactFlowInstance, setNodes]
   );
 
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    if (!isDragActive) setIsDragActive(true);
-  }, [isDragActive]);
+  const onDragOver = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      if (!isDragActive) setIsDragActive(true);
+    },
+    [isDragActive]
+  );
 
   const handleDragLeave = useCallback(() => {
     setIsDragActive(false);
@@ -751,7 +775,8 @@ export function CanvasAreaEnhanced({
       }
 
       const hasExistingEdge = canvas.edges.some(
-        (edge) => edge.from === connection.source && edge.to === connection.target
+        (edge) =>
+          edge.from === connection.source && edge.to === connection.target
       );
       if (hasExistingEdge) {
         toast.warning("These nodes are already connected.");
