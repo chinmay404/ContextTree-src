@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -103,6 +103,15 @@ export function NodePaletteEnhanced() {
     "all" | "flow" | "data" | "interaction"
   >("all");
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const seen = localStorage.getItem("contexttree_palette_seen");
+    if (!seen) {
+      setIsExpanded(true);
+      localStorage.setItem("contexttree_palette_seen", "1");
+    }
+  }, []);
 
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData("application/reactflow", nodeType);

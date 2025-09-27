@@ -1095,7 +1095,7 @@ export function CanvasAreaEnhanced({
       </ReactFlow>
 
       {/* Enhanced Node Palette */}
-      <div className="absolute bottom-6 right-6 z-10">
+      <div className="absolute top-6 right-6 z-40">
         <NodePaletteEnhanced />
       </div>
 
