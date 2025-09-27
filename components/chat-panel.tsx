@@ -20,7 +20,7 @@ import {
   PanelRightOpen,
   Settings,
   GitBranch,
-  ArrowRight,
+  ArrowDown,
   Copy,
   Check,
 } from "lucide-react";
@@ -99,7 +99,12 @@ const ChatPanelInternal = ({
   const [messageCache, setMessageCache] = useState<Record<string, Message[]>>(
     {}
   );
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const isUserNearBottomRef = useRef(true);
+  const hasInitializedScrollRef = useRef(false);
+  const previousMessageCountRef = useRef(0);
+  const [showScrollToLatest, setShowScrollToLatest] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastSelectedNodeRef = useRef<string | null>(null);
 
@@ -462,12 +467,103 @@ const ChatPanelInternal = ({
     [selectedNode, selectedNodeName, conversations]
   );
 
-  useEffect(() => {
-    // Auto-scroll to bottom when new messages are added
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+  const messageCount = currentConversation?.messages?.length ?? 0;
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+    const viewport = scrollViewportRef.current;
+    if (!viewport) return;
+
+    if (behavior === "smooth" && typeof viewport.scrollTo === "function") {
+      viewport.scrollTo({
+        top: viewport.scrollHeight,
+        behavior,
+      });
+    } else {
+      viewport.scrollTop = viewport.scrollHeight;
     }
-  }, [currentConversation?.messages]);
+
+    if (behavior === "smooth") {
+      messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
+    }
+  }, []);
+
+  useEffect(() => {
+    const viewport = scrollViewportRef.current;
+    if (!viewport) return;
+
+    const hasNewMessage = messageCount > previousMessageCountRef.current;
+    const hadMessages = previousMessageCountRef.current > 0;
+
+    if (!hasInitializedScrollRef.current) {
+      scrollToBottom("auto");
+      hasInitializedScrollRef.current = true;
+    } else if (hasNewMessage) {
+      if (isUserNearBottomRef.current) {
+        scrollToBottom(hadMessages ? "smooth" : "auto");
+      } else {
+        setShowScrollToLatest(true);
+      }
+    }
+
+    previousMessageCountRef.current = messageCount;
+  }, [messageCount, scrollToBottom]);
+
+  useEffect(() => {
+    hasInitializedScrollRef.current = false;
+    previousMessageCountRef.current = 0;
+    isUserNearBottomRef.current = true;
+    setShowScrollToLatest(false);
+  }, [selectedNode]);
+
+  useEffect(() => {
+    if (isTyping && isUserNearBottomRef.current) {
+      scrollToBottom("smooth");
+    }
+  }, [isTyping, scrollToBottom]);
+
+  useEffect(() => {
+    if (isUserNearBottomRef.current) {
+      scrollToBottom("auto");
+    }
+  }, [isFullscreen, isCollapsed, scrollToBottom]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const viewport = scrollViewportRef.current;
+    if (!viewport) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = viewport;
+      const isAtBottom = scrollHeight - (scrollTop + clientHeight) <= 80;
+      isUserNearBottomRef.current = isAtBottom;
+      const shouldShow = !isAtBottom && previousMessageCountRef.current > 0;
+      setShowScrollToLatest((prev) =>
+        prev === shouldShow ? prev : shouldShow
+      );
+    };
+
+    handleScroll();
+    viewport.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      viewport.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof ResizeObserver === "undefined")
+      return;
+    const viewport = scrollViewportRef.current;
+    if (!viewport) return;
+
+    const observer = new ResizeObserver(() => {
+      if (isUserNearBottomRef.current) {
+        scrollToBottom("auto");
+      }
+    });
+
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [scrollToBottom]);
 
   const getNodeModel = useCallback(
     (nodeId: string): string => {
@@ -878,7 +974,11 @@ const ChatPanelInternal = ({
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
-          <div className={`max-w-[85%] ${isUser ? "order-2" : "order-1"}`}>
+          <div
+            className={`w-full min-w-0 sm:max-w-[92%] lg:max-w-[75%] xl:max-w-3xl 2xl:max-w-4xl ${
+              isUser ? "order-2" : "order-1"
+            }`}
+          >
             <div
               className={`flex items-start gap-3 ${
                 isUser ? "flex-row-reverse" : ""
@@ -902,7 +1002,7 @@ const ChatPanelInternal = ({
                   }`}
                 >
                   {isUser ? (
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap font-light">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words font-light">
                       {message.content}
                     </p>
                   ) : (
@@ -953,7 +1053,7 @@ const ChatPanelInternal = ({
                                 )}
                               </div>
                             ) : part.content.trim() ? (
-                              <div className="prose prose-sm max-w-none prose-slate prose-headings:font-light prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 prose-strong:font-medium prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200">
+                              <div className="prose prose-sm max-w-none break-words prose-slate prose-headings:font-light prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 prose-strong:font-medium prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-img:rounded-lg prose-img:border prose-img:border-slate-200/60 prose-img:bg-white">
                                 <ReactMarkdown
                                   remarkPlugins={[remarkGfm]}
                                   rehypePlugins={[rehypeHighlight]}
@@ -974,7 +1074,7 @@ const ChatPanelInternal = ({
                                       </h3>
                                     ),
                                     p: ({ children }) => (
-                                      <p className="text-slate-700 mb-2 last:mb-0 font-light leading-relaxed">
+                                      <p className="text-slate-700 mb-2 last:mb-0 font-light leading-relaxed break-words">
                                         {children}
                                       </p>
                                     ),
@@ -1099,9 +1199,61 @@ const ChatPanelInternal = ({
                                       </ol>
                                     ),
                                     li: ({ children }) => (
-                                      <li className="text-slate-700 font-light">
+                                      <li className="text-slate-700 font-light break-words">
                                         {children}
                                       </li>
+                                    ),
+                                    a: ({ children, href }) => (
+                                      <a
+                                        href={href || "#"}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-blue-600 underline break-words hover:text-blue-700"
+                                      >
+                                        {children}
+                                      </a>
+                                    ),
+                                    table: ({ children }) => (
+                                      <div className="my-4 w-full overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                                        <table className="min-w-full table-auto border-collapse text-left text-sm text-slate-700">
+                                          {children}
+                                        </table>
+                                      </div>
+                                    ),
+                                    thead: ({ children }) => (
+                                      <thead className="bg-slate-100 text-slate-700">
+                                        {children}
+                                      </thead>
+                                    ),
+                                    tbody: ({ children }) => (
+                                      <tbody className="divide-y divide-slate-200">
+                                        {children}
+                                      </tbody>
+                                    ),
+                                    tr: ({ children }) => (
+                                      <tr className="even:bg-slate-50">
+                                        {children}
+                                      </tr>
+                                    ),
+                                    th: ({ children }) => (
+                                      <th className="px-3 py-2 font-medium text-slate-700">
+                                        {children}
+                                      </th>
+                                    ),
+                                    td: ({ children }) => (
+                                      <td className="px-3 py-2 align-top text-slate-600">
+                                        {children}
+                                      </td>
+                                    ),
+                                    img: ({ alt, src }) => (
+                                      <img
+                                        src={src || ""}
+                                        alt={alt || "Markdown image"}
+                                        className="my-3 w-full max-h-[30rem] rounded-lg object-contain"
+                                      />
+                                    ),
+                                    hr: () => (
+                                      <hr className="my-4 border-slate-200" />
                                     ),
                                     blockquote: ({ children }) => (
                                       <blockquote className="border-l-4 border-slate-300 pl-4 py-2 bg-slate-50 rounded-r-lg my-2">
@@ -1534,8 +1686,11 @@ const ChatPanelInternal = ({
                   {/* Messages */}
                   <div className="flex-1 min-h-0 relative">
                     <ScrollArea
-                      className={`h-full ${isFullscreen ? "p-6" : "p-4"}`}
-                      ref={scrollAreaRef}
+                      className="h-full"
+                      viewportRef={scrollViewportRef}
+                      viewportClassName={`h-full ${
+                        isFullscreen ? "p-6" : "p-4"
+                      }`}
                     >
                       <div
                         className={`space-y-1 pb-32 ${
@@ -1635,10 +1790,34 @@ const ChatPanelInternal = ({
                               )
                             )}
                             {isTyping && <TypingIndicator />}
+                            <div
+                              ref={messagesEndRef}
+                              aria-hidden="true"
+                              className="h-px w-full"
+                            />
                           </>
                         )}
                       </div>
                     </ScrollArea>
+                    {showScrollToLatest && (
+                      <div className="pointer-events-none absolute bottom-6 right-6 z-20">
+                        <Button
+                          onClick={() => {
+                            scrollToBottom("smooth");
+                            isUserNearBottomRef.current = true;
+                            setShowScrollToLatest(false);
+                          }}
+                          size="sm"
+                          variant="secondary"
+                          className="pointer-events-auto gap-2 rounded-full bg-white/90 text-slate-700 shadow-lg shadow-slate-900/10 hover:bg-white"
+                        >
+                          <ArrowDown size={16} />
+                          <span className="text-xs font-medium">
+                            Jump to latest
+                          </span>
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Model Selection & Input Area */}
