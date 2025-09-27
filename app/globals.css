@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+html {
+  scroll-behavior: smooth;
+}
+
 /* Enhanced ReactFlow Styles */
 .react-flow__edge {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
