@@ -220,6 +220,7 @@ export function CanvasAreaEnhanced({
   const [edgeNameInput, setEdgeNameInput] = useState<string>("");
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [showNodeEffects, setShowNodeEffects] = useState(true);
+  const [isDragActive, setIsDragActive] = useState(false);
 
   // Animation and effects
   const [isCreatingNode, setIsCreatingNode] = useState(false);
@@ -415,9 +416,32 @@ export function CanvasAreaEnhanced({
   const onDrop = useCallback(
     async (event: React.DragEvent) => {
       event.preventDefault();
+      setIsDragActive(false);
 
-      const type = event.dataTransfer.getData("application/reactflow");
-      if (!type) return;
+      if (!canvas) {
+        toast.error("Canvas is still loading. Please try again in a moment.");
+        return;
+      }
+
+      const rawType = event.dataTransfer.getData("application/reactflow");
+      if (!rawType) return;
+
+      const allowedTypes: NodeData["type"][] = [
+        "entry",
+        "branch",
+        "context",
+      ];
+      const resolvedType = allowedTypes.includes(rawType as NodeData["type"])
+        ? (rawType as NodeData["type"])
+        : "context";
+
+      if (
+        resolvedType === "entry" &&
+        canvas.nodes.some((node) => node.type === "entry")
+      ) {
+        toast.warning("A canvas can only have one entry node.");
+        return;
+      }
 
       const bounds = event.currentTarget.getBoundingClientRect();
       const position = reactFlowInstance.screenToFlowPosition({
@@ -425,79 +449,125 @@ export function CanvasAreaEnhanced({
         y: event.clientY - bounds.top,
       });
 
+      const nodeId =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `node_${Date.now()}`;
+      const createdAt = new Date().toISOString();
+      const defaultName = getDefaultNodeName(resolvedType);
+      const defaultColor = getDefaultNodeColor(resolvedType);
+      const colorScheme = getColorScheme(defaultColor);
+
+      const newNode: NodeData = {
+        _id: nodeId,
+        name: defaultName,
+        primary: resolvedType === "entry",
+        type: resolvedType,
+        chatMessages: [],
+        runningSummary: "",
+        contextContract:
+          resolvedType === "context" ? "Add context information here..." : "",
+        model: canvas.settings?.defaultModel || "gpt-4",
+        createdAt,
+        position,
+        color: defaultColor,
+        textColor: colorScheme.text,
+        dotColor: colorScheme.dot,
+      };
+
+      const nextCanvas: CanvasData = {
+        ...canvas,
+        nodes: [...canvas.nodes, newNode],
+        ...(resolvedType === "entry" ? { primaryNodeId: nodeId } : {}),
+        updatedAt: createdAt,
+      };
+
       setIsCreatingNode(true);
+      setLastCreatedNodeId(nodeId);
+      setCanvas(nextCanvas);
+      storageService.saveCanvas(nextCanvas);
+
+      const flowNode: Node = {
+        id: nodeId,
+        type: resolvedType,
+        position,
+        data: {
+          label: defaultName,
+          messageCount: 0,
+          isSelected: false,
+          onClick: () => onNodeSelect(nodeId, defaultName),
+          onSettingsClick: () => setCustomizingNodeId(nodeId),
+          color: defaultColor,
+          textColor: colorScheme.text,
+          dotColor: colorScheme.dot,
+          size: "medium",
+          style: "modern",
+          borderRadius: getDefaultBorderRadius(resolvedType),
+          opacity: 100,
+          model: newNode.model,
+          metaTags: [],
+          primary: resolvedType === "entry",
+          dataType: "text",
+          contextSize: 0,
+          branchCount: 0,
+          activeThreads: 1,
+        },
+        style: {
+          background: defaultColor,
+          borderRadius: `${getDefaultBorderRadius(resolvedType)}px`,
+        },
+      };
+
+      setNodes((nds) => [...nds, flowNode]);
 
       try {
         const response = await fetch(`/api/canvases/${canvasId}/nodes`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type,
-            position,
-            name: getDefaultNodeName(type),
-          }),
+          body: JSON.stringify(newNode),
         });
 
-        if (!response.ok) throw new Error("Failed to create node");
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
 
-        const newNode = await response.json();
-        setLastCreatedNodeId(newNode._id);
-
-        const defaultColor = getDefaultNodeColor(type);
-        const colorScheme = getColorScheme(defaultColor);
-
-        const flowNode: Node = {
-          id: newNode._id,
-          type,
-          position,
-          data: {
-            label: newNode.name,
-            messageCount: 0,
-            isSelected: false,
-            onClick: () => onNodeSelect(newNode._id, newNode.name),
-            onSettingsClick: () => setCustomizingNodeId(newNode._id),
-            color: defaultColor,
-            textColor: colorScheme.text,
-            dotColor: colorScheme.dot,
-            size: "medium",
-            style: "modern",
-            borderRadius: getDefaultBorderRadius(type),
-            opacity: 100,
-            // Enhanced properties
-            model: "gpt-4",
-            metaTags: [],
-            primary: type === "entry",
-            dataType: "text",
-            contextSize: 0,
-            branchCount: 0,
-            activeThreads: 1,
-          },
-          style: {
-            background: defaultColor,
-            borderRadius: `${getDefaultBorderRadius(type)}px`,
-          },
-        };
-
-        setNodes((nds) => [...nds, flowNode]);
-
-        // Show creation animation
-        setTimeout(() => {
-          setIsCreatingNode(false);
-          setLastCreatedNodeId(null);
-        }, 1000);
-
-        toast.success(`${getDefaultNodeName(type)} created successfully!`);
+        toast.success(`${defaultName} created successfully!`);
       } catch (error) {
         console.error("Failed to create node:", error);
         toast.error("Failed to create node");
-        setIsCreatingNode(false);
+
+        setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+        setCanvas((prev) => {
+          if (!prev) return prev;
+          const filteredNodes = prev.nodes.filter((n) => n._id !== nodeId);
+          const reverted: CanvasData = {
+            ...prev,
+            nodes: filteredNodes,
+            ...(prev.primaryNodeId === nodeId
+              ? { primaryNodeId: canvas.primaryNodeId }
+              : {}),
+            updatedAt: new Date().toISOString(),
+          };
+          storageService.saveCanvas(reverted);
+          return reverted;
+        });
+      } finally {
+        setTimeout(() => {
+          setIsCreatingNode(false);
+          setLastCreatedNodeId(null);
+        }, 600);
       }
     },
-    [canvas, setNodes, onNodeSelect, canvasId, reactFlowInstance]
+    [canvas, canvasId, onNodeSelect, reactFlowInstance, setNodes]
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
+    if (!isDragActive) setIsDragActive(true);
+  }, [isDragActive]);
+
+  const handleDragLeave = useCallback(() => {
+    setIsDragActive(false);
   }, []);
 
   // Enhanced node customization handler
@@ -675,49 +745,159 @@ export function CanvasAreaEnhanced({
   const onConnect = useCallback(
     async (connection: Connection) => {
       if (!canvas || !connection.source || !connection.target) return;
+      if (connection.source === connection.target) {
+        toast.error("A node can't connect to itself.");
+        return;
+      }
+
+      const hasExistingEdge = canvas.edges.some(
+        (edge) => edge.from === connection.source && edge.to === connection.target
+      );
+      if (hasExistingEdge) {
+        toast.warning("These nodes are already connected.");
+        return;
+      }
+
+      const sourceNode = canvas.nodes.find((n) => n._id === connection.source);
+      const targetNode = canvas.nodes.find((n) => n._id === connection.target);
+
+      if (!sourceNode || !targetNode) {
+        toast.error("Could not find nodes for this connection.");
+        return;
+      }
+
+      const latestAssistantMessage = [...(sourceNode.chatMessages || [])]
+        .reverse()
+        .find((msg) => msg.role === "assistant");
+      const forkedFromMessageId = latestAssistantMessage?.id;
+      const parentMessageContent = latestAssistantMessage?.content;
+
+      const edgeId =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `edge_${Date.now()}`;
+      const createdAt = new Date().toISOString();
+
+      const newEdge: EdgeData = {
+        _id: edgeId,
+        from: connection.source,
+        to: connection.target,
+        createdAt,
+        meta: {
+          condition: "Connection",
+          parentMessage: parentMessageContent,
+        },
+      };
+
+      const updatedNodes = canvas.nodes.map((node) => {
+        if (node._id !== connection.target) return node;
+        return {
+          ...node,
+          parentNodeId: connection.source,
+          forkedFromMessageId,
+          data: {
+            ...(node.data || {}),
+            parentMessage: parentMessageContent,
+          },
+        } as NodeData;
+      });
+
+      const updatedCanvas: CanvasData = {
+        ...canvas,
+        nodes: updatedNodes,
+        edges: [...canvas.edges, newEdge],
+        updatedAt: createdAt,
+      };
+
+      setCanvas(updatedCanvas);
+      storageService.saveCanvas(updatedCanvas);
+
+      const parentColorScheme = getColorScheme(
+        sourceNode.color || getDefaultNodeColor(sourceNode.type)
+      );
+
+      const flowEdge: Edge = {
+        id: edgeId,
+        source: connection.source,
+        target: connection.target,
+        label: "Connection",
+        type: "smoothstep",
+        animated: showNodeEffects,
+        style: {
+          stroke: parentColorScheme.edge,
+          strokeWidth: 3,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: parentColorScheme.edge,
+          width: 24,
+          height: 24,
+        },
+      };
+
+      setEdges((eds) => addEdge(flowEdge, eds));
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === connection.target
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  parentNodeId: connection.source,
+                  forkedFromMessageId,
+                  parentMessage: parentMessageContent,
+                },
+              }
+            : node
+        )
+      );
 
       try {
         const response = await fetch(`/api/canvases/${canvasId}/edges`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            source: connection.source,
-            target: connection.target,
-            label: "Connection",
-          }),
+          body: JSON.stringify(newEdge),
         });
 
-        if (!response.ok) throw new Error("Failed to create edge");
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
 
-        const newEdge = await response.json();
-
-        const flowEdge: Edge = {
-          id: newEdge._id,
-          source: connection.source,
-          target: connection.target,
-          label: "Connection",
-          type: "smoothstep",
-          animated: showNodeEffects,
-          style: {
-            stroke: "#64748b",
-            strokeWidth: 3,
+        scheduleParentUpdate(connection.target, {
+          parentNodeId: connection.source,
+          forkedFromMessageId,
+          data: {
+            ...(targetNode.data || {}),
+            parentMessage: parentMessageContent,
           },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: "#64748b",
-            width: 24,
-            height: 24,
-          },
-        };
+        });
 
-        setEdges((eds) => addEdge(flowEdge, eds));
         toast.success("Connection created!");
       } catch (error) {
         console.error("Failed to create connection:", error);
         toast.error("Failed to create connection");
+
+        setEdges((eds) => eds.filter((edge) => edge.id !== edgeId));
+        setNodes((nds) =>
+          nds.map((node) =>
+            node.id === connection.target
+              ? {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    parentNodeId: targetNode.parentNodeId,
+                    forkedFromMessageId: targetNode.forkedFromMessageId,
+                    parentMessage: (targetNode.data as any)?.parentMessage,
+                  },
+                }
+              : node
+          )
+        );
+        setCanvas(canvas);
+        storageService.saveCanvas(canvas);
       }
     },
-    [canvas, canvasId, setEdges, showNodeEffects]
+    [canvas, canvasId, scheduleParentUpdate, setEdges, showNodeEffects]
   );
 
   const onNodeClick = useCallback(
@@ -799,10 +979,18 @@ export function CanvasAreaEnhanced({
 
   return (
     <div
-      className="w-full h-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 relative"
+      className={`w-full h-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 relative transition-all duration-300 ${
+        isDragActive
+          ? "ring-2 ring-indigo-300/70 ring-offset-4 ring-offset-white"
+          : ""
+      }`}
       onDrop={onDrop}
       onDragOver={onDragOver}
+      onDragLeave={handleDragLeave}
     >
+      {isDragActive && (
+        <div className="absolute inset-0 bg-white/40 backdrop-blur-sm pointer-events-none rounded-3xl border-2 border-dashed border-indigo-200 transition-opacity duration-300" />
+      )}
       {/* Enhanced Background Effects */}
       {showNodeEffects && (
         <div className="absolute inset-0 pointer-events-none">
