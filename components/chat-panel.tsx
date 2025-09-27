@@ -40,12 +40,7 @@ const AVAILABLE_MODELS = ALL_MODELS.map((model) => ({
   provider: model.provider,
 }));
 
-// Debug log to verify models are loaded
-console.log(
-  "Available models:",
-  AVAILABLE_MODELS.length,
-  AVAILABLE_MODELS.slice(0, 3)
-);
+// Models loaded successfully
 
 interface ChatPanelProps {
   selectedNode: string | null;

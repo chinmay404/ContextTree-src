@@ -25,7 +25,7 @@ html {
 
 .react-flow__edge.selected .react-flow__edge-path {
   stroke-width: 3px;
-  stroke-dasharray: 8,4;
+  stroke-dasharray: 8, 4;
   animation: dash-flow 1s linear infinite;
 }
 
@@ -71,7 +71,7 @@ html {
 .react-flow__connection-path {
   stroke: #3b82f6;
   stroke-width: 3;
-  stroke-dasharray: 8,4;
+  stroke-dasharray: 8, 4;
   animation: dash-flow 0.5s linear infinite;
   filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.3));
 }
@@ -125,9 +125,12 @@ html {
 }
 
 @keyframes edgePulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.8;
   }
+
   50% {
     opacity: 1;
   }
@@ -137,6 +140,7 @@ html {
   from {
     stroke-dashoffset: 0;
   }
+
   to {
     stroke-dashoffset: 10;
   }
@@ -160,14 +164,17 @@ html {
 
 /* Glassmorphic Node Animations */
 @keyframes glassGlow {
-  0%, 100% {
-    box-shadow: 
+
+  0%,
+  100% {
+    box-shadow:
       0 20px 25px -5px rgba(0, 0, 0, 0.1),
       0 10px 10px -5px rgba(0, 0, 0, 0.04),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
+
   50% {
-    box-shadow: 
+    box-shadow:
       0 25px 50px -12px rgba(59, 130, 246, 0.25),
       0 0 0 1px rgba(59, 130, 246, 0.1),
       inset 0 1px 0 rgba(255, 255, 255, 0.2);
@@ -175,11 +182,14 @@ html {
 }
 
 @keyframes glassPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.4;
     transform: scale(1);
     filter: blur(0px);
   }
+
   50% {
     opacity: 0.8;
     transform: scale(1.02);
@@ -192,14 +202,17 @@ html {
     transform: translate(0, 0) scale(0.8);
     opacity: 0;
   }
+
   20% {
     opacity: 1;
     transform: scale(1);
   }
+
   80% {
     opacity: 0.6;
     transform: translate(80px, -40px) scale(0.9);
   }
+
   100% {
     opacity: 0;
     transform: translate(120px, -60px) scale(0.3);
@@ -211,6 +224,7 @@ html {
     transform: scale(1);
     opacity: 0.6;
   }
+
   100% {
     transform: scale(2.5);
     opacity: 0;
@@ -221,6 +235,7 @@ html {
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -228,10 +243,13 @@ html {
 
 /* Enhanced Node Animations */
 @keyframes nodeGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.5;
     transform: scale(1);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.05);
@@ -261,12 +279,10 @@ html {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent);
   background-size: 200% 100%;
   animation: glassShimmer 2s infinite;
   pointer-events: none;
@@ -277,14 +293,17 @@ html {
     transform: translate(0, 0) scale(0);
     opacity: 0;
   }
+
   20% {
     opacity: 1;
     transform: scale(1);
   }
+
   80% {
     opacity: 1;
     transform: translate(100px, -50px) scale(1);
   }
+
   100% {
     opacity: 0;
     transform: translate(150px, -80px) scale(0);
@@ -292,9 +311,12 @@ html {
 }
 
 @keyframes branchPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.3;
   }
+
   50% {
     opacity: 0.8;
   }
@@ -305,6 +327,7 @@ html {
     transform: translateY(0px) scale(1);
     opacity: 1;
   }
+
   100% {
     transform: translateY(-20px) scale(0.8);
     opacity: 0;
@@ -315,6 +338,7 @@ html {
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -325,6 +349,7 @@ html {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -336,6 +361,7 @@ html {
     opacity: 0;
     transform: translate3d(0, 100%, 0);
   }
+
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);
@@ -347,13 +373,16 @@ html {
     opacity: 0;
     transform: scale(0.3);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.05);
   }
+
   70% {
     transform: scale(0.9);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -378,12 +407,10 @@ html {
 }
 
 .animate-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.4),
+      transparent);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
@@ -443,14 +470,14 @@ html {
 }
 
 .shadow-node {
-  box-shadow: 
+  box-shadow:
     0 10px 25px -5px rgba(0, 0, 0, 0.1),
     0 10px 10px -5px rgba(0, 0, 0, 0.04),
     0 0 0 1px rgba(255, 255, 255, 0.5) inset;
 }
 
 .shadow-node-selected {
-  box-shadow: 
+  box-shadow:
     0 20px 40px -10px rgba(var(--accent-color), 0.3),
     0 10px 20px -5px rgba(var(--accent-color), 0.2),
     0 0 0 2px rgba(var(--accent-color), 0.5);
@@ -473,6 +500,7 @@ html {
     transform: scale(0);
     opacity: 1;
   }
+
   100% {
     transform: scale(4);
     opacity: 0;
@@ -615,6 +643,7 @@ html {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -622,23 +651,49 @@ html {
 
 /* Premium Landing Page Animations */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.6); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
+  }
 }
 
 @keyframes gradient-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .animate-float {
@@ -655,12 +710,10 @@ html {
 }
 
 .animate-shimmer {
-  background-image: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
+  background-image: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
@@ -700,12 +753,10 @@ html {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent);
   transition: left 0.5s;
 }
 
@@ -719,6 +770,7 @@ html {
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -730,6 +782,7 @@ html {
     opacity: 0;
     transform: translateX(-50px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -741,6 +794,7 @@ html {
     opacity: 0;
     transform: translateX(50px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -764,12 +818,15 @@ html {
   0% {
     transform: translate(0px, 0px) scale(1);
   }
+
   33% {
     transform: translate(30px, -50px) scale(1.1);
   }
+
   66% {
     transform: translate(-20px, 20px) scale(0.9);
   }
+
   100% {
     transform: translate(0px, 0px) scale(1);
   }

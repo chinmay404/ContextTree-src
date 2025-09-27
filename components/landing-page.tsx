@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,8 @@ import {
 } from "lucide-react";
 import LiquidEther from "./LiquidEther";
 import { HeroBackGlow, ShimmerText } from "./reactbits-effects";
+import collaborationPreview from "@/public/screenshot1.png";
+import canvasFlowPreview from "@/public/image.png";
 
 export function LandingPage() {
   const router = useRouter();
@@ -112,6 +115,19 @@ export function LandingPage() {
       description:
         "Attach knowledge bases, APIs, or user profiles as dedicated nodes that stay linked to every branch that needs them.",
       icon: GitBranch,
+    },
+  ];
+
+  const productSnapshots = [
+    {
+      src: collaborationPreview,
+      alt: "ContextTree canvas showcasing collaboration-ready branching layout",
+      delay: 100,
+    },
+    {
+      src: canvasFlowPreview,
+      alt: "ContextTree multi-branch canvas with conversational insights side panel",
+      delay: 250,
     },
   ];
 
@@ -300,19 +316,6 @@ export function LandingPage() {
                 </svg>
               </div>
             </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              <Button
-                variant="outline"
-                className="border-gray-300 text-gray-700 hover:bg-gray-50 backdrop-blur-sm"
-                onClick={() => router.push("/auth/signin")}
-              >
-                Sign In
-              </Button>
-            </motion.div>
           </div>
         </nav>
 
@@ -473,6 +476,38 @@ export function LandingPage() {
             </div>
           </section>
 
+          <section className="px-6 pb-24 lg:px-8 lg:pb-32" data-aos="fade-up">
+            <div className="mx-auto max-w-5xl rounded-[32px] border border-white/60 bg-white/85 p-10 backdrop-blur-lg">
+              <div className="mx-auto mb-12 max-w-2xl text-center">
+                <h2 className="text-3xl font-light text-gray-900 md:text-4xl">
+                  See ContextTree in action
+                </h2>
+                <p className="mt-4 text-lg text-gray-600">
+                  Walk the canvas, branch experiments, and monitor responses in
+                  real time—here are two snapshots from the latest beta.
+                </p>
+              </div>
+              <div className="flex flex-col gap-12">
+                {productSnapshots.map((snapshot) => (
+                  <div
+                    key={snapshot.alt}
+                    className="group overflow-hidden rounded-[32px] border border-white/70 bg-white/80 p-3"
+                    data-aos="fade-up"
+                    data-aos-delay={snapshot.delay}
+                    data-aos-duration="900"
+                  >
+                    <Image
+                      src={snapshot.src}
+                      alt={snapshot.alt}
+                      className="h-auto w-full rounded-[26px] transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                      sizes="(min-width: 1280px) 48rem, (min-width: 768px) 42rem, 94vw"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
           <section className="px-6 py-24 lg:px-8 lg:py-32" data-aos="fade-up">
             <div className="mx-auto flex max-w-6xl flex-col gap-16 lg:flex-row lg:items-center">
               <div className="flex-1 space-y-6">
@@ -509,87 +544,37 @@ export function LandingPage() {
           </section>
 
           <section className="px-6 py-24 lg:px-8 lg:py-32" data-aos="fade-up">
-            <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="mx-auto max-w-6xl space-y-12">
               <div>
-                <div className="mb-10">
-                  <Badge
-                    variant="outline"
-                    className="bg-white/70 text-gray-700"
-                  >
-                    Coming next
-                  </Badge>
-                  <h2 className="mt-5 text-3xl font-light text-gray-900 md:text-4xl">
-                    Ship-ready collaboration is up next in beta
-                  </h2>
-                  <p className="mt-4 text-lg text-gray-600">
-                    We're building seamless sharing and deep context nodes right
-                    now—join the waitlist to preview the interactive roadmap
-                    builds.
-                  </p>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                  {plannedHighlights.map((item, index) => (
-                    <div
-                      key={item.title}
-                      className="rounded-3xl border border-white/60 bg-white/85 p-6 backdrop-blur-lg shadow-[0_20px_40px_-30px_rgba(15,23,42,0.55)]"
-                      data-aos="fade-up"
-                      data-aos-delay={index * 80}
-                    >
-                      <item.icon className="h-8 w-8 text-gray-700" />
-                      <h3 className="mt-5 text-lg font-medium text-gray-900">
-                        {item.title}
-                      </h3>
-                      <p className="mt-3 text-base leading-relaxed text-gray-600">
-                        {item.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                <Badge variant="outline" className="bg-white/70 text-gray-700">
+                  Coming next
+                </Badge>
+                <h2 className="mt-5 text-3xl font-light text-gray-900 md:text-4xl">
+                  Ship-ready collaboration is up next in beta
+                </h2>
+                <p className="mt-4 text-lg text-gray-600">
+                  We're building seamless sharing and deep context nodes right
+                  now—join the waitlist to preview the interactive roadmap
+                  builds.
+                </p>
               </div>
-              <div className="relative mx-auto h-[420px] w-full max-w-sm overflow-hidden rounded-[32px] border border-white/60 bg-white/75 p-6 shadow-[0_30px_60px_-42px_rgba(15,23,42,0.6)] backdrop-blur-xl">
-                <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-white/60 via-transparent to-white/10" />
-                <div className="mb-6 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-gray-500" />
-                  <ShimmerText className="from-slate-500 via-slate-400 to-slate-600 text-xs font-medium uppercase tracking-[0.2em]">
-                    ROADMAP VISUALIZATION
-                  </ShimmerText>
-                </div>
-                {roadmapConnections.map((connection) => (
-                  <motion.span
-                    key={connection.id}
-                    className="absolute bg-gray-300/70"
-                    style={connection.style}
-                    animate={{ opacity: [0.2, 0.7, 0.2] }}
-                    transition={{
-                      duration: 4.5,
-                      repeat: Infinity,
-                      delay: connection.delay,
-                    }}
-                  />
-                ))}
-                {roadmapGraphNodes.map((node) => (
-                  <motion.div
-                    key={node.id}
-                    className={`absolute rounded-2xl border border-white/60 px-3 py-2 text-xs font-medium tracking-wide backdrop-blur ${node.className}`}
-                    style={node.style}
-                    animate={{ y: [0, -6, 0] }}
-                    transition={{
-                      duration: 5.5,
-                      repeat: Infinity,
-                      delay: node.delay,
-                    }}
+              <div className="grid gap-6 md:grid-cols-2">
+                {plannedHighlights.map((item, index) => (
+                  <div
+                    key={item.title}
+                    className="rounded-3xl border border-white/60 bg-white/85 p-6 backdrop-blur-lg shadow-[0_20px_40px_-30px_rgba(15,23,42,0.55)]"
+                    data-aos="fade-up"
+                    data-aos-delay={index * 80}
                   >
-                    {node.label}
-                  </motion.div>
+                    <item.icon className="h-8 w-8 text-gray-700" />
+                    <h3 className="mt-5 text-lg font-medium text-gray-900">
+                      {item.title}
+                    </h3>
+                    <p className="mt-3 text-base leading-relaxed text-gray-600">
+                      {item.description}
+                    </p>
+                  </div>
                 ))}
-                <motion.div
-                  className="absolute bottom-12 right-10 h-24 w-24 rounded-full bg-gray-900/10"
-                  animate={{
-                    scale: [0.92, 1.06, 0.92],
-                    opacity: [0.25, 0.5, 0.25],
-                  }}
-                  transition={{ duration: 6.5, repeat: Infinity, delay: 0.6 }}
-                />
               </div>
             </div>
           </section>
@@ -609,7 +594,7 @@ export function LandingPage() {
                   Priority access includes onboarding with our product team,
                   early integrations, and a dedicated migration partner.
                 </p>
-                <div className="flex flex-col justify-center gap-4 sm:flex-row sm:items-center">
+                <div className="flex justify-center">
                   <Button
                     onClick={handleGetStarted}
                     size="lg"
@@ -617,13 +602,6 @@ export function LandingPage() {
                   >
                     Join waitlist
                     <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="rounded-2xl border-gray-300 bg-white/60 px-8 py-3 text-gray-700 backdrop-blur-sm transition-colors duration-300 hover:bg-white"
-                    onClick={() => router.push("/auth/signin")}
-                  >
-                    Already have access? Sign in
                   </Button>
                 </div>
               </div>
@@ -638,20 +616,6 @@ export function LandingPage() {
               reserved.
             </p>
             <div className="flex flex-wrap items-center gap-4">
-              <button
-                type="button"
-                className="text-gray-500 transition-colors duration-200 hover:text-gray-700"
-                onClick={() => router.push("/security")}
-              >
-                Security
-              </button>
-              <button
-                type="button"
-                className="text-gray-500 transition-colors duration-200 hover:text-gray-700"
-                onClick={() => router.push("/integration-guide")}
-              >
-                Integration guide
-              </button>
               <button
                 type="button"
                 className="text-gray-500 transition-colors duration-200 hover:text-gray-700"
