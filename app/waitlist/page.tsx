@@ -218,7 +218,7 @@ export default function WaitlistPage() {
                     className="text-center mb-8"
                   >
                     <h1 className="text-3xl font-bold text-slate-800 mb-2">
-                      Join the Waitlist
+                      Join
                     </h1>
                     <p className="text-slate-600">
                       Be among the first to experience the future of AI

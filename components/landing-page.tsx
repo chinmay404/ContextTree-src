@@ -333,7 +333,7 @@ export function LandingPage() {
                 className="mb-6 cursor-pointer border-gray-300 bg-white/30 text-gray-700 backdrop-blur-sm transition-all duration-300 hover:bg-white/50"
                 onClick={handleJoinWaitlist}
               >
-                Beta access • Join the Waitlist
+                Beta access • Join Us
               </Badge>
               <h1 className="mb-6 text-4xl font-light leading-tight text-gray-900 drop-shadow-sm md:text-5xl lg:text-6xl">
                 <ShimmerText className="text-gray-900">ContextTree</ShimmerText>
@@ -554,8 +554,7 @@ export function LandingPage() {
                 </h2>
                 <p className="mt-4 text-lg text-gray-600">
                   We're building seamless sharing and deep context nodes right
-                  now—join the waitlist to preview the interactive roadmap
-                  builds.
+                  now join me to preview the interactive roadmap builds.
                 </p>
               </div>
               <div className="grid gap-6 md:grid-cols-2">
@@ -587,8 +586,7 @@ export function LandingPage() {
                   READY WHEN YOU ARE
                 </div>
                 <h2 className="text-3xl font-light text-gray-900 md:text-4xl">
-                  Join the waitlist and co-design the future of conversational
-                  ops
+                  Join and co-design the future of conversational ops
                 </h2>
                 {/* <p className="text-lg text-gray-600">
                   Priority access includes onboarding with our product team,
