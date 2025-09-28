@@ -15,6 +15,11 @@ export const metadata: Metadata = {
   title: "ContextTree - Conversational Flow Builder",
   description:
     "Build and test conversational flows with visual nodes and AI integration",
+  icons: {
+    icon: "/contexttree-symbol.svg",
+    shortcut: "/contexttree-symbol.svg",
+    apple: "/contexttree-symbol.svg",
+  },
 };
 
 export default function RootLayout({
