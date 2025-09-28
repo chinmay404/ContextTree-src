@@ -590,10 +590,10 @@ export function LandingPage() {
                   Join the waitlist and co-design the future of conversational
                   ops
                 </h2>
-                <p className="text-lg text-gray-600">
+                {/* <p className="text-lg text-gray-600">
                   Priority access includes onboarding with our product team,
                   early integrations, and a dedicated migration partner.
-                </p>
+                </p> */}
                 <div className="flex justify-center">
                   <Button
                     onClick={handleGetStarted}
