@@ -33,15 +33,15 @@ export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
       }`}
       onClick={handleClick}
     >
-      {/* Main Card */}
+      {/* Main Card - Ultra Minimal */}
       <div
         className={`
           px-5 py-3.5 rounded-xl backdrop-blur-sm
           transition-all duration-200
           ${
             selected || data.isSelected
-              ? "bg-slate-900 shadow-2xl shadow-slate-900/20 border-2 border-slate-900"
-              : "bg-white border-2 border-slate-200 shadow-md hover:shadow-xl hover:border-slate-300"
+              ? "bg-slate-900 shadow-2xl shadow-slate-900/20 border border-slate-800"
+              : "bg-white border border-slate-200/60 shadow-sm hover:shadow-lg hover:border-slate-300/80"
           }
         `}
       >
@@ -61,7 +61,11 @@ export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
             <Play
               size={18}
               className={`
-                ${selected || data.isSelected ? "text-slate-900" : "text-slate-700"}
+                ${
+                  selected || data.isSelected
+                    ? "text-slate-900"
+                    : "text-slate-700"
+                }
               `}
               fill={selected || data.isSelected ? "currentColor" : "none"}
             />
@@ -80,7 +84,11 @@ export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
             <div
               className={`
                 text-xs font-medium flex items-center gap-1.5 mt-0.5
-                ${selected || data.isSelected ? "text-slate-300" : "text-slate-500"}
+                ${
+                  selected || data.isSelected
+                    ? "text-slate-300"
+                    : "text-slate-500"
+                }
               `}
             >
               <span>{data.model || "openai/gpt-oss-120b"}</span>

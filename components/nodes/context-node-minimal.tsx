@@ -21,7 +21,10 @@ interface ContextNodeData {
   highlightTier?: 0 | 1 | 2;
 }
 
-function ContextNodeMinimalComponent({ data, selected }: NodeProps<ContextNodeData>) {
+function ContextNodeMinimalComponent({
+  data,
+  selected,
+}: NodeProps<ContextNodeData>) {
   const handleClick = () => {
     if (data.onClick) {
       data.onClick();
@@ -35,15 +38,15 @@ function ContextNodeMinimalComponent({ data, selected }: NodeProps<ContextNodeDa
       }`}
       onClick={handleClick}
     >
-      {/* Main Card */}
+      {/* Main Card - Ultra Minimal */}
       <div
         className={`
           px-5 py-3.5 rounded-xl backdrop-blur-sm
           transition-all duration-200
           ${
             selected || data.isSelected
-              ? "bg-gradient-to-br from-violet-500 to-purple-500 shadow-2xl shadow-violet-500/30 border-2 border-violet-400"
-              : "bg-white border-2 border-violet-200 shadow-md hover:shadow-xl hover:border-violet-300"
+              ? "bg-gradient-to-br from-violet-500 to-purple-500 shadow-2xl shadow-violet-500/30 border border-violet-400"
+              : "bg-white border border-violet-200/50 shadow-sm hover:shadow-lg hover:border-violet-300/70"
           }
         `}
       >
@@ -63,7 +66,9 @@ function ContextNodeMinimalComponent({ data, selected }: NodeProps<ContextNodeDa
             <FileText
               size={18}
               className={`
-                ${selected || data.isSelected ? "text-white" : "text-violet-600"}
+                ${
+                  selected || data.isSelected ? "text-white" : "text-violet-600"
+                }
               `}
             />
           </div>
@@ -81,11 +86,23 @@ function ContextNodeMinimalComponent({ data, selected }: NodeProps<ContextNodeDa
             <div
               className={`
                 text-xs font-medium flex items-center gap-1.5 mt-0.5
-                ${selected || data.isSelected ? "text-white/90" : "text-slate-500"}
+                ${
+                  selected || data.isSelected
+                    ? "text-white/90"
+                    : "text-slate-500"
+                }
               `}
             >
               <span>{data.model || "llama-3.3-70b"}</span>
-              <span className={selected || data.isSelected ? "text-white/70" : "text-slate-400"}>•</span>
+              <span
+                className={
+                  selected || data.isSelected
+                    ? "text-white/70"
+                    : "text-slate-400"
+                }
+              >
+                •
+              </span>
               <span>Context Node</span>
             </div>
           </div>

@@ -28,8 +28,8 @@ export default function UserAuth() {
 
   if (status === "unauthenticated") {
     return (
-      <Button 
-        onClick={() => signIn()} 
+      <Button
+        onClick={() => signIn()}
         variant="default"
         className="bg-slate-900 hover:bg-slate-800 text-white shadow-md hover:shadow-lg transition-all"
       >
@@ -42,19 +42,28 @@ export default function UserAuth() {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-9 w-9 rounded-full hover:bg-slate-100 transition-all ring-2 ring-slate-200 hover:ring-slate-300">
+          <Button
+            variant="ghost"
+            className="relative h-9 w-9 rounded-full hover:bg-slate-100 transition-all ring-2 ring-slate-200 hover:ring-slate-300"
+          >
             <Avatar className="h-8 w-8">
               <AvatarImage
                 src={session.user.image || ""}
                 alt={session.user.name || "User"}
               />
               <AvatarFallback className="bg-slate-100 text-slate-700 font-semibold">
-                {session.user.name?.charAt(0).toUpperCase() || <User className="h-4 w-4" />}
+                {session.user.name?.charAt(0).toUpperCase() || (
+                  <User className="h-4 w-4" />
+                )}
               </AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56 bg-white border-slate-200 shadow-xl rounded-xl" align="end" forceMount>
+        <DropdownMenuContent
+          className="w-56 bg-white border-slate-200 shadow-xl rounded-xl"
+          align="end"
+          forceMount
+        >
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-semibold leading-none text-slate-900">
@@ -66,7 +75,10 @@ export default function UserAuth() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-slate-200" />
-          <DropdownMenuItem onClick={() => router.push("/profile")} className="cursor-pointer hover:bg-slate-50 transition-colors">
+          <DropdownMenuItem
+            onClick={() => router.push("/profile")}
+            className="cursor-pointer hover:bg-slate-50 transition-colors"
+          >
             <UserCircle className="mr-2 h-4 w-4 text-slate-600" />
             <span>Profile</span>
           </DropdownMenuItem>
@@ -75,7 +87,10 @@ export default function UserAuth() {
             <span>Settings</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-slate-200" />
-          <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer hover:bg-red-50 text-red-600 transition-colors">
+          <DropdownMenuItem
+            onClick={() => signOut()}
+            className="cursor-pointer hover:bg-red-50 text-red-600 transition-colors"
+          >
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>
           </DropdownMenuItem>

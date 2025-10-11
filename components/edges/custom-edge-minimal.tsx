@@ -38,20 +38,19 @@ export function CustomEdgeMinimal({
     targetPosition,
   });
 
-  // Minimal edge styling matching the slate design system
+  // Ultra-minimal edge styling - barely visible by default
   const edgeStyle = {
     ...style,
-    strokeWidth: selected || isHovered ? 3 : 2,
-    stroke: selected 
-      ? "#0f172a" // slate-900 for selected
-      : isHovered 
-      ? "#475569" // slate-600 for hover
-      : style.stroke || "#cbd5e1", // slate-300 default
-    strokeOpacity: 1,
-    filter:
-      selected || isHovered
-        ? "drop-shadow(0 2px 8px rgba(15, 23, 42, 0.15))"
-        : "none",
+    strokeWidth: isHovered ? 2 : selected ? 1.5 : 1,
+    stroke: isHovered
+      ? "#94a3b8" // slate-400 on hover
+      : selected
+      ? "#64748b" // slate-500 when selected
+      : style.stroke || "#f1f5f9", // slate-100 - barely visible
+    strokeOpacity: isHovered ? 1 : selected ? 1 : 0.3,
+    filter: isHovered || selected
+      ? "drop-shadow(0 1px 3px rgba(15, 23, 42, 0.08))"
+      : "none",
     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
   };
 
@@ -67,27 +66,20 @@ export function CustomEdgeMinimal({
         onMouseLeave={() => setIsHovered(false)}
       />
 
-      {label && (selected || isHovered) && (
+      {/* Only show label on HOVER (not on selection) - completely hidden by default */}
+      {label && isHovered && (
         <EdgeLabelRenderer>
           <div
             style={{
               position: "absolute",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              pointerEvents: "all",
+              pointerEvents: "none",
             }}
             className="nodrag nopan"
           >
-            {/* Minimal Edge Label */}
+            {/* Minimal Edge Label - Small and Subtle - Only on Hover */}
             <div
-              className={`
-                px-3 py-1.5 rounded-lg backdrop-blur-sm font-medium text-xs
-                transition-all duration-200
-                ${
-                  selected
-                    ? "bg-slate-900 text-white shadow-lg scale-105"
-                    : "bg-white text-slate-700 border border-slate-200 shadow-md"
-                }
-              `}
+              className="px-2.5 py-1 rounded-md backdrop-blur-sm font-medium text-[11px] bg-slate-900 text-white shadow-lg animate-in fade-in duration-150"
             >
               {label}
             </div>

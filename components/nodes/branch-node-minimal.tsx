@@ -21,7 +21,10 @@ interface BranchNodeData {
   highlightTier?: 0 | 1 | 2;
 }
 
-function BranchNodeMinimalComponent({ data, selected }: NodeProps<BranchNodeData>) {
+function BranchNodeMinimalComponent({
+  data,
+  selected,
+}: NodeProps<BranchNodeData>) {
   const handleClick = () => {
     if (data.onClick) {
       data.onClick();
@@ -35,15 +38,15 @@ function BranchNodeMinimalComponent({ data, selected }: NodeProps<BranchNodeData
       }`}
       onClick={handleClick}
     >
-      {/* Main Card */}
+      {/* Main Card - Ultra Minimal */}
       <div
         className={`
           px-5 py-3.5 rounded-xl backdrop-blur-sm
           transition-all duration-200
           ${
             selected || data.isSelected
-              ? "bg-gradient-to-br from-emerald-500 to-teal-500 shadow-2xl shadow-emerald-500/30 border-2 border-emerald-400"
-              : "bg-white border-2 border-emerald-200 shadow-md hover:shadow-xl hover:border-emerald-300"
+              ? "bg-gradient-to-br from-emerald-500 to-teal-500 shadow-2xl shadow-emerald-500/30 border border-emerald-400"
+              : "bg-white border border-emerald-200/50 shadow-sm hover:shadow-lg hover:border-emerald-300/70"
           }
         `}
       >
@@ -63,7 +66,11 @@ function BranchNodeMinimalComponent({ data, selected }: NodeProps<BranchNodeData
             <GitBranch
               size={18}
               className={`
-                ${selected || data.isSelected ? "text-white" : "text-emerald-600"}
+                ${
+                  selected || data.isSelected
+                    ? "text-white"
+                    : "text-emerald-600"
+                }
               `}
             />
           </div>
@@ -81,11 +88,23 @@ function BranchNodeMinimalComponent({ data, selected }: NodeProps<BranchNodeData
             <div
               className={`
                 text-xs font-medium flex items-center gap-1.5 mt-0.5
-                ${selected || data.isSelected ? "text-white/90" : "text-slate-500"}
+                ${
+                  selected || data.isSelected
+                    ? "text-white/90"
+                    : "text-slate-500"
+                }
               `}
             >
               <span>{data.model || "deepseek-r1-distill-llama-70b"}</span>
-              <span className={selected || data.isSelected ? "text-white/70" : "text-slate-400"}>•</span>
+              <span
+                className={
+                  selected || data.isSelected
+                    ? "text-white/70"
+                    : "text-slate-400"
+                }
+              >
+                •
+              </span>
               <span>Branch Node</span>
             </div>
           </div>

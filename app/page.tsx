@@ -35,6 +35,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { GlobalSearch } from "@/components/global-search";
 
 export default function ContextTreePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -52,6 +53,7 @@ export default function ContextTreePage() {
   const [isResizingRight, setIsResizingRight] = useState(false);
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(384);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Keyboard shortcut for left sidebar toggle (Ctrl/Cmd + Shift + L)
   useEffect(() => {
@@ -63,6 +65,18 @@ export default function ContextTreePage() {
       ) {
         e.preventDefault();
         setLeftSidebarCollapsed((c) => !c);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // Keyboard shortcut for search (Ctrl/Cmd + K)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsSearchOpen(true);
       }
     };
     window.addEventListener("keydown", handler);
@@ -378,6 +392,23 @@ export default function ContextTreePage() {
     }
   };
 
+  // Handle navigation from search results
+  const handleSearchNavigate = (canvasId: string, nodeId: string) => {
+    // Switch to the target canvas
+    setSelectedCanvas(canvasId);
+    
+    // Select the target node after a short delay to ensure canvas is loaded
+    setTimeout(() => {
+      setSelectedNode(nodeId);
+      // Find the node to get its name
+      const canvas = canvases.find(c => c._id === canvasId);
+      const node = canvas?.nodes.find(n => n.id === nodeId);
+      if (node) {
+        setSelectedNodeName(node.data.label);
+      }
+    }, 100);
+  };
+
   // Show loading state while authentication is being checked
   if (isLoading) {
     return (
@@ -471,7 +502,8 @@ export default function ContextTreePage() {
                         className="bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 px-2.5 py-1 font-medium cursor-help transition-all"
                       >
                         <FileText size={12} className="mr-1.5" />
-                        {canvases.length} {canvases.length === 1 ? "Canvas" : "Canvases"}
+                        {canvases.length}{" "}
+                        {canvases.length === 1 ? "Canvas" : "Canvases"}
                       </Badge>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -527,6 +559,7 @@ export default function ContextTreePage() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={() => setIsSearchOpen(true)}
                       className="hidden md:flex gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all"
                     >
                       <Search size={16} />
@@ -754,6 +787,14 @@ export default function ContextTreePage() {
           />
         </div>
       </div>
+
+      {/* Global Search Dialog */}
+      <GlobalSearch
+        canvases={canvases}
+        onNavigate={handleSearchNavigate}
+        open={isSearchOpen}
+        onOpenChange={setIsSearchOpen}
+      />
     </div>
   );
 }

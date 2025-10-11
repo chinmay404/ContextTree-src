@@ -7,13 +7,15 @@
 **Changed:** `/waitlist` → `/auth/signin`
 
 **What it does now:**
+
 - Clicking "Get Started" takes users directly to the **sign-in/sign-up** page
 - Users can authenticate with Google OAuth
 - After authentication, they'll see the main app
 
 **Buttons affected:**
+
 - Navigation "Get Started" button
-- Hero section "Get Started Free" button  
+- Hero section "Get Started Free" button
 - Footer "Get Started" button
 
 ### 2. Favicon Updated
@@ -21,9 +23,11 @@
 **Changed:** `contexttree-symbol.svg` → `tree-icon.svg`
 
 **Files updated:**
+
 - `/app/layout.tsx` - metadata icons
 
 **What displays:**
+
 - Browser tab favicon
 - Browser bookmarks
 - Mobile home screen icon (Apple)
@@ -31,7 +35,7 @@
 ## Current User Flow
 
 ```
-Landing Page (/) 
+Landing Page (/)
     ↓
   Click "Get Started"
     ↓
@@ -45,12 +49,14 @@ Main App (Canvas)
 ## Alternative Flow (Waitlist)
 
 If you still want a waitlist, users can:
+
 1. Visit `/waitlist` directly
 2. Or you can add a separate "Join Waitlist" button
 
 ## Files Modified
 
 1. **`/components/landing-page.tsx`**
+
    - Changed `router.push("/waitlist")` → `router.push("/auth/signin")`
 
 2. **`/app/layout.tsx`**
