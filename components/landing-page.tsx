@@ -47,7 +47,7 @@ export function LandingPage() {
   };
 
   const handleGetStarted = () => {
-    router.push("/waitlist");
+    router.push("/auth/signin");
   };
 
   return (

@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   description:
     "Build and test conversational flows with visual nodes and AI integration",
   icons: {
-    icon: "/contexttree-symbol.svg",
-    shortcut: "/contexttree-symbol.svg",
-    apple: "/contexttree-symbol.svg",
+    icon: "/tree-icon.svg",
+    shortcut: "/tree-icon.svg",
+    apple: "/tree-icon.svg",
   },
 };
 
