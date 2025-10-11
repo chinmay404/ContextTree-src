@@ -5,6 +5,7 @@ import {
   ArrowRight,
   GitBranch,
   Zap,
+  Network,
   Check,
   Play,
   MessageSquare,
@@ -21,7 +22,7 @@ import {
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-export function LandingPage() {
+export default function ContextTreeLanding() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -56,13 +57,7 @@ export function LandingPage() {
       <nav className="fixed top-0 w-full z-50 border-b border-slate-200 bg-white/80 backdrop-blur-xl">
         <div className="px-6 py-4 flex justify-between items-center max-w-7xl mx-auto">
           <div className="flex items-center space-x-2.5 text-xl font-semibold">
-            <Image
-              src="/tree-icon.svg"
-              alt="ContextTree"
-              width={24}
-              height={24}
-              className="w-6 h-6"
-            />
+            <Network className="w-6 h-6 text-slate-900" strokeWidth={2.5} />
             <span className="text-slate-900">ContextTree</span>
           </div>
           <div className="hidden md:flex items-center space-x-8 text-sm font-medium">
@@ -135,9 +130,9 @@ export function LandingPage() {
           {/* Stats Bar */}
           <div className="grid grid-cols-3 gap-8 py-12 border-y border-slate-200">
             <div className="text-center">
-              <div className="text-4xl font-bold text-slate-900 mb-2">10+</div>
+              <div className="text-4xl font-bold text-slate-900 mb-2">3+</div>
               <div className="text-sm text-slate-600 font-medium">
-                Open-Source Models
+                LLM Providers
               </div>
             </div>
             <div className="text-center">
@@ -198,11 +193,11 @@ export function LandingPage() {
           {activeTab === "problem" && (
             <div className="space-y-6 animate-in fade-in duration-300">
               <div className="grid md:grid-cols-3 gap-4">
-                {/* Tab 1 - GPT OSS */}
+                {/* Tab 1 - GPT */}
                 <div className="border border-slate-300 rounded-2xl overflow-hidden bg-white shadow-md">
                   <div className="bg-slate-100 px-4 py-3 border-b border-slate-300 flex items-center justify-between">
                     <span className="text-sm font-semibold text-slate-700">
-                      GPT OSS
+                      ChatGPT
                     </span>
                     <X className="w-4 h-4 text-slate-400" />
                   </div>
@@ -235,11 +230,11 @@ export function LandingPage() {
                   </div>
                 </div>
 
-                {/* Tab 2 - DeepSeek */}
+                {/* Tab 2 - Claude */}
                 <div className="border border-slate-300 rounded-2xl overflow-hidden bg-white shadow-md">
                   <div className="bg-slate-100 px-4 py-3 border-b border-slate-300 flex items-center justify-between">
                     <span className="text-sm font-semibold text-slate-700">
-                      DeepSeek
+                      Claude
                     </span>
                     <X className="w-4 h-4 text-slate-400" />
                   </div>
@@ -259,11 +254,11 @@ export function LandingPage() {
                   </div>
                 </div>
 
-                {/* Tab 3 - LLaMA */}
+                {/* Tab 3 - Gemini */}
                 <div className="border border-slate-300 rounded-2xl overflow-hidden bg-white shadow-md">
                   <div className="bg-slate-100 px-4 py-3 border-b border-slate-300 flex items-center justify-between">
                     <span className="text-sm font-semibold text-slate-700">
-                      LLaMA
+                      Gemini
                     </span>
                     <X className="w-4 h-4 text-slate-400" />
                   </div>
@@ -403,7 +398,7 @@ export function LandingPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                         <span className="text-sm font-semibold text-slate-900">
-                          GPT OSS
+                          GPT-4
                         </span>
                       </div>
                       <div className="text-xs text-slate-600 leading-relaxed">
@@ -428,7 +423,7 @@ export function LandingPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-3 h-3 rounded-full bg-purple-500"></div>
                         <span className="text-sm font-semibold text-slate-900">
-                          DeepSeek
+                          Claude
                         </span>
                       </div>
                       <div className="text-xs text-slate-600 leading-relaxed">
@@ -453,7 +448,7 @@ export function LandingPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-3 h-3 rounded-full bg-orange-500"></div>
                         <span className="text-sm font-semibold text-slate-900">
-                          LLaMA
+                          Gemini
                         </span>
                       </div>
                       <div className="text-xs text-slate-600 leading-relaxed">
@@ -533,7 +528,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* How It Works - Enhanced Visual */}
+      {/* How It Works - Animated */}
       <section id="how" className="px-6 py-24 bg-slate-50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
@@ -545,226 +540,68 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="relative">
-            {/* Connection Line */}
-            <div className="hidden md:block absolute top-24 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
-
-            {/* Animated Dots on Line */}
-            <div className="hidden md:block absolute top-24 left-1/6 w-3 h-3 bg-slate-400 rounded-full -translate-y-1/2 animate-pulse" />
-            <div
-              className="hidden md:block absolute top-24 left-1/2 w-3 h-3 bg-slate-400 rounded-full -translate-y-1/2 -translate-x-1/2 animate-pulse"
-              style={{ animationDelay: "0.5s" }}
-            />
-            <div
-              className="hidden md:block absolute top-24 right-1/6 w-3 h-3 bg-slate-400 rounded-full -translate-y-1/2 animate-pulse"
-              style={{ animationDelay: "1s" }}
-            />
-
-            <div className="grid md:grid-cols-3 gap-8 mb-16 relative">
-              {[
-                {
-                  step: "01",
-                  title: "Start Conversation",
-                  description:
-                    "Choose your LLM and ask your question. Every message becomes a visual node on your canvas.",
-                  icon: MessageSquare,
-                  visual: (
-                    <div className="mt-6 bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0">
-                          <MessageSquare className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex-1 space-y-2">
-                          <div className="h-2 bg-slate-200 rounded w-full" />
-                          <div className="h-2 bg-slate-200 rounded w-3/4" />
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                          Llama
-                        </div>
-                        <div className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                          DeepSeek
-                        </div>
-                        <div className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium">
-                          Mixtral
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  step: "02",
-                  title: "Branch & Compare",
-                  description:
-                    "Fork at any point. Try different models on the same prompt. Each branch maintains clean, isolated context.",
-                  icon: GitBranch,
-                  visual: (
-                    <div className="mt-6 bg-white rounded-xl p-4 border border-slate-200 shadow-sm relative">
-                      <div className="flex justify-center mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center">
-                          <GitBranch className="w-5 h-5 text-white" />
-                        </div>
-                      </div>
-                      <svg className="w-full h-16" viewBox="0 0 100 60">
-                        <line
-                          x1="50"
-                          y1="0"
-                          x2="30"
-                          y2="40"
-                          stroke="#cbd5e1"
-                          strokeWidth="2"
-                        />
-                        <line
-                          x1="50"
-                          y1="0"
-                          x2="70"
-                          y2="40"
-                          stroke="#cbd5e1"
-                          strokeWidth="2"
-                        />
-                        <circle cx="50" cy="0" r="4" fill="#0f172a" />
-                        <circle cx="30" cy="40" r="4" fill="#3b82f6" />
-                        <circle cx="70" cy="40" r="4" fill="#8b5cf6" />
-                      </svg>
-                      <div className="flex justify-between text-xs text-slate-600 font-medium">
-                        <span>Path A</span>
-                        <span>Path B</span>
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  step: "03",
-                  title: "Evaluate & Iterate",
-                  description:
-                    "Compare responses side-by-side. Follow the best path forward. Your entire conversation tree auto-saves.",
-                  icon: TrendingUp,
-                  visual: (
-                    <div className="mt-6 bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs text-slate-600 font-medium">
-                                Response Quality
-                              </span>
-                              <span className="text-xs text-slate-900 font-bold">
-                                92%
-                              </span>
-                            </div>
-                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-emerald-500 rounded-full"
-                                style={{ width: "92%" }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs text-slate-600 font-medium">
-                                Context Preserved
-                              </span>
-                              <span className="text-xs text-slate-900 font-bold">
-                                100%
-                              </span>
-                            </div>
-                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-blue-500 rounded-full"
-                                style={{ width: "100%" }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="pt-2 flex items-center gap-2 text-xs text-emerald-600 font-medium">
-                          <Check className="w-4 h-4" />
-                          <span>Auto-saved</span>
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                },
-              ].map((item, i) => (
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            {[
+              {
+                step: "01",
+                title: "Start Conversation",
+                description:
+                  "Choose your LLM and ask your question. Every message becomes a visual node on your canvas.",
+                icon: MessageSquare,
+              },
+              {
+                step: "02",
+                title: "Branch & Compare",
+                description:
+                  "Fork at any point. Try different models on the same prompt. Each branch maintains clean, isolated context.",
+                icon: GitBranch,
+              },
+              {
+                step: "03",
+                title: "Evaluate & Iterate",
+                description:
+                  "Compare responses side-by-side. Follow the best path forward. Your entire conversation tree auto-saves.",
+                icon: TrendingUp,
+              },
+            ].map((item, i) => (
+              <div
+                key={i}
+                className={`relative p-8 rounded-2xl border transition-all duration-300 ${
+                  activeStep === i
+                    ? "bg-slate-900 text-white border-slate-900 shadow-xl scale-105"
+                    : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-lg"
+                }`}
+              >
                 <div
-                  key={i}
-                  className={`relative transition-all duration-500 ${
-                    activeStep === i ? "scale-105" : "scale-100"
+                  className={`text-5xl font-bold mb-6 ${
+                    activeStep === i ? "text-slate-700" : "text-slate-200"
                   }`}
                 >
-                  {/* Step Number Badge */}
-                  <div className="absolute -top-4 -left-4 z-10">
-                    <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ${
-                        activeStep === i
-                          ? "bg-slate-900 text-white shadow-lg scale-110"
-                          : "bg-white text-slate-900 border-2 border-slate-200"
-                      }`}
-                    >
-                      {item.step}
-                    </div>
-                  </div>
-
-                  {/* Main Card */}
-                  <div
-                    className={`p-8 rounded-2xl border transition-all duration-300 ${
-                      activeStep === i
-                        ? "bg-slate-900 text-white border-slate-900 shadow-2xl"
-                        : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-lg"
-                    }`}
-                  >
-                    <div
-                      className={`w-14 h-14 rounded-xl flex items-center justify-center mb-6 transition-all ${
-                        activeStep === i
-                          ? "bg-white"
-                          : "bg-slate-50 border border-slate-200"
-                      }`}
-                    >
-                      <item.icon
-                        className={`w-7 h-7 ${
-                          activeStep === i ? "text-slate-900" : "text-slate-900"
-                        }`}
-                      />
-                    </div>
-                    <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
-                    <p
-                      className={`text-sm leading-relaxed mb-4 ${
-                        activeStep === i ? "text-slate-300" : "text-slate-600"
-                      }`}
-                    >
-                      {item.description}
-                    </p>
-
-                    {/* Visual Demo */}
-                    <div
-                      className={
-                        activeStep === i ? "opacity-100" : "opacity-60"
-                      }
-                    >
-                      {item.visual}
-                    </div>
-                  </div>
+                  {item.step}
                 </div>
-              ))}
-            </div>
-
-            {/* Progress Indicator */}
-            <div className="flex justify-center gap-2 mt-8">
-              {[0, 1, 2].map((i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveStep(i)}
-                  className={`transition-all duration-300 ${
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
                     activeStep === i
-                      ? "w-8 h-2 bg-slate-900 rounded-full"
-                      : "w-2 h-2 bg-slate-300 rounded-full hover:bg-slate-400"
+                      ? "bg-white"
+                      : "bg-slate-50 border border-slate-200"
                   }`}
-                  aria-label={`Step ${i + 1}`}
-                />
-              ))}
-            </div>
+                >
+                  <item.icon
+                    className={`w-6 h-6 ${
+                      activeStep === i ? "text-slate-900" : "text-slate-900"
+                    }`}
+                  />
+                </div>
+                <h3 className="text-xl font-bold mb-3">{item.title}</h3>
+                <p
+                  className={`text-sm leading-relaxed ${
+                    activeStep === i ? "text-slate-300" : "text-slate-600"
+                  }`}
+                >
+                  {item.description}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -822,9 +659,9 @@ export function LandingPage() {
               },
               {
                 icon: Zap,
-                title: "Open-Source Models",
+                title: "Multi-LLM Compare",
                 description:
-                  "Test multiple open-source models (Llama, Mixtral, Gemma, DeepSeek) side-by-side via Groq. Fast and free.",
+                  "Test GPT-4, Claude, and Gemini side-by-side instantly. Find the best model for each task.",
                 visual: (
                   <div className="mt-4 flex gap-2">
                     <div className="flex-1 h-20 bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-xl p-3">
@@ -1103,13 +940,7 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
             <div className="flex items-center space-x-2.5 font-bold text-lg">
-              <Image
-                src="/tree-icon.svg"
-                alt="ContextTree"
-                width={24}
-                height={24}
-                className="w-6 h-6"
-              />
+              <Network className="w-6 h-6 text-slate-900" strokeWidth={2.5} />
               <span className="text-slate-900">ContextTree</span>
             </div>
             <div className="flex gap-8 text-sm font-medium text-slate-600">
