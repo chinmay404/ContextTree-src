@@ -31,9 +31,9 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { EntryNode } from "./nodes/entry-node";
-import { BranchNode } from "./nodes/branch-node";
-import { ContextNode } from "./nodes/context-node";
+import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
+import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
+import { ContextNodeMinimal as ContextNode } from "./nodes/context-node-minimal";
 import { NodePalette } from "./node-palette";
 
 // Enhanced node imports
@@ -43,12 +43,8 @@ import {
   ContextNodeEnhanced,
 } from "./nodes/enhanced-nodes";
 
-// Enhanced edge imports
-import {
-  CustomSmoothEdge,
-  CustomBezierEdge,
-  AnimatedSmoothEdge,
-} from "./edges/custom-smooth-edge";
+// Minimal edge import
+import { CustomEdgeMinimal } from "./edges/custom-edge-minimal";
 import { NodePaletteEnhanced } from "./node-palette-enhanced";
 import { NodeCustomizationPanel } from "./node-customization/node-customization-panel";
 import { Button } from "@/components/ui/button";
@@ -85,18 +81,15 @@ const getColorScheme = (bgColor: string) => {
 
 // Enhanced node types with flexible connection handling
 const enhancedNodeTypes: NodeTypes = {
-  entry: EntryNodeEnhanced,
-  branch: BranchNodeEnhanced,
-  context: ContextNodeEnhanced,
+  entry: EntryNode,
+  branch: BranchNode,
+  context: ContextNode,
 };
 
-// Enhanced edge types with smooth rendering and interaction
+// Minimal edge types
 const enhancedEdgeTypes = {
-  "custom-smooth": CustomSmoothEdge,
-  "custom-bezier": CustomBezierEdge,
-  animated: AnimatedSmoothEdge,
-  smoothstep: "smoothstep",
-  bezier: "bezier",
+  custom: CustomEdgeMinimal,
+  default: CustomEdgeMinimal,
 };
 
 interface CanvasAreaSmoothProps {

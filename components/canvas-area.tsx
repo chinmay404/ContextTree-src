@@ -21,14 +21,14 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { Settings, Edit2, Palette, Save, X, Sparkles } from "lucide-react";
 
-import { EntryNode } from "./nodes/entry-node";
-import { BranchNode } from "./nodes/branch-node";
-import { ContextNode } from "./nodes/context-node";
+import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
+import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
+import { ContextNodeMinimal as ContextNode } from "./nodes/context-node-minimal";
 
 // Simplified React Flow nodes only
 
 // Edge imports
-import { CustomEdge } from "./edges/custom-edge";
+import { CustomEdgeMinimal as CustomEdge } from "./edges/custom-edge-minimal";
 import { NodeCustomizationPanel } from "./node-customization/node-customization-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

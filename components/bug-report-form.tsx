@@ -29,6 +29,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const reportFormSchema = z.object({
   title: z
@@ -112,19 +118,28 @@ export function BugReportForm({ children }: BugReportFormProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {children || (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-          >
-            <Bug className="h-4 w-4 mr-2" />
-            Report Bug
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-white border border-slate-200 shadow-xl">
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              {children || (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 transition-all w-9 h-9 relative group"
+                >
+                  <Bug className="h-[18px] w-[18px] transition-transform group-hover:scale-110" />
+                  <span className="sr-only">Report Bug</span>
+                </Button>
+              )}
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Report a bug</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-white border border-slate-200 shadow-xl rounded-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Bug className="h-5 w-5 text-orange-600" />

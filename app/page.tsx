@@ -8,6 +8,13 @@ import {
   PanelLeftOpen,
   Maximize2,
   Minimize2,
+  Search,
+  Zap,
+  GitBranch,
+  FileText,
+  Command,
+  Settings,
+  Sparkles,
 } from "lucide-react";
 import { CanvasArea } from "@/components/canvas-area";
 import { ReactFlowProvider } from "reactflow";
@@ -21,6 +28,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { LandingPage } from "@/components/landing-page";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function ContextTreePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -380,74 +394,201 @@ export default function ContextTreePage() {
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
-      {/* Header */}
-      <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur-sm px-6 py-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 text-slate-900 transition-transform duration-300 hover:scale-110">
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 100 100"
-                xmlns="http://www.w3.org/2000/svg"
-                className="drop-shadow-sm"
-              >
-                {/* Root node (top) */}
-                <rect
-                  x="35"
-                  y="10"
-                  width="30"
-                  height="20"
-                  rx="4"
-                  ry="4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                />
+      {/* Enhanced Header / Navbar */}
+      <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-50">
+        <div className="px-6 py-3">
+          <div className="flex items-center justify-between">
+            {/* Left Section - Logo & Brand */}
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 text-slate-900 transition-transform duration-300 hover:scale-110 hover:rotate-6 cursor-pointer">
+                  <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 100 100"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="drop-shadow-sm"
+                  >
+                    <rect
+                      x="35"
+                      y="10"
+                      width="30"
+                      height="20"
+                      rx="4"
+                      ry="4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    />
+                    <path
+                      d="M50 30 L50 45 M35 55 L50 45 L65 55"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                    />
+                    <rect
+                      x="15"
+                      y="65"
+                      width="25"
+                      height="20"
+                      rx="4"
+                      ry="4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    />
+                    <rect
+                      x="60"
+                      y="65"
+                      width="25"
+                      height="20"
+                      rx="4"
+                      ry="4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
+                    ContextTree
+                  </h1>
+                  <p className="text-xs text-slate-500 -mt-0.5">
+                    Visual Context Builder
+                  </p>
+                </div>
+              </div>
 
-                {/* Connection lines */}
-                <path
-                  d="M50 30 L50 45 M35 55 L50 45 L65 55"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
+              {/* Quick Stats */}
+              <div className="hidden lg:flex items-center gap-2 ml-4 pl-4 border-l border-slate-200">
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge
+                        variant="secondary"
+                        className="bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 px-2.5 py-1 font-medium cursor-help transition-all"
+                      >
+                        <FileText size={12} className="mr-1.5" />
+                        {canvases.length} {canvases.length === 1 ? "Canvas" : "Canvases"}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Total canvases in workspace</p>
+                    </TooltipContent>
+                  </Tooltip>
 
-                {/* Left child node */}
-                <rect
-                  x="15"
-                  y="65"
-                  width="25"
-                  height="20"
-                  rx="4"
-                  ry="4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge
+                        variant="secondary"
+                        className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 font-medium cursor-help transition-all"
+                      >
+                        <GitBranch size={12} className="mr-1.5" />
+                        {selectedCanvas
+                          ? canvases.find((c) => c._id === selectedCanvas)
+                              ?.nodes.length || 0
+                          : 0}{" "}
+                        Nodes
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Nodes in current canvas</p>
+                    </TooltipContent>
+                  </Tooltip>
 
-                {/* Right child node */}
-                <rect
-                  x="60"
-                  y="65"
-                  width="25"
-                  height="20"
-                  rx="4"
-                  ry="4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                />
-              </svg>
+                  {selectedCanvas && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge
+                          variant="secondary"
+                          className="bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 px-2.5 py-1 font-medium cursor-help transition-all"
+                        >
+                          <Sparkles size={12} className="mr-1.5" />
+                          Active
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Currently editing canvas</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </TooltipProvider>
+              </div>
             </div>
-            <h1 className="text-2xl font-light text-slate-900 tracking-tight">
-              ContextTree
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            {isAuthenticated && <BugReportForm />}
-            <UserAuth />
+
+            {/* Right Section - Actions & User */}
+            <div className="flex items-center gap-3">
+              {/* Search Button */}
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hidden md:flex gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all"
+                    >
+                      <Search size={16} />
+                      <span className="text-xs">Search</span>
+                      <div className="hidden lg:flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">
+                        <Command size={10} />
+                        <span className="text-[10px] font-semibold">K</span>
+                      </div>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Quick search (⌘K)</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Quick Actions Separator */}
+                <div className="hidden md:block h-5 w-px bg-slate-200" />
+
+                {/* LLM Status Indicator */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hidden md:flex gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all relative"
+                    >
+                      <Zap size={16} />
+                      <span className="text-xs font-medium">10+ Models</span>
+                      <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border border-white shadow-sm animate-pulse" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Open-source models ready via Groq</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Settings */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all w-9 h-9"
+                    >
+                      <Settings size={18} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Settings</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              {/* Divider */}
+              <div className="h-8 w-px bg-slate-200" />
+
+              {/* Bug Report */}
+              {isAuthenticated && <BugReportForm />}
+
+              {/* User Auth */}
+              <UserAuth />
+            </div>
           </div>
         </div>
       </header>
