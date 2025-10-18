@@ -845,6 +845,10 @@ export function CanvasArea({
 
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
+      // Don't open chat panel if Shift is held (multi-selection mode)
+      if (event.shiftKey) {
+        return;
+      }
       const nodeName =
         node.data.label ||
         (node.type === "entry"
@@ -1046,13 +1050,22 @@ export function CanvasArea({
   );
 
   const onNodeDragStop = useCallback(
-    (event: React.MouseEvent, node: Node) => {
+    (event: React.MouseEvent, node: Node, nodes: Node[]) => {
       if (!canvas) return;
 
-      // Update node position in storage
-      const updatedNodes = canvas.nodes.map((n) =>
-        n._id === node.id ? { ...n, position: node.position } : n
+      // Get all selected nodes (for multi-drag support)
+      const selectedNodes = nodes.filter((n) => n.selected || n.id === node.id);
+
+      // Create a map of updated positions
+      const positionUpdates = new Map(
+        selectedNodes.map((n) => [n.id, { ...n.position }])
       );
+
+      // Update all dragged nodes in storage
+      const updatedNodes = canvas.nodes.map((n) => {
+        const newPosition = positionUpdates.get(n._id);
+        return newPosition ? { ...n, position: newPosition } : n;
+      });
 
       const updatedCanvas: CanvasData = {
         ...canvas,
@@ -1569,6 +1582,10 @@ export function CanvasArea({
         edgeTypes={edgeTypes}
         fitView
         className="bg-white"
+        multiSelectionKeyCode="Shift"
+        selectionKeyCode="Shift"
+        selectNodesOnDrag={true}
+        panOnDrag={[1, 2]}
         onInit={(instance) => {
           // Restore viewport state if available
           if (canvas?.viewportState) {
@@ -1633,6 +1650,17 @@ export function CanvasArea({
           color="#cbd5e1"
           className="opacity-40"
         />
+
+        {/* Multi-Selection Help Tooltip */}
+        <div className="absolute bottom-4 left-4 z-10 bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-lg px-3 py-2 shadow-lg text-xs text-slate-600">
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono">
+              Shift
+            </kbd>
+            <span>+ Click or Drag to select multiple nodes</span>
+          </div>
+        </div>
+
         {/* Node settings button on hover - Hidden per user request */}
         {/* {hoveredNodeId && (
           <button

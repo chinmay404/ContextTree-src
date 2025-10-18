@@ -20,7 +20,15 @@ import ReactFlow, {
   type Viewport,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { Settings, Edit2, Palette, Save, X, Sparkles } from "lucide-react";
+import {
+  Settings,
+  Edit2,
+  Palette,
+  Save,
+  X,
+  Sparkles,
+  Network,
+} from "lucide-react";
 
 // Import enhanced nodes
 import { EntryNodeEnhanced } from "./nodes/entry-node-enhanced";
@@ -252,6 +260,8 @@ export function CanvasAreaEnhanced({
   const [lastCreatedNodeId, setLastCreatedNodeId] = useState<string | null>(
     null
   );
+  const [intelligentPositionUsed, setIntelligentPositionUsed] = useState(false);
+  const [isArrangingNodes, setIsArrangingNodes] = useState(false);
 
   // Batched updates
   const parentUpdateQueueRef = useRef<Record<string, any>>({});
@@ -437,6 +447,365 @@ export function CanvasAreaEnhanced({
     );
   }, [showNodeEffects, setEdges]);
 
+  /**
+   * Intelligent Position Calculator for New Nodes
+   *
+   * Features:
+   * - Avoids overlapping with existing nodes
+   * - Snaps to grid for clean alignment
+   * - Uses spiral search pattern to find optimal position
+   * - Considers viewport center and drop position
+   * - Maintains minimum spacing between nodes
+   *
+   * @param dropPosition - The position where user dropped the node (null for programmatic creation)
+   * @param existingNodes - Array of current nodes on the canvas
+   * @returns Optimal position for the new node
+   */
+  const calculateIntelligentPosition = useCallback(
+    (
+      dropPosition: { x: number; y: number } | null,
+      existingNodes: Node[]
+    ): { x: number; y: number } => {
+      console.log("🎯 calculateIntelligentPosition called", {
+        dropPosition,
+        nodeCount: existingNodes.length,
+      });
+
+      const NODE_WIDTH = 280;
+      const NODE_HEIGHT = 200;
+      const MIN_SPACING = 60;
+      const GRID_SNAP = 20;
+
+      // Helper to check if a position overlaps with existing nodes
+      const hasOverlap = (pos: { x: number; y: number }): boolean => {
+        return existingNodes.some((node) => {
+          const dx = Math.abs(node.position.x - pos.x);
+          const dy = Math.abs(node.position.y - pos.y);
+          return (
+            dx < NODE_WIDTH + MIN_SPACING && dy < NODE_HEIGHT + MIN_SPACING
+          );
+        });
+      };
+
+      // Snap position to grid for cleaner layout
+      const snapToGrid = (pos: { x: number; y: number }) => ({
+        x: Math.round(pos.x / GRID_SNAP) * GRID_SNAP,
+        y: Math.round(pos.y / GRID_SNAP) * GRID_SNAP,
+      });
+
+      // If dropped at a specific position and no overlap, use it
+      if (dropPosition) {
+        const snappedDrop = snapToGrid(dropPosition);
+        const didSnap =
+          snappedDrop.x !== dropPosition.x || snappedDrop.y !== dropPosition.y;
+
+        if (!hasOverlap(snappedDrop)) {
+          console.log(
+            "✓ Intelligent Positioning: Using snapped drop position",
+            {
+              original: dropPosition,
+              snapped: snappedDrop,
+              didSnap,
+            }
+          );
+
+          // Show indicator if we snapped to grid
+          if (didSnap) {
+            setIntelligentPositionUsed(true);
+            setTimeout(() => setIntelligentPositionUsed(false), 2000);
+          }
+          return snappedDrop;
+        }
+
+        // Position has overlap, will use intelligent positioning
+        console.log(
+          "⚠ Intelligent Positioning: Overlap detected, searching for better position"
+        );
+        setIntelligentPositionUsed(true);
+        setTimeout(() => setIntelligentPositionUsed(false), 2000);
+      }
+
+      // Calculate the center of the visible viewport
+      const viewportCenter = {
+        x: -viewport.x / viewport.zoom + window.innerWidth / 2 / viewport.zoom,
+        y: -viewport.y / viewport.zoom + window.innerHeight / 2 / viewport.zoom,
+      };
+
+      // Start from drop position or viewport center
+      const startPosition = dropPosition || viewportCenter;
+
+      // Try the starting position first
+      const snappedStart = snapToGrid(startPosition);
+      if (!hasOverlap(snappedStart)) {
+        console.log("✓ Intelligent Positioning: Using starting position", {
+          start: startPosition,
+          snapped: snappedStart,
+        });
+
+        // Show indicator since we're using intelligent positioning
+        setIntelligentPositionUsed(true);
+        setTimeout(() => setIntelligentPositionUsed(false), 2000);
+        return snappedStart;
+      }
+
+      // Use spiral search pattern to find non-overlapping position
+      const spiralSearch = (center: { x: number; y: number }) => {
+        console.log(
+          "🌀 Intelligent Positioning: Starting spiral search from",
+          center
+        );
+        let radius = MIN_SPACING + NODE_HEIGHT;
+        const maxRadius = 1000;
+        const angleStep = Math.PI / 4; // 45 degrees
+
+        while (radius < maxRadius) {
+          const pointsInRing = Math.max(
+            8,
+            Math.floor((2 * Math.PI * radius) / 100)
+          );
+
+          for (let i = 0; i < pointsInRing; i++) {
+            const angle = (i / pointsInRing) * 2 * Math.PI;
+            const candidate = snapToGrid({
+              x: center.x + radius * Math.cos(angle),
+              y: center.y + radius * Math.sin(angle),
+            });
+
+            if (!hasOverlap(candidate)) {
+              // Found an intelligent position
+              console.log(
+                "✓ Intelligent Positioning: Found clear position at radius",
+                radius,
+                candidate
+              );
+              setIntelligentPositionUsed(true);
+              setTimeout(() => setIntelligentPositionUsed(false), 2500);
+              return candidate;
+            }
+          }
+
+          radius += MIN_SPACING + 40;
+        }
+
+        // Fallback: offset from center
+        console.log("⚠ Intelligent Positioning: Using fallback position");
+        setIntelligentPositionUsed(true);
+        setTimeout(() => setIntelligentPositionUsed(false), 2500);
+        return snapToGrid({
+          x: center.x + 100,
+          y: center.y + 100,
+        });
+      };
+
+      const result = spiralSearch(snappedStart);
+      console.log("✓ Intelligent Positioning: Final position", result);
+      return result;
+    },
+    [viewport]
+  );
+
+  /**
+   * Auto-Arrange Nodes in Tree Layout
+   *
+   * Features:
+   * - Hierarchical tree structure based on edges
+   * - Entry node at top
+   * - Automatic spacing and alignment
+   * - Smooth animation to new positions
+   */
+  const arrangeNodesInTreeLayout = useCallback(async () => {
+    if (!canvas || nodes.length === 0) {
+      toast.error("No nodes to arrange");
+      return;
+    }
+
+    setIsArrangingNodes(true);
+    console.log("🌳 Starting tree layout arrangement...");
+
+    try {
+      // Configuration
+      const HORIZONTAL_SPACING = 350;
+      const VERTICAL_SPACING = 250;
+      const ROOT_X = 400;
+      const ROOT_Y = 100;
+
+      // Build adjacency map from edges
+      const childrenMap = new Map<string, string[]>();
+      const parentMap = new Map<string, string>();
+
+      edges.forEach((edge) => {
+        const parent = edge.source;
+        const child = edge.target;
+
+        if (!childrenMap.has(parent)) {
+          childrenMap.set(parent, []);
+        }
+        childrenMap.get(parent)!.push(child);
+        parentMap.set(child, parent);
+      });
+
+      // Find root node (entry node or node with no parent)
+      const entryNode = nodes.find((n) => n.type === "entry");
+      const rootNode =
+        entryNode || nodes.find((n) => !parentMap.has(n.id)) || nodes[0];
+
+      if (!rootNode) {
+        toast.error("Could not determine root node");
+        setIsArrangingNodes(false);
+        return;
+      }
+
+      console.log("🎯 Root node:", rootNode.id);
+
+      // Calculate positions using tree layout algorithm
+      const positions = new Map<string, { x: number; y: number }>();
+      const visited = new Set<string>();
+
+      // Calculate subtree width for balanced layout
+      const getSubtreeWidth = (nodeId: string): number => {
+        if (visited.has(nodeId)) return 1;
+        visited.add(nodeId);
+
+        const children = childrenMap.get(nodeId) || [];
+        if (children.length === 0) return 1;
+
+        const childrenWidths = children.map((childId) =>
+          getSubtreeWidth(childId)
+        );
+        return Math.max(
+          1,
+          childrenWidths.reduce((sum, w) => sum + w, 0)
+        );
+      };
+
+      visited.clear();
+
+      // Layout nodes recursively
+      const layoutNode = (
+        nodeId: string,
+        x: number,
+        y: number,
+        availableWidth: number
+      ) => {
+        if (visited.has(nodeId)) return;
+        visited.add(nodeId);
+
+        positions.set(nodeId, { x, y });
+        console.log(`📍 Positioned ${nodeId} at (${x}, ${y})`);
+
+        const children = childrenMap.get(nodeId) || [];
+        if (children.length === 0) return;
+
+        // Calculate widths for each subtree
+        const subtreeWidths = children.map((childId) => {
+          const tempVisited = new Set(visited);
+          visited.clear();
+          visited.add(nodeId);
+          const width = getSubtreeWidth(childId);
+          visited.forEach((id) => tempVisited.add(id));
+          visited = tempVisited;
+          return width;
+        });
+
+        const totalWidth = subtreeWidths.reduce((sum, w) => sum + w, 0);
+
+        // Position children
+        let currentX = x - ((totalWidth - 1) * HORIZONTAL_SPACING) / 2;
+
+        children.forEach((childId, index) => {
+          const childWidth = subtreeWidths[index];
+          const childCenterX =
+            currentX + ((childWidth - 1) * HORIZONTAL_SPACING) / 2;
+
+          layoutNode(
+            childId,
+            childCenterX,
+            y + VERTICAL_SPACING,
+            childWidth * HORIZONTAL_SPACING
+          );
+
+          currentX += childWidth * HORIZONTAL_SPACING;
+        });
+      };
+
+      // Start layout from root
+      layoutNode(rootNode.id, ROOT_X, ROOT_Y, HORIZONTAL_SPACING);
+
+      // Position any orphaned nodes (nodes not connected to the tree)
+      let orphanX = ROOT_X + HORIZONTAL_SPACING * 2;
+      let orphanY = ROOT_Y;
+      nodes.forEach((node) => {
+        if (!positions.has(node.id)) {
+          positions.set(node.id, { x: orphanX, y: orphanY });
+          console.log(
+            `📍 Positioned orphan ${node.id} at (${orphanX}, ${orphanY})`
+          );
+          orphanY += VERTICAL_SPACING;
+          if (orphanY > ROOT_Y + VERTICAL_SPACING * 3) {
+            orphanY = ROOT_Y;
+            orphanX += HORIZONTAL_SPACING;
+          }
+        }
+      });
+
+      // Update node positions with animation
+      const updatedNodes = nodes.map((node) => ({
+        ...node,
+        position: positions.get(node.id) || node.position,
+      }));
+
+      setNodes(updatedNodes);
+
+      // Prepare batch update for backend
+      const nodeUpdates = Array.from(positions.entries()).map(
+        ([id, position]) => ({
+          id,
+          position,
+        })
+      );
+
+      // Save to backend
+      await fetch(`/api/canvases/${canvasId}/layout`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nodes: nodeUpdates,
+        }),
+      });
+
+      // Update local canvas state
+      const updatedCanvasNodes = canvas.nodes.map((node) => {
+        const newPos = positions.get(node._id);
+        return newPos ? { ...node, position: newPos } : node;
+      });
+
+      const nextCanvas: CanvasData = {
+        ...canvas,
+        nodes: updatedCanvasNodes,
+        updatedAt: new Date().toISOString(),
+      };
+
+      setCanvas(nextCanvas);
+      storageService.saveCanvas(nextCanvas);
+
+      // Center viewport on the tree
+      setTimeout(() => {
+        reactFlowInstance.fitView({
+          padding: 0.2,
+          duration: 800,
+        });
+      }, 100);
+
+      toast.success("Nodes arranged in tree layout!", { duration: 2000 });
+      console.log("✅ Tree layout complete!");
+    } catch (error) {
+      console.error("Failed to arrange nodes:", error);
+      toast.error("Failed to arrange nodes");
+    } finally {
+      setTimeout(() => setIsArrangingNodes(false), 800);
+    }
+  }, [nodes, edges, canvas, canvasId, setNodes, reactFlowInstance]);
+
   // Enhanced node creation with animations
   const onDrop = useCallback(
     async (event: React.DragEvent) => {
@@ -465,10 +834,22 @@ export function CanvasAreaEnhanced({
       }
 
       const bounds = event.currentTarget.getBoundingClientRect();
-      const position = reactFlowInstance.screenToFlowPosition({
+      const dropPosition = reactFlowInstance.screenToFlowPosition({
         x: event.clientX - bounds.left,
         y: event.clientY - bounds.top,
       });
+
+      console.log("🎯 Node drop detected at position:", dropPosition);
+
+      // Calculate intelligent position avoiding overlaps
+      const position = calculateIntelligentPosition(dropPosition, nodes);
+
+      console.log("✅ Intelligent position calculated:", position);
+
+      // Always show indicator for new nodes to demonstrate the feature
+      setIntelligentPositionUsed(true);
+      toast.success("Node positioned intelligently!", { duration: 2000 });
+      setTimeout(() => setIntelligentPositionUsed(false), 2500);
 
       const nodeId =
         typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -579,7 +960,15 @@ export function CanvasAreaEnhanced({
         }, 600);
       }
     },
-    [canvas, canvasId, onNodeSelect, reactFlowInstance, setNodes]
+    [
+      canvas,
+      canvasId,
+      onNodeSelect,
+      reactFlowInstance,
+      setNodes,
+      calculateIntelligentPosition,
+      nodes,
+    ]
   );
 
   const onDragOver = useCallback(
@@ -714,14 +1103,28 @@ export function CanvasAreaEnhanced({
   );
 
   const onNodeDragStop = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
+    (_event: React.MouseEvent, node: Node, nodes: Node[]) => {
       let nextCanvas: CanvasData | null = null;
 
       setCanvas((prev) => {
         if (!prev) return prev;
-        const updatedNodes = prev.nodes.map((n) =>
-          n._id === node.id ? { ...n, position: { ...node.position } } : n
+
+        // Get all selected nodes (for multi-drag support)
+        const selectedNodes = nodes.filter(
+          (n) => n.selected || n.id === node.id
         );
+
+        // Create a map of updated positions
+        const positionUpdates = new Map(
+          selectedNodes.map((n) => [n.id, { ...n.position }])
+        );
+
+        // Update all dragged nodes
+        const updatedNodes = prev.nodes.map((n) => {
+          const newPosition = positionUpdates.get(n._id);
+          return newPosition ? { ...n, position: newPosition } : n;
+        });
+
         nextCanvas = {
           ...prev,
           nodes: updatedNodes,
@@ -926,7 +1329,11 @@ export function CanvasAreaEnhanced({
   );
 
   const onNodeClick = useCallback(
-    (_: React.MouseEvent, node: Node) => {
+    (event: React.MouseEvent, node: Node) => {
+      // Don't open chat panel if Shift is held (multi-selection mode)
+      if (event.shiftKey) {
+        return;
+      }
       onNodeSelect(node.id, node.data.label);
     },
     [onNodeSelect]
@@ -1013,6 +1420,43 @@ export function CanvasAreaEnhanced({
       onDragOver={onDragOver}
       onDragLeave={handleDragLeave}
     >
+      {/* Tree Layout & Effects Controls - Top Left */}
+      <div className="absolute top-4 left-4 z-50 flex gap-2">
+        <Button
+          variant="outline"
+          size="default"
+          onClick={arrangeNodesInTreeLayout}
+          disabled={isArrangingNodes || nodes.length === 0}
+          className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white border-0 shadow-xl hover:shadow-2xl hover:from-indigo-600 hover:to-purple-600 transition-all font-semibold"
+        >
+          {isArrangingNodes ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+              Arranging...
+            </>
+          ) : (
+            <>
+              <Network size={18} className="mr-2" />
+              Tree Layout
+            </>
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowNodeEffects(!showNodeEffects)}
+          className="bg-white/95 backdrop-blur-sm border-slate-200/80 shadow-lg hover:shadow-xl"
+        >
+          <Sparkles size={14} className="mr-1" />
+          {showNodeEffects ? "Disable" : "Enable"} Effects
+        </Button>
+      </div>
+
+      {/* Enhanced Node Palette - Top Right */}
+      <div className="absolute top-4 right-4 z-50">
+        <NodePaletteEnhanced />
+      </div>
+
       {isDragActive && (
         <div className="absolute inset-0 bg-white/40 backdrop-blur-sm pointer-events-none rounded-3xl border-2 border-dashed border-indigo-200 transition-opacity duration-300" />
       )}
@@ -1039,6 +1483,10 @@ export function CanvasAreaEnhanced({
         className="bg-transparent"
         onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
         onNodeMouseLeave={(_, node) => setHoveredNodeId(null)}
+        multiSelectionKeyCode="Shift"
+        selectionKeyCode="Shift"
+        selectNodesOnDrag={true}
+        panOnDrag={[1, 2]}
         connectionLineStyle={{
           stroke: "#6366f1",
           strokeWidth: 3,
@@ -1067,17 +1515,14 @@ export function CanvasAreaEnhanced({
           color="#e2e8f0"
         />
 
-        {/* Enhanced Controls */}
-        <div className="absolute top-4 right-4 z-10 flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowNodeEffects(!showNodeEffects)}
-            className="bg-white/95 backdrop-blur-sm border-slate-200/80 shadow-lg hover:shadow-xl"
-          >
-            <Sparkles size={14} className="mr-1" />
-            {showNodeEffects ? "Disable" : "Enable"} Effects
-          </Button>
+        {/* Multi-Selection Help Tooltip - Inside ReactFlow for proper positioning */}
+        <div className="absolute bottom-20 left-4 z-10 bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-lg px-3 py-2 shadow-lg text-xs text-slate-600">
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono">
+              Shift
+            </kbd>
+            <span>+ Click or Drag to select multiple nodes</span>
+          </div>
         </div>
 
         {/* Quick Node Customization on Hover */}
@@ -1094,10 +1539,27 @@ export function CanvasAreaEnhanced({
         )}
       </ReactFlow>
 
-      {/* Enhanced Node Palette */}
-      <div className="absolute top-6 right-6 z-40">
-        <NodePaletteEnhanced />
-      </div>
+      {/* Intelligent Positioning Indicator - Outside ReactFlow */}
+      {intelligentPositionUsed && (
+        <div className="absolute bottom-32 left-4 z-50 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 text-white rounded-xl px-4 py-3 shadow-2xl text-sm font-semibold animate-in fade-in slide-in-from-bottom-4 duration-500 border-2 border-white/30">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Sparkles size={18} className="animate-pulse" />
+              <div className="absolute inset-0 blur-sm">
+                <Sparkles size={18} className="text-white/50" />
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-white drop-shadow-lg">
+                Smart Positioning Active!
+              </span>
+              <span className="text-xs text-white/80 font-normal">
+                Node placed intelligently
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Node Customization Panel */}
       {customizingNodeId && (
@@ -1120,6 +1582,30 @@ export function CanvasAreaEnhanced({
               <span className="text-slate-700 font-medium">
                 Creating node...
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tree Layout Animation */}
+      {isArrangingNodes && (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-50">
+          <div className="bg-gradient-to-br from-indigo-500/95 to-purple-500/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl border-2 border-white/30">
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                <Network size={32} className="text-white animate-pulse" />
+                <div className="absolute inset-0 blur-md">
+                  <Network size={32} className="text-white/50" />
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-white font-semibold text-lg">
+                  Arranging Tree Layout
+                </div>
+                <div className="text-white/80 text-sm mt-1">
+                  Organizing nodes hierarchically...
+                </div>
+              </div>
             </div>
           </div>
         </div>

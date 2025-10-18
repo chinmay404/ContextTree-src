@@ -3,13 +3,11 @@
 import { useState, useEffect, useRef, memo, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import {
   Send,
-  Bot,
   User,
   MessageSquare,
   X,
@@ -17,16 +15,16 @@ import {
   Minimize2,
   Sparkles,
   PanelRightClose,
-  PanelRightOpen,
-  Settings,
   GitBranch,
   ArrowDown,
   Copy,
   Check,
+  StickyNote,
+  Plus,
 } from "lucide-react";
-import { storageService } from "@/lib/storage";
+import { storageService, CanvasNote } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
-import { ALL_MODELS, MODEL_PROVIDERS, getDefaultModel } from "@/lib/models";
+import { ALL_MODELS, getDefaultModel } from "@/lib/models";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -94,6 +92,12 @@ const ChatPanelInternal = ({
   const [messageCache, setMessageCache] = useState<Record<string, Message[]>>(
     {}
   );
+  const [canvasNote, setCanvasNote] = useState<CanvasNote | null>(null);
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [selectionPrompt, setSelectionPrompt] = useState<{
+    text: string;
+    position: { top: number; left: number };
+  } | null>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const isUserNearBottomRef = useRef(true);
@@ -107,6 +111,113 @@ const ChatPanelInternal = ({
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  const persistNote = useCallback(
+    (updater: (prev: CanvasNote | null) => CanvasNote) => {
+      if (!selectedCanvas) return;
+
+      setCanvasNote((prev) => {
+        const next = updater(prev);
+        try {
+          storageService.saveCanvasNote(selectedCanvas, next);
+        } catch (err) {
+          console.error("Failed to save canvas note:", err);
+        }
+        return next;
+      });
+    },
+    [selectedCanvas]
+  );
+
+  useEffect(() => {
+    if (!selectedCanvas) {
+      setCanvasNote(null);
+      setIsNotesOpen(false);
+      setSelectionPrompt(null);
+      return;
+    }
+
+    try {
+      const storedNote = storageService.getCanvasNote(selectedCanvas);
+
+      if (storedNote) {
+        setCanvasNote(storedNote);
+        setIsNotesOpen(false);
+      } else {
+        const now = new Date().toISOString();
+        const initialNote: CanvasNote = {
+          content: "",
+          createdAt: now,
+          updatedAt: now,
+        };
+        setCanvasNote(initialNote);
+        storageService.saveCanvasNote(selectedCanvas, initialNote);
+        setIsNotesOpen(false);
+      }
+    } catch (error) {
+      console.error("Failed to load canvas note:", error);
+      setCanvasNote(null);
+      setIsNotesOpen(false);
+    }
+
+    setSelectionPrompt(null);
+  }, [selectedCanvas]);
+
+  const formatNoteTimestamp = useCallback((value?: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, []);
+  const appendToNote = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      const now = new Date().toISOString();
+
+      persistNote((prev) => {
+        const base = prev?.content?.trim();
+        const createdAt = prev?.createdAt ?? now;
+        const nextContent = base ? `${base}\n\n${trimmed}` : trimmed;
+        return {
+          content: nextContent,
+          createdAt,
+          updatedAt: now,
+        };
+      });
+
+      setIsNotesOpen(true);
+    },
+    [persistNote]
+  );
+
+  const handleNoteChange = useCallback(
+    (value: string) => {
+      const now = new Date().toISOString();
+
+      persistNote((prev) => ({
+        content: value,
+        createdAt: prev?.createdAt ?? now,
+        updatedAt: now,
+      }));
+    },
+    [persistNote]
+  );
+
+  const handleAcceptSelectedSnippet = useCallback(() => {
+    if (!selectionPrompt?.text.trim()) return;
+    appendToNote(selectionPrompt.text);
+    setSelectionPrompt(null);
+    if (typeof window !== "undefined") {
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+    }
+  }, [appendToNote, selectionPrompt]);
 
   // Load canvas data to detect forked nodes (client-side only) - DISABLED TO PREVENT INFINITE LOOP
   // useEffect(() => {
@@ -820,6 +931,64 @@ const ChatPanelInternal = ({
     getNodeModel,
   ]);
 
+  const handleTextSelection = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const selection = window.getSelection();
+    const text = selection?.toString().trim();
+
+    if (!text) {
+      setSelectionPrompt(null);
+      return;
+    }
+
+    const resolveElement = (node: Node | null): HTMLElement | null => {
+      if (!node) return null;
+      if (node instanceof HTMLElement) return node;
+      if ((node as any).parentElement)
+        return (node as any).parentElement as HTMLElement;
+      if (node.parentNode instanceof HTMLElement) return node.parentNode;
+      return null;
+    };
+
+    const anchorElement = resolveElement(selection?.anchorNode || null);
+    const focusElement = resolveElement(selection?.focusNode || null);
+
+    const isWithinMessage =
+      anchorElement?.closest("[data-chat-message-body]") ||
+      focusElement?.closest("[data-chat-message-body]");
+
+    if (!isWithinMessage || !selection || selection.rangeCount === 0) {
+      setSelectionPrompt(null);
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    if (!rect || (rect.width === 0 && rect.height === 0)) {
+      setSelectionPrompt(null);
+      return;
+    }
+
+    const clampedLeft = Math.max(
+      Math.min(rect.right + 8, window.innerWidth - 120),
+      16
+    );
+    const clampedTop = Math.min(
+      Math.max(rect.top - 36, 64),
+      window.innerHeight - 48
+    );
+
+    setSelectionPrompt({
+      text,
+      position: {
+        top: clampedTop,
+        left: clampedLeft,
+      },
+    });
+  }, []);
+
   // Fork Indicator Component
   const ForkIndicator = memo(({ messageId }: { messageId: string }) => {
     // Only render on client-side to avoid hydration issues
@@ -922,8 +1091,7 @@ const ChatPanelInternal = ({
 
   const MessageComponent = memo(
     ({ message }: { message: Message }) => {
-      const isUser = message.role === "user";
-      const [hovered, setHovered] = useState(false);
+  const isUser = message.role === "user";
       const [showThinking, setShowThinking] = useState<{
         [key: string]: boolean;
       }>({});
@@ -965,12 +1133,12 @@ const ChatPanelInternal = ({
 
       return (
         <div
-          className={`flex ${isUser ? "justify-end" : "justify-start"} mb-6`}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
+          className={`flex ${
+            isUser ? "justify-end" : "justify-start"
+          } mb-6 px-2`}
         >
           <div
-            className={`w-full min-w-0 sm:max-w-[92%] lg:max-w-[75%] xl:max-w-3xl 2xl:max-w-4xl ${
+            className={`w-full min-w-0 max-w-full ${
               isUser ? "order-2" : "order-1"
             }`}
           >
@@ -988,20 +1156,21 @@ const ChatPanelInternal = ({
               >
                 {isUser ? <User size={16} /> : <Sparkles size={16} />}
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <div
-                  className={`rounded-xl px-4 py-3 transition-all duration-300 ${
+                  className={`rounded-xl px-5 py-4 transition-all duration-300 overflow-hidden ${
                     isUser
                       ? "bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-lg hover:shadow-xl"
-                      : "bg-white/90 backdrop-blur-sm border border-slate-200/50 text-slate-800 shadow-lg hover:shadow-xl hover:bg-white"
+                      : "bg-white/95 backdrop-blur-sm border border-slate-200/60 text-slate-800 shadow-md hover:shadow-lg hover:bg-white"
                   }`}
+                  data-chat-message-body="true"
                 >
                   {isUser ? (
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words font-light">
+                    <p className="text-sm leading-7 whitespace-pre-wrap break-words overflow-wrap-anywhere">
                       {message.content}
                     </p>
                   ) : (
-                    <div className="text-sm leading-relaxed font-light">
+                    <div className="text-sm leading-7 overflow-hidden">
                       {parseThinkingContent(message.content).map(
                         (part, index) => (
                           <div key={index}>
@@ -1048,28 +1217,28 @@ const ChatPanelInternal = ({
                                 )}
                               </div>
                             ) : part.content.trim() ? (
-                              <div className="prose prose-sm max-w-none break-words prose-slate prose-headings:font-light prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 prose-strong:font-medium prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-img:rounded-lg prose-img:border prose-img:border-slate-200/60 prose-img:bg-white">
+                              <div className="prose prose-sm max-w-none break-words overflow-hidden prose-slate prose-headings:font-normal prose-headings:text-slate-900 prose-headings:break-words prose-p:text-slate-700 prose-p:leading-7 prose-p:break-words prose-p:overflow-wrap-anywhere prose-strong:text-slate-900 prose-strong:font-semibold prose-strong:break-words prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:break-words prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-pre:overflow-x-auto prose-img:rounded-lg prose-img:border prose-img:border-slate-200/60 prose-img:bg-white prose-img:max-w-full prose-li:leading-7 prose-li:break-words prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-slate-600 prose-blockquote:break-words prose-a:break-words">
                                 <ReactMarkdown
                                   remarkPlugins={[remarkGfm]}
                                   rehypePlugins={[rehypeHighlight]}
                                   components={{
                                     h1: ({ children }) => (
-                                      <h1 className="text-lg font-light text-slate-900 mt-4 mb-2 first:mt-0">
+                                      <h1 className="text-xl font-semibold text-slate-900 mt-6 mb-3 first:mt-0 leading-tight break-words overflow-wrap-anywhere">
                                         {children}
                                       </h1>
                                     ),
                                     h2: ({ children }) => (
-                                      <h2 className="text-base font-light text-slate-900 mt-3 mb-2 first:mt-0">
+                                      <h2 className="text-lg font-semibold text-slate-900 mt-5 mb-3 first:mt-0 leading-tight break-words overflow-wrap-anywhere">
                                         {children}
                                       </h2>
                                     ),
                                     h3: ({ children }) => (
-                                      <h3 className="text-sm font-medium text-slate-900 mt-3 mb-1 first:mt-0">
+                                      <h3 className="text-base font-semibold text-slate-900 mt-4 mb-2 first:mt-0 leading-snug break-words overflow-wrap-anywhere">
                                         {children}
                                       </h3>
                                     ),
                                     p: ({ children }) => (
-                                      <p className="text-slate-700 mb-2 last:mb-0 font-light leading-relaxed break-words">
+                                      <p className="text-slate-700 mb-4 last:mb-0 font-normal leading-7 break-words overflow-wrap-anywhere text-[15px]">
                                         {children}
                                       </p>
                                     ),
@@ -1085,7 +1254,7 @@ const ChatPanelInternal = ({
 
                                         return (
                                           <span className="relative inline-block group">
-                                            <code className="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs font-mono">
+                                            <code className="bg-slate-100 text-slate-800 px-1.5 py-1 rounded text-[13px] font-mono font-medium">
                                               {children}
                                             </code>
                                             <button
@@ -1153,8 +1322,8 @@ const ChatPanelInternal = ({
                                         .substr(2, 9)}`;
 
                                       return (
-                                        <div className="relative group">
-                                          <pre className="bg-slate-50 border border-slate-200 rounded-lg p-3 pr-12 overflow-x-auto text-xs font-mono">
+                                        <div className="relative group my-4">
+                                          <pre className="bg-slate-50 border border-slate-200/80 rounded-lg p-4 pr-14 overflow-x-auto text-[13px] leading-6 font-mono shadow-sm">
                                             {children}
                                           </pre>
                                           <button
@@ -1184,17 +1353,17 @@ const ChatPanelInternal = ({
                                       );
                                     },
                                     ul: ({ children }) => (
-                                      <ul className="list-disc list-inside space-y-1 text-slate-700 font-light">
+                                      <ul className="list-disc list-outside ml-5 space-y-2 text-slate-700 mb-4">
                                         {children}
                                       </ul>
                                     ),
                                     ol: ({ children }) => (
-                                      <ol className="list-decimal list-inside space-y-1 text-slate-700 font-light">
+                                      <ol className="list-decimal list-outside ml-5 space-y-2 text-slate-700 mb-4">
                                         {children}
                                       </ol>
                                     ),
                                     li: ({ children }) => (
-                                      <li className="text-slate-700 font-light break-words">
+                                      <li className="text-slate-700 leading-7 break-words overflow-wrap-anywhere pl-1.5">
                                         {children}
                                       </li>
                                     ),
@@ -1203,41 +1372,43 @@ const ChatPanelInternal = ({
                                         href={href || "#"}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="text-blue-600 underline break-words hover:text-blue-700"
+                                        className="text-blue-600 underline break-all hover:text-blue-700"
                                       >
                                         {children}
                                       </a>
                                     ),
                                     table: ({ children }) => (
-                                      <div className="my-4 w-full overflow-x-auto rounded-lg border border-slate-200 bg-white">
-                                        <table className="min-w-full table-auto border-collapse text-left text-sm text-slate-700">
+                                      <div className="my-6 w-full overflow-x-auto rounded-lg border border-slate-200/80 bg-white shadow-sm">
+                                        <table className="w-full text-left text-sm text-slate-700">
                                           {children}
                                         </table>
                                       </div>
                                     ),
                                     thead: ({ children }) => (
-                                      <thead className="bg-slate-100 text-slate-700">
+                                      <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 text-slate-800 border-b-2 border-slate-200">
                                         {children}
                                       </thead>
                                     ),
                                     tbody: ({ children }) => (
-                                      <tbody className="divide-y divide-slate-200">
+                                      <tbody className="divide-y divide-slate-100">
                                         {children}
                                       </tbody>
                                     ),
                                     tr: ({ children }) => (
-                                      <tr className="even:bg-slate-50">
+                                      <tr className="hover:bg-slate-50/50 transition-colors duration-150">
                                         {children}
                                       </tr>
                                     ),
                                     th: ({ children }) => (
-                                      <th className="px-3 py-2 font-medium text-slate-700">
+                                      <th className="px-4 py-3 font-semibold text-slate-800 text-xs uppercase tracking-wider break-words">
                                         {children}
                                       </th>
                                     ),
                                     td: ({ children }) => (
-                                      <td className="px-3 py-2 align-top text-slate-600">
-                                        {children}
+                                      <td className="px-4 py-3 text-slate-700 leading-relaxed align-top">
+                                        <div className="break-words overflow-wrap-anywhere">
+                                          {children}
+                                        </div>
                                       </td>
                                     ),
                                     img: ({ alt, src }) => (
@@ -1248,20 +1419,20 @@ const ChatPanelInternal = ({
                                       />
                                     ),
                                     hr: () => (
-                                      <hr className="my-4 border-slate-200" />
+                                      <hr className="my-6 border-t-2 border-slate-200" />
                                     ),
                                     blockquote: ({ children }) => (
-                                      <blockquote className="border-l-4 border-slate-300 pl-4 py-2 bg-slate-50 rounded-r-lg my-2">
+                                      <blockquote className="border-l-4 border-slate-400 pl-5 pr-4 py-3 bg-slate-50/50 rounded-r-md my-4 italic text-slate-600 leading-7">
                                         {children}
                                       </blockquote>
                                     ),
                                     strong: ({ children }) => (
-                                      <strong className="font-medium text-slate-900">
+                                      <strong className="font-semibold text-slate-900">
                                         {children}
                                       </strong>
                                     ),
                                     em: ({ children }) => (
-                                      <em className="italic text-slate-700">
+                                      <em className="italic text-slate-700 font-normal">
                                         {children}
                                       </em>
                                     ),
@@ -1280,37 +1451,41 @@ const ChatPanelInternal = ({
                   {/* Fork Indicator - Show forked nodes for both user and assistant messages */}
                   <ForkIndicator messageId={message.id.replace(/-a$/, "")} />
 
-                  {!isUser && hovered && (
-                    <div className="flex justify-end mt-2">
-                      <button
-                        onClick={handleFork}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-slate-50 to-slate-100 hover:from-slate-100 hover:to-slate-150 text-slate-600 border border-slate-200/70 hover:border-slate-300/70 transition-all duration-200 font-medium shadow-sm hover:shadow-md transform hover:scale-105 active:scale-95"
-                        title="Fork new node from this AI response"
-                      >
-                        Fork Node
-                      </button>
-                    </div>
-                  )}
                 </div>
-                <p
-                  className={`text-xs mt-2 px-1 ${
-                    isUser ? "text-slate-400" : "text-slate-400"
-                  }`}
-                >
-                  {(() => {
-                    if (!message.timestamp) return "";
-                    const dateObj =
-                      typeof message.timestamp === "string"
-                        ? new Date(message.timestamp)
-                        : message.timestamp;
-                    return isNaN(dateObj.getTime())
-                      ? ""
-                      : dateObj.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-                  })()}
-                </p>
+                {(() => {
+                  if (!message.timestamp) return null;
+                  const dateObj =
+                    typeof message.timestamp === "string"
+                      ? new Date(message.timestamp)
+                      : message.timestamp;
+                  if (isNaN(dateObj.getTime())) return null;
+
+                  const timeLabel = dateObj.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+
+                  return (
+                    <div
+                      className={`mt-2 flex items-center px-1 text-xs ${
+                        isUser
+                          ? "justify-end text-slate-300"
+                          : "justify-between text-slate-400"
+                      }`}
+                    >
+                      <span>{timeLabel}</span>
+                      {!isUser && (
+                        <button
+                          onClick={handleFork}
+                          className="ml-3 inline-flex items-center gap-1 rounded-md border border-slate-200/80 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors duration-150 hover:border-slate-300 hover:text-slate-800 hover:bg-slate-100"
+                          title="Fork a new node from this response"
+                        >
+                          Fork
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -1454,6 +1629,23 @@ const ChatPanelInternal = ({
   return (
     <>
       <ModelSelectionDialog />
+      {selectionPrompt && (
+        <div
+          className="fixed z-50"
+          style={{
+            top: `${selectionPrompt.position.top}px`,
+            left: `${selectionPrompt.position.left}px`,
+          }}
+        >
+          <button
+            onClick={handleAcceptSelectedSnippet}
+            className="group flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg transition-all duration-150 hover:scale-105 hover:border-slate-300 hover:bg-slate-50"
+            aria-label="Add selection to note"
+          >
+            <Plus className="h-4 w-4 transition-colors duration-150 group-hover:text-slate-900" />
+          </button>
+        </div>
+      )}
       <div
         className={`h-full flex flex-col ${
           isFullscreen
@@ -1602,6 +1794,35 @@ const ChatPanelInternal = ({
                 </div>
 
                 <div className="flex items-center gap-2 ml-4">
+                  {selectedNode && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsNotesOpen((prev) => !prev)}
+                      className={`relative rounded-lg transition-all duration-200 ${
+                        isNotesOpen
+                          ? "bg-slate-900 text-white hover:bg-slate-800"
+                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-100/80"
+                      }`}
+                      title={
+                        isNotesOpen ? "Hide canvas notes" : "Show canvas notes"
+                      }
+                    >
+                      <StickyNote size={16} />
+                      {canvasNote?.content?.trim() && (
+                        <span
+                          className={`absolute -top-1 -right-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none ${
+                            isNotesOpen
+                              ? "bg-white text-slate-900"
+                              : "bg-slate-900 text-white"
+                          }`}
+                        >
+                          ●
+                        </span>
+                      )}
+                    </Button>
+                  )}
+
                   {/* Refresh conversation button removed per user request */}
                   {/* {selectedNode && (
                     <Button
@@ -1690,8 +1911,46 @@ const ChatPanelInternal = ({
                       <div
                         className={`space-y-1 pb-32 ${
                           isFullscreen ? "max-w-4xl mx-auto" : ""
+                        } ${
+                          isFullscreen && isNotesOpen
+                            ? "lg:pr-[22rem]"
+                            : ""
                         }`}
+                        onMouseUp={handleTextSelection}
                       >
+                        {isNotesOpen && !isFullscreen && (
+                          <div className="sticky top-0 z-20 mb-3 flex justify-end">
+                            <Card className="w-full max-w-sm border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur-sm">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                                  <StickyNote size={16} className="text-slate-500" />
+                                  <span>Canvas Note</span>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setIsNotesOpen(false)}
+                                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100/80"
+                                  title="Hide note"
+                                >
+                                  <X size={14} />
+                                </Button>
+                              </div>
+                              <Textarea
+                                value={canvasNote?.content ?? ""}
+                                onChange={(e) => handleNoteChange(e.target.value)}
+                                placeholder="Add quick context for this canvas..."
+                                className="mt-3 min-h-[100px] resize-y border-0 bg-transparent p-0 text-sm text-slate-700 focus-visible:ring-0"
+                              />
+                              <div className="mt-2 text-right text-[11px] text-slate-400">
+                                {formatNoteTimestamp(canvasNote?.updatedAt)
+                                  ? `Updated ${formatNoteTimestamp(canvasNote?.updatedAt)}`
+                                  : ""}
+                              </div>
+                            </Card>
+                          </div>
+                        )}
+
                         {/* Show fork origin info if this node was forked */}
                         {canvasData?.nodes &&
                           selectedNode &&
@@ -1794,8 +2053,40 @@ const ChatPanelInternal = ({
                         )}
                       </div>
                     </ScrollArea>
+                    {isNotesOpen && isFullscreen && (
+                      <div className="pointer-events-auto absolute inset-y-0 right-0 z-30 flex w-full max-w-sm border-l border-slate-200/80 bg-white/95 shadow-xl">
+                        <div className="flex h-full w-full flex-col gap-4 p-5 backdrop-blur-sm">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                              <StickyNote size={18} className="text-slate-500" />
+                              <span>Canvas Note</span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setIsNotesOpen(false)}
+                              className="text-slate-400 hover:text-slate-600 hover:bg-slate-100/80"
+                              title="Hide note"
+                            >
+                              <X size={16} />
+                            </Button>
+                          </div>
+                          <Textarea
+                            value={canvasNote?.content ?? ""}
+                            onChange={(e) => handleNoteChange(e.target.value)}
+                            placeholder="Add quick context for this canvas..."
+                            className="flex-1 resize-none rounded-lg border border-slate-200/80 bg-white/70 p-3 text-sm text-slate-700 shadow-inner focus-visible:border-slate-300 focus-visible:ring-0"
+                          />
+                          <div className="text-right text-[11px] text-slate-400">
+                            {formatNoteTimestamp(canvasNote?.updatedAt)
+                              ? `Updated ${formatNoteTimestamp(canvasNote?.updatedAt)}`
+                              : ""}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {showScrollToLatest && (
-                      <div className="pointer-events-none absolute bottom-6 right-6 z-20">
+                      <div className="pointer-events-none absolute bottom-[120px] right-4 z-20">
                         <Button
                           onClick={() => {
                             scrollToBottom("smooth");

@@ -9,6 +9,7 @@ A comprehensive, advanced search functionality has been implemented that allows 
 ## ✨ Features Implemented
 
 ### 1. **Comprehensive Search Scope**
+
 - **🔥 CHAT MESSAGES** (HIGHEST PRIORITY): Search through all conversation content
 - **Canvas Titles**: Search by canvas name
 - **Node Labels**: Search by node names
@@ -18,7 +19,9 @@ A comprehensive, advanced search functionality has been implemented that allows 
 ### 2. **Advanced Search Capabilities**
 
 #### **Intelligent Result Ranking with Chat Priority**
+
 Results are sorted by relevance with **chat messages as the highest priority**:
+
 1. **🔥 CHAT MATCHES FIRST** (Most important - where you find actual conversation content)
    - Multiple matches show count (e.g., "Chat (3)" means 3 messages matched)
    - Shows preview snippet of the matched message
@@ -30,7 +33,9 @@ Results are sorted by relevance with **chat messages as the highest priority**:
 6. **Recent items** (sorted by last modified date)
 
 #### **Visual Search Results**
+
 Each result shows:
+
 - **Node icon** (color-coded by type: Entry=blue, Branch=emerald, Context=violet)
 - **Node label** (truncated if long)
 - **Match type badge** (🔥 Chat=orange [MOST IMPORTANT], Canvas/Node/Model with color coding)
@@ -41,16 +46,18 @@ Each result shows:
 
 ### 3. **Keyboard Navigation**
 
-| Shortcut | Action |
-|----------|--------|
-| `⌘K` / `Ctrl+K` | Open search dialog |
-| `↑` Arrow Up | Navigate to previous result |
-| `↓` Arrow Down | Navigate to next result |
-| `Enter` | Navigate to selected result |
-| `Esc` | Close search dialog |
+| Shortcut        | Action                      |
+| --------------- | --------------------------- |
+| `⌘K` / `Ctrl+K` | Open search dialog          |
+| `↑` Arrow Up    | Navigate to previous result |
+| `↓` Arrow Down  | Navigate to next result     |
+| `Enter`         | Navigate to selected result |
+| `Esc`           | Close search dialog         |
 
 ### 4. **Smart Navigation**
+
 When you select a search result:
+
 1. **Switches to the target canvas** automatically
 2. **Selects the target node** in the canvas
 3. **Opens the chat panel** for that node
@@ -62,6 +69,7 @@ When you select a search result:
 ## 🎨 Design & UX
 
 ### Visual Design
+
 - **Slate color scheme** matching the app aesthetic
 - **Rounded-xl** corners for modern look
 - **Shadow-2xl** on dialog for depth
@@ -70,6 +78,7 @@ When you select a search result:
 - **Color-coded badges** for match types
 
 ### User Experience
+
 - **Real-time search** (no submit button needed)
 - **Instant results** as you type
 - **Empty state** with helpful instructions
@@ -78,6 +87,7 @@ When you select a search result:
 - **Keyboard-first** design for power users
 
 ### Responsive Design
+
 - **Mobile-friendly** dialog sizing
 - **Scrollable results** with max height
 - **Touch-friendly** click targets
@@ -90,6 +100,7 @@ When you select a search result:
 ### Opening Search
 
 **Method 1: Keyboard Shortcut**
+
 ```
 Press Cmd+K (Mac) or Ctrl+K (Windows/Linux)
 ```
@@ -120,9 +131,11 @@ Click the "Search" button in the top navbar (shows ⌘K hint)
 ## 📁 Files Created/Modified
 
 ### New Files
+
 - `/components/global-search.tsx` - Main search component (350+ lines)
 
 ### Modified Files
+
 - `/app/page.tsx` - Integrated search with:
   - Import statement for GlobalSearch
   - State management (`isSearchOpen`)
@@ -169,6 +182,7 @@ handleSearchNavigate(canvasId, nodeId) {
 ```
 
 ### Performance Optimizations
+
 - **useMemo** for search results (prevents unnecessary recalculations)
 - **Debounced rendering** with keyboard navigation
 - **Efficient filtering** using native JavaScript methods
@@ -179,32 +193,38 @@ handleSearchNavigate(canvasId, nodeId) {
 ## 🎯 Use Cases
 
 ### 1. **Finding Chat Conversations** (MOST POWERFUL)
-*"I remember discussing authentication errors in a chat but can't remember which node."*
+
+_"I remember discussing authentication errors in a chat but can't remember which node."_
 
 → Search for "authentication error" and see all chat messages containing those words, with previews and the exact node location.
 
 ### 2. **Finding Debugging Conversations**
-*"Where did I discuss that bug fix?"*
+
+_"Where did I discuss that bug fix?"_
 
 → Search for "bug fix" to find all chat conversations mentioning it.
 
 ### 3. **Finding a Specific Node**
-*"I remember creating a node called 'User Authentication' but can't remember which canvas it's in."*
+
+_"I remember creating a node called 'User Authentication' but can't remember which canvas it's in."_
 
 → Search for "User Authentication" and jump directly to it.
 
 ### 2. **Finding All Nodes Using a Model**
-*"Which nodes am I using DeepSeek for?"*
+
+_"Which nodes am I using DeepSeek for?"_
 
 → Search for "deepseek" to see all nodes using that model.
 
 ### 3. **Quick Canvas Switching**
-*"I need to switch to my 'E-commerce Flow' canvas."*
+
+_"I need to switch to my 'E-commerce Flow' canvas."_
 
 → Search for "E-commerce" and select any node to switch to that canvas.
 
 ### 4. **Workflow Exploration**
-*"What branch nodes do I have in my project?"*
+
+_"What branch nodes do I have in my project?"_
 
 → Search for "branch" to see all branch-type nodes across all canvases.
 
@@ -223,17 +243,20 @@ handleSearchNavigate(canvasId, nodeId) {
 ## 🔮 Future Enhancements (Possible)
 
 ### Search Features
+
 - [ ] **Fuzzy matching** - Find results even with typos
 - [ ] **Search filters** - Filter by node type, model, date
 - [ ] **Search history** - Remember recent searches
 - [ ] **Favorites** - Pin frequently accessed nodes
 
 ### Navigation Features
+
 - [ ] **Breadcrumb trail** - Show path to selected node
 - [ ] **Recent navigation** - Quick access to recently visited nodes
 - [ ] **Canvas preview** - Mini preview of canvas on hover
 
 ### Performance
+
 - [ ] **Search indexing** - Pre-index content for faster search
 - [ ] **Virtual scrolling** - Handle thousands of results
 - [ ] **Background search** - Search while typing without blocking UI
@@ -243,16 +266,19 @@ handleSearchNavigate(canvasId, nodeId) {
 ## 🐛 Troubleshooting
 
 ### Search not opening?
+
 - Check if Cmd/Ctrl+K is being captured by browser
 - Try clicking the Search button in navbar
 - Check browser console for errors
 
 ### Results not showing?
+
 - Verify canvases are loaded (`canvases` array has data)
 - Check if search query is being trimmed correctly
 - Ensure nodes have labels (not empty)
 
 ### Navigation not working?
+
 - Verify `selectedCanvas` state is updating
 - Check if canvas loads before node selection
 - Ensure 100ms timeout is sufficient for canvas load

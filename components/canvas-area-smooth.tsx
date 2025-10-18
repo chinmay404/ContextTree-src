@@ -271,11 +271,31 @@ export function CanvasAreaSmooth({
           setDraggedNodeId(null);
 
           if (canvas && change.position) {
+            // Collect all nodes that were moved (handling multi-selection)
+            const movedNodeIds = changes
+              .filter(
+                (c) =>
+                  c.type === "position" && c.dragging === false && c.position
+              )
+              .map((c) => c.id);
+
             const updatedCanvas = {
               ...canvas,
-              nodes: canvas.nodes.map((n) =>
-                n._id === change.id ? { ...n, position: change.position! } : n
-              ),
+              nodes: canvas.nodes.map((n) => {
+                if (movedNodeIds.includes(n._id)) {
+                  const nodeChange = changes.find(
+                    (c) => c.id === n._id && c.type === "position"
+                  );
+                  if (
+                    nodeChange &&
+                    "position" in nodeChange &&
+                    nodeChange.position
+                  ) {
+                    return { ...n, position: nodeChange.position };
+                  }
+                }
+                return n;
+              }),
               updatedAt: new Date().toISOString(),
             };
 
@@ -780,6 +800,10 @@ export function CanvasAreaSmooth({
   // Enhanced node click handler
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
+      // Don't open chat panel if Shift is held (multi-selection mode)
+      if (event.shiftKey) {
+        return;
+      }
       const nodeName =
         node.data.label ||
         (node.type === "entry"
@@ -977,6 +1001,10 @@ export function CanvasAreaSmooth({
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         onViewportChange={setViewport}
         deleteKeyCode={null} // Handle delete manually for better UX
+        multiSelectionKeyCode="Shift"
+        selectionKeyCode="Shift"
+        selectNodesOnDrag={true}
+        panOnDrag={[1, 2]}
         className="bg-gradient-to-br from-slate-50 to-blue-50"
       >
         <Controls showZoom={true} showFitView={true} showInteractive={true} />
@@ -986,6 +1014,19 @@ export function CanvasAreaSmooth({
           size={1.5}
           color="#cbd5e1"
         />
+
+        {/* Multi-Selection Help Tooltip */}
+        <Panel
+          position="bottom-left"
+          className="bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-lg px-3 py-2 shadow-lg text-xs text-slate-600"
+        >
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono">
+              Shift
+            </kbd>
+            <span>+ Click or Drag to select multiple nodes</span>
+          </div>
+        </Panel>
 
         {/* Status Panel */}
         <Panel

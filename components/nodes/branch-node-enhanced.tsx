@@ -315,7 +315,7 @@ export function BranchNodeEnhanced({
             }`}
           >
             <button
-              className="bg-white/95 backdrop-blur-sm border border-slate-200/60 rounded-xl p-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:bg-white hover:scale-110 group"
+              className="bg-white border-2 border-slate-300 rounded-xl p-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:bg-slate-50 hover:scale-110 hover:border-slate-400 group"
               onClick={(e) => {
                 e.stopPropagation();
                 if (data.onSettingsClick) data.onSettingsClick();
@@ -323,8 +323,7 @@ export function BranchNodeEnhanced({
             >
               <Settings
                 size={config.iconSize - 2}
-                style={{ color: dotColor }}
-                className="group-hover:rotate-90 transition-transform duration-300"
+                className="text-slate-700 group-hover:text-slate-900 group-hover:rotate-90 transition-all duration-300"
               />
             </button>
           </div>

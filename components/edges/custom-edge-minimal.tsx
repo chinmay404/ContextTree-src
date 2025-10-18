@@ -48,9 +48,10 @@ export function CustomEdgeMinimal({
       ? "#64748b" // slate-500 when selected
       : style.stroke || "#f1f5f9", // slate-100 - barely visible
     strokeOpacity: isHovered ? 1 : selected ? 1 : 0.3,
-    filter: isHovered || selected
-      ? "drop-shadow(0 1px 3px rgba(15, 23, 42, 0.08))"
-      : "none",
+    filter:
+      isHovered || selected
+        ? "drop-shadow(0 1px 3px rgba(15, 23, 42, 0.08))"
+        : "none",
     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
   };
 
@@ -78,9 +79,7 @@ export function CustomEdgeMinimal({
             className="nodrag nopan"
           >
             {/* Minimal Edge Label - Small and Subtle - Only on Hover */}
-            <div
-              className="px-2.5 py-1 rounded-md backdrop-blur-sm font-medium text-[11px] bg-slate-900 text-white shadow-lg animate-in fade-in duration-150"
-            >
+            <div className="px-2.5 py-1 rounded-md backdrop-blur-sm font-medium text-[11px] bg-slate-900 text-white shadow-lg animate-in fade-in duration-150">
               {label}
             </div>
           </div>

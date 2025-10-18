@@ -42,6 +42,24 @@ html {
   filter: drop-shadow(0 1px 3px rgba(15, 23, 42, 0.12));
 }
 
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* Text wrapping utilities for chat panel */
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Ensure tables are responsive in chat */
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 @keyframes dash-flow {
   to {
     stroke-dashoffset: -12;

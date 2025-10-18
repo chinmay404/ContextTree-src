@@ -279,43 +279,21 @@ export function NodeCustomizationPanel({
                   </div>
 
                   {/* Colors */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium text-slate-700">
-                        Background
-                      </Label>
-                      <ColorPicker
-                        value={formData.color}
-                        onChange={(color) => handleInputChange("color", color)}
-                        label="Background Color"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium text-slate-700">
-                        Text Color
-                      </Label>
-                      <ColorPicker
-                        value={formData.textColor}
-                        onChange={(color) =>
-                          handleInputChange("textColor", color)
-                        }
-                        label="Text Color"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium text-slate-700">
-                        Accent Color
-                      </Label>
-                      <ColorPicker
-                        value={formData.dotColor}
-                        onChange={(color) =>
-                          handleInputChange("dotColor", color)
-                        }
-                        label="Accent Color"
-                      />
-                    </div>
+                  <div className="space-y-3">
+                    <ColorPicker
+                      value={formData.color}
+                      onChange={(color, textColor, dotColor) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          color: color,
+                          textColor: textColor || prev.textColor,
+                          dotColor: dotColor || prev.dotColor,
+                        }));
+                      }}
+                      label="Node Color Theme"
+                      currentTextColor={formData.textColor}
+                      currentDotColor={formData.dotColor}
+                    />
                   </div>
 
                   {/* Style Options */}

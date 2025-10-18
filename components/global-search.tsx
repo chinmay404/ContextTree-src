@@ -77,14 +77,14 @@ export function GlobalSearch({
 
     canvases.forEach((canvas) => {
       if (!canvas) return;
-      
+
       const canvasTitle = canvas.title || "Untitled Canvas";
       const canvasTitleMatch = canvasTitle.toLowerCase().includes(query);
 
       canvas.nodes?.forEach((node) => {
         // Add null checks for node and node.data
         if (!node || !node.data) return;
-        
+
         const nodeLabel = node.data.label || "Untitled Node";
         const nodeLabelMatch = nodeLabel.toLowerCase().includes(query);
         const nodeModel = node.data.model || "";
@@ -93,12 +93,18 @@ export function GlobalSearch({
         // Search through chat messages - check multiple possible locations
         // The structure can vary: node.data.chatMessages, node.chatMessages, or in nested data
         let chatMessages: any[] = [];
-        
+
         if (node.data.chatMessages && Array.isArray(node.data.chatMessages)) {
           chatMessages = node.data.chatMessages;
-        } else if ((node as any).chatMessages && Array.isArray((node as any).chatMessages)) {
+        } else if (
+          (node as any).chatMessages &&
+          Array.isArray((node as any).chatMessages)
+        ) {
           chatMessages = (node as any).chatMessages;
-        } else if (node.data.data?.chatMessages && Array.isArray(node.data.data.chatMessages)) {
+        } else if (
+          node.data.data?.chatMessages &&
+          Array.isArray(node.data.data.chatMessages)
+        ) {
           chatMessages = node.data.data.chatMessages;
         }
 
@@ -108,8 +114,11 @@ export function GlobalSearch({
 
         if (chatMessages.length > 0) {
           chatMessages.forEach((message: any) => {
-            if (message?.content && typeof message.content === 'string' && 
-                message.content.toLowerCase().includes(query)) {
+            if (
+              message?.content &&
+              typeof message.content === "string" &&
+              message.content.toLowerCase().includes(query)
+            ) {
               chatMatch = true;
               matchedMessageCount++;
               if (!chatPreview) {
@@ -117,10 +126,14 @@ export function GlobalSearch({
                 const content = message.content;
                 const matchIndex = content.toLowerCase().indexOf(query);
                 const start = Math.max(0, matchIndex - 30);
-                const end = Math.min(content.length, matchIndex + query.length + 30);
-                chatPreview = (start > 0 ? "..." : "") + 
-                             content.substring(start, end) + 
-                             (end < content.length ? "..." : "");
+                const end = Math.min(
+                  content.length,
+                  matchIndex + query.length + 30
+                );
+                chatPreview =
+                  (start > 0 ? "..." : "") +
+                  content.substring(start, end) +
+                  (end < content.length ? "..." : "");
               }
             }
           });
@@ -318,7 +331,11 @@ export function GlobalSearch({
             Search Everywhere
           </DialogTitle>
           <DialogDescription className="text-sm text-slate-500">
-            Search across all canvases, nodes, models, and <span className="font-semibold text-orange-600">chat conversations</span>. Use{" "}
+            Search across all canvases, nodes, models, and{" "}
+            <span className="font-semibold text-orange-600">
+              chat conversations
+            </span>
+            . Use{" "}
             <kbd className="px-1.5 py-0.5 text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-300 rounded">
               ↑↓
             </kbd>{" "}
@@ -358,8 +375,11 @@ export function GlobalSearch({
                 Start typing to search
               </h3>
               <p className="text-sm text-slate-500 max-w-sm mx-auto">
-                Search across all your canvases, nodes, models, and <span className="font-semibold text-orange-600">chat conversations</span> to quickly
-                find what you're looking for
+                Search across all your canvases, nodes, models, and{" "}
+                <span className="font-semibold text-orange-600">
+                  chat conversations
+                </span>{" "}
+                to quickly find what you're looking for
               </p>
               <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-500">
                 <Command size={12} />
@@ -419,7 +439,13 @@ export function GlobalSearch({
                       )}
                     </div>
                     {result.preview && (
-                      <p className={`text-xs truncate ${result.matchType === "chat" ? "text-orange-600 font-medium" : "text-slate-400"}`}>
+                      <p
+                        className={`text-xs truncate ${
+                          result.matchType === "chat"
+                            ? "text-orange-600 font-medium"
+                            : "text-slate-400"
+                        }`}
+                      >
                         {result.preview}
                       </p>
                     )}

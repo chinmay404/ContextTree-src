@@ -1,6 +1,7 @@
 "use client";
 import { Handle, Position, type NodeProps } from "reactflow";
-import { Play } from "lucide-react";
+import { Play, Settings } from "lucide-react";
+import { useState } from "react";
 
 interface EntryNodeData {
   label: string;
@@ -20,11 +21,18 @@ interface EntryNodeData {
 }
 
 export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
+  const [hovered, setHovered] = useState(false);
+
   const handleClick = () => {
     if (data.onClick) {
       data.onClick();
     }
   };
+
+  // Use custom colors or defaults
+  const bgColor = data.color || "#ffffff";
+  const textColorPrimary = data.textColor || "#1e293b";
+  const accentColor = data.dotColor || "#3b82f6";
 
   return (
     <div
@@ -32,67 +40,69 @@ export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
         selected || data.isSelected ? "scale-105" : "hover:scale-102"
       }`}
       onClick={handleClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
+      {/* Settings Button */}
+      {hovered && data.onSettingsClick && (
+        <button
+          className="absolute -top-2 -right-2 z-10 bg-white border-2 border-slate-300 rounded-lg p-1.5 shadow-lg hover:shadow-xl transition-all duration-200 hover:bg-slate-50 hover:scale-110 hover:border-slate-400"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (data.onSettingsClick) data.onSettingsClick();
+          }}
+        >
+          <Settings size={14} className="text-slate-700" />
+        </button>
+      )}
+
       {/* Main Card - Ultra Minimal */}
       <div
         className={`
           px-5 py-3.5 rounded-xl backdrop-blur-sm
-          transition-all duration-200
+          transition-all duration-200 border-2
           ${
             selected || data.isSelected
-              ? "bg-slate-900 shadow-2xl shadow-slate-900/20 border border-slate-800"
-              : "bg-white border border-slate-200/60 shadow-sm hover:shadow-lg hover:border-slate-300/80"
+              ? "shadow-2xl scale-105"
+              : "shadow-sm hover:shadow-lg"
           }
         `}
+        style={{
+          backgroundColor: bgColor,
+          borderColor:
+            selected || data.isSelected ? accentColor : `${accentColor}40`,
+        }}
       >
         <div className="flex items-center gap-3">
           {/* Icon */}
           <div
-            className={`
-              w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0
-              transition-colors duration-200
-              ${
-                selected || data.isSelected
-                  ? "bg-white"
-                  : "bg-slate-50 border border-slate-200"
-              }
-            `}
+            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors duration-200"
+            style={{
+              backgroundColor: `${accentColor}20`,
+              border: `1px solid ${accentColor}40`,
+            }}
           >
             <Play
               size={18}
-              className={`
-                ${
-                  selected || data.isSelected
-                    ? "text-slate-900"
-                    : "text-slate-700"
-                }
-              `}
-              fill={selected || data.isSelected ? "currentColor" : "none"}
+              style={{ color: accentColor }}
+              fill={selected || data.isSelected ? accentColor : "none"}
             />
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div
-              className={`
-                text-sm font-semibold truncate
-                ${selected || data.isSelected ? "text-white" : "text-slate-900"}
-              `}
+              className="text-sm font-semibold truncate"
+              style={{ color: textColorPrimary }}
             >
               {data.label}
             </div>
             <div
-              className={`
-                text-xs font-medium flex items-center gap-1.5 mt-0.5
-                ${
-                  selected || data.isSelected
-                    ? "text-slate-300"
-                    : "text-slate-500"
-                }
-              `}
+              className="text-xs font-medium flex items-center gap-1.5 mt-0.5"
+              style={{ color: `${textColorPrimary}99` }}
             >
               <span>{data.model || "openai/gpt-oss-120b"}</span>
-              <span className="text-slate-400">•</span>
+              <span style={{ color: `${textColorPrimary}66` }}>•</span>
               <span>Entry Node</span>
             </div>
           </div>
@@ -100,7 +110,10 @@ export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
 
         {/* Status Indicator */}
         {(selected || data.isSelected) && (
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-lg animate-pulse" />
+          <div
+            className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-lg animate-pulse"
+            style={{ backgroundColor: accentColor }}
+          />
         )}
       </div>
 

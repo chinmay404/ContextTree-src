@@ -4,10 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
-  PanelLeftClose,
   PanelLeftOpen,
-  Maximize2,
-  Minimize2,
   Search,
   Zap,
   GitBranch,
@@ -18,7 +15,6 @@ import {
 } from "lucide-react";
 import { CanvasArea } from "@/components/canvas-area";
 import { ReactFlowProvider } from "reactflow";
-import { NodePalette } from "@/components/node-palette";
 import { ChatPanel } from "@/components/chat-panel";
 import { CanvasList } from "@/components/canvas-list";
 import { storageService, type CanvasData } from "@/lib/storage";
@@ -186,7 +182,7 @@ export default function ContextTreePage() {
       setCanvases([]);
       setSelectedCanvas(null);
     }
-  }, [isAuthenticated, user?.email, canvasRefreshTrigger]);
+  }, [isAuthenticated, user?.email, canvasRefreshTrigger, selectedCanvas]);
 
   // Trigger canvas refresh when user authentication status changes
   useEffect(() => {
@@ -396,13 +392,13 @@ export default function ContextTreePage() {
   const handleSearchNavigate = (canvasId: string, nodeId: string) => {
     // Switch to the target canvas
     setSelectedCanvas(canvasId);
-    
+
     // Select the target node after a short delay to ensure canvas is loaded
     setTimeout(() => {
       setSelectedNode(nodeId);
       // Find the node to get its name
-      const canvas = canvases.find(c => c._id === canvasId);
-      const node = canvas?.nodes.find(n => n.id === nodeId);
+      const canvas = canvases.find((c) => c._id === canvasId);
+      const node = canvas?.nodes.find((n) => n.id === nodeId);
       if (node) {
         setSelectedNodeName(node.data.label);
       }
@@ -630,8 +626,8 @@ export default function ContextTreePage() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar - Canvas List */}
         <div
-          className={`relative transition-all duration-500 ease-out border-r border-slate-200/60 bg-gradient-to-b from-slate-50/30 to-white/50 backdrop-blur-sm flex flex-col shadow-sm overflow-hidden ${
-            leftSidebarCollapsed ? "w-16" : "w-80"
+          className={`relative transition-all duration-300 ease-out border-r border-slate-200/70 bg-white flex flex-col shadow-sm overflow-hidden ${
+            leftSidebarCollapsed ? "w-16" : "w-72"
           }`}
         >
           {leftSidebarCollapsed ? (

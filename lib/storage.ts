@@ -16,12 +16,19 @@ export interface CanvasData {
   };
   nodes: NodeData[];
   edges: EdgeData[];
+  note?: CanvasNote;
   // Viewport state for canvas position persistence
   viewportState?: {
     x: number;
     y: number;
     zoom: number;
   };
+}
+
+export interface CanvasNote {
+  content: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface NodeData {
@@ -169,6 +176,22 @@ class StorageService {
     return node?.chatMessages || [];
   }
 
+  // Canvas Note
+  saveCanvasNote(canvasId: string, note: CanvasNote): void {
+    const canvas = this.getCanvas(canvasId);
+    if (!canvas) return;
+
+    canvas.note = note;
+    this.saveCanvas(canvas);
+  }
+
+  getCanvasNote(canvasId: string): CanvasNote | null {
+    const canvas = this.getCanvas(canvasId);
+    if (!canvas?.note) return null;
+
+    return canvas.note;
+  }
+
   // Current Canvas State
   setCurrentCanvas(canvasId: string): void {
     localStorage.setItem(this.CURRENT_CANVAS_KEY, canvasId);
@@ -210,6 +233,11 @@ class StorageService {
       },
       nodes: [entryNode],
       edges: [],
+      note: {
+        content: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
     };
 
     return canvas;
@@ -264,6 +292,13 @@ class StorageService {
         // We'd need to map the old node IDs to new ones, but for simplicity,
         // we'll clear edges and let user reconnect them
       })),
+      note: originalCanvas.note
+        ? {
+            content: originalCanvas.note.content,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        : undefined,
     };
 
     // Update the primary node ID to match the first node's new ID
