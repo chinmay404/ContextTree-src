@@ -1,7 +1,8 @@
 "use client";
+
+import { useCallback, type CSSProperties } from "react";
 import { Handle, Position, type NodeProps } from "reactflow";
-import { Play, Settings } from "lucide-react";
-import { useState } from "react";
+import { Settings } from "lucide-react";
 
 interface EntryNodeData {
   label: string;
@@ -21,112 +22,77 @@ interface EntryNodeData {
 }
 
 export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
-  const [hovered, setHovered] = useState(false);
+  const handleClick = useCallback(() => {
+    data.onClick?.();
+  }, [data]);
 
-  const handleClick = () => {
-    if (data.onClick) {
-      data.onClick();
-    }
+  const isActive = selected || data.isSelected;
+  const accentColor = data.dotColor || "#2563eb";
+  const textColor = data.textColor || "#0f172a";
+  const backgroundColor = data.color || "#ffffff";
+
+  const borderColor = isActive
+    ? accentColor
+    : data.highlightTier === 1
+    ? "rgba(59,130,246,0.45)"
+    : data.highlightTier === 2
+    ? "rgba(148,163,184,0.45)"
+    : "rgba(203,213,225,0.9)";
+
+  const cardStyle: CSSProperties = {
+    backgroundColor,
+    color: textColor,
+    borderColor,
   };
 
-  // Use custom colors or defaults
-  const bgColor = data.color || "#ffffff";
-  const textColorPrimary = data.textColor || "#1e293b";
-  const accentColor = data.dotColor || "#3b82f6";
-
   return (
-    <div
-      className={`group relative transition-all duration-200 cursor-pointer ${
-        selected || data.isSelected ? "scale-105" : "hover:scale-102"
-      }`}
-      onClick={handleClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {/* Settings Button */}
-      {hovered && data.onSettingsClick && (
+    <div className="group relative min-w-[180px]" onClick={handleClick}>
+      {data.onSettingsClick && (
         <button
-          className="absolute -top-2 -right-2 z-10 bg-white border-2 border-slate-300 rounded-lg p-1.5 shadow-lg hover:shadow-xl transition-all duration-200 hover:bg-slate-50 hover:scale-110 hover:border-slate-400"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (data.onSettingsClick) data.onSettingsClick();
+          type="button"
+          className="absolute right-2 top-2 -translate-y-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+          onClick={(event) => {
+            event.stopPropagation();
+            data.onSettingsClick?.();
           }}
+          aria-label="Customize node"
         >
-          <Settings size={14} className="text-slate-700" />
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 shadow-sm transition hover:border-slate-400 hover:text-slate-700">
+            <Settings size={14} />
+          </span>
         </button>
       )}
 
-      {/* Main Card - Ultra Minimal */}
       <div
-        className={`
-          px-5 py-3.5 rounded-xl backdrop-blur-sm
-          transition-all duration-200 border-2
-          ${
-            selected || data.isSelected
-              ? "shadow-2xl scale-105"
-              : "shadow-sm hover:shadow-lg"
-          }
-        `}
-        style={{
-          backgroundColor: bgColor,
-          borderColor:
-            selected || data.isSelected ? accentColor : `${accentColor}40`,
-        }}
+        className={`rounded-md border bg-white px-4 py-3 text-sm shadow-sm transition-colors ${
+          isActive ? "shadow-md" : "hover:shadow-md"
+        }`}
+        style={cardStyle}
       >
-        <div className="flex items-center gap-3">
-          {/* Icon */}
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors duration-200"
-            style={{
-              backgroundColor: `${accentColor}20`,
-              border: `1px solid ${accentColor}40`,
-            }}
-          >
-            <Play
-              size={18}
-              style={{ color: accentColor }}
-              fill={selected || data.isSelected ? accentColor : "none"}
-            />
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div
-              className="text-sm font-semibold truncate"
-              style={{ color: textColorPrimary }}
-            >
-              {data.label}
-            </div>
-            <div
-              className="text-xs font-medium flex items-center gap-1.5 mt-0.5"
-              style={{ color: `${textColorPrimary}99` }}
-            >
-              <span>{data.model || "openai/gpt-oss-120b"}</span>
-              <span style={{ color: `${textColorPrimary}66` }}>•</span>
-              <span>Entry Node</span>
-            </div>
-          </div>
+        <div className="font-medium leading-tight text-slate-900 line-clamp-2">
+          {data.label}
         </div>
-
-        {/* Status Indicator */}
-        {(selected || data.isSelected) && (
-          <div
-            className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white shadow-lg animate-pulse"
-            style={{ backgroundColor: accentColor }}
-          />
-        )}
+        <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+          <span className="truncate">
+            {data.model || "openai/gpt-oss-120b"}
+          </span>
+          <span className="h-1 w-1 rounded-full bg-slate-300" />
+          <span>Entry</span>
+        </div>
+        <div className="mt-2 text-[11px] text-slate-500">
+          {data.messageCount} {data.messageCount === 1 ? "message" : "messages"}
+        </div>
       </div>
 
-      {/* React Flow Handles - Minimal Design */}
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-2.5 h-2.5 !bg-slate-900 border-2 border-white shadow-md transition-transform hover:scale-125"
+        className="w-2 h-2 !bg-slate-500 border border-white"
       />
       <Handle
         type="source"
         position={Position.Right}
-        className="w-2.5 h-2.5 !bg-slate-900 border-2 border-white shadow-md transition-transform hover:scale-125"
+        className="w-2 h-2 !bg-slate-500 border border-white"
       />
     </div>
   );

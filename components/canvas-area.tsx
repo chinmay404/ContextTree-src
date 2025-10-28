@@ -17,9 +17,10 @@ import ReactFlow, {
   useReactFlow,
   type NodeTypes,
   type Viewport,
+  ConnectionLineType,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { Settings, Edit2, Palette, Save, X, Sparkles } from "lucide-react";
+import { Save, X } from "lucide-react";
 
 import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
 import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
@@ -77,6 +78,51 @@ const edgeTypes = {
 };
 
 const LAYOUT_SAVE_DEBOUNCE_MS = 800;
+const EDGE_HIGHLIGHT_COLOR = "#3b82f6";
+
+const getLineageEdgeIds = (
+  canvas: CanvasData | null,
+  nodeId: string | null
+) => {
+  const highlighted = new Set<string>();
+  if (!canvas || !nodeId) return highlighted;
+
+  const nodeMap = new Map<string, NodeData>(
+    canvas.nodes.map((node) => [node._id, node])
+  );
+  const edgeMap = new Map<string, EdgeData>(
+    canvas.edges.map((edge) => [`${edge.from}::${edge.to}`, edge])
+  );
+
+  let currentId: string | undefined | null = nodeId;
+  const visited = new Set<string>();
+
+  while (currentId) {
+    if (visited.has(currentId)) break;
+    visited.add(currentId);
+
+    const currentNode = nodeMap.get(currentId);
+    if (!currentNode) break;
+
+    const parentId = (currentNode as any)?.parentNodeId;
+    if (!parentId || typeof parentId !== "string") break;
+
+    const parentEdge = edgeMap.get(`${parentId}::${currentId}`);
+    if (parentEdge) highlighted.add(parentEdge._id);
+
+    currentId = parentId;
+  }
+
+  if (highlighted.size === 0 && canvas.primaryNodeId) {
+    canvas.edges.forEach((edge) => {
+      if (edge.to === nodeId && edge.from === canvas.primaryNodeId) {
+        highlighted.add(edge._id);
+      }
+    });
+  }
+
+  return highlighted;
+};
 
 interface CanvasAreaProps {
   canvasId: string;
@@ -90,6 +136,28 @@ export function CanvasArea({
   onNodeSelect,
 }: CanvasAreaProps) {
   const reactFlowInstance = useReactFlow();
+  const handleZoomToNode = useCallback(
+    (nodeId: string) => {
+      const node = reactFlowInstance.getNode(nodeId);
+      if (!node) return;
+
+      const absolutePosition = node.positionAbsolute ?? node.position;
+      const width = node.width ?? 200;
+      const height = node.height ?? 120;
+      const centerX = absolutePosition.x + width / 2;
+      const centerY = absolutePosition.y + height / 2;
+
+      const currentViewport = reactFlowInstance.getViewport();
+      const targetZoom = Math.min(2, Math.max(0.8, currentViewport.zoom + 0.35));
+
+      reactFlowInstance.setCenter(centerX, centerY, {
+        zoom: targetZoom,
+        duration: 400,
+      });
+    },
+    [reactFlowInstance]
+  );
+
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [canvas, setCanvas] = useState<CanvasData | null>(null);
@@ -106,7 +174,6 @@ export function CanvasArea({
   const [nodeNameInput, setNodeNameInput] = useState<string>("");
   const [nodeColorInput, setNodeColorInput] = useState<string>("#A3A3A3");
   const [edgeNameInput, setEdgeNameInput] = useState<string>("");
-  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   // Canvas viewport state
   const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
@@ -597,6 +664,8 @@ export function CanvasArea({
           };
         });
 
+        const animatedEdgeIds = getLineageEdgeIds(canvasData, selectedNode);
+
         // Convert EdgeData to React Flow edges
         const flowEdges: Edge[] = canvasData.edges.map((edge) => {
           // Find source node to get its color scheme for edge styling
@@ -609,11 +678,15 @@ export function CanvasArea({
 
           // Ensure edge is visible with fallback colors
           const edgeColor = sourceColorScheme.edge || "#94a3b8";
+          const isAnimatedEdge = animatedEdgeIds.has(edge._id);
+          const strokeColor = isAnimatedEdge ? EDGE_HIGHLIGHT_COLOR : edgeColor;
 
           return {
             id: edge._id,
             source: edge.from,
             target: edge.to,
+            type: "custom",
+            animated: isAnimatedEdge,
             data: {
               ...edge.meta,
               label: edge.meta?.condition || edge.meta?.name || "Connected",
@@ -638,19 +711,20 @@ export function CanvasArea({
                   });
                 }
               },
+              baseColor: edgeColor,
+              highlightColor: EDGE_HIGHLIGHT_COLOR,
+              animated: isAnimatedEdge,
             },
-            type: "smoothstep",
             style: {
-              stroke: edgeColor,
-              strokeWidth: 2,
+              stroke: strokeColor,
+              strokeWidth: isAnimatedEdge ? 2.4 : 1.8,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: edgeColor,
-              width: 24,
-              height: 24,
+              color: strokeColor,
+              width: isAnimatedEdge ? 20 : 18,
+              height: isAnimatedEdge ? 20 : 18,
             },
-            animated: false,
             selectable: true,
             label: edge.meta?.condition || edge.meta?.name,
             labelStyle: {
@@ -761,6 +835,69 @@ export function CanvasArea({
     });
   }, [selectedNode, edges, setNodes]);
 
+  useEffect(() => {
+    const animatedEdgeIds = getLineageEdgeIds(canvas, selectedNode);
+
+    setEdges((eds) => {
+      if (!eds.length) return eds;
+
+      let changed = false;
+      const updated = eds.map((edge) => {
+        const data = (edge.data || {}) as Record<string, any>;
+        const baseColor = data.baseColor || "#94a3b8";
+        const highlightColor = data.highlightColor || EDGE_HIGHLIGHT_COLOR;
+        const shouldAnimate = animatedEdgeIds.has(edge.id);
+        const nextStroke = shouldAnimate ? highlightColor : baseColor;
+        const nextWidth = shouldAnimate ? 2.4 : 1.8;
+        const currentStroke = (edge.style as any)?.stroke || baseColor;
+        const currentWidth = (edge.style as any)?.strokeWidth || 1.8;
+
+        if (
+          edge.animated !== shouldAnimate ||
+          data.animated !== shouldAnimate ||
+          currentStroke !== nextStroke ||
+          currentWidth !== nextWidth
+        ) {
+          changed = true;
+          const nextStyle = {
+            ...(edge.style || {}),
+            stroke: nextStroke,
+            strokeWidth: nextWidth,
+          } as Record<string, any>;
+
+          if (shouldAnimate) {
+            nextStyle.strokeDasharray = "14 10";
+            nextStyle.animation = "dashMove 1s linear infinite";
+          } else {
+            delete nextStyle.strokeDasharray;
+            delete nextStyle.animation;
+          }
+
+          return {
+            ...edge,
+            animated: shouldAnimate,
+            data: { ...data, animated: shouldAnimate },
+            style: nextStyle,
+            markerEnd: edge.markerEnd
+              ? {
+                  ...edge.markerEnd,
+                  color: nextStroke,
+                }
+              : edge.markerEnd,
+          } as Edge;
+        }
+        return edge;
+      });
+
+      return changed ? updated : eds;
+    });
+  }, [canvas, selectedNode, setEdges]);
+
+  useEffect(() => {
+    if (!selectedNode) return;
+    handleZoomToNode(selectedNode);
+  }, [selectedNode, handleZoomToNode]);
+
   // Listen for forked node events from ChatPanel
   useEffect(() => {
     const handler = (e: any) => {
@@ -813,14 +950,20 @@ export function CanvasArea({
           id: edge._id,
           source: edge.from,
           target: edge.to,
-          data: edge.meta,
-          type: "smoothstep",
-          style: { stroke: "#64748b", strokeWidth: 2 },
+          data: {
+            ...edge.meta,
+            baseColor: "#94a3b8",
+            highlightColor: EDGE_HIGHLIGHT_COLOR,
+            animated: false,
+          },
+          type: "custom",
+          animated: false,
+          style: { stroke: "#94a3b8", strokeWidth: 1.8 },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: "#64748b",
-            width: 20,
-            height: 20,
+            color: "#94a3b8",
+            width: 18,
+            height: 18,
           },
         } as any,
       ]);
@@ -834,14 +977,11 @@ export function CanvasArea({
       }
     };
     window.addEventListener("canvas-select-node", selectHandler as any);
-    return () => window.removeEventListener("canvas-fork-node", handler as any);
-  }, [canvasId, setNodes, setEdges, onNodeSelect, nodes]);
-
-  useEffect(() => {
     return () => {
-      window.removeEventListener("canvas-select-node", (() => {}) as any);
+      window.removeEventListener("canvas-fork-node", handler as any);
+      window.removeEventListener("canvas-select-node", selectHandler as any);
     };
-  }, [canvasId, setNodes, setEdges, onNodeSelect]);
+  }, [canvasId, setNodes, setEdges, onNodeSelect, nodes]);
 
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
@@ -954,20 +1094,22 @@ export function CanvasArea({
               });
             }
           },
+          baseColor: edgeColor,
+          highlightColor: EDGE_HIGHLIGHT_COLOR,
+          animated: false,
         },
         type: "custom",
         style: {
           stroke: edgeColor,
-          strokeWidth: 2,
-          strokeOpacity: 0.8,
+          strokeWidth: 1.8,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: edgeColor,
-          width: 20,
-          height: 20,
+          width: 18,
+          height: 18,
         },
-        animated: true,
+        animated: false,
         selectable: true,
         label: newEdge.meta?.condition || "Connected",
         labelStyle: {
@@ -982,24 +1124,7 @@ export function CanvasArea({
         },
       };
 
-      setEdges((eds) => {
-        const newEdges = addEdge(flowEdge, eds);
-        // Animate the new edge
-        setTimeout(() => {
-          setEdges((currentEdges) =>
-            currentEdges.map((e) =>
-              e.id === flowEdge.id
-                ? {
-                    ...e,
-                    animated: true,
-                    style: { ...e.style, strokeOpacity: 1 },
-                  }
-                : e
-            )
-          );
-        }, 100);
-        return newEdges;
-      });
+      setEdges((eds) => addEdge(flowEdge, eds));
     },
     [canvas, setEdges, canvasId]
   );
@@ -1115,96 +1240,6 @@ export function CanvasArea({
     [canvasSettings.autoSave, scheduleLayoutPatch]
   );
 
-  // Highlight & animate edges: direct (tier 1) + neighbor edges (tier 2)
-  useEffect(() => {
-    if (!selectedNode) {
-      setEdges((eds) =>
-        eds.map((e) => ({
-          ...e,
-          animated: false,
-          style: {
-            ...(e.style || {}),
-            stroke: e.style?.stroke || "#64748b",
-            strokeWidth: 2,
-            strokeOpacity: 1,
-            filter: "none",
-            strokeDasharray: undefined,
-          },
-        }))
-      );
-      return;
-    }
-
-    setEdges((eds) => {
-      const directEdgeIds = new Set<string>();
-      const neighborNodes = new Set<string>();
-
-      // Collect direct edges & neighbor nodes
-      for (const e of eds) {
-        if (e.source === selectedNode || e.target === selectedNode) {
-          directEdgeIds.add(e.id);
-          neighborNodes.add(e.source === selectedNode ? e.target : e.source);
-        }
-      }
-
-      // Second-level edges (connected to neighbor nodes but not direct)
-      const secondLevelEdgeIds = new Set<string>();
-      for (const e of eds) {
-        if (directEdgeIds.has(e.id)) continue;
-        if (neighborNodes.has(e.source) || neighborNodes.has(e.target)) {
-          secondLevelEdgeIds.add(e.id);
-        }
-      }
-
-      return eds.map((e) => {
-        const stroke = (e.style as any)?.stroke || "#64748b";
-        const isDirect = directEdgeIds.has(e.id);
-        const isSecond = !isDirect && secondLevelEdgeIds.has(e.id);
-        if (!isDirect && !isSecond) {
-          return {
-            ...e,
-            animated: false,
-            style: {
-              ...e.style,
-              stroke,
-              strokeWidth: 2,
-              filter: "none",
-              strokeDasharray: undefined,
-            },
-          };
-        }
-        if (isDirect) {
-          return {
-            ...e,
-            animated: true,
-            style: {
-              ...e.style,
-              stroke,
-              strokeWidth: 3,
-              strokeOpacity: 1,
-              filter:
-                "drop-shadow(0 0 6px rgba(100,116,139,0.55)) drop-shadow(0 0 2px rgba(100,116,139,0.8))",
-              strokeDasharray: undefined,
-            },
-          };
-        }
-        // second-level
-        return {
-          ...e,
-          animated: true,
-          style: {
-            ...e.style,
-            stroke,
-            strokeWidth: 2.5,
-            strokeOpacity: 0.8,
-            filter: "drop-shadow(0 0 4px rgba(100,116,139,0.4))",
-            strokeDasharray: "6 4",
-          },
-        };
-      });
-    });
-  }, [selectedNode, setEdges]);
-
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
@@ -1314,7 +1349,15 @@ export function CanvasArea({
 
       setNodes((nds) => [...nds, flowNode]);
     },
-    [canvas, setNodes, onNodeSelect, canvasId, reactFlowInstance]
+    [
+      canvas,
+      setNodes,
+      onNodeSelect,
+      canvasId,
+      reactFlowInstance,
+      scheduleCanvasSave,
+      selectedNode,
+    ]
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -1581,11 +1624,13 @@ export function CanvasArea({
         nodeTypes={currentNodeTypes}
         edgeTypes={edgeTypes}
         fitView
-        className="bg-white"
+        fitViewOptions={{ padding: 0.12, includeHiddenNodes: true }}
+        className="bg-slate-50"
         multiSelectionKeyCode="Shift"
         selectionKeyCode="Shift"
         selectNodesOnDrag={true}
-        panOnDrag={[1, 2]}
+        panOnDrag={true}
+  connectionLineType={ConnectionLineType.SmoothStep}
         onInit={(instance) => {
           // Restore viewport state if available
           if (canvas?.viewportState) {
@@ -1606,40 +1651,33 @@ export function CanvasArea({
           setViewport(newViewport);
         }}
         onMoveEnd={handleMoveEnd}
-        // Node hover events removed since settings button is hidden
-        // onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
-        // onNodeMouseLeave={(_, node) => setHoveredNodeId(null)}
         connectionLineStyle={{
-          stroke: "#3b82f6",
-          strokeWidth: 3,
-          strokeDasharray: "5,5",
+          stroke: "#94a3b8",
+          strokeWidth: 2,
         }}
         defaultEdgeOptions={{
-          type: "smoothstep",
+          type: "custom",
           style: {
-            stroke: "#64748b",
+            stroke: "#94a3b8",
             strokeWidth: 2,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: "#64748b",
-            width: 24,
-            height: 24,
+            color: "#94a3b8",
+            width: 18,
+            height: 18,
           },
-          animated: false,
         }}
-        panOnDrag={true}
         selectionOnDrag={false}
         panOnScroll={true}
         zoomOnScroll={true}
         zoomOnPinch={true}
         zoomOnDoubleClick={true}
-        preventScrolling={true}
+        preventScrolling={false}
         nodesDragOnlyWhenActive={false}
         snapToGrid={false}
-        snapGrid={[15, 15]}
-        minZoom={0.1}
-        maxZoom={4}
+        minZoom={0.2}
+        maxZoom={2.5}
         deleteKeyCode="Delete"
       >
         <Controls className="!bg-white/95 !backdrop-blur-sm !border-slate-200/80 !shadow-lg !rounded-xl" />
@@ -1660,23 +1698,6 @@ export function CanvasArea({
             <span>+ Click or Drag to select multiple nodes</span>
           </div>
         </div>
-
-        {/* Node settings button on hover - Hidden per user request */}
-        {/* {hoveredNodeId && (
-          <button
-            className="absolute z-50 bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl p-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:bg-white"
-            style={{ left: 40, top: 40 }}
-            onClick={() => {
-              setEditingNodeId(hoveredNodeId);
-              const node = nodes.find((n) => n.id === hoveredNodeId);
-              setNodeNameInput((node as any)?.data?.label || "");
-              setNodeColorInput(String(node?.style?.background || "#6b7280"));
-            }}
-          >
-            <Edit2 size={16} className="text-slate-600" />
-          </button>
-        )} */}
-
         {/* Improved Node Customization Modal */}
         {editingNodeId && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-2xl shadow-2xl p-6 z-50 min-w-[360px]">

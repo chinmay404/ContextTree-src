@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getBezierPath,
+  getSmoothStepPath,
   type EdgeProps,
 } from "reactflow";
 
@@ -12,10 +11,11 @@ interface CustomEdgeMinimalData {
   label?: string;
   condition?: string;
   animated?: boolean;
+  baseColor?: string;
+  highlightColor?: string;
 }
 
 export function CustomEdgeMinimal({
-  id,
   sourceX,
   sourceY,
   targetX,
@@ -26,49 +26,41 @@ export function CustomEdgeMinimal({
   data,
   selected,
   markerEnd,
+  animated,
 }: EdgeProps<CustomEdgeMinimalData>) {
-  const [isHovered, setIsHovered] = useState(false);
-
-  const [edgePath, labelX, labelY] = getBezierPath({
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
     targetPosition,
+    borderRadius: 24,
   });
 
-  // Ultra-minimal edge styling - barely visible by default
+  const strokeColor = (style.stroke as string | undefined) || "#94a3b8";
+  const isAnimated = animated || data?.animated;
   const edgeStyle = {
     ...style,
-    strokeWidth: isHovered ? 2 : selected ? 1.5 : 1,
-    stroke: isHovered
-      ? "#94a3b8" // slate-400 on hover
-      : selected
-      ? "#64748b" // slate-500 when selected
-      : style.stroke || "#f1f5f9", // slate-100 - barely visible
-    strokeOpacity: isHovered ? 1 : selected ? 1 : 0.3,
-    filter:
-      isHovered || selected
-        ? "drop-shadow(0 1px 3px rgba(15, 23, 42, 0.08))"
-        : "none",
-    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+    stroke: strokeColor,
+    strokeWidth: selected ? 2.6 : isAnimated ? 2.2 : 1.6,
+    opacity: selected ? 1 : isAnimated ? 0.96 : 0.88,
+    strokeLinecap: "round",
+    ...(isAnimated
+      ? {
+          strokeDasharray: "14 10",
+          animation: "dashMove 1s linear infinite",
+        }
+      : {}),
   };
 
-  const label = data?.label || data?.condition || "";
+  const label = data?.label || data?.condition;
+  const labelHighlight = data?.highlightColor || strokeColor;
 
   return (
     <>
-      <BaseEdge
-        path={edgePath}
-        markerEnd={markerEnd}
-        style={edgeStyle}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      />
-
-      {/* Only show label on HOVER (not on selection) - completely hidden by default */}
-      {label && isHovered && (
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={edgeStyle} />
+      {label && (
         <EdgeLabelRenderer>
           <div
             style={{
@@ -78,8 +70,21 @@ export function CustomEdgeMinimal({
             }}
             className="nodrag nopan"
           >
-            {/* Minimal Edge Label - Small and Subtle - Only on Hover */}
-            <div className="px-2.5 py-1 rounded-md backdrop-blur-sm font-medium text-[11px] bg-slate-900 text-white shadow-lg animate-in fade-in duration-150">
+            <div
+              className={`rounded border bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm ${
+                isAnimated
+                  ? "border-blue-200/80 text-slate-700 shadow"
+                  : "border-slate-200"
+              }`}
+              style={
+                isAnimated
+                  ? {
+                      boxShadow: "0 4px 12px rgba(59, 130, 246, 0.08)",
+                      borderColor: `${labelHighlight}33`,
+                    }
+                  : undefined
+              }
+            >
               {label}
             </div>
           </div>
