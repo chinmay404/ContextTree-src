@@ -180,9 +180,31 @@ class StorageService {
   saveCanvasNote(canvasId: string, note: CanvasNote): void {
     const canvas = this.getCanvas(canvasId);
     if (!canvas) return;
-
+    // Update local copy immediately for snappy UI
     canvas.note = note;
     this.saveCanvas(canvas);
+
+    // Fire-and-forget: persist to server-side DB if possible
+    try {
+      if (typeof window !== "undefined" && window.fetch) {
+        // Don't block UI; attempt to persist note to server API
+        fetch(`/api/canvases/${canvasId}/note`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ note }),
+        }).then(async (res) => {
+          if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            console.warn("Failed to persist canvas note to server:", res.status, text);
+          }
+        }).catch((err) => {
+          console.warn("Failed to persist canvas note to server:", err);
+        });
+      }
+    } catch (err) {
+      // swallow errors; localStorage copy is authoritative until sync
+      console.error("saveCanvasNote sync error:", err);
+    }
   }
 
   getCanvasNote(canvasId: string): CanvasNote | null {

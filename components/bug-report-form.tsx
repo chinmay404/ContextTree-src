@@ -126,7 +126,7 @@ export function BugReportForm({ children }: BugReportFormProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 transition-all w-9 h-9 relative group"
+                  className="relative w-9 h-9 rounded-full bg-white/50 text-orange-600 transition-all hover:bg-white/70 hover:text-orange-700 dark:bg-slate-900/50 dark:hover:bg-slate-800/60 group"
                 >
                   <Bug className="h-[18px] w-[18px] transition-transform group-hover:scale-110" />
                   <span className="sr-only">Report Bug</span>

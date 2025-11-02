@@ -106,6 +106,7 @@ const ChatPanelInternal = ({
   const [showScrollToLatest, setShowScrollToLatest] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastSelectedNodeRef = useRef<string | null>(null);
+  const [nodeLineage, setNodeLineage] = useState<Array<{id: string, name: string}>>([]);
 
   // Ensure client-side rendering
   useEffect(() => {
@@ -219,24 +220,74 @@ const ChatPanelInternal = ({
     }
   }, [appendToNote, selectionPrompt]);
 
-  // Load canvas data to detect forked nodes (client-side only) - DISABLED TO PREVENT INFINITE LOOP
-  // useEffect(() => {
-  //   if (!selectedCanvas || typeof window === "undefined") return;
+  const handleAskSelectedSnippet = useCallback(() => {
+    if (!selectionPrompt?.text.trim()) return;
+    // Put selection into the input area for the user to edit/submit
+    setInputValue(selectionPrompt.text);
+    // Close selection prompt and focus textarea
+    setSelectionPrompt(null);
+    setTimeout(() => {
+      try {
+        textareaRef.current?.focus();
+        // Auto-resize after setting value
+        if (textareaRef.current) autoResizeTextarea(textareaRef.current);
+      } catch (e) {
+        // noop
+      }
+    }, 50);
+  }, [selectionPrompt]);
 
-  //   const loadCanvas = async () => {
-  //     try {
-  //       const response = await fetch(`/api/canvases/${selectedCanvas}`);
-  //       if (response.ok) {
-  //         const data = await response.json();
-  //         setCanvasData(data.canvas);
-  //       }
-  //     } catch (error) {
-  //       console.error("Failed to load canvas data:", error);
-  //     }
-  //   };
+  // Load canvas data to detect forked nodes and build lineage (client-side only)
+  useEffect(() => {
+    if (!selectedCanvas || typeof window === "undefined") return;
 
-  //   loadCanvas();
-  // }, [selectedCanvas]);
+    const loadCanvas = async () => {
+      try {
+        const response = await fetch(`/api/canvases/${selectedCanvas}`);
+        if (response.ok) {
+          const data = await response.json();
+          setCanvasData(data.canvas);
+        }
+      } catch (error) {
+        console.error("Failed to load canvas data:", error);
+      }
+    };
+
+    loadCanvas();
+  }, [selectedCanvas]);
+
+  // Build node lineage (A => B => C => D) when node or canvas data changes
+  useEffect(() => {
+    if (!selectedNode || !canvasData?.nodes) {
+      setNodeLineage([]);
+      return;
+    }
+
+    const buildLineage = (nodeId: string): Array<{id: string, name: string}> => {
+      const lineage: Array<{id: string, name: string}> = [];
+      let currentId: string | undefined = nodeId;
+      const visited = new Set<string>(); // Prevent infinite loops
+
+      while (currentId && !visited.has(currentId)) {
+        visited.add(currentId);
+        const node = canvasData.nodes.find((n: any) => n._id === currentId);
+        
+        if (node) {
+          lineage.unshift({
+            id: node._id,
+            name: node.name || `Node ${node._id.slice(-6)}`,
+          });
+          currentId = node.parentNodeId;
+        } else {
+          break;
+        }
+      }
+
+      return lineage;
+    };
+
+    setNodeLineage(buildLineage(selectedNode));
+  }, [selectedNode, canvasData]);
 
   // Function to get nodes forked from a specific message
   const getForkedNodes = useCallback(
@@ -1017,7 +1068,8 @@ const ChatPanelInternal = ({
             const nodeTypeName =
               node.type.charAt(0).toUpperCase() + node.type.slice(1);
 
-            // Display short node ID for identification
+            // Display node name or short ID
+            const displayName = node.name || `${nodeTypeName}`;
             const shortNodeId = node._id.slice(-8);
 
             return (
@@ -1025,24 +1077,20 @@ const ChatPanelInternal = ({
                 key={node._id}
                 onClick={() => {
                   // Navigate to the forked node
-                  props.onNodeSelect?.(
+                  onNodeSelect?.(
                     node._id,
                     node.name || `${nodeTypeName} Node`
                   );
                   toast({
                     title: "Navigated to branch",
-                    description: `Switched to ${
-                      node.name || nodeTypeName
-                    } node (${shortNodeId})`,
+                    description: `Switched to ${displayName}`,
                   });
                 }}
                 className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-                title={`Navigate to ${node.name || nodeTypeName} node (ID: ${
-                  node._id
-                }) - ${node.chatMessages?.length || 0} messages`}
+                title={`Navigate to ${displayName} - ${node.chatMessages?.length || 0} messages`}
               >
                 <span className="text-xs">{nodeTypeIcon}</span>
-                <span className="font-mono text-xs">{shortNodeId}</span>
+                <span className="font-medium">{displayName}</span>
               </button>
             );
           })}
@@ -1135,7 +1183,7 @@ const ChatPanelInternal = ({
         <div
           className={`flex ${
             isUser ? "justify-end" : "justify-start"
-          } mb-6 px-2`}
+          } mb-8 px-3`}
         >
           <div
             className={`w-full min-w-0 max-w-full ${
@@ -1158,19 +1206,19 @@ const ChatPanelInternal = ({
               </div>
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div
-                  className={`rounded-xl px-5 py-4 transition-all duration-300 overflow-hidden ${
+                  className={`rounded-2xl px-6 py-5 transition-all duration-300 overflow-hidden ${
                     isUser
                       ? "bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-lg hover:shadow-xl"
-                      : "bg-white/95 backdrop-blur-sm border border-slate-200/60 text-slate-800 shadow-md hover:shadow-lg hover:bg-white"
+                      : "bg-white border border-slate-200/80 text-slate-800 shadow-md hover:shadow-lg hover:border-slate-300/80"
                   }`}
                   data-chat-message-body="true"
                 >
                   {isUser ? (
-                    <p className="text-sm leading-7 whitespace-pre-wrap break-words overflow-wrap-anywhere">
+                    <p className="text-[15px] leading-[1.75] whitespace-pre-wrap break-words overflow-wrap-anywhere font-normal">
                       {message.content}
                     </p>
                   ) : (
-                    <div className="text-sm leading-7 overflow-hidden">
+                    <div className="text-[15px] leading-[1.75] overflow-hidden">
                       {parseThinkingContent(message.content).map(
                         (part, index) => (
                           <div key={index}>
@@ -1217,28 +1265,28 @@ const ChatPanelInternal = ({
                                 )}
                               </div>
                             ) : part.content.trim() ? (
-                              <div className="prose prose-sm max-w-none break-words overflow-hidden prose-slate prose-headings:font-normal prose-headings:text-slate-900 prose-headings:break-words prose-p:text-slate-700 prose-p:leading-7 prose-p:break-words prose-p:overflow-wrap-anywhere prose-strong:text-slate-900 prose-strong:font-semibold prose-strong:break-words prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:break-words prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-pre:overflow-x-auto prose-img:rounded-lg prose-img:border prose-img:border-slate-200/60 prose-img:bg-white prose-img:max-w-full prose-li:leading-7 prose-li:break-words prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-slate-600 prose-blockquote:break-words prose-a:break-words">
+                              <div className="prose prose-base max-w-none break-words overflow-hidden prose-slate prose-headings:font-semibold prose-headings:text-slate-900 prose-headings:break-words prose-p:text-slate-800 prose-p:leading-[1.75] prose-p:break-words prose-p:overflow-wrap-anywhere prose-p:text-[15px] prose-strong:text-slate-900 prose-strong:font-semibold prose-strong:break-words prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:break-words prose-code:text-[14px] prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-pre:overflow-x-auto prose-pre:text-[14px] prose-img:rounded-lg prose-img:border prose-img:border-slate-200/60 prose-img:bg-white prose-img:max-w-full prose-li:leading-[1.75] prose-li:break-words prose-li:text-[15px] prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:pl-5 prose-blockquote:py-1 prose-blockquote:italic prose-blockquote:text-slate-700 prose-blockquote:break-words prose-a:break-words prose-a:text-blue-600">
                                 <ReactMarkdown
                                   remarkPlugins={[remarkGfm]}
                                   rehypePlugins={[rehypeHighlight]}
                                   components={{
                                     h1: ({ children }) => (
-                                      <h1 className="text-xl font-semibold text-slate-900 mt-6 mb-3 first:mt-0 leading-tight break-words overflow-wrap-anywhere">
+                                      <h1 className="text-2xl font-semibold text-slate-900 mt-6 mb-4 first:mt-0 leading-tight break-words overflow-wrap-anywhere">
                                         {children}
                                       </h1>
                                     ),
                                     h2: ({ children }) => (
-                                      <h2 className="text-lg font-semibold text-slate-900 mt-5 mb-3 first:mt-0 leading-tight break-words overflow-wrap-anywhere">
+                                      <h2 className="text-xl font-semibold text-slate-900 mt-6 mb-3 first:mt-0 leading-tight break-words overflow-wrap-anywhere">
                                         {children}
                                       </h2>
                                     ),
                                     h3: ({ children }) => (
-                                      <h3 className="text-base font-semibold text-slate-900 mt-4 mb-2 first:mt-0 leading-snug break-words overflow-wrap-anywhere">
+                                      <h3 className="text-lg font-semibold text-slate-900 mt-5 mb-3 first:mt-0 leading-snug break-words overflow-wrap-anywhere">
                                         {children}
                                       </h3>
                                     ),
                                     p: ({ children }) => (
-                                      <p className="text-slate-700 mb-4 last:mb-0 font-normal leading-7 break-words overflow-wrap-anywhere text-[15px]">
+                                      <p className="text-slate-800 mb-4 last:mb-0 font-normal leading-[1.75] break-words overflow-wrap-anywhere text-[15px]">
                                         {children}
                                       </p>
                                     ),
@@ -1254,7 +1302,7 @@ const ChatPanelInternal = ({
 
                                         return (
                                           <span className="relative inline-block group">
-                                            <code className="bg-slate-100 text-slate-800 px-1.5 py-1 rounded text-[13px] font-mono font-medium">
+                                            <code className="bg-slate-100 text-slate-800 px-2 py-1 rounded-md text-[14px] font-mono font-medium">
                                               {children}
                                             </code>
                                             <button
@@ -1322,8 +1370,8 @@ const ChatPanelInternal = ({
                                         .substr(2, 9)}`;
 
                                       return (
-                                        <div className="relative group my-4">
-                                          <pre className="bg-slate-50 border border-slate-200/80 rounded-lg p-4 pr-14 overflow-x-auto text-[13px] leading-6 font-mono shadow-sm">
+                                        <div className="relative group my-5">
+                                          <pre className="bg-slate-50 border border-slate-200/80 rounded-lg p-5 pr-14 overflow-x-auto text-[14px] leading-[1.6] font-mono shadow-sm">
                                             {children}
                                           </pre>
                                           <button
@@ -1353,17 +1401,17 @@ const ChatPanelInternal = ({
                                       );
                                     },
                                     ul: ({ children }) => (
-                                      <ul className="list-disc list-outside ml-5 space-y-2 text-slate-700 mb-4">
+                                      <ul className="list-disc list-outside ml-6 space-y-2.5 text-slate-800 mb-5">
                                         {children}
                                       </ul>
                                     ),
                                     ol: ({ children }) => (
-                                      <ol className="list-decimal list-outside ml-5 space-y-2 text-slate-700 mb-4">
+                                      <ol className="list-decimal list-outside ml-6 space-y-2.5 text-slate-800 mb-5">
                                         {children}
                                       </ol>
                                     ),
                                     li: ({ children }) => (
-                                      <li className="text-slate-700 leading-7 break-words overflow-wrap-anywhere pl-1.5">
+                                      <li className="text-slate-800 leading-[1.75] break-words overflow-wrap-anywhere pl-2 text-[15px]">
                                         {children}
                                       </li>
                                     ),
@@ -1400,12 +1448,12 @@ const ChatPanelInternal = ({
                                       </tr>
                                     ),
                                     th: ({ children }) => (
-                                      <th className="px-4 py-3 font-semibold text-slate-800 text-xs uppercase tracking-wider break-words">
+                                      <th className="px-5 py-3.5 font-semibold text-slate-800 text-sm uppercase tracking-wider break-words">
                                         {children}
                                       </th>
                                     ),
                                     td: ({ children }) => (
-                                      <td className="px-4 py-3 text-slate-700 leading-relaxed align-top">
+                                      <td className="px-5 py-3.5 text-slate-800 leading-[1.7] align-top text-[15px]">
                                         <div className="break-words overflow-wrap-anywhere">
                                           {children}
                                         </div>
@@ -1422,7 +1470,7 @@ const ChatPanelInternal = ({
                                       <hr className="my-6 border-t-2 border-slate-200" />
                                     ),
                                     blockquote: ({ children }) => (
-                                      <blockquote className="border-l-4 border-slate-400 pl-5 pr-4 py-3 bg-slate-50/50 rounded-r-md my-4 italic text-slate-600 leading-7">
+                                      <blockquote className="border-l-4 border-slate-400 pl-6 pr-5 py-3 bg-slate-50/50 rounded-r-md my-5 italic text-slate-700 leading-[1.75] text-[15px]">
                                         {children}
                                       </blockquote>
                                     ),
@@ -1637,20 +1685,29 @@ const ChatPanelInternal = ({
             left: `${selectionPrompt.position.left}px`,
           }}
         >
-          <button
-            onClick={handleAcceptSelectedSnippet}
-            className="group flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg transition-all duration-150 hover:scale-105 hover:border-slate-300 hover:bg-slate-50"
-            aria-label="Add selection to note"
-          >
-            <Plus className="h-4 w-4 transition-colors duration-150 group-hover:text-slate-900" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleAskSelectedSnippet}
+              className="hidden sm:inline-flex items-center gap-2 rounded-full bg-black text-white px-3 py-1 text-xs font-medium shadow-lg hover:opacity-95 transition-opacity"
+              aria-label="Ask ChatGPT about selection"
+            >
+              Ask ChatGPT
+            </button>
+            <button
+              onClick={handleAcceptSelectedSnippet}
+              className="group flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg transition-all duration-150 hover:scale-105 hover:border-slate-300 hover:bg-slate-50"
+              aria-label="Add selection to note"
+            >
+              <Plus className="h-4 w-4 transition-colors duration-150 group-hover:text-slate-900" />
+            </button>
+          </div>
         </div>
       )}
       <div
-        className={`h-full flex flex-col ${
+        className={`h-full flex flex-col transition-all duration-300 ease-in-out ${
           isFullscreen
             ? "bg-slate-50"
-            : "bg-white/95 backdrop-blur-sm border-l border-slate-200/80 shadow-sm"
+            : "bg-white border-l border-slate-200/80 shadow-sm"
         }`}
       >
         {/* Collapsed State */}
@@ -1727,10 +1784,10 @@ const ChatPanelInternal = ({
           <>
             {/* Header */}
             <div
-              className={`flex-shrink-0 border-b border-slate-200/80 ${
+              className={`flex-shrink-0 border-b border-slate-200/80 bg-white ${
                 isFullscreen
-                  ? "p-6 bg-white/95 backdrop-blur-sm shadow-sm"
-                  : "p-4"
+                  ? "p-6 shadow-sm"
+                  : "p-5"
               }`}
             >
               <div className="flex items-center justify-between">
@@ -1784,6 +1841,53 @@ const ChatPanelInternal = ({
                         : "Node Chat"}
                     </h3>
                   </div>
+
+                  {/* Node Lineage Breadcrumb */}
+                  {nodeLineage.length > 1 && (
+                    <div className="flex items-center gap-2 mb-2 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent pb-1">
+                      <div className="flex items-center gap-2 whitespace-nowrap">
+                        {nodeLineage.map((node, index) => (
+                          <div key={node.id} className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                if (node.id !== selectedNode && onNodeSelect) {
+                                  onNodeSelect(node.id, node.name);
+                                  toast({
+                                    title: "Navigated to node",
+                                    description: `Switched to ${node.name}`,
+                                  });
+                                }
+                              }}
+                              className={`text-xs px-2.5 py-1 rounded-full transition-all duration-200 ${
+                                node.id === selectedNode
+                                  ? "bg-blue-100 text-blue-700 font-medium"
+                                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800"
+                              }`}
+                              title={`Navigate to ${node.name}`}
+                            >
+                              {node.name}
+                            </button>
+                            {index < nodeLineage.length - 1 && (
+                              <svg
+                                className="w-3 h-3 text-slate-400 flex-shrink-0"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <p className="text-sm text-slate-500 font-light">
                     {selectedNode
                       ? AVAILABLE_MODELS.find(
@@ -1905,15 +2009,15 @@ const ChatPanelInternal = ({
                       className="h-full"
                       viewportRef={scrollViewportRef}
                       viewportClassName={`h-full ${
-                        isFullscreen ? "p-6" : "p-4"
+                        isFullscreen ? "px-8 py-6" : "px-6 py-5"
                       }`}
                     >
                       <div
-                        className={`space-y-1 pb-32 ${
-                          isFullscreen ? "max-w-4xl mx-auto" : ""
+                        className={`space-y-2 pb-32 ${
+                          isFullscreen && !isNotesOpen ? "max-w-4xl mx-auto" : ""
                         } ${
                           isFullscreen && isNotesOpen
-                            ? "lg:pr-[22rem]"
+                            ? "mr-[420px]"
                             : ""
                         }`}
                         onMouseUp={handleTextSelection}
@@ -1950,58 +2054,6 @@ const ChatPanelInternal = ({
                             </Card>
                           </div>
                         )}
-
-                        {/* Show fork origin info if this node was forked */}
-                        {canvasData?.nodes &&
-                          selectedNode &&
-                          (() => {
-                            const currentNode = canvasData.nodes.find(
-                              (n: any) => n._id === selectedNode
-                            );
-                            if (
-                              currentNode?.parentNodeId &&
-                              currentNode?.forkedFromMessageId
-                            ) {
-                              const parentNode = canvasData.nodes.find(
-                                (n: any) => n._id === currentNode.parentNodeId
-                              );
-                              const shortCurrentId = selectedNode.slice(-8);
-                              const shortParentId =
-                                currentNode.parentNodeId.slice(-8);
-                              const shortMessageId =
-                                currentNode.forkedFromMessageId.slice(-8);
-
-                              return (
-                                <div className="mb-2 p-2 bg-slate-50/60 border border-slate-100 rounded-md">
-                                  <div className="flex items-center gap-2 text-xs text-slate-600">
-                                    <GitBranch
-                                      size={10}
-                                      className="text-slate-500"
-                                    />
-                                    <span>Forked from</span>
-                                    <button
-                                      onClick={() => {
-                                        props.onNodeSelect?.(
-                                          currentNode.parentNodeId,
-                                          parentNode?.name || "Parent Node"
-                                        );
-                                        toast({
-                                          title: "Navigated to parent",
-                                          description: `Switched to parent node (${shortParentId})`,
-                                        });
-                                      }}
-                                      className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs hover:bg-slate-200 transition-colors"
-                                      title={`Navigate to parent node: ${currentNode.parentNodeId}`}
-                                    >
-                                      {parentNode?.name || "Parent"} (
-                                      {shortParentId})
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
 
                         {loadingNodes.has(selectedNode) ? (
                           <div className="text-center py-16">
@@ -2054,8 +2106,8 @@ const ChatPanelInternal = ({
                       </div>
                     </ScrollArea>
                     {isNotesOpen && isFullscreen && (
-                      <div className="pointer-events-auto absolute inset-y-0 right-0 z-30 flex w-full max-w-sm border-l border-slate-200/80 bg-white/95 shadow-xl">
-                        <div className="flex h-full w-full flex-col gap-4 p-5 backdrop-blur-sm">
+                      <div className="pointer-events-auto absolute inset-y-0 right-0 z-30 flex w-[400px] border-l border-slate-200/80 bg-white shadow-xl">
+                        <div className="flex h-full w-full flex-col gap-4 p-6">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                               <StickyNote size={18} className="text-slate-500" />
@@ -2086,7 +2138,9 @@ const ChatPanelInternal = ({
                       </div>
                     )}
                     {showScrollToLatest && (
-                      <div className="pointer-events-none absolute bottom-[120px] right-4 z-20">
+                      <div className={`pointer-events-none absolute bottom-[120px] z-20 ${
+                        isFullscreen && isNotesOpen ? "right-[440px]" : "right-4"
+                      }`}>
                         <Button
                           onClick={() => {
                             scrollToBottom("smooth");
@@ -2108,14 +2162,16 @@ const ChatPanelInternal = ({
 
                   {/* Model Selection & Input Area */}
                   <div
-                    className={`absolute bottom-0 left-0 right-0 bg-transparent ${
+                    className={`absolute bottom-0 left-0 bg-transparent ${
                       isFullscreen ? "p-6" : "p-4"
-                    } z-10`}
+                    } z-10 ${
+                      isFullscreen && isNotesOpen ? "right-[420px]" : "right-0"
+                    }`}
                   >
                     {/* Floating Glass Message Input */}
                     <div
                       className={`relative ${
-                        isFullscreen ? "max-w-4xl mx-auto" : ""
+                        isFullscreen && !isNotesOpen ? "max-w-4xl mx-auto" : ""
                       }`}
                     >
                       {/* Floating glass input container */}

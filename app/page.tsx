@@ -2,17 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Plus,
-  PanelLeftOpen,
-  Search,
-  Zap,
-  GitBranch,
-  FileText,
-  Command,
-  Settings,
-  Sparkles,
-} from "lucide-react";
+import { Plus, PanelLeftOpen, Search, Command, Settings } from "lucide-react";
 import { CanvasArea } from "@/components/canvas-area";
 import { ReactFlowProvider } from "reactflow";
 import { ChatPanel } from "@/components/chat-panel";
@@ -24,7 +14,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { LandingPage } from "@/components/landing-page";
-import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
@@ -42,13 +31,13 @@ export default function ContextTreePage() {
   >();
   const [canvases, setCanvases] = useState<CanvasData[]>([]);
   const [selectedCanvas, setSelectedCanvas] = useState<string | null>(null);
-  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(true); // Auto-collapsed by default
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
   const [chatFullscreen, setChatFullscreen] = useState(false);
-  const [rightSidebarWidth, setRightSidebarWidth] = useState<number>(384); // default ~ w-96
+  const [rightSidebarWidth, setRightSidebarWidth] = useState<number>(520); // Increased for better readability
   const [isResizingRight, setIsResizingRight] = useState(false);
   const resizeStartXRef = useRef(0);
-  const resizeStartWidthRef = useRef(384);
+  const resizeStartWidthRef = useRef(520);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Keyboard shortcut for left sidebar toggle (Ctrl/Cmd + Shift + L)
@@ -87,8 +76,8 @@ export default function ContextTreePage() {
       if (chatFullscreen || rightSidebarCollapsed || isMobile) return;
       const delta = resizeStartXRef.current - e.clientX; // moving left increases width
       const newWidth = Math.min(
-        900,
-        Math.max(300, resizeStartWidthRef.current + delta)
+        1100, // Increased max width for better content viewing
+        Math.max(420, resizeStartWidthRef.current + delta) // Increased min width for readability
       );
       setRightSidebarWidth(newWidth);
     };
@@ -421,134 +410,83 @@ export default function ContextTreePage() {
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
-      {/* Enhanced Header / Navbar */}
-      <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-50">
-        <div className="px-6 py-3">
-          <div className="flex items-center justify-between">
-            {/* Left Section - Logo & Brand */}
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 text-slate-900 transition-transform duration-300 hover:scale-110 hover:rotate-6 cursor-pointer">
-                  <svg
-                    width="32"
-                    height="32"
-                    viewBox="0 0 100 100"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="drop-shadow-sm"
-                  >
-                    <rect
-                      x="35"
-                      y="10"
-                      width="30"
-                      height="20"
-                      rx="4"
-                      ry="4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                    />
-                    <path
-                      d="M50 30 L50 45 M35 55 L50 45 L65 55"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                    <rect
-                      x="15"
-                      y="65"
-                      width="25"
-                      height="20"
-                      rx="4"
-                      ry="4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                    />
-                    <rect
-                      x="60"
-                      y="65"
-                      width="25"
-                      height="20"
-                      rx="4"
-                      ry="4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
-                    ContextTree
-                  </h1>
-                  <p className="text-xs text-slate-500 -mt-0.5">
-                    Visual Context Builder
-                  </p>
-                </div>
+      {/* Enhanced Header / Navbar - Hidden in fullscreen mode */}
+      {!chatFullscreen && (
+        <header className="sticky top-0 z-[100] px-4 pt-6 pb-4 pointer-events-none">
+          <div className={`flex transition-all duration-300 ${
+            selectedNode && !rightSidebarCollapsed && !isMobile
+              ? "justify-start"
+              : "justify-center"
+          }`}>
+            <div className={`pointer-events-auto flex items-center justify-between gap-4 rounded-full border border-white/60 bg-white/70 px-6 py-3 shadow-lg backdrop-blur-2xl supports-[backdrop-filter]:bg-white/60 dark:border-slate-700/60 dark:bg-slate-900/60 transition-all duration-300 ${
+              selectedNode && !rightSidebarCollapsed && !isMobile
+                ? "w-auto"
+                : "w-full max-w-5xl"
+            }`}>
+            {/* Logo & Brand - Left aligned */}
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 cursor-pointer text-slate-900 transition-transform duration-300 hover:scale-110 hover:rotate-6">
+                <svg
+                  width="36"
+                  height="36"
+                  viewBox="0 0 100 100"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="drop-shadow-sm"
+                >
+                  <rect
+                    x="35"
+                    y="10"
+                    width="30"
+                    height="20"
+                    rx="4"
+                    ry="4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                  />
+                  <path
+                    d="M50 30 L50 45 M35 55 L50 45 L65 55"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                  <rect
+                    x="15"
+                    y="65"
+                    width="25"
+                    height="20"
+                    rx="4"
+                    ry="4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                  />
+                  <rect
+                    x="60"
+                    y="65"
+                    width="25"
+                    height="20"
+                    rx="4"
+                    ry="4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                  />
+                </svg>
               </div>
-
-              {/* Quick Stats */}
-              <div className="hidden lg:flex items-center gap-2 ml-4 pl-4 border-l border-slate-200">
-                <TooltipProvider delayDuration={300}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge
-                        variant="secondary"
-                        className="bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 px-2.5 py-1 font-medium cursor-help transition-all"
-                      >
-                        <FileText size={12} className="mr-1.5" />
-                        {canvases.length}{" "}
-                        {canvases.length === 1 ? "Canvas" : "Canvases"}
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Total canvases in workspace</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge
-                        variant="secondary"
-                        className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 font-medium cursor-help transition-all"
-                      >
-                        <GitBranch size={12} className="mr-1.5" />
-                        {selectedCanvas
-                          ? canvases.find((c) => c._id === selectedCanvas)
-                              ?.nodes.length || 0
-                          : 0}{" "}
-                        Nodes
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Nodes in current canvas</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {selectedCanvas && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge
-                          variant="secondary"
-                          className="bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 px-2.5 py-1 font-medium cursor-help transition-all"
-                        >
-                          <Sparkles size={12} className="mr-1.5" />
-                          Active
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Currently editing canvas</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </TooltipProvider>
+              <div>
+                <h1 className="text-lg font-semibold text-slate-900 tracking-tight">
+                  ContextTree
+                </h1>
+                <p className="-mt-0.5 text-[11px] text-slate-500">
+                  Visual Context Builder
+                </p>
               </div>
             </div>
 
-            {/* Right Section - Actions & User */}
-            <div className="flex items-center gap-3">
-              {/* Search Button */}
+            {/* Actions - Right aligned */}
+            <div className="flex items-center gap-1 sm:gap-2">
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -556,13 +494,15 @@ export default function ContextTreePage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setIsSearchOpen(true)}
-                      className="hidden md:flex gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all"
+                      className="flex items-center gap-2 rounded-full bg-transparent px-3 text-slate-600 transition-all hover:bg-white/70 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800/60 dark:hover:text-white"
                     >
                       <Search size={16} />
-                      <span className="text-xs">Search</span>
-                      <div className="hidden lg:flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">
+                      <span className="hidden sm:inline text-xs font-medium">
+                        Search
+                      </span>
+                      <div className="hidden lg:flex items-center gap-0.5 rounded-full border border-slate-200/70 bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-300">
                         <Command size={10} />
-                        <span className="text-[10px] font-semibold">K</span>
+                        <span>K</span>
                       </div>
                     </Button>
                   </TooltipTrigger>
@@ -571,36 +511,15 @@ export default function ContextTreePage() {
                   </TooltipContent>
                 </Tooltip>
 
-                {/* Quick Actions Separator */}
-                <div className="hidden md:block h-5 w-px bg-slate-200" />
-
-                {/* LLM Status Indicator */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="hidden md:flex gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all relative"
-                    >
-                      <Zap size={16} />
-                      <span className="text-xs font-medium">10+ Models</span>
-                      <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border border-white shadow-sm animate-pulse" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Open-source models ready via Groq</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                {/* Settings */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all w-9 h-9"
+                      className="h-9 w-9 rounded-full text-slate-600 transition-all hover:bg-white/70 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800/60 dark:hover:text-white"
                     >
                       <Settings size={18} />
+                      <span className="sr-only">Settings</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -609,87 +528,34 @@ export default function ContextTreePage() {
                 </Tooltip>
               </TooltipProvider>
 
-              {/* Divider */}
-              <div className="h-8 w-px bg-slate-200" />
-
-              {/* Bug Report */}
               {isAuthenticated && <BugReportForm />}
 
-              {/* User Auth */}
               <UserAuth />
             </div>
           </div>
         </div>
       </header>
+      )}
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Sidebar - Canvas List */}
-        <div
-          className={`relative transition-all duration-300 ease-out border-r border-slate-200/70 bg-white flex flex-col shadow-sm overflow-hidden ${
-            leftSidebarCollapsed ? "w-16" : "w-72"
-          }`}
-        >
-          {leftSidebarCollapsed ? (
-            <div className="h-full flex flex-col items-center justify-between py-6">
-              <div className="flex flex-col items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setLeftSidebarCollapsed(false)}
-                  className="text-slate-500 hover:text-slate-700 hover:bg-white/80 rounded-lg"
-                  title="Expand sidebar"
-                >
-                  <PanelLeftOpen className="w-5 h-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleCreateCanvas}
-                  className="text-slate-500 hover:text-slate-700 hover:bg-white/80 rounded-lg"
-                  title="Create new canvas"
-                >
-                  <Plus className="w-5 h-5" />
-                </Button>
-              </div>
-              <div className="flex-1 flex items-center">
-                <span className="text-[10px] font-medium tracking-[0.4em] uppercase text-slate-400 rotate-90">
-                  Canvases
-                </span>
-              </div>
-              <div className="flex flex-col items-center gap-2 text-[10px] text-slate-400 font-light">
-                <span>{canvases.length} total</span>
-                {selectedCanvas && <span>Active</span>}
-              </div>
-            </div>
-          ) : (
-            <CanvasList
-              canvases={canvases.map((canvas) => ({
-                _id: canvas._id,
-                title: canvas.title,
-                createdAt: canvas.createdAt,
-                nodeCount: canvas.nodes.length,
-                metaTags: canvas.metaTags,
-              }))}
-              selectedCanvas={selectedCanvas || undefined}
-              onSelectCanvas={handleSelectCanvas}
-              onCreateCanvas={handleCreateCanvas}
-              onDeleteCanvas={handleDeleteCanvas}
-              onDuplicateCanvas={handleDuplicateCanvas}
-              onRenameCanvas={handleRenameCanvas}
-              onCollapse={() => setLeftSidebarCollapsed(true)}
-            />
-          )}
-        </div>
-
-        {/* Center Canvas */}
-        <div
-          className={`flex-1 relative transition-all duration-300 ease-in-out ${
-            chatFullscreen && selectedNode
-              ? "opacity-0 pointer-events-none"
-              : "opacity-100"
-          }`}
-        >
+      <div className={`relative flex flex-1 overflow-hidden transition-all duration-300 ${
+        chatFullscreen 
+          ? "mt-0" 
+          : selectedNode && !rightSidebarCollapsed && !isMobile
+          ? "-mt-[88px]"
+          : "-mt-20"
+      }`}>
+        {/* Canvas Background Layer */}
+        <div className={`absolute inset-0 z-[1] transition-all duration-300 ${
+          selectedNode && !rightSidebarCollapsed && !chatFullscreen && !isMobile
+            ? "right-0"
+            : ""
+        }`}
+        style={
+          selectedNode && !rightSidebarCollapsed && !chatFullscreen && !isMobile
+            ? { right: rightSidebarWidth + 24 }
+            : {}
+        }>
           {selectedCanvas ? (
             <ReactFlowProvider>
               <CanvasArea
@@ -718,9 +584,85 @@ export default function ContextTreePage() {
           )}
         </div>
 
+        {/* Floating Panels Layer */}
+        <div className={`relative z-[50] flex flex-1 gap-6 px-4 pointer-events-none transition-all duration-300 ${
+          selectedNode && !rightSidebarCollapsed && !chatFullscreen && !isMobile
+            ? "pt-28 pb-6"
+            : "pt-24 pb-6"
+        }`}>
+          {/* Left Sidebar - Canvas List */}
+          <div
+            className={`pointer-events-auto relative flex flex-col overflow-hidden shadow-xl transition-all duration-300 ease-out backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 border border-white/60 bg-white/70 dark:border-slate-700/60 dark:bg-slate-900/55 ${
+              leftSidebarCollapsed
+                ? "w-16 rounded-3xl px-2 py-4"
+                : "w-72 rounded-[32px] px-4 py-5"
+            }`}
+          >
+          {leftSidebarCollapsed ? (
+            <div className="h-full flex flex-col items-center justify-between py-2">
+              <div className="flex flex-col items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setLeftSidebarCollapsed(false)}
+                  className="h-10 w-10 rounded-xl text-slate-600 transition-all hover:scale-105 hover:bg-white/90 hover:text-slate-900 hover:shadow-md dark:text-slate-300 dark:hover:bg-slate-800/80"
+                  title="Expand sidebar"
+                >
+                  <PanelLeftOpen className="h-5 w-5" />
+                </Button>
+                <div className="h-px w-8 bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCreateCanvas}
+                  className="h-10 w-10 rounded-xl text-slate-600 transition-all hover:scale-105 hover:bg-emerald-50/90 hover:text-emerald-700 hover:shadow-md dark:text-slate-300 dark:hover:bg-emerald-900/30"
+                  title="Create new canvas"
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="flex flex-1 items-center justify-center py-8">
+                <div className="relative flex items-center justify-center">
+                  <span className="rotate-90 whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.3em] text-slate-400/80">
+                    Canvases
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 text-xs font-bold text-slate-700 shadow-sm">
+                  {canvases.length}
+                </div>
+                {selectedCanvas && (
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
+                )}
+              </div>
+            </div>
+          ) : (
+            <CanvasList
+              canvases={canvases.map((canvas) => ({
+                _id: canvas._id,
+                title: canvas.title,
+                createdAt: canvas.createdAt,
+                nodeCount: canvas.nodes.length,
+                metaTags: canvas.metaTags,
+              }))}
+              selectedCanvas={selectedCanvas || undefined}
+              onSelectCanvas={handleSelectCanvas}
+              onCreateCanvas={handleCreateCanvas}
+              onDeleteCanvas={handleDeleteCanvas}
+              onDuplicateCanvas={handleDuplicateCanvas}
+              onRenameCanvas={handleRenameCanvas}
+              onCollapse={() => setLeftSidebarCollapsed(true)}
+            />
+          )}
+        </div>
+
+        {/* Spacer to push right sidebar to the right */}
+        <div className="flex-1 pointer-events-none" />
+
         {/* Right Sidebar - Chat Panel (resizable) */}
         <div
-          className={`${
+          className={`pointer-events-auto ${
             isResizingRight
               ? "transition-none"
               : "transition-all duration-300 ease-in-out"
@@ -729,8 +671,8 @@ export default function ContextTreePage() {
               ? chatFullscreen || isMobile
                 ? "fixed inset-0 z-50 bg-white"
                 : rightSidebarCollapsed
-                ? "border-l border-slate-200/80 bg-white/95 backdrop-blur-sm shadow-sm"
-                : "relative border-l border-slate-200/80 bg-white/95 backdrop-blur-sm shadow-sm"
+                ? "rounded-[32px] border border-white/60 bg-white/90 backdrop-blur-2xl shadow-xl supports-[backdrop-filter]:bg-white/85 dark:border-slate-700/60 dark:bg-slate-900/90"
+                : "fixed top-0 right-0 h-screen border-l border-white/60 bg-white shadow-2xl z-[60]"
               : "overflow-hidden"
           }`}
           style={
@@ -739,7 +681,7 @@ export default function ContextTreePage() {
                 ? undefined
                 : rightSidebarCollapsed
                 ? { width: "4rem" }
-                : { width: rightSidebarWidth, minWidth: 300, maxWidth: 900 }
+                : { width: rightSidebarWidth, minWidth: 420, maxWidth: 1100 }
               : { width: 0, pointerEvents: "none" }
           }
         >
@@ -781,6 +723,7 @@ export default function ContextTreePage() {
               setRightSidebarCollapsed(false);
             }}
           />
+        </div>
         </div>
       </div>
 
