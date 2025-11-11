@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, PanelLeftOpen } from "lucide-react";
 import { CanvasArea } from "@/components/canvas-area";
@@ -33,6 +33,31 @@ export default function ContextTreePage() {
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(520);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [nodeHintMessage, setNodeHintMessage] = useState<string | null>(null);
+  const nodeHintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const latestCanvas = useMemo(() => {
+    if (!canvases.length) return null;
+
+    const sortable = [...canvases];
+    sortable.sort((a, b) => {
+      const aTime = new Date(a.updatedAt ?? a.createdAt).getTime();
+      const bTime = new Date(b.updatedAt ?? b.createdAt).getTime();
+      return bTime - aTime;
+    });
+
+    return sortable[0];
+  }, [canvases]);
+
+  const latestCanvasTitle = latestCanvas?.title?.trim() || "";
+  const latestCanvasBadge = latestCanvasTitle
+    ? latestCanvasTitle.slice(0, 2).toUpperCase()
+    : latestCanvas
+    ? "??"
+    : canvases.length.toString();
+  const latestCanvasTooltip = latestCanvas
+    ? `Last opened: ${latestCanvasTitle || "Untitled canvas"}`
+    : "No canvases yet";
 
   // Keyboard shortcut for left sidebar toggle (Ctrl/Cmd + Shift + L)
   useEffect(() => {
@@ -60,6 +85,15 @@ export default function ContextTreePage() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (nodeHintTimeoutRef.current) {
+        clearTimeout(nodeHintTimeoutRef.current);
+        nodeHintTimeoutRef.current = null;
+      }
+    };
   }, []);
 
   // Right sidebar resize listeners
@@ -216,6 +250,27 @@ export default function ContextTreePage() {
     if (nodeId) {
       setRightSidebarCollapsed(false);
       setChatFullscreen(false);
+
+      if (nodeHintTimeoutRef.current) {
+        clearTimeout(nodeHintTimeoutRef.current);
+        nodeHintTimeoutRef.current = null;
+      }
+
+      const trimmedName = nodeName?.trim();
+      const nameForHint = trimmedName ? `"${trimmedName}"` : "this node";
+      setNodeHintMessage(
+        `Tip: Use the chat panel to explore new responses for ${nameForHint} or duplicate the branch from the node menu.`
+      );
+      nodeHintTimeoutRef.current = setTimeout(() => {
+        setNodeHintMessage(null);
+        nodeHintTimeoutRef.current = null;
+      }, 5000);
+    } else {
+      if (nodeHintTimeoutRef.current) {
+        clearTimeout(nodeHintTimeoutRef.current);
+        nodeHintTimeoutRef.current = null;
+      }
+      setNodeHintMessage(null);
     }
   };
 
@@ -254,6 +309,11 @@ export default function ContextTreePage() {
     setSelectedCanvas(canvasId);
     setSelectedNode(null);
     setSelectedNodeName(undefined);
+    if (nodeHintTimeoutRef.current) {
+      clearTimeout(nodeHintTimeoutRef.current);
+      nodeHintTimeoutRef.current = null;
+    }
+    setNodeHintMessage(null);
   };
 
   const handleDeleteCanvas = async (canvasId: string) => {
@@ -281,6 +341,11 @@ export default function ContextTreePage() {
           setSelectedCanvas(nextCanvas ? nextCanvas._id : null);
           setSelectedNode(null);
           setSelectedNodeName(undefined);
+          if (nodeHintTimeoutRef.current) {
+            clearTimeout(nodeHintTimeoutRef.current);
+            nodeHintTimeoutRef.current = null;
+          }
+          setNodeHintMessage(null);
         }
       }
     } catch (err) {
@@ -297,6 +362,11 @@ export default function ContextTreePage() {
         setSelectedCanvas(nextCanvas ? nextCanvas._id : null);
         setSelectedNode(null);
         setSelectedNodeName(undefined);
+        if (nodeHintTimeoutRef.current) {
+          clearTimeout(nodeHintTimeoutRef.current);
+          nodeHintTimeoutRef.current = null;
+        }
+        setNodeHintMessage(null);
       }
     }
   };
@@ -378,13 +448,9 @@ export default function ContextTreePage() {
 
     // Select the target node after a short delay to ensure canvas is loaded
     setTimeout(() => {
-      setSelectedNode(nodeId);
-      // Find the node to get its name
       const canvas = canvases.find((c) => c._id === canvasId);
       const node = canvas?.nodes.find((n) => n.id === nodeId);
-      if (node) {
-        setSelectedNodeName(node.data.label);
-      }
+      handleNodeSelect(nodeId, node?.data.label);
     }, 100);
   };
 
@@ -407,12 +473,12 @@ export default function ContextTreePage() {
       {/* Enhanced Header / Navbar - Hidden in fullscreen mode */}
       {!chatFullscreen && (
         <header className="sticky top-0 z-[100] px-4 pt-6 pb-4 pointer-events-none">
-          <div className={`flex transition-all duration-300 ${
+          <div className={`flex transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             selectedNode && !rightSidebarCollapsed && !isMobile
               ? "justify-start"
               : "justify-center"
           }`}>
-            <div className={`pointer-events-auto flex items-center justify-between gap-4 rounded-full border border-white/60 bg-white/70 px-6 py-3 shadow-lg backdrop-blur-2xl supports-[backdrop-filter]:bg-white/60 dark:border-slate-700/60 dark:bg-slate-900/60 transition-all duration-300 ${
+            <div className={`pointer-events-auto flex items-center justify-between gap-4 rounded-full border border-white/60 bg-white/70 px-6 py-3 shadow-lg backdrop-blur-2xl supports-[backdrop-filter]:bg-white/60 dark:border-slate-700/60 dark:bg-slate-900/60 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
               selectedNode && !rightSidebarCollapsed && !isMobile
                 ? "w-auto"
                 : "w-full max-w-5xl"
@@ -489,8 +555,19 @@ export default function ContextTreePage() {
       </header>
       )}
 
+      {!chatFullscreen && nodeHintMessage && (
+        <div className="pointer-events-none fixed top-24 left-1/2 z-[120] -translate-x-1/2">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-xs font-medium text-blue-700 shadow-lg transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] animate-in fade-in slide-in-from-top-2">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-[10px] font-semibold uppercase tracking-wider text-blue-600">
+              Tip
+            </span>
+            <span className="max-w-xs text-left leading-relaxed">{nodeHintMessage}</span>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
-      <div className={`relative flex flex-1 overflow-hidden transition-all duration-300 ${
+      <div className={`relative flex flex-1 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         chatFullscreen 
           ? "mt-0" 
           : selectedNode && !rightSidebarCollapsed && !isMobile
@@ -498,7 +575,7 @@ export default function ContextTreePage() {
           : "-mt-20"
       }`}>
         {/* Canvas Background Layer */}
-        <div className={`absolute inset-0 z-[1] transition-all duration-300 ${
+        <div className={`absolute inset-0 z-[1] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           selectedNode && !rightSidebarCollapsed && !chatFullscreen && !isMobile
             ? "right-0"
             : ""
@@ -519,12 +596,33 @@ export default function ContextTreePage() {
           ) : (
             <div className="flex items-center justify-center h-full bg-gradient-to-br from-slate-50/30 to-white/50">
               <div className="text-center space-y-8 animate-in fade-in duration-500">
+                {canvases.length === 0 && (
+                  <div className="max-w-sm mx-auto -mt-6 space-y-3 rounded-2xl border border-slate-200/80 bg-white/90 px-6 py-5 text-left shadow-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                      Getting started
+                    </p>
+                    <ol className="space-y-2 text-sm text-slate-600">
+                      <li className="flex items-start gap-2">
+                        <span className="mt-0.5 text-xs font-semibold text-slate-900">1</span>
+                        <span>Click the plus to create your first canvas.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="mt-0.5 text-xs font-semibold text-slate-900">2</span>
+                        <span>Add nodes to map the conversational branches.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="mt-0.5 text-xs font-semibold text-slate-900">3</span>
+                        <span>Open the chat panel to rehearse responses live.</span>
+                      </li>
+                    </ol>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={handleCreateCanvas}
                   className="mx-auto block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 >
-                  <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto shadow-sm transition-transform duration-200 hover:-translate-y-1 hover:shadow-md">
+                  <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:scale-105 hover:shadow-md">
                     <Plus className="w-10 h-10 text-slate-400" />
                     <span className="sr-only">Create a new canvas</span>
                   </div>
@@ -534,10 +632,10 @@ export default function ContextTreePage() {
                     No canvas selected
                   </p>
                   <p className="text-slate-500 text-base mb-4 max-w-md mx-auto font-light leading-relaxed">
-                    Click on this to create first canvas.
+                    Click on the plus above to create your first canvas.
                   </p>
                   <p className="text-slate-400 text-sm max-w-md mx-auto font-light leading-relaxed">
-                    Select a canvas from the list to start working with your conversational flows once it appears.
+                    Once canvases appear, pick one from the sidebar to continue mapping your conversational flows.
                   </p>
                 </div>
               </div>
@@ -546,14 +644,14 @@ export default function ContextTreePage() {
         </div>
 
         {/* Floating Panels Layer */}
-        <div className={`relative z-[50] flex flex-1 gap-6 px-4 pointer-events-none transition-all duration-300 ${
+        <div className={`relative z-[50] flex flex-1 gap-6 px-4 pointer-events-none transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           selectedNode && !rightSidebarCollapsed && !chatFullscreen && !isMobile
             ? "pt-28 pb-6"
             : "pt-24 pb-6"
         }`}>
           {/* Left Sidebar - Canvas List */}
           <div
-            className={`pointer-events-auto relative flex flex-col overflow-hidden shadow-xl transition-all duration-300 ease-out backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 border border-white/60 bg-white/70 dark:border-slate-700/60 dark:bg-slate-900/55 ${
+            className={`pointer-events-auto relative flex flex-col overflow-hidden shadow-xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 border border-white/60 bg-white/70 dark:border-slate-700/60 dark:bg-slate-900/55 ${
               leftSidebarCollapsed
                 ? "w-16 rounded-3xl px-2 py-4"
                 : "w-72 rounded-[32px] px-4 py-5"
@@ -590,9 +688,15 @@ export default function ContextTreePage() {
                 </div>
               </div>
               <div className="flex flex-col items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 text-xs font-bold text-slate-700 shadow-sm">
-                  {canvases.length}
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-700 shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
+                  title={latestCanvasTooltip}
+                >
+                  {latestCanvasBadge}
                 </div>
+                <span className="text-[9px] font-medium uppercase tracking-[0.3em] text-slate-400/80">
+                  {latestCanvas ? "Recent" : "Empty"}
+                </span>
                 {selectedCanvas && (
                   <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
                 )}
@@ -626,7 +730,7 @@ export default function ContextTreePage() {
           className={`pointer-events-auto ${
             isResizingRight
               ? "transition-none"
-              : "transition-all duration-300 ease-in-out"
+              : "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
           } ${
             selectedNode
               ? chatFullscreen || isMobile
@@ -682,6 +786,11 @@ export default function ContextTreePage() {
               setSelectedNodeName(undefined);
               setChatFullscreen(false);
               setRightSidebarCollapsed(false);
+              if (nodeHintTimeoutRef.current) {
+                clearTimeout(nodeHintTimeoutRef.current);
+                nodeHintTimeoutRef.current = null;
+              }
+              setNodeHintMessage(null);
             }}
           />
         </div>

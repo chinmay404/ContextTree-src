@@ -80,6 +80,115 @@ const edgeTypes = {
 const LAYOUT_SAVE_DEBOUNCE_MS = 800;
 const EDGE_HIGHLIGHT_COLOR = "#3b82f6";
 
+const generateEntityId = (prefix: string) => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}_${crypto.randomUUID()}`;
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const getTextFromContent = (content: any): string => {
+  if (!content) return "";
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      if (!part) continue;
+      if (typeof part === "string") {
+        const trimmed = part.trim();
+        if (trimmed) return trimmed;
+        continue;
+      }
+      if (typeof part === "object") {
+        if (typeof part.text === "string" && part.text.trim()) {
+          return part.text.trim();
+        }
+        if (part.text && typeof part.text.value === "string") {
+          const trimmed = part.text.value.trim();
+          if (trimmed) return trimmed;
+        }
+        if (typeof part.value === "string" && part.value.trim()) {
+          return part.value.trim();
+        }
+        if (typeof part.content === "string" && part.content.trim()) {
+          return part.content.trim();
+        }
+      }
+    }
+    return "";
+  }
+  if (typeof content === "object") {
+    if (typeof (content as any).text === "string") {
+      return (content as any).text.trim();
+    }
+    if (
+      (content as any).text &&
+      typeof (content as any).text.value === "string"
+    ) {
+      return (content as any).text.value.trim();
+    }
+    if (typeof (content as any).value === "string") {
+      return (content as any).value.trim();
+    }
+    if (typeof (content as any).content === "string") {
+      return (content as any).content.trim();
+    }
+  }
+  return "";
+};
+
+const flattenChatMessages = (messages: any[] | undefined) => {
+  if (!messages || !Array.isArray(messages)) return [] as any[];
+  const flattened: any[] = [];
+  messages.forEach((msg) => {
+    if (!msg) return;
+    if (typeof msg.role === "string") {
+      flattened.push(msg);
+      return;
+    }
+    const baseId = msg.id || generateEntityId("msg");
+    if (msg.user) {
+      flattened.push({
+        id: `${baseId}-user`,
+        role: "user",
+        content: msg.user.content,
+      });
+    }
+    if (msg.assistant) {
+      flattened.push({
+        id: `${baseId}-assistant`,
+        role: "assistant",
+        content: msg.assistant.content,
+      });
+    }
+  });
+  return flattened;
+};
+
+const deriveParentMessageDetails = (node: NodeData | undefined) => {
+  if (!node) return { messageId: undefined as string | undefined, text: "" };
+  const flattened = flattenChatMessages(node.chatMessages);
+  if (!flattened.length) {
+    return { messageId: undefined, text: "" };
+  }
+  const reversed = [...flattened].reverse();
+  const assistantMessage = reversed.find((msg) => msg.role === "assistant");
+  const fallbackMessage = flattened[flattened.length - 1];
+  const chosen = assistantMessage || fallbackMessage;
+  const messageText = getTextFromContent(chosen?.content).trim();
+  return {
+    messageId: chosen?.id,
+    text: messageText,
+  };
+};
+
+const truncateLabel = (input: string, fallback: string) => {
+  const trimmed = input.replace(/\s+/g, " ").trim();
+  if (!trimmed) return fallback;
+  const max = 60;
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max - 3).trimEnd()}...`;
+};
+
 const getLineageEdgeIds = (
   canvas: CanvasData | null,
   nodeId: string | null
@@ -136,6 +245,10 @@ export function CanvasArea({
   onNodeSelect,
 }: CanvasAreaProps) {
   const reactFlowInstance = useReactFlow();
+  const reactFlowWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [pendingConnection, setPendingConnection] = useState<
+    { sourceId: string; handleId?: string | null }
+  | null>(null);
   const handleZoomToNode = useCallback(
     (nodeId: string) => {
       const node = reactFlowInstance.getNode(nodeId);
@@ -359,6 +472,10 @@ export function CanvasArea({
       void flushLayoutSave();
     };
   }, [flushLayoutSave]);
+
+  useEffect(() => {
+    setPendingConnection(null);
+  }, [canvasId]);
 
   // Handle node customization
   const handleNodeCustomization = useCallback(
@@ -1005,6 +1122,8 @@ export function CanvasArea({
     (params: Connection) => {
       if (!canvas || !params.source || !params.target) return;
 
+      setPendingConnection(null);
+
       console.log(`Connecting: ${params.source} -> ${params.target}`);
 
       const newEdge: EdgeData = {
@@ -1126,7 +1245,261 @@ export function CanvasArea({
 
       setEdges((eds) => addEdge(flowEdge, eds));
     },
-    [canvas, setEdges, canvasId]
+    [canvas, setEdges, canvasId, scheduleParentUpdate, scheduleCanvasSave]
+  );
+
+  const handleConnectStart = useCallback(
+    (
+      _event: MouseEvent | TouchEvent,
+      params: { nodeId?: string; handleId?: string; handleType?: string }
+    ) => {
+      if (params?.nodeId && params.handleType !== "target") {
+        setPendingConnection({
+          sourceId: params.nodeId,
+          handleId: params.handleId ?? null,
+        });
+      } else {
+        setPendingConnection(null);
+      }
+    },
+    []
+  );
+
+  const handleConnectEnd = useCallback(
+    (
+      event: MouseEvent | TouchEvent,
+      params: { nodeId?: string; handleId?: string; handleType?: string }
+    ) => {
+      if (!pendingConnection || !canvas) {
+        setPendingConnection(null);
+        return;
+      }
+
+      if (params?.nodeId) {
+        setPendingConnection(null);
+        return;
+      }
+
+      const droppedOnPane = !params?.nodeId;
+      const targetElement = event.target as HTMLElement | null;
+      const isPaneTarget = !!targetElement?.classList?.contains(
+        "react-flow__pane"
+      );
+      const paneElement = targetElement?.closest?.(".react-flow__pane");
+
+      if (!(droppedOnPane || isPaneTarget || paneElement)) {
+        setPendingConnection(null);
+        return;
+      }
+
+      if (!reactFlowWrapperRef.current) {
+        setPendingConnection(null);
+        return;
+      }
+
+      const bounds = reactFlowWrapperRef.current.getBoundingClientRect();
+      let clientX: number | undefined;
+      let clientY: number | undefined;
+
+      if (typeof TouchEvent !== "undefined" && event instanceof TouchEvent) {
+        const touch = event.changedTouches?.[0];
+        clientX = touch?.clientX;
+        clientY = touch?.clientY;
+      } else if (event instanceof MouseEvent) {
+        clientX = event.clientX;
+        clientY = event.clientY;
+      }
+
+      if (typeof clientX !== "number" || typeof clientY !== "number") {
+        setPendingConnection(null);
+        return;
+      }
+
+      const projected = reactFlowInstance.project({
+        x: clientX - bounds.left,
+        y: clientY - bounds.top,
+      });
+
+      const position = {
+        x: projected.x - 100,
+        y: projected.y - 60,
+      };
+
+      const parentNode = canvas.nodes.find(
+        (node) => node._id === pendingConnection.sourceId
+      );
+
+      if (!parentNode) {
+        setPendingConnection(null);
+        return;
+      }
+
+      const { messageId: forkedFromMessageId, text: parentMessageText } =
+        deriveParentMessageDetails(parentNode);
+      const resolvedForkId =
+        forkedFromMessageId || generateEntityId("msgref");
+
+      const newNodeId = generateEntityId("node");
+      const createdAt = new Date().toISOString();
+      const baseColor = parentNode.color;
+      const colorScheme = getColorScheme(baseColor || "#f8fafc");
+
+      const fallbackLabel = parentNode.name
+        ? `${parentNode.name} branch`
+        : "New Branch";
+      const nodeLabel = truncateLabel(parentMessageText, fallbackLabel);
+
+      const newNode: NodeData = {
+        _id: newNodeId,
+        primary: false,
+        type: "branch",
+        name: nodeLabel,
+        color: baseColor,
+        textColor: colorScheme.text,
+        dotColor: colorScheme.dot,
+        chatMessages: [],
+        runningSummary: "",
+        contextContract: "",
+        model: parentNode.model || "gpt-4",
+        metaTags: parentNode.metaTags || [],
+        parentNodeId: parentNode._id,
+  forkedFromMessageId: resolvedForkId,
+        createdAt,
+        position,
+      };
+
+      const newEdgeId = generateEntityId("edge");
+      const newEdge: EdgeData = {
+        _id: newEdgeId,
+        from: parentNode._id,
+        to: newNodeId,
+        createdAt,
+        meta: {
+          condition: "Follow-up",
+          parentMessage: parentMessageText,
+        },
+      };
+
+      const updatedCanvas: CanvasData = {
+        ...canvas,
+        nodes: [...canvas.nodes, newNode],
+        edges: [...canvas.edges, newEdge],
+        updatedAt: createdAt,
+      };
+
+      storageService.saveCanvas(updatedCanvas);
+      setCanvas(updatedCanvas);
+
+      const flowNode: Node = {
+        id: newNodeId,
+        type: newNode.type,
+        position,
+        data: {
+          label: nodeLabel,
+          messageCount: 0,
+          model: newNode.model,
+          metaTags: newNode.metaTags || [],
+          lastMessageAt: createdAt,
+          createdAt,
+          primary: newNode.primary,
+          isSelected: false,
+          color: baseColor,
+          textColor: colorScheme.text,
+          dotColor: colorScheme.dot,
+          parentNodeId: parentNode._id,
+          forkedFromMessageId: resolvedForkId,
+          onClick: () => onNodeSelect(newNodeId, nodeLabel),
+        },
+        style: baseColor
+          ? {
+              background: baseColor,
+              color: colorScheme.text,
+              borderColor: colorScheme.dot,
+            }
+          : {},
+      };
+
+      setNodes((nds) => [...nds, flowNode]);
+
+      const edgeColor = colorScheme.edge || "#94a3b8";
+
+      const flowEdge: Edge = {
+        id: newEdgeId,
+        source: parentNode._id,
+        target: newNodeId,
+        data: {
+          ...newEdge.meta,
+          label: newEdge.meta?.condition || "Follow-up",
+          baseColor: edgeColor,
+          highlightColor: EDGE_HIGHLIGHT_COLOR,
+          animated: false,
+        },
+        type: "custom",
+        style: {
+          stroke: edgeColor,
+          strokeWidth: 1.8,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: edgeColor,
+          width: 18,
+          height: 18,
+        },
+        animated: false,
+        selectable: true,
+        label: newEdge.meta?.condition || "Follow-up",
+        labelStyle: {
+          fontSize: 12,
+          fontWeight: 500,
+          fill: "#475569",
+        },
+        labelBgStyle: {
+          fill: "rgba(255, 255, 255, 0.95)",
+          stroke: "#e2e8f0",
+          strokeWidth: 1,
+          rx: 4,
+          ry: 4,
+        },
+      };
+
+      setEdges((eds) => addEdge(flowEdge, eds));
+
+      scheduleCanvasSave(updatedCanvas);
+      scheduleParentUpdate(newNodeId, {
+        parentNodeId: parentNode._id,
+        forkedFromMessageId: resolvedForkId,
+      });
+
+      fetch(`/api/canvases/${canvasId}/nodes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newNode,
+          forkedFromMessageId: resolvedForkId,
+        }),
+      }).catch((err) => console.error("Failed to save node to MongoDB", err));
+
+      fetch(`/api/canvases/${canvasId}/edges`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newEdge),
+      }).catch((err) => console.error("Failed to save edge to MongoDB", err));
+
+      onNodeSelect(newNodeId, nodeLabel);
+      toast.success("Created new branch from connection", { duration: 2200 });
+
+      setPendingConnection(null);
+    },
+    [
+      pendingConnection,
+      canvas,
+      reactFlowInstance,
+      setEdges,
+      scheduleCanvasSave,
+      scheduleParentUpdate,
+      onNodeSelect,
+      canvasId,
+    ]
   );
 
   // Intercept edge changes (e.g., via React Flow UI removals) to clear parent lineage if needed
@@ -1569,6 +1942,7 @@ export function CanvasArea({
 
   return (
     <div
+      ref={reactFlowWrapperRef}
       className="w-full h-full bg-slate-50"
       onDrop={onDrop}
       onDragOver={onDragOver}
@@ -1579,6 +1953,8 @@ export function CanvasArea({
         onNodesChange={onNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
+  onConnectStart={handleConnectStart}
+  onConnectEnd={handleConnectEnd}
         onNodeClick={onNodeClick}
         onNodeDragStop={onNodeDragStop}
         onEdgeClick={(event, edge) => {
