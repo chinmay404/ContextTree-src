@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, PanelLeftOpen, Search, Command, Settings } from "lucide-react";
+import { Plus, PanelLeftOpen } from "lucide-react";
 import { CanvasArea } from "@/components/canvas-area";
 import { ReactFlowProvider } from "reactflow";
 import { ChatPanel } from "@/components/chat-panel";
@@ -14,12 +14,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { LandingPage } from "@/components/landing-page";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { GlobalSearch } from "@/components/global-search";
 
 export default function ContextTreePage() {
@@ -487,49 +481,7 @@ export default function ContextTreePage() {
 
             {/* Actions - Right aligned */}
             <div className="flex items-center gap-1 sm:gap-2">
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsSearchOpen(true)}
-                      className="flex items-center gap-2 rounded-full bg-transparent px-3 text-slate-600 transition-all hover:bg-white/70 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800/60 dark:hover:text-white"
-                    >
-                      <Search size={16} />
-                      <span className="hidden sm:inline text-xs font-medium">
-                        Search
-                      </span>
-                      <div className="hidden lg:flex items-center gap-0.5 rounded-full border border-slate-200/70 bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-300">
-                        <Command size={10} />
-                        <span>K</span>
-                      </div>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Quick search (⌘K)</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 rounded-full text-slate-600 transition-all hover:bg-white/70 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800/60 dark:hover:text-white"
-                    >
-                      <Settings size={18} />
-                      <span className="sr-only">Settings</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Settings</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
               {isAuthenticated && <BugReportForm />}
-
               <UserAuth />
             </div>
           </div>
@@ -567,16 +519,25 @@ export default function ContextTreePage() {
           ) : (
             <div className="flex items-center justify-center h-full bg-gradient-to-br from-slate-50/30 to-white/50">
               <div className="text-center space-y-8 animate-in fade-in duration-500">
-                <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto shadow-sm">
-                  <Plus className="w-10 h-10 text-slate-400" />
-                </div>
+                <button
+                  type="button"
+                  onClick={handleCreateCanvas}
+                  className="mx-auto block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                >
+                  <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto shadow-sm transition-transform duration-200 hover:-translate-y-1 hover:shadow-md">
+                    <Plus className="w-10 h-10 text-slate-400" />
+                    <span className="sr-only">Create a new canvas</span>
+                  </div>
+                </button>
                 <div>
                   <p className="text-slate-900 text-xl font-light mb-4">
                     No canvas selected
                   </p>
-                  <p className="text-slate-500 text-base mb-8 max-w-md mx-auto font-light leading-relaxed">
-                    Select a canvas from the list to start working with your
-                    conversational flows
+                  <p className="text-slate-500 text-base mb-4 max-w-md mx-auto font-light leading-relaxed">
+                    Click on this to create first canvas.
+                  </p>
+                  <p className="text-slate-400 text-sm max-w-md mx-auto font-light leading-relaxed">
+                    Select a canvas from the list to start working with your conversational flows once it appears.
                   </p>
                 </div>
               </div>
