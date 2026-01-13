@@ -139,9 +139,11 @@ export function BranchNodeEnhanced({
           backdropFilter: "blur(12px)",
         };
       default:
+        // Flat / Solid style (No gradients)
         return {
           ...baseStyle,
-          background: `linear-gradient(135deg, ${currentColor} 0%, ${currentColor}F5 50%, ${currentColor}E8 100%)`,
+          backgroundColor: currentColor,
+          border: `1px solid ${dotColor}30`,
         };
     }
   };
@@ -240,7 +242,7 @@ export function BranchNodeEnhanced({
           ...getBackgroundStyle(),
           boxShadow:
             selected || data.isSelected
-              ? `0 25px 50px -12px ${dotColor}25, 0 0 0 1px ${dotColor}20`
+              ? `0 20px 40px -12px ${dotColor}35, 0 0 0 2px ${dotColor}`
               : hovered
               ? `0 20px 40px -8px ${dotColor}20`
               : undefined,
@@ -371,7 +373,7 @@ export function BranchNodeEnhanced({
             {/* Title and Info */}
             <div className="flex-1 min-w-0">
               <h3
-                className={`font-bold ${config.titleSize} truncate leading-tight mb-1 transition-colors duration-300`}
+                className={`font-medium ${config.titleSize} truncate leading-tight mb-1 transition-colors duration-300`}
                 style={{ color: textColor }}
               >
                 {data.label || "Branch Point"}
@@ -394,7 +396,7 @@ export function BranchNodeEnhanced({
             <div className="flex items-center gap-2">
               <MessageCircle size={12} style={{ color: dotColor }} />
               <span
-                className="text-sm font-medium"
+                className="text-sm"
                 style={{ color: textColor }}
               >
                 {data.messageCount}
@@ -404,7 +406,7 @@ export function BranchNodeEnhanced({
             <div className="flex items-center gap-2">
               <Users size={12} style={{ color: dotColor }} />
               <span
-                className="text-sm font-medium"
+                className="text-sm"
                 style={{ color: textColor }}
               >
                 {branchCount} paths

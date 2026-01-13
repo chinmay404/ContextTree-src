@@ -1,20 +1,28 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, PanelLeftOpen } from "lucide-react";
+import { Plus, PanelLeftOpen, Search, Command, Focus } from "lucide-react";
 import { CanvasArea } from "@/components/canvas-area";
 import { ReactFlowProvider } from "reactflow";
-import { ChatPanel } from "@/components/chat-panel";
+import { ContextStrip } from "@/components/context-strip";
+import { ContextualConsoleComponent } from "@/components/contextual-console";
 import { CanvasList } from "@/components/canvas-list";
 import { storageService, type CanvasData } from "@/lib/storage";
 import UserAuth from "@/components/user-auth";
-import { BugReportForm } from "@/components/bug-report-form";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { LandingPage } from "@/components/landing-page";
+import { generateCanvasTitle } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { GlobalSearch } from "@/components/global-search";
+import { OnboardingGuide } from "@/components/onboarding-guide";
 
 export default function ContextTreePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -33,31 +41,6 @@ export default function ContextTreePage() {
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(520);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [nodeHintMessage, setNodeHintMessage] = useState<string | null>(null);
-  const nodeHintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const latestCanvas = useMemo(() => {
-    if (!canvases.length) return null;
-
-    const sortable = [...canvases];
-    sortable.sort((a, b) => {
-      const aTime = new Date(a.updatedAt ?? a.createdAt).getTime();
-      const bTime = new Date(b.updatedAt ?? b.createdAt).getTime();
-      return bTime - aTime;
-    });
-
-    return sortable[0];
-  }, [canvases]);
-
-  const latestCanvasTitle = latestCanvas?.title?.trim() || "";
-  const latestCanvasBadge = latestCanvasTitle
-    ? latestCanvasTitle.slice(0, 2).toUpperCase()
-    : latestCanvas
-    ? "??"
-    : canvases.length.toString();
-  const latestCanvasTooltip = latestCanvas
-    ? `Last opened: ${latestCanvasTitle || "Untitled canvas"}`
-    : "No canvases yet";
 
   // Keyboard shortcut for left sidebar toggle (Ctrl/Cmd + Shift + L)
   useEffect(() => {
@@ -85,15 +68,6 @@ export default function ContextTreePage() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (nodeHintTimeoutRef.current) {
-        clearTimeout(nodeHintTimeoutRef.current);
-        nodeHintTimeoutRef.current = null;
-      }
-    };
   }, []);
 
   // Right sidebar resize listeners
@@ -250,27 +224,6 @@ export default function ContextTreePage() {
     if (nodeId) {
       setRightSidebarCollapsed(false);
       setChatFullscreen(false);
-
-      if (nodeHintTimeoutRef.current) {
-        clearTimeout(nodeHintTimeoutRef.current);
-        nodeHintTimeoutRef.current = null;
-      }
-
-      const trimmedName = nodeName?.trim();
-      const nameForHint = trimmedName ? `"${trimmedName}"` : "this node";
-      setNodeHintMessage(
-        `Tip: Use the chat panel to explore new responses for ${nameForHint} or duplicate the branch from the node menu.`
-      );
-      nodeHintTimeoutRef.current = setTimeout(() => {
-        setNodeHintMessage(null);
-        nodeHintTimeoutRef.current = null;
-      }, 5000);
-    } else {
-      if (nodeHintTimeoutRef.current) {
-        clearTimeout(nodeHintTimeoutRef.current);
-        nodeHintTimeoutRef.current = null;
-      }
-      setNodeHintMessage(null);
     }
   };
 
@@ -279,7 +232,7 @@ export default function ContextTreePage() {
 
     const newCanvas = storageService.createDefaultCanvas(
       user.email,
-      "New Canvas"
+      generateCanvasTitle()
     );
     storageService.saveCanvas(newCanvas);
 
@@ -309,11 +262,6 @@ export default function ContextTreePage() {
     setSelectedCanvas(canvasId);
     setSelectedNode(null);
     setSelectedNodeName(undefined);
-    if (nodeHintTimeoutRef.current) {
-      clearTimeout(nodeHintTimeoutRef.current);
-      nodeHintTimeoutRef.current = null;
-    }
-    setNodeHintMessage(null);
   };
 
   const handleDeleteCanvas = async (canvasId: string) => {
@@ -341,11 +289,6 @@ export default function ContextTreePage() {
           setSelectedCanvas(nextCanvas ? nextCanvas._id : null);
           setSelectedNode(null);
           setSelectedNodeName(undefined);
-          if (nodeHintTimeoutRef.current) {
-            clearTimeout(nodeHintTimeoutRef.current);
-            nodeHintTimeoutRef.current = null;
-          }
-          setNodeHintMessage(null);
         }
       }
     } catch (err) {
@@ -362,11 +305,6 @@ export default function ContextTreePage() {
         setSelectedCanvas(nextCanvas ? nextCanvas._id : null);
         setSelectedNode(null);
         setSelectedNodeName(undefined);
-        if (nodeHintTimeoutRef.current) {
-          clearTimeout(nodeHintTimeoutRef.current);
-          nodeHintTimeoutRef.current = null;
-        }
-        setNodeHintMessage(null);
       }
     }
   };
@@ -448,9 +386,13 @@ export default function ContextTreePage() {
 
     // Select the target node after a short delay to ensure canvas is loaded
     setTimeout(() => {
+      setSelectedNode(nodeId);
+      // Find the node to get its name
       const canvas = canvases.find((c) => c._id === canvasId);
       const node = canvas?.nodes.find((n) => n.id === nodeId);
-      handleNodeSelect(nodeId, node?.data.label);
+      if (node) {
+        setSelectedNodeName(node.data.label);
+      }
     }, 100);
   };
 
@@ -468,342 +410,106 @@ export default function ContextTreePage() {
     return <LandingPage />;
   }
 
+  const activeCanvas = canvases.find((c) => c._id === selectedCanvas);
+  const nodeCount = activeCanvas?.nodes?.length || 0;
+  const branchCount = activeCanvas?.nodes?.filter((n: any) => n.type === "branch").length || 0;
+
   return (
-    <div className="h-screen flex flex-col bg-slate-50">
-      {/* Enhanced Header / Navbar - Hidden in fullscreen mode */}
-      {!chatFullscreen && (
-        <header className="sticky top-0 z-[100] px-4 pt-6 pb-4 pointer-events-none">
-          <div className={`flex transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            selectedNode && !rightSidebarCollapsed && !isMobile
-              ? "justify-start"
-              : "justify-center"
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-slate-50 font-sans">
+      {/* 5. CONTEXT STRIP (TOP, MINIMAL) */}
+      <ContextStrip 
+        canvasName={activeCanvas?.title}
+        isSynced={true}
+        onToggleSidebar={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
+      />
+
+      <div className="flex flex-1 overflow-hidden relative pt-14">
+          {/* 4. LEFT SIDEBAR — WORKSPACE SWITCHER (MINIMAL) */}
+          <div className={`flex flex-col border-r border-slate-200 bg-white transition-all duration-300 ease-in-out z-30 ${
+              leftSidebarCollapsed || chatFullscreen ? "w-0 overflow-hidden opacity-0" : "w-60"
           }`}>
-            <div className={`pointer-events-auto flex items-center justify-between gap-4 rounded-full border border-white/60 bg-white/70 px-6 py-3 shadow-lg backdrop-blur-2xl supports-[backdrop-filter]:bg-white/60 dark:border-slate-700/60 dark:bg-slate-900/60 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              selectedNode && !rightSidebarCollapsed && !isMobile
-                ? "w-auto"
-                : "w-full max-w-5xl"
-            }`}>
-            {/* Logo & Brand - Left aligned */}
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 cursor-pointer text-slate-900 transition-transform duration-300 hover:scale-110 hover:rotate-6">
-                <svg
-                  width="36"
-                  height="36"
-                  viewBox="0 0 100 100"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="drop-shadow-sm"
-                >
-                  <rect
-                    x="35"
-                    y="10"
-                    width="30"
-                    height="20"
-                    rx="4"
-                    ry="4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                  />
-                  <path
-                    d="M50 30 L50 45 M35 55 L50 45 L65 55"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-                  <rect
-                    x="15"
-                    y="65"
-                    width="25"
-                    height="20"
-                    rx="4"
-                    ry="4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                  />
-                  <rect
-                    x="60"
-                    y="65"
-                    width="25"
-                    height="20"
-                    rx="4"
-                    ry="4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-slate-900 tracking-tight">
-                  ContextTree
-                </h1>
-                <p className="-mt-0.5 text-[11px] text-slate-500">
-                  Visual Context Builder
-                </p>
-              </div>
-            </div>
-
-            {/* Actions - Right aligned */}
-            <div className="flex items-center gap-1 sm:gap-2">
-              {isAuthenticated && <BugReportForm />}
-              <UserAuth />
-            </div>
+             <CanvasList 
+                canvases={canvases.map((canvas) => ({
+                    _id: canvas._id,
+                    title: canvas.title,
+                    createdAt: canvas.createdAt,
+                    updatedAt: canvas.updatedAt,
+                    nodeCount: canvas.nodes.length,
+                    branchCount: canvas.nodes.filter((n: any) => n.type === "branch").length,
+                    metaTags: canvas.metaTags,
+                  }))}
+                selectedCanvas={selectedCanvas || undefined}
+                onSelectCanvas={handleSelectCanvas}
+                onCreateCanvas={handleCreateCanvas}
+                onDeleteCanvas={handleDeleteCanvas}
+                onDuplicateCanvas={handleDuplicateCanvas}
+                onRenameCanvas={handleRenameCanvas}
+                onCollapse={() => setLeftSidebarCollapsed(true)} 
+             />
           </div>
-        </div>
-      </header>
-      )}
 
-      {!chatFullscreen && nodeHintMessage && (
-        <div className="pointer-events-none fixed top-24 left-1/2 z-[120] -translate-x-1/2">
-          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-xs font-medium text-blue-700 shadow-lg transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] animate-in fade-in slide-in-from-top-2">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-[10px] font-semibold uppercase tracking-wider text-blue-600">
-              Tip
-            </span>
-            <span className="max-w-xs text-left leading-relaxed">{nodeHintMessage}</span>
+          {/* 1. CANVAS (PRIMARY SURFACE) */}
+          <div className={`flex-1 relative transition-all duration-500 ease-in-out ${
+              chatFullscreen ? "opacity-10 pointer-events-none filter blur-[2px] scale-[0.98]" : "opacity-100"
+          }`}>
+              {selectedCanvas ? (
+                <ReactFlowProvider>
+                  <CanvasArea
+                    canvasId={selectedCanvas}
+                    selectedNode={selectedNode}
+                    onNodeSelect={handleNodeSelect}
+                  />
+                </ReactFlowProvider>
+              ) : (
+                <div className="flex items-center justify-center h-full bg-slate-50">
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
+                        <Plus size={24} />
+                    </div>
+                    <p className="text-slate-500">Select or create a canvas to start</p>
+                  </div>
+                </div>
+              )}
           </div>
-        </div>
-      )}
 
-      {/* Main Content */}
-      <div className={`relative flex flex-1 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        chatFullscreen 
-          ? "mt-0" 
-          : selectedNode && !rightSidebarCollapsed && !isMobile
-          ? "-mt-[88px]"
-          : "-mt-20"
-      }`}>
-        {/* Canvas Background Layer */}
-        <div className={`absolute inset-0 z-[1] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          selectedNode && !rightSidebarCollapsed && !chatFullscreen && !isMobile
-            ? "right-0"
-            : ""
-        }`}
-        style={
-          selectedNode && !rightSidebarCollapsed && !chatFullscreen && !isMobile
-            ? { right: rightSidebarWidth + 24 }
-            : {}
-        }>
-          {selectedCanvas ? (
-            <ReactFlowProvider>
-              <CanvasArea
-                canvasId={selectedCanvas}
-                selectedNode={selectedNode}
-                onNodeSelect={handleNodeSelect}
-              />
-            </ReactFlowProvider>
-          ) : (
-            <div className="flex items-center justify-center h-full bg-gradient-to-br from-slate-50/30 to-white/50">
-              <div className="text-center space-y-8 animate-in fade-in duration-500">
-                {canvases.length === 0 && (
-                  <div className="max-w-sm mx-auto -mt-6 space-y-3 rounded-2xl border border-slate-200/80 bg-white/90 px-6 py-5 text-left shadow-sm">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                      Getting started
-                    </p>
-                    <ol className="space-y-2 text-sm text-slate-600">
-                      <li className="flex items-start gap-2">
-                        <span className="mt-0.5 text-xs font-semibold text-slate-900">1</span>
-                        <span>Click the plus to create your first canvas.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="mt-0.5 text-xs font-semibold text-slate-900">2</span>
-                        <span>Add nodes to map the conversational branches.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="mt-0.5 text-xs font-semibold text-slate-900">3</span>
-                        <span>Open the chat panel to rehearse responses live.</span>
-                      </li>
-                    </ol>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={handleCreateCanvas}
-                  className="mx-auto block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                >
-                  <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:scale-105 hover:shadow-md">
-                    <Plus className="w-10 h-10 text-slate-400" />
-                    <span className="sr-only">Create a new canvas</span>
-                  </div>
-                </button>
-                <div>
-                  <p className="text-slate-900 text-xl font-light mb-4">
-                    No canvas selected
-                  </p>
-                  <p className="text-slate-500 text-base mb-4 max-w-md mx-auto font-light leading-relaxed">
-                    Click on the plus above to create your first canvas.
-                  </p>
-                  <p className="text-slate-400 text-sm max-w-md mx-auto font-light leading-relaxed">
-                    Once canvases appear, pick one from the sidebar to continue mapping your conversational flows.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Floating Panels Layer */}
-        <div className={`relative z-[50] flex flex-1 gap-6 px-4 pointer-events-none transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          selectedNode && !rightSidebarCollapsed && !chatFullscreen && !isMobile
-            ? "pt-28 pb-6"
-            : "pt-24 pb-6"
-        }`}>
-          {/* Left Sidebar - Canvas List */}
-          <div
-            className={`pointer-events-auto relative flex flex-col overflow-hidden shadow-xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 border border-white/60 bg-white/70 dark:border-slate-700/60 dark:bg-slate-900/55 ${
-              leftSidebarCollapsed
-                ? "w-16 rounded-3xl px-2 py-4"
-                : "w-72 rounded-[32px] px-4 py-5"
-            }`}
-          >
-          {leftSidebarCollapsed ? (
-            <div className="h-full flex flex-col items-center justify-between py-2">
-              <div className="flex flex-col items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setLeftSidebarCollapsed(false)}
-                  className="h-10 w-10 rounded-xl text-slate-600 transition-all hover:scale-105 hover:bg-white/90 hover:text-slate-900 hover:shadow-md dark:text-slate-300 dark:hover:bg-slate-800/80"
-                  title="Expand sidebar"
-                >
-                  <PanelLeftOpen className="h-5 w-5" />
-                </Button>
-                <div className="h-px w-8 bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleCreateCanvas}
-                  className="h-10 w-10 rounded-xl text-slate-600 transition-all hover:scale-105 hover:bg-emerald-50/90 hover:text-emerald-700 hover:shadow-md dark:text-slate-300 dark:hover:bg-emerald-900/30"
-                  title="Create new canvas"
-                >
-                  <Plus className="h-5 w-5" />
-                </Button>
-              </div>
-              <div className="flex flex-1 items-center justify-center py-8">
-                <div className="relative flex items-center justify-center">
-                  <span className="rotate-90 whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.3em] text-slate-400/80">
-                    Canvases
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-col items-center gap-3">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-700 shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
-                  title={latestCanvasTooltip}
-                >
-                  {latestCanvasBadge}
-                </div>
-                <span className="text-[9px] font-medium uppercase tracking-[0.3em] text-slate-400/80">
-                  {latestCanvas ? "Recent" : "Empty"}
-                </span>
-                {selectedCanvas && (
-                  <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
-                )}
-              </div>
-            </div>
-          ) : (
-            <CanvasList
-              canvases={canvases.map((canvas) => ({
-                _id: canvas._id,
-                title: canvas.title,
-                createdAt: canvas.createdAt,
-                nodeCount: canvas.nodes.length,
-                metaTags: canvas.metaTags,
-              }))}
-              selectedCanvas={selectedCanvas || undefined}
-              onSelectCanvas={handleSelectCanvas}
-              onCreateCanvas={handleCreateCanvas}
-              onDeleteCanvas={handleDeleteCanvas}
-              onDuplicateCanvas={handleDuplicateCanvas}
-              onRenameCanvas={handleRenameCanvas}
-              onCollapse={() => setLeftSidebarCollapsed(true)}
-            />
-          )}
-        </div>
-
-        {/* Spacer to push right sidebar to the right */}
-        <div className="flex-1 pointer-events-none" />
-
-        {/* Right Sidebar - Chat Panel (resizable) */}
-        <div
-          className={`pointer-events-auto ${
-            isResizingRight
-              ? "transition-none"
-              : "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
-          } ${
-            selectedNode
-              ? chatFullscreen || isMobile
-                ? "fixed inset-0 z-50 bg-white"
-                : rightSidebarCollapsed
-                ? "rounded-[32px] border border-white/60 bg-white/90 backdrop-blur-2xl shadow-xl supports-[backdrop-filter]:bg-white/85 dark:border-slate-700/60 dark:bg-slate-900/90"
-                : "fixed top-0 right-0 h-screen border-l border-white/60 bg-white shadow-2xl z-[60]"
-              : "overflow-hidden"
-          }`}
-          style={
-            selectedNode
-              ? chatFullscreen || isMobile
-                ? undefined
-                : rightSidebarCollapsed
-                ? { width: "4rem" }
-                : { width: rightSidebarWidth, minWidth: 420, maxWidth: 1100 }
-              : { width: 0, pointerEvents: "none" }
-          }
-        >
-          {/* Drag handle (left edge) */}
-          {!rightSidebarCollapsed &&
-            !chatFullscreen &&
-            selectedNode &&
-            !isMobile && (
-              <div
-                onMouseDown={beginRightResize}
-                className={`absolute left-0 top-0 h-full w-1 cursor-col-resize z-10 select-none group/resize ${
-                  isResizingRight ? "bg-slate-300" : "hover:bg-slate-300"
-                }`}
-                title="Drag to resize"
-              >
-                <div className="w-px h-full bg-slate-200 group-hover/resize:bg-slate-400 transition-colors" />
-              </div>
-            )}
-          <ChatPanel
-            selectedNode={selectedNode}
-            selectedNodeName={selectedNodeName}
-            selectedCanvas={selectedCanvas}
-            isFullscreen={chatFullscreen || isMobile}
-            isCollapsed={rightSidebarCollapsed && !isMobile}
-            onToggleFullscreen={() => setChatFullscreen(!chatFullscreen)}
-            onToggleCollapse={() =>
-              setRightSidebarCollapsed(!rightSidebarCollapsed)
-            }
-            onNodeSelect={(nodeId: string, nodeName?: string) => {
-              setSelectedNode(nodeId);
-              setSelectedNodeName(nodeName);
-              // Collapse chat to show the canvas when switching nodes
-              if (chatFullscreen) setChatFullscreen(false);
-            }}
-            onClose={() => {
-              setSelectedNode(null);
-              setSelectedNodeName(undefined);
-              setChatFullscreen(false);
-              setRightSidebarCollapsed(false);
-              if (nodeHintTimeoutRef.current) {
-                clearTimeout(nodeHintTimeoutRef.current);
-                nodeHintTimeoutRef.current = null;
-              }
-              setNodeHintMessage(null);
-            }}
-          />
-        </div>
-        </div>
+          {/* 2. RIGHT PANEL — CONTEXTUAL CONVERSATION CONSOLE (CORE) */}
+          <div className={`bg-white shadow-2xl transition-all duration-300 ease-in-out flex flex-col z-40 border-l border-slate-200 ${
+              selectedNode 
+                  ? (chatFullscreen ? "fixed right-0 top-10 bottom-0 w-[90%] md:w-[85%] lg:w-[80%] shadow-none border-l-0 z-50" : "w-[480px] relative") 
+                  : "w-0 overflow-hidden border-l-0"
+          }`}>
+              {selectedNode && (
+                  <ContextualConsoleComponent 
+                       selectedNode={selectedNode}
+                       selectedNodeName={selectedNodeName}
+                       selectedCanvas={selectedCanvas}
+                       isFullscreen={chatFullscreen}
+                       isCollapsed={rightSidebarCollapsed} 
+                       onToggleFullscreen={() => setChatFullscreen(!chatFullscreen)}
+                       onClose={() => {
+                           setSelectedNode(null);
+                           setChatFullscreen(false);
+                       }}
+                       onNodeSelect={(nodeId: string, nodeName?: string) => {
+                          setSelectedNode(nodeId);
+                          setSelectedNodeName(nodeName);
+                          // Maintain focus mode preference? Spec says "Focus Node -> opens Focus Mode".
+                          // If they click on navigation, they might exit focus mode implicitly or stay.
+                          // But Canvas interaction usually implies exiting Focus Mode on interaction *outside* the panel.
+                          // Here interaction is handled by CanvasArea which we are blurring.
+                        }}
+                  />
+              )}
+          </div>
       </div>
 
-      {/* Global Search Dialog */}
       <GlobalSearch
         canvases={canvases}
         onNavigate={handleSearchNavigate}
         open={isSearchOpen}
         onOpenChange={setIsSearchOpen}
       />
+      <OnboardingGuide />
     </div>
   );
 }

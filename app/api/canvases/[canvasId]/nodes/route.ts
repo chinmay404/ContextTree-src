@@ -19,7 +19,7 @@ export async function POST(
     }
 
     // For any non-primary node, ensure lineage metadata exists
-    if (!node.primary) {
+    if (!node.primary && node.type !== "group") {
       if (!node.parentNodeId || !node.forkedFromMessageId) {
         return NextResponse.json(
           {

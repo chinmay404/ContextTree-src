@@ -38,7 +38,13 @@ export interface NodeData {
   textColor?: string; // Text color for readability
   dotColor?: string; // Connection dot color
   primary: boolean;
-  type: "entry" | "branch" | "context" | "llmCall" | "userMessage";
+  type:
+    | "entry"
+    | "branch"
+    | "context"
+    | "llmCall"
+    | "userMessage"
+    | "group";
   chatMessages: ChatMessage[];
   runningSummary: string;
   contextContract: string;
@@ -54,6 +60,7 @@ export interface NodeData {
   // React Flow properties for positioning
   position?: { x: number; y: number };
   data?: any;
+  dimensions?: { width: number; height: number };
 }
 
 export interface EdgeData {

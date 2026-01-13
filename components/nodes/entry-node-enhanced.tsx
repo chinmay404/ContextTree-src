@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Play,
+  Anchor,
   MessageCircle,
   Settings,
   Activity,
@@ -135,9 +136,11 @@ export function EntryNodeEnhanced({
           backdropFilter: "blur(12px)",
         };
       default:
+        // Flat / Solid style (No gradients as per strict design system)
         return {
           ...baseStyle,
-          background: `linear-gradient(135deg, ${currentColor} 0%, ${currentColor}F0 50%, ${currentColor}E0 100%)`,
+          backgroundColor: currentColor,
+          border: `1px solid ${dotColor}30`,
         };
     }
   };
@@ -202,7 +205,7 @@ export function EntryNodeEnhanced({
           ...getBackgroundStyle(),
           boxShadow:
             selected || data.isSelected
-              ? `0 25px 50px -12px ${dotColor}25, 0 0 0 1px ${dotColor}20`
+              ? `0 20px 40px -12px ${dotColor}35, 0 0 0 2px ${dotColor}`
               : hovered
               ? `0 20px 40px -8px ${dotColor}20`
               : undefined,
@@ -294,7 +297,7 @@ export function EntryNodeEnhanced({
               />
 
               {/* Main Icon */}
-              <Play
+              <Anchor
                 className="relative z-10 transition-all duration-300 group-hover:scale-110"
                 size={config.iconSize}
                 style={{ color: dotColor }}
@@ -312,10 +315,10 @@ export function EntryNodeEnhanced({
             {/* Title and Info */}
             <div className="flex-1 min-w-0">
               <h3
-                className={`font-bold ${config.titleSize} truncate leading-tight mb-1 transition-colors duration-300`}
+                className={`font-medium ${config.titleSize} truncate leading-tight mb-1 transition-colors duration-300`}
                 style={{ color: textColor }}
               >
-                {data.label || "Entry Point"}
+                {data.label || "Start"}
               </h3>
 
               <div className="flex items-center gap-2 mb-2">

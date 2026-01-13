@@ -33,6 +33,14 @@ const nodeTypes = [
       "bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-sm",
     emoji: "📄",
   },
+  {
+    id: "group",
+    label: "Group Box",
+    icon: Palette,
+    color:
+      "bg-gradient-to-br from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white shadow-sm",
+    emoji: "🗂️",
+  },
 ];
 
 export function NodePalette() {
