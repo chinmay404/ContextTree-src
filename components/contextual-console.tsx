@@ -913,11 +913,18 @@ const ContextualConsole = ({
     // Call LLM API through internal proxy
     try {
       const model = getNodeModel(selectedNode);
+      
+      // Get additional node context
+      const currentNode = canvasData?.nodes?.find((n: any) => n._id === selectedNode);
+
       const payload = {
         canvasId: selectedCanvas,
         nodeId: selectedNode,
         model,
         message: newMessage.content,
+        parentNodeId: currentNode?.parentNodeId || null,
+        forkedFromMessageId: currentNode?.forkedFromMessageId || null,
+        isPrimary: currentNode?.primary || false
       };
 
       // Use internal API proxy instead of direct external call
@@ -1047,6 +1054,7 @@ const ContextualConsole = ({
     selectedNodeName,
     inputValue,
     getNodeModel,
+    canvasData
   ]);
 
   const handleTextSelection = useCallback(() => {
