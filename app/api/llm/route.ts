@@ -121,12 +121,17 @@ export async function POST(request: NextRequest) {
       throw fetchError;
     }
   } catch (error) {
-    console.error("LLM proxy error:", error);
+    console.error("LLM proxy error details:", error);
 
     // Provide more specific error information for debugging
     let errorMessage = "Internal server error";
 
     if (error instanceof Error) {
+      // In development, return the actual error message
+      if (process.env.NODE_ENV !== 'production') {
+          errorMessage = `Internal server error: ${error.message}`;
+      }
+
       if (error.message.includes("CERT") || error.message.includes("SSL")) {
         errorMessage = "SSL certificate error";
         console.error(

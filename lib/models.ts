@@ -196,8 +196,13 @@ export const MODEL_PROVIDERS = {
 } as const;
 
 // Flatten all models into a single array for easy consumption
-export const ALL_MODELS: ModelConfig[] = Object.values(MODEL_PROVIDERS).flatMap(
+const FLATTENED_MODELS = Object.values(MODEL_PROVIDERS).flatMap(
   (provider) => provider.models
+);
+
+// Remove duplicates based on ID
+export const ALL_MODELS: ModelConfig[] = Array.from(
+  new Map(FLATTENED_MODELS.map((m) => [m.id, m])).values()
 );
 
 // Model recommendations based on use case

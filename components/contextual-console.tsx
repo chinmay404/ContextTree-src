@@ -31,12 +31,19 @@ import {
   Circle,
   GitCommitHorizontal,
   Info,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { storageService, CanvasNote } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
 import { ALL_MODELS, getDefaultModel } from "@/lib/models";
@@ -1129,7 +1136,9 @@ const ContextualConsole = ({
         <div className="flex items-center gap-1.5 mb-1.5">
           <GitBranch size={10} className="text-slate-400" />
           <span className="text-xs text-slate-500">
-            Forked {forkedNodes.length}x
+            {forkedNodes.length > 1 
+                ? `New nodes created from here (${forkedNodes.length}):` 
+                : "New node created from here:"}
           </span>
         </div>
         <div className="flex flex-wrap gap-1">
@@ -1270,11 +1279,31 @@ const ContextualConsole = ({
                 </div>
                 
                 <div className="relative flex-1 min-w-0 overflow-hidden">
-                    <div className="font-semibold text-sm text-slate-700 mb-1.5 flex items-center gap-2">
-                        {isUser ? "You" : "Language Model"}
-                        <span className="text-[10px] font-normal text-slate-400">
-                             {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </span>
+                    <div className="font-semibold text-sm text-slate-700 mb-1.5 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            {isUser ? "You" : "Language Model"}
+                            <span className="text-[10px] font-normal text-slate-400">
+                                {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </span>
+                        </div>
+
+                        {!isUser && (
+                           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                             <DropdownMenu>
+                               <DropdownMenuTrigger asChild>
+                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600">
+                                   <MoreHorizontal size={14} />
+                                 </Button>
+                               </DropdownMenuTrigger>
+                               <DropdownMenuContent align="end">
+                                 <DropdownMenuItem onClick={handleFork}>
+                                   <GitBranch className="mr-2 h-4 w-4" />
+                                   Fork from here
+                                 </DropdownMenuItem>
+                               </DropdownMenuContent>
+                             </DropdownMenu>
+                           </div>
+                        )}
                     </div>
                     
                     <div className="text-[15px] leading-relaxed break-words text-slate-800">
@@ -1331,6 +1360,7 @@ const ContextualConsole = ({
                             </div>
                         )}
                     </div>
+                    {!isUser && <ForkIndicator messageId={message.id} />}
                 </div>
             </div>
         </div>
