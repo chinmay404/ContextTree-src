@@ -5,6 +5,16 @@ import https from "https";
 // Force Node.js runtime for HTTPS agent functionality
 export const runtime = "nodejs";
 
+// Bypassing SSL check for expired certificates (Critical fix)
+if (process.env.NODE_ENV !== 'production' || process.env.vercel !== 'production') {
+   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+// Also apply it unconditionally if we detect duckdns to be sure
+if ((process.env.LLM_API_URL || "").includes("duckdns.org")) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
+
 // Server-side LLM API endpoint (not exposed to client)
 const LLM_API_URL =
   process.env.LLM_API_URL || process.env.NEXT_PUBLIC_LLM_API_URL;

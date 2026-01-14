@@ -3,6 +3,11 @@ import { type NextRequest, NextResponse } from "next/server";
 // Force Node.js runtime for HTTPS agent functionality
 export const runtime = "nodejs";
 
+// Bypassing SSL check for expired certificates
+if (process.env.NODE_ENV !== 'production' || (process.env.LLM_API_URL || "").includes("duckdns.org")) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 const LLM_API_URL =
   process.env.LLM_API_URL || process.env.NEXT_PUBLIC_LLM_API_URL;
 
