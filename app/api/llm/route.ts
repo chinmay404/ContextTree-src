@@ -66,7 +66,8 @@ export async function POST(request: NextRequest) {
     const isUntrustedSSL =
       LLM_API_URL.includes("18.213.206.235") ||
       LLM_API_URL.includes("localhost") ||
-      LLM_API_URL.includes("127.0.0.1");
+      LLM_API_URL.includes("127.0.0.1") ||
+      LLM_API_URL.includes("duckdns.org");
 
     const fetchOptions: RequestInit = {
       method: "POST",
@@ -77,8 +78,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(payload),
     };
 
-    // Add SSL bypass for development with untrusted certificates
-    if (isDevelopment && isUntrustedSSL && LLM_API_URL.startsWith("https://")) {
+    // Add SSL bypass for known self-signed/expired endpoints
+    if (isUntrustedSSL && LLM_API_URL.startsWith("https://")) {
       // @ts-ignore - Node.js specific agent property
       fetchOptions.agent = createHttpsAgent();
     }

@@ -38,7 +38,8 @@ export async function GET(request: NextRequest) {
     const isUntrustedSSL =
       LLM_API_URL.includes("18.213.206.235") ||
       LLM_API_URL.includes("localhost") ||
-      LLM_API_URL.includes("127.0.0.1");
+      LLM_API_URL.includes("127.0.0.1") ||
+      LLM_API_URL.includes("duckdns.org");
 
     const response = await fetch(LLM_API_URL, {
       method: "POST",
@@ -53,9 +54,9 @@ export async function GET(request: NextRequest) {
         message: "Health check ping",
       }),
       signal: controller.signal,
-      // @ts-ignore - For SSL bypass in development with IP addresses only
+      // @ts-ignore - For SSL bypass in known untrusted domains
       agent:
-        process.env.NODE_ENV !== "production" && isUntrustedSSL
+        isUntrustedSSL
           ? new (require("https").Agent)({ rejectUnauthorized: false })
           : undefined,
     });
