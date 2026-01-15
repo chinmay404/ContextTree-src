@@ -6,12 +6,9 @@ import https from "https";
 export const runtime = "nodejs";
 
 // Bypassing SSL check for expired certificates (Critical fix)
-if (process.env.NODE_ENV !== 'production' || process.env.vercel !== 'production') {
-   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
-// Also apply it unconditionally if we detect duckdns to be sure
-if ((process.env.LLM_API_URL || "").includes("duckdns.org")) {
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+if (process.env.NODE_ENV !== 'production') {
+    // Only in local development if absolutely necessary
+    // process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 }
 
 
@@ -98,11 +95,27 @@ export async function POST(request: NextRequest) {
 
     try {
       const streamUrl = LLM_API_URL.endsWith('/') ? `${LLM_API_URL}stream` : `${LLM_API_URL}/stream`;
-      const response = await fetch(streamUrl, fetchOptions);
       
+      let response;
+      try {
+          response = await fetch(streamUrl, fetchOptions);
+      } catch (streamError) {
+          console.warn("Streaming endpoint failed, falling back to standard endpoint:", streamError);
+          // Fallback to standard endpoint logic
+          response = await fetch(LLM_API_URL, fetchOptions);
+          return await handleLLMResponse(response);
+      }
+      
+      if (response.status === 404 || response.status === 405) {
+          console.warn("Streaming endpoint not found (404/405), falling back to standard endpoint");
+          response = await fetch(LLM_API_URL, fetchOptions);
+          return await handleLLMResponse(response);
+      }
+
       if (!response.ok) {
          const errorText = await response.text();
          console.error(`LLM API error (${response.status}):`, errorText);
+         // If generic error, might just be bad request, but consistent with fallback approach:
          return NextResponse.json({ error: errorText }, { status: response.status });
       }
 
@@ -119,26 +132,14 @@ export async function POST(request: NextRequest) {
       // Try alternative approach for SSL issues
       if (isDevelopment && LLM_API_URL.startsWith("https://")) {
         console.log("Attempting HTTP fallback for development...");
-        const httpUrl = LLM_API_URL.replace("https://", "http://").replace(/\/$/, "") + "/stream";
+        const httpUrl = LLM_API_URL.replace("https://", "http://"); // Fallback to non-stream http
         try {
           const httpResponse = await fetch(httpUrl, {
             ...fetchOptions,
             // Remove agent for HTTP
             agent: undefined,
           });
-          
-          if (!httpResponse.ok) {
-             const errorText = await httpResponse.text();
-             return NextResponse.json({ error: errorText }, { status: httpResponse.status });
-          }
-
-          return new Response(httpResponse.body, {
-            headers: {
-                "Content-Type": "text/event-stream",
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-            }
-          });
+          return await handleLLMResponse(httpResponse);
         } catch (httpError) {
           console.error("HTTP fallback also failed:", httpError);
         }

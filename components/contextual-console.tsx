@@ -1338,7 +1338,7 @@ const ContextualConsole = ({
                         {isUser ? (
                              <div className="whitespace-pre-wrap">{message.content}</div>
                         ) : (
-                            <div className="prose prose-slate prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-100 prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-200 prose-code:bg-slate-100 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
+                            <div className="prose prose-slate prose-sm max-w-none break-words prose-p:leading-relaxed prose-pre:bg-slate-100 prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-200 prose-code:bg-slate-100 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
                                 {parseThinkingContent(message.content).map(
                                     (part, index) => (
                                     <div key={index}>
@@ -1370,13 +1370,36 @@ const ContextualConsole = ({
                                             remarkPlugins={[remarkGfm]}
                                             rehypePlugins={[rehypeHighlight]}
                                             components={{
-                                                p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
+                                                p: ({ children }) => <p className="mb-4 last:mb-0 leading-[1.625]">{children}</p>,
+                                                ul: ({ children }) => <ul className="list-disc pl-5 mb-4 space-y-2">{children}</ul>,
+                                                ol: ({ children }) => <ol className="list-decimal pl-5 mb-4 space-y-2">{children}</ol>,
+                                                li: ({ children }) => <li className="pl-1">{children}</li>,
+                                                h1: ({ children }) => <h1 className="text-2xl font-bold mb-4 mt-6 first:mt-0 text-slate-900">{children}</h1>,
+                                                h2: ({ children }) => <h2 className="text-xl font-bold mb-3 mt-6 text-slate-900 border-b border-slate-100 pb-2">{children}</h2>,
+                                                h3: ({ children }) => <h3 className="text-lg font-semibold mb-3 mt-4 text-slate-900">{children}</h3>,
+                                                blockquote: ({ children }) => <blockquote className="border-l-4 border-slate-200 pl-4 italic text-slate-600 my-4 bg-slate-50 py-2 pr-2 rounded-r">{children}</blockquote>,
+                                                table: ({ children }) => (
+                                                    <div className="overflow-x-auto my-6 w-full border border-slate-200 rounded-lg shadow-sm">
+                                                        <table className="min-w-full divide-y divide-slate-200 bg-white text-sm">{children}</table>
+                                                    </div>
+                                                ),
+                                                thead: ({ children }) => <thead className="bg-slate-50">{children}</thead>,
+                                                th: ({ children }) => <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">{children}</th>,
+                                                td: ({ children }) => <td className="px-4 py-3 text-slate-600 border-b border-slate-100">{children}</td>,
+                                                a: ({ children, href }) => <a href={href} className="text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors" target="_blank" rel="noopener noreferrer">{children}</a>,
+                                                hr: () => <hr className="my-8 border-slate-200" />,
                                                 code: ({ children, className }) => {
                                                     const isInline = !className;
-                                                    if (isInline) return <code className="bg-slate-100 px-1.5 py-0.5 rounded text-sm font-mono text-slate-800">{children}</code>;
-                                                    return <code className={className}>{children}</code>;
+                                                    if (isInline) return <code className="bg-slate-100/80 px-1.5 py-0.5 rounded text-[13px] font-mono text-pink-600 border border-slate-200/50">{children}</code>;
+                                                    return <code className={`${className} text-sm font-mono`}>{children}</code>;
                                                 },
-                                                pre: ({ children }) => <pre className="bg-slate-900 !text-slate-50 p-4 rounded-lg overflow-x-auto my-4">{children}</pre>
+                                                pre: ({ children }) => (
+                                                    <div className="relative group my-6">
+                                                        <pre className="bg-[#1e1e1e] !text-[#d4d4d4] p-4 rounded-lg overflow-x-auto border border-slate-200/10 shadow-sm text-sm leading-relaxed scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                                                            {children}
+                                                        </pre>
+                                                    </div>
+                                                )
                                             }}
                                             >
                                                 {part.content}
