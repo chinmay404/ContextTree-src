@@ -370,7 +370,22 @@ const ContextualConsole = ({
 
       return canvasData.nodes.filter((node: any) => {
         const forkedFromId = node.forkedFromMessageId;
-        return forkedFromId === messageId || forkedFromId === messageId + "-a";
+        if (!forkedFromId) return false;
+        
+        // Check exact match
+        if (forkedFromId === messageId) return true;
+        
+        // Check if messageId is the suffixed version of forkedFromId (e.g. valid messageId="123-a" matches forkedFrom="123")
+        // This is common since we append -a/-u to message IDs in the UI
+        if (messageId === `${forkedFromId}-a` || messageId === `${forkedFromId}-u`) return true;
+        
+        // Handle case where forkedFromId might have the suffix stored (rare but possible)
+        if (forkedFromId === `${messageId}-a`) return true;
+        
+        // Normalize both to base ID if they contain -a/-u suffix before comparison
+        const baseMessageId = messageId.replace(/(-a|-u)$/, '');
+        const baseForkedId = forkedFromId.replace(/(-a|-u)$/, '');
+        return baseMessageId === baseForkedId;
       });
     },
     [canvasData]
@@ -384,8 +399,13 @@ const ContextualConsole = ({
     const newNodeId = `node_${Date.now()}_${Math.random()
       .toString(36)
       .slice(2, 8)}`;
+      
+    // Use the model name as the default node name if possible
+    const modelName = AVAILABLE_MODELS.find(m => m.value === selectedForkModel)?.label || selectedForkModel;
+    
     const newNode = {
       _id: newNodeId,
+      name: `Branch from ${selectedNodeName ? selectedNodeName.slice(0, 15) + (selectedNodeName.length > 15 ? "..." : "") : "Parent"}`,
       primary: false,
       type: "branch",
       chatMessages: [],
@@ -400,6 +420,14 @@ const ContextualConsole = ({
         y: 200 + Math.random() * 150,
       },
     } as any;
+
+    // Optimistically update local canvas data to ensure ForkIndicator shows up immediately if we switch back
+    if (canvasData) {
+        setCanvasData((prev: any) => ({
+            ...prev,
+            nodes: [...(prev?.nodes || []), newNode]
+        }));
+    }
 
     try {
       // Optimistic: dispatch events before network to feel instant

@@ -97,22 +97,48 @@ export async function POST(request: NextRequest) {
     console.log(`LLM API call to: ${LLM_API_URL.replace(/\/[^\/]*$/, "/***")}`);
 
     try {
-      const response = await fetch(LLM_API_URL, fetchOptions);
-      return await handleLLMResponse(response);
+      const streamUrl = LLM_API_URL.endsWith('/') ? `${LLM_API_URL}stream` : `${LLM_API_URL}/stream`;
+      const response = await fetch(streamUrl, fetchOptions);
+      
+      if (!response.ok) {
+         const errorText = await response.text();
+         console.error(`LLM API error (${response.status}):`, errorText);
+         return NextResponse.json({ error: errorText }, { status: response.status });
+      }
+
+      return new Response(response.body, {
+        headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+      });
     } catch (fetchError) {
       console.error("LLM fetch error:", fetchError);
 
       // Try alternative approach for SSL issues
       if (isDevelopment && LLM_API_URL.startsWith("https://")) {
         console.log("Attempting HTTP fallback for development...");
-        const httpUrl = LLM_API_URL.replace("https://", "http://");
+        const httpUrl = LLM_API_URL.replace("https://", "http://").replace(/\/$/, "") + "/stream";
         try {
           const httpResponse = await fetch(httpUrl, {
             ...fetchOptions,
             // Remove agent for HTTP
             agent: undefined,
           });
-          return await handleLLMResponse(httpResponse);
+          
+          if (!httpResponse.ok) {
+             const errorText = await httpResponse.text();
+             return NextResponse.json({ error: errorText }, { status: httpResponse.status });
+          }
+
+          return new Response(httpResponse.body, {
+            headers: {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            }
+          });
         } catch (httpError) {
           console.error("HTTP fallback also failed:", httpError);
         }

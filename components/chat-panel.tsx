@@ -860,52 +860,94 @@ const ChatPanelInternal = ({
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        const data = await res.json();
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Service error (${res.status})`);
+      }
 
-        const botResponse: Message = {
-          id: genId(),
-          role: "assistant",
-          content: data.message,
-          timestamp: new Date(),
-        };
+      if (!res.body) throw new Error("Response body is not readable");
 
-        // Add assistant message to local state and cache
-        setConversations((prev) => {
-          const updatedMessagesWithBot = [
-            ...(prev[selectedNode]?.messages || []),
-            botResponse,
-          ];
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let botContent = "";
+      const botMsgId = genId();
+      const timestamp = new Date();
 
-          // Update cache immediately
-          setMessageCache((cache) => ({
-            ...cache,
-            [selectedNode]: updatedMessagesWithBot,
-          }));
-
-          // Save to localStorage as backup
-          storageService.saveNodeMessages(
-            selectedCanvas,
-            selectedNode,
-            updatedMessagesWithBot.map((msg) => ({
-              id: msg.id,
-              role: msg.role,
-              content: msg.content,
-              timestamp: msg.timestamp.toISOString(),
-            }))
-          );
-
+      // Initialize empty assistant message
+      setConversations((prev) => {
+          const prevMsgs = prev[selectedNode]?.messages || [];
           return {
-            ...prev,
-            [selectedNode]: {
-              ...(prev[selectedNode] || {
-                nodeId: selectedNode,
-                nodeName: selectedNodeName || `Node ${selectedNode}`,
-              }),
-              messages: updatedMessagesWithBot,
-            },
+              ...prev,
+              [selectedNode]: {
+                  ...(prev[selectedNode] || {
+                      nodeId: selectedNode,
+                      nodeName: selectedNodeName || `Node ${selectedNode}`,
+                  }),
+                  messages: [...prevMsgs, {
+                      id: botMsgId,
+                      role: "assistant",
+                      content: "",
+                      timestamp: timestamp
+                  }]
+              }
           };
+      });
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        botContent += chunk;
+
+        setConversations((prev) => {
+             const prevConv = prev[selectedNode];
+             if (!prevConv) return prev;
+             
+             const messages = [...prevConv.messages];
+             const msgIndex = messages.findIndex(m => m.id === botMsgId);
+             
+             if (msgIndex >= 0) {
+                 messages[msgIndex] = { ...messages[msgIndex], content: botContent };
+             }
+             
+             return {
+                 ...prev,
+                 [selectedNode]: { ...prevConv, messages }
+             };
         });
+      }
+
+      const botResponse: Message = {
+          id: botMsgId,
+          role: "assistant",
+          content: botContent,
+          timestamp: timestamp,
+      };
+
+      // Update cache
+      setMessageCache((cache) => ({
+        ...cache,
+        [selectedNode]: [...(cache[selectedNode] || []), botResponse],
+      }));
+
+       // Save to localStorage
+       setConversations((prev) => {
+            const msgs = prev[selectedNode]?.messages || [];
+            if (msgs.length > 0) {
+                storageService.saveNodeMessages(
+                selectedCanvas,
+                selectedNode,
+                msgs.map((msg) => ({
+                  id: msg.id,
+                  role: msg.role,
+                  content: msg.content,
+                  timestamp: msg.timestamp.toISOString(),
+                }))
+              );
+            }
+            return prev;
+       });
 
         // Save assistant message to database
         try {
@@ -922,16 +964,9 @@ const ChatPanelInternal = ({
               }),
             }
           );
-
-          // Save to localStorage as backup (will be updated in the state setter)
         } catch (err) {
           console.error("Failed to save assistant message:", err);
         }
-      } else {
-        // Handle HTTP error responses
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || `Service error (${res.status})`);
-      }
     } catch (err) {
       console.error("Chat service error:", err);
 
