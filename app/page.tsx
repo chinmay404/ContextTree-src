@@ -33,7 +33,7 @@ export default function ContextTreePage() {
   >();
   const [canvases, setCanvases] = useState<CanvasData[]>([]);
   const [selectedCanvas, setSelectedCanvas] = useState<string | null>(null);
-  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(true); // Auto-collapsed by default
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false); // Open by default
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
   const [chatFullscreen, setChatFullscreen] = useState(false);
   const [rightSidebarWidth, setRightSidebarWidth] = useState<number>(520); // Increased for better readability
@@ -134,8 +134,57 @@ export default function ContextTreePage() {
             console.log("Auto-selecting first canvas:", data.canvases[0]._id);
             setSelectedCanvas(data.canvases[0]._id);
           } else if (data.canvases?.length === 0) {
-            console.log("No canvases found, clearing selection");
-            setSelectedCanvas(null);
+            console.log("No canvases found, creating default canvas");
+            // Create a default canvas for new users
+            const newCanvas = storageService.createDefaultCanvas(
+              user.email,
+              "My First Project"
+            );
+            storageService.saveCanvas(newCanvas);
+
+            // Try to persist to server
+            try {
+              const createResponse = await fetch("/api/canvases", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newCanvas),
+              });
+
+              if (createResponse.ok) {
+                const createData = await createResponse.json();
+                setCanvases([createData.canvas]);
+                setSelectedCanvas(createData.canvas._id);
+                
+                // Auto-select the first node to open the right panel
+                if (createData.canvas.nodes && createData.canvas.nodes.length > 0) {
+                  setSelectedNode(createData.canvas.nodes[0]._id);
+                  setSelectedNodeName(createData.canvas.nodes[0].name);
+                  setRightSidebarCollapsed(false);
+                }
+              } else {
+                // Fallback if server fails but local succeeded
+                setCanvases([newCanvas]);
+                setSelectedCanvas(newCanvas._id);
+                
+                // Auto-select the first node
+                if (newCanvas.nodes && newCanvas.nodes.length > 0) {
+                  setSelectedNode(newCanvas.nodes[0]._id);
+                  setSelectedNodeName(newCanvas.nodes[0].name);
+                  setRightSidebarCollapsed(false);
+                }
+              }
+            } catch (err) {
+              console.error("Failed to create default canvas on server", err);
+              setCanvases([newCanvas]);
+              setSelectedCanvas(newCanvas._id);
+              
+              // Auto-select the first node
+              if (newCanvas.nodes && newCanvas.nodes.length > 0) {
+                 setSelectedNode(newCanvas.nodes[0]._id);
+                 setSelectedNodeName(newCanvas.nodes[0].name);
+                 setRightSidebarCollapsed(false);
+              }
+            }
           }
         } else {
           console.error("Failed to fetch canvases, status:", response.status);

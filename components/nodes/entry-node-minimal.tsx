@@ -82,7 +82,7 @@ export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
       onClick={handleClick}
     >
       <div
-        className={`rounded-2xl border-[3px] px-5 py-4 text-sm shadow-sm transition-all duration-200 ${
+        className={`rounded-2xl border-[3px] px-5 py-4 text-sm shadow-sm transition-all duration-200 overflow-hidden ${
           isActive
             ? "shadow-md ring-2 ring-slate-500/20"
             : "hover:shadow-md"
@@ -110,7 +110,7 @@ export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
           {data.sharedLabel || "Context snapshot at T0"}
         </div>
 
-        <div className="mt-3 text-sm font-medium leading-relaxed text-slate-900 line-clamp-3">
+        <div className="mt-3 text-sm font-medium leading-relaxed text-slate-900 line-clamp-3 break-words">
           {data.preview || "Context Snapshot"}
         </div>
 

@@ -99,13 +99,13 @@ function ContextNodeMinimalComponent({
 
   return (
     <div
-      className={`group relative min-w-[200px] cursor-pointer ${
+      className={`group relative min-w-[200px] max-w-[400px] cursor-pointer ${
         faded ? "opacity-80" : "opacity-100"
       }`}
       onClick={handleClick}
     >
       <div
-        className={`rounded-xl border px-4 py-3 text-sm shadow-sm transition-all duration-200 ${
+        className={`rounded-xl border px-4 py-3 text-sm shadow-sm transition-all duration-200 overflow-hidden ${
           isActive ? "shadow-md ring-2 ring-slate-500/15" : "hover:shadow-md"
         }`}
         style={cardStyle}
@@ -117,11 +117,11 @@ function ContextNodeMinimalComponent({
         </div>
 
         <div className="mt-2 space-y-1">
-          <div className="text-sm font-semibold leading-snug text-slate-900 line-clamp-1">
+          <div className="text-sm font-semibold leading-snug text-slate-900 line-clamp-1 break-words">
             {previewPrimary}
           </div>
           {previewSecondary && (
-            <div className="text-xs font-normal text-slate-600 line-clamp-1">
+            <div className="text-xs font-normal text-slate-600 line-clamp-1 break-words">
               {previewSecondary}
             </div>
           )}

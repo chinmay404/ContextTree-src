@@ -82,6 +82,8 @@ const edgeTypes = {
 const LAYOUT_SAVE_DEBOUNCE_MS = 800;
 const EDGE_HIGHLIGHT_COLOR = "#3b82f6";
 const GROUP_DEFAULT_DIMENSIONS = { width: 420, height: 260 } as const;
+const NODE_MAX_WIDTH = 440;
+const ENTRY_MAX_WIDTH = 520;
 const FLOW_LAYOUT_STORAGE_PREFIX = "contexttree_flow_layout_";
 
 interface StoredNodeLayout {
@@ -524,7 +526,9 @@ export function CanvasArea({
         };
 
         if (typeof storedEntry.width === "number") {
-          nextStyle.width = storedEntry.width;
+          const maxWidth = node.type === "entry" ? ENTRY_MAX_WIDTH : NODE_MAX_WIDTH;
+          nextStyle.width = Math.min(storedEntry.width, maxWidth);
+          nextStyle.maxWidth = maxWidth;
         }
         if (typeof storedEntry.height === "number") {
           nextStyle.height = storedEntry.height;
@@ -723,7 +727,9 @@ export function CanvasArea({
               }
             : {}),
           zIndex: 2,
-          ...(node.type === "entry" ? { minWidth: 320 } : {}),
+          ...(node.type === "entry"
+            ? { minWidth: 320, maxWidth: ENTRY_MAX_WIDTH }
+            : { maxWidth: NODE_MAX_WIDTH }),
           boxShadow:
             depth > 0
               ? `0 ${2 + depth}px ${8 + depth * 2}px rgba(0,0,0,0.06)`

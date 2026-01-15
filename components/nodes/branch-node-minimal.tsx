@@ -81,13 +81,13 @@ function BranchNodeMinimalComponent({
 
   return (
     <div
-      className={`group relative min-w-[200px] cursor-pointer ${
+      className={`group relative min-w-[200px] max-w-[400px] cursor-pointer ${
         faded ? "opacity-80" : "opacity-100"
       }`}
       onClick={handleClick}
     >
       <div
-        className={`rounded-xl border px-4 py-3 text-sm shadow-sm transition-all duration-200 ${
+        className={`rounded-xl border px-4 py-3 text-sm shadow-sm transition-all duration-200 overflow-hidden ${
           isActive ? "shadow-md ring-2 ring-cyan-500/15" : "hover:shadow-md"
         }`}
         style={cardStyle}
@@ -105,7 +105,7 @@ function BranchNodeMinimalComponent({
           </div>
         </div>
 
-        <div className="mt-2 text-sm font-semibold leading-snug text-slate-900 line-clamp-2">
+        <div className="mt-2 text-sm font-semibold leading-snug text-slate-900 line-clamp-2 break-words">
           {previewText}
         </div>
 
