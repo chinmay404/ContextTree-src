@@ -91,24 +91,30 @@ export async function POST(request: NextRequest) {
       fetchOptions.agent = createHttpsAgent();
     }
 
-    console.log(`LLM API call to: ${LLM_API_URL.replace(/\/[^\/]*$/, "/***")}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`LLM API call to: ${LLM_API_URL}`);
+    } else {
+      console.log(`LLM API call to: ${LLM_API_URL.replace(/\/[^\/]*$/, "/***")}`);
+    }
 
     try {
-      const streamUrl = LLM_API_URL.endsWith('/') ? `${LLM_API_URL}stream` : `${LLM_API_URL}/stream`;
-      
+      // Normalize base URL to always include trailing slash to avoid 404s on FastAPI routers
+      const baseUrl = LLM_API_URL.endsWith("/") ? LLM_API_URL : `${LLM_API_URL}/`;
+      const streamUrl = `${baseUrl}stream`;
+
       let response;
       try {
-          response = await fetch(streamUrl, fetchOptions);
+        response = await fetch(streamUrl, fetchOptions);
       } catch (streamError) {
-          console.warn("Streaming endpoint failed, falling back to standard endpoint:", streamError);
-          // Fallback to standard endpoint logic
-          response = await fetch(LLM_API_URL, fetchOptions);
-          return await handleLLMResponse(response);
+        console.warn("Streaming endpoint failed, falling back to standard endpoint:", streamError);
+        // Fallback to standard endpoint logic
+        response = await fetch(baseUrl, fetchOptions);
+        return await handleLLMResponse(response);
       }
-      
+
       if (response.status === 404 || response.status === 405) {
           console.warn("Streaming endpoint not found (404/405), falling back to standard endpoint");
-          response = await fetch(LLM_API_URL, fetchOptions);
+        response = await fetch(baseUrl, fetchOptions);
           return await handleLLMResponse(response);
       }
 
