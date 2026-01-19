@@ -6,3 +6,4 @@
   touch-action: none;
   opacity: 0.6;
 }
+.react-flow__handle { width: 14px; height: 14px; }

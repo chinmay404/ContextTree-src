@@ -2,7 +2,7 @@
 // All imports across the app keep using `mongoService` without code changes.
 
 import { Pool } from "pg";
-import type { CanvasData, NodeData, EdgeData } from "./storage";
+import type { CanvasData, NodeData, EdgeData, ExternalFileData } from "./storage";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
@@ -149,6 +149,36 @@ async function init() {
       expires timestamptz not null,
       primary key (identifier, token)
     );
+    -- RAG / External Context Support
+    create extension if not exists vector;
+    
+    create table if not exists external_files (
+      id text primary key,
+      user_email text not null references users(email) on delete cascade,
+      node_id text not null references nodes(id) on delete cascade,
+      canvas_id text not null references canvases(id) on delete cascade,
+      file_name text not null,
+      file_type text,
+      file_size integer,
+      content text,
+      processed boolean default false,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+    create index if not exists idx_external_files_node on external_files(node_id);
+    create index if not exists idx_external_files_user on external_files(user_email);
+
+    create table if not exists context_chunks (
+      id text primary key,
+      file_id text not null references external_files(id) on delete cascade,
+      content text not null,
+      embedding vector(1536),
+      chunk_index integer not null,
+      token_count integer,
+      created_at timestamptz not null default now()
+    );
+    create index if not exists idx_context_chunks_file on context_chunks(file_id);
+
   `);
 }
 
@@ -939,6 +969,66 @@ export class MongoDBService {
       throw error;
     }
   }
+
+  async createExternalNodeAndFile(nodeData: NodeData, fileData: ExternalFileData) {
+    await ensureInit();
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // 1. Create Node (ensure partial node exists to satisfy FK)
+      await client.query(
+        `INSERT INTO nodes (id, canvas_id, user_email, data, is_primary, type, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+            fileData.nodeId, 
+            fileData.canvasId, 
+            fileData.userEmail, 
+            JSON.stringify(nodeData), // Store the transient node data
+            false,
+            'externalContext',
+            nodeData.createdAt, 
+            new Date().toISOString()
+        ]
+      );
+
+      // 2. Create File
+      await client.query(
+        `INSERT INTO external_files (id, user_email, node_id, canvas_id, file_name, file_type, file_size, content, processed, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         ON CONFLICT (id) DO UPDATE SET
+           file_name = EXCLUDED.file_name,
+           file_type = EXCLUDED.file_type,
+           file_size = EXCLUDED.file_size,
+           content = EXCLUDED.content,
+           processed = EXCLUDED.processed,
+           updated_at = EXCLUDED.updated_at`,
+        [
+          fileData.id,
+          fileData.userEmail,
+          fileData.nodeId,
+          fileData.canvasId,
+          fileData.fileName,
+          fileData.fileType,
+          fileData.fileSize,
+          fileData.content,
+          fileData.processed,
+          fileData.createdAt,
+          fileData.updatedAt,
+        ]
+      );
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error("Error saving external node and file:", error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
 }
 
 export const mongoService = new MongoDBService();

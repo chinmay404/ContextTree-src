@@ -21,6 +21,10 @@ interface LLMRequest {
   nodeId: string;
   model: string;
   message: string;
+  message_id?: string;
+  parentNodeId?: string | null;
+  forkedFromMessageId?: string | null;
+  isPrimary?: boolean;
 }
 
 interface LLMResponse {
@@ -65,6 +69,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Transform payload to match Backend ChatMessage schema
+    const backendPayload = {
+      message: payload.message,
+      message_id: payload.nodeId, 
+      conversation_id: payload.canvasId,
+      model_name: payload.model,
+      temperature: 0.7,
+      user_id: user.id || "anonymous",
+      // context fields can be added if frontend supports them
+    };
+
     // Add rate limiting check (optional)
     // You can implement rate limiting logic here
 
@@ -82,7 +97,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
         "User-Agent": "ContextTree/1.0",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(backendPayload),
     };
 
     // Add SSL bypass for known self-signed/expired endpoints

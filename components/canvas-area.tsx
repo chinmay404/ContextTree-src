@@ -26,6 +26,7 @@ import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
 import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
 import { ContextNodeMinimal as ContextNode } from "./nodes/context-node-minimal";
 import { GroupNode } from "./nodes/group-node";
+import { ExternalContextNode } from "./nodes/external-context-node";
 
 // Simplified React Flow nodes only
 
@@ -70,6 +71,7 @@ const basicNodeTypes: NodeTypes = {
   branch: BranchNode,
   context: ContextNode,
   group: GroupNode,
+  externalContext: ExternalContextNode,
 };
 
 // Using basic node types only
@@ -82,8 +84,6 @@ const edgeTypes = {
 const LAYOUT_SAVE_DEBOUNCE_MS = 800;
 const EDGE_HIGHLIGHT_COLOR = "#3b82f6";
 const GROUP_DEFAULT_DIMENSIONS = { width: 420, height: 260 } as const;
-const NODE_MAX_WIDTH = 440;
-const ENTRY_MAX_WIDTH = 520;
 const FLOW_LAYOUT_STORAGE_PREFIX = "contexttree_flow_layout_";
 
 interface StoredNodeLayout {
@@ -526,9 +526,7 @@ export function CanvasArea({
         };
 
         if (typeof storedEntry.width === "number") {
-          const maxWidth = node.type === "entry" ? ENTRY_MAX_WIDTH : NODE_MAX_WIDTH;
-          nextStyle.width = Math.min(storedEntry.width, maxWidth);
-          nextStyle.maxWidth = maxWidth;
+          nextStyle.width = storedEntry.width;
         }
         if (typeof storedEntry.height === "number") {
           nextStyle.height = storedEntry.height;
@@ -669,6 +667,8 @@ export function CanvasArea({
       const displayLabel =
         node.type === "entry"
           ? node.name || "Base Context"
+          : node.type === "externalContext"
+          ? (node.data as any)?.label || node.name || "File"
           : node.name || (node.type === "branch" ? "Branch" : "Context");
 
       const hiddenByCollapse = isNodeHiddenByCollapse(node._id, canvasData.nodes);
@@ -681,6 +681,7 @@ export function CanvasArea({
           y: depth * VERTICAL_GAP,
         },
         data: {
+          ...(typeof node.data === "object" ? node.data : {}),
           label: displayLabel,
           messageCount: node.chatMessages?.length || 0,
           model: node.model,
@@ -727,9 +728,7 @@ export function CanvasArea({
               }
             : {}),
           zIndex: 2,
-          ...(node.type === "entry"
-            ? { minWidth: 320, maxWidth: ENTRY_MAX_WIDTH }
-            : { maxWidth: NODE_MAX_WIDTH }),
+          ...(node.type === "entry" ? { minWidth: 320 } : {}),
           boxShadow:
             depth > 0
               ? `0 ${2 + depth}px ${8 + depth * 2}px rgba(0,0,0,0.06)`
@@ -751,11 +750,16 @@ export function CanvasArea({
         const sourceNode = canvasData.nodes.find(
           (node) => node._id === edge.from
         );
+        const targetNode = canvasData.nodes.find((node) => node._id === edge.to);
+        const isExternalEdge =
+          sourceNode?.type === "externalContext" ||
+          targetNode?.type === "externalContext";
         const sourceColorScheme = getColorScheme(
           sourceNode?.color || "#f8fafc"
         );
 
-        const edgeColor = sourceColorScheme.edge || "#94a3b8";
+        const edgeColor = isExternalEdge ? "#f59e0b" : sourceColorScheme.edge || "#94a3b8";
+        const edgeWidth = isExternalEdge ? 2.6 : 1.8;
         const isAnimatedEdge = animatedEdgeIds.has(edge._id);
         const strokeColor = isAnimatedEdge ? EDGE_HIGHLIGHT_COLOR : edgeColor;
 
@@ -798,7 +802,7 @@ export function CanvasArea({
           },
           style: {
             stroke: strokeColor,
-            strokeWidth: isAnimatedEdge ? 2.4 : 1.8,
+            strokeWidth: isAnimatedEdge ? 2.4 : edgeWidth,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
@@ -1934,8 +1938,13 @@ export function CanvasArea({
 
       // Enhanced React Flow edge styling
       const sourceNode = canvas.nodes.find((n) => n._id === params.source);
+      const targetNodeForEdge = canvas.nodes.find((n) => n._id === params.target);
+      const isExternalEdge =
+        sourceNode?.type === "externalContext" ||
+        targetNodeForEdge?.type === "externalContext";
       const sourceColorScheme = getColorScheme(sourceNode?.color || "#f8fafc");
-      const edgeColor = sourceColorScheme.edge || "#94a3b8";
+      const edgeColor = isExternalEdge ? "#f59e0b" : sourceColorScheme.edge || "#94a3b8";
+      const edgeWidth = isExternalEdge ? 2.6 : 1.8;
 
       const flowEdge: Edge = {
         id: newEdge._id,
@@ -1968,7 +1977,7 @@ export function CanvasArea({
         type: "custom",
         style: {
           stroke: edgeColor,
-          strokeWidth: 1.8,
+          strokeWidth: edgeWidth,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
@@ -2060,6 +2069,12 @@ export function CanvasArea({
       const parentNode = canvas.nodes.find(
         (node) => node._id === pendingConnection.sourceId
       );
+
+      // Do not auto-fork when dragging from context or external context nodes
+      if (parentNode?.type === "context" || parentNode?.type === "externalContext") {
+        setPendingConnection(null);
+        return;
+      }
 
       const layout = computeLayout(canvas.nodes, expandedOverflowParents);
       const parentDepth = layout.depthMap.get(parentNode?._id || "") ?? 0;
@@ -2408,11 +2423,105 @@ export function CanvasArea({
     [canvasSettings.autoSave, scheduleLayoutPatch, persistFlowLayout, setCanvas]
   );
 
+  useEffect(() => {
+    if (selectedNode) {
+      if (reactFlowInstance) {
+        // Optional: Center view on select
+        // reactFlowInstance.fitView({ nodes: [{ id: selectedNode }], duration: 800 });
+      }
+    }
+  }, [selectedNode, reactFlowInstance]);
+
   const onDrop = useCallback(
-    (event: React.DragEvent) => {
+    async (event: React.DragEvent) => {
       event.preventDefault();
 
       if (!canvas) return;
+
+      if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+        const reactFlowBounds = event.currentTarget.getBoundingClientRect();
+        const initialProjected = reactFlowInstance.project({
+          x: event.clientX - reactFlowBounds.left,
+          y: event.clientY - reactFlowBounds.top,
+        });
+
+        const files = Array.from(event.dataTransfer.files);
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const newNodeId = generateEntityId("ext");
+
+          // Optimistic UI: Create node immediately with loading state
+          const position = {
+            x: initialProjected.x + i * 30,
+            y: initialProjected.y + i * 30,
+          };
+
+          const optimisticNode: Node = {
+            id: newNodeId,
+            type: "externalContext",
+            position,
+            data: {
+              label: file.name,
+              content: "",
+              loading: true,
+              fileType: file.type,
+              size: file.size,
+              isSelected: false,
+            },
+          };
+          
+          setNodes((nds) => [...nds, optimisticNode]);
+          
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("nodeId", newNodeId);
+          formData.append("canvasId", canvasId);
+
+          let toastId: any;
+
+          try {
+            toastId = toast.loading(`Uploading ${file.name}...`);
+            const response = await fetch("/api/upload", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!response.ok) {
+              throw new Error("Upload failed");
+            }
+            const data = await response.json();
+            toast.dismiss(toastId);
+            toast.success(`${file.name} uploaded`);
+
+            setNodes((nds) =>
+              nds.map((n) => {
+                if (n.id === newNodeId) {
+                  return {
+                    ...n,
+                    data: {
+                      ...n.data,
+                      loading: false,
+                      content: data.content,
+                      size: data.size,
+                      fileType: data.fileType,
+                      onClick: () => {
+                        if (onNodeSelect)
+                          onNodeSelect(newNodeId, data.fileName);
+                      },
+                    },
+                  };
+                }
+                return n;
+              })
+            );
+          } catch (error) {
+            console.error("Upload failed", error);
+            toast.error(`Failed to upload ${file.name}`);
+            toast.dismiss(toastId);
+            setNodes((nds) => nds.filter((n) => n.id !== newNodeId));
+          }
+        }
+      }
 
       const reactFlowBounds = event.currentTarget.getBoundingClientRect();
       const type = event.dataTransfer.getData("application/reactflow") as
@@ -2597,6 +2706,7 @@ export function CanvasArea({
       handleNodeSettingsClick,
       createGroupNode,
       setCanvas,
+      toast,
     ]
   );
 
@@ -2911,20 +3021,7 @@ export function CanvasArea({
           className="opacity-40"
         />
 
-        <div className="absolute bottom-4 right-4 z-20 flex flex-col items-end gap-2">
-          <Button
-            size="sm"
-            onClick={handleCreateGroupBox}
-            className="rounded-full bg-white/95 backdrop-blur-sm border border-slate-200/80 text-slate-700 shadow-md transition-all hover:translate-y-[-1px] hover:bg-white hover:text-slate-900"
-            disabled={!canvas}
-          >
-            <PlusSquare size={16} className="mr-2" />
-            Add Group Box
-          </Button>
-          <span className="rounded-full border border-slate-200/60 bg-white/90 px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm">
-            Organize related nodes visually
-          </span>
-        </div>
+
 
         {/* Multi-Selection Help Tooltip */}
         <div className="absolute bottom-4 left-4 z-10 bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-lg px-3 py-2 shadow-lg text-xs text-slate-600">

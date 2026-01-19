@@ -42,6 +42,7 @@ export interface NodeData {
     | "entry"
     | "branch"
     | "context"
+    | "externalContext"
     | "llmCall"
     | "userMessage"
     | "group";
@@ -347,3 +348,28 @@ class StorageService {
 }
 
 export const storageService = new StorageService();
+
+export interface ExternalFileData {
+  id: string;
+  userEmail: string;
+  nodeId: string;
+  canvasId: string;
+  fileName: string;
+  fileType?: string;
+  fileSize?: number;
+  content?: string;
+  processed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContextChunkData {
+  id: string;
+  fileId: string;
+  content: string;
+  embedding?: number[];
+  chunkIndex: number;
+  tokenCount?: number;
+  createdAt: string;
+}
+

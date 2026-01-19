@@ -850,6 +850,7 @@ const ChatPanelInternal = ({
         canvasId: selectedCanvas,
         nodeId: selectedNode,
         model,
+        message_id: newMessage.id,
         message: newMessage.content,
       };
 

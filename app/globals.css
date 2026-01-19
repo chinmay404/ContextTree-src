@@ -901,3 +901,15 @@ html {
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+/* Make handles larger for easier dragging */
+.react-flow__handle {
+  width: 14px !important;
+  height: 14px !important;
+  opacity: 0.8;
+}
+.react-flow__handle:hover {
+  width: 16px !important;
+  height: 16px !important;
+  opacity: 1;
+  transition: all 0.2s ease;
+}

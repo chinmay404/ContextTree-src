@@ -956,6 +956,7 @@ const ContextualConsole = ({
         canvasId: selectedCanvas,
         nodeId: selectedNode,
         model,
+        message_id: newMessage.id,
         message: newMessage.content,
         parentNodeId: currentNode?.parentNodeId || null,
         forkedFromMessageId: currentNode?.forkedFromMessageId || null,
