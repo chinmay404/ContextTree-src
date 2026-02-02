@@ -18,10 +18,12 @@ import ReactFlow, {
   useReactFlow,
   type NodeTypes,
   type Viewport,
+  Panel,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import {
   Settings,
+  Layout,
   Edit2,
   Palette,
   Save,
@@ -29,6 +31,7 @@ import {
   Sparkles,
   Network,
 } from "lucide-react";
+import { getDefaultModel } from "@/lib/models";
 
 // Import enhanced nodes
 import { EntryNodeEnhanced } from "./nodes/entry-node-enhanced";
@@ -124,6 +127,96 @@ export function CanvasAreaEnhanced({
   const pendingLayoutRef = useRef<PendingLayout | null>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const layoutSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const performAutoLayout = useCallback(() => {
+    // Simple tree layout implementation
+    const currentNodes = reactFlowInstance.getNodes();
+    const currentEdges = reactFlowInstance.getEdges();
+    
+    if (currentNodes.length === 0) return;
+
+    // Build adjacency list
+    const adj: Record<string, string[]> = {};
+    const parents: Record<string, string> = {};
+    const nodeMap = new Map(currentNodes.map(n => [n.id, n]));
+
+    currentEdges.forEach(edge => {
+      if (!adj[edge.source]) adj[edge.source] = [];
+      adj[edge.source].push(edge.target);
+      parents[edge.target] = edge.source;
+    });
+
+    // Find roots (nodes with no incoming edges or explicitly type 'entry')
+    const roots = currentNodes.filter(n => !parents[n.id] || n.type === 'entry');
+    // If no roots found (circular?), pick entry or first one
+    const effectiveRoots = roots.length > 0 ? roots : [currentNodes[0]];
+    
+    const LEVEL_HEIGHT = 250;
+    const NODE_WIDTH = 350;
+    const SIBLING_GAP = 50;
+
+    const visited = new Set<string>();
+    const positions: Record<string, { x: number, y: number }> = {};
+
+    // Recursive layout
+    const layoutNode = (nodeId: string, depth: number, offset: number): number => {
+      if (visited.has(nodeId)) return offset;
+      visited.add(nodeId);
+
+      const children = adj[nodeId] || [];
+      
+      if (children.length === 0) {
+        // Leaf
+        positions[nodeId] = { x: offset, y: depth * LEVEL_HEIGHT };
+        return offset + NODE_WIDTH + SIBLING_GAP;
+      } else {
+        // Parent
+        let childOffset = offset;
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let firstChildX = -1;
+
+        children.forEach((childId, index) => {
+            const resultOffset = layoutNode(childId, depth + 1, childOffset);
+            if(positions[childId]) {
+                if(index === 0) firstChildX = positions[childId].x;
+                minX = Math.min(minX, positions[childId].x);
+                maxX = Math.max(maxX, positions[childId].x);
+            }
+            childOffset = resultOffset;
+        });
+        
+        // Center parent over children
+        const parentX = (minX + maxX) / 2;
+        positions[nodeId] = { x: parentX, y: depth * LEVEL_HEIGHT };
+        
+        return Math.max(childOffset, parentX + NODE_WIDTH + SIBLING_GAP);
+      }
+    };
+    
+    let currentXOffset = 0;
+    effectiveRoots.forEach(root => {
+        currentXOffset = layoutNode(root.id, 0, currentXOffset);
+        currentXOffset += NODE_WIDTH; // Gap between trees
+    });
+
+    // Update nodes
+    const layoutedNodes = currentNodes.map(node => {
+        if (positions[node.id]) {
+            return { ...node, position: positions[node.id] };
+        }
+        return node;
+    });
+
+    setNodes(layoutedNodes);
+    
+    // Fit view after layout
+    setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.2, duration: 800 });
+    }, 100);
+    
+    toast.success("Structure aligned");
+  }, [reactFlowInstance, setNodes]);
 
   const flushPendingLayout = useCallback(async () => {
     if (saveTimerRef.current) {
@@ -869,7 +962,7 @@ export function CanvasAreaEnhanced({
         runningSummary: "",
         contextContract:
           resolvedType === "context" ? "Add context information here..." : "",
-        model: canvas.settings?.defaultModel || "gpt-4",
+        model: (canvas.settings?.defaultModel && canvas.settings.defaultModel !== "None" ? canvas.settings.defaultModel : getDefaultModel()),
         createdAt,
         position,
         color: defaultColor,
@@ -1507,6 +1600,21 @@ export function CanvasAreaEnhanced({
         }}
       >
         <Controls className="!bg-white/95 !backdrop-blur-sm !border-slate-200/80 !shadow-lg !rounded-xl" />
+        
+        <Panel position="top-right" className="!mr-12 !mt-12 pointer-events-auto">
+             <div className="flex gap-2 bg-white/95 backdrop-blur-sm border border-slate-200/80 shadow-lg rounded-xl p-1.5">
+                 <Button 
+                   variant="ghost" 
+                   size="icon" 
+                   onClick={performAutoLayout} 
+                   title="Auto Align Nodes"
+                   className="hover:bg-slate-100"
+                 >
+                    <Layout className="w-5 h-5 text-slate-600" />
+                 </Button>
+             </div>
+        </Panel>
+
         <Background
           variant={BackgroundVariant.Dots}
           gap={24}

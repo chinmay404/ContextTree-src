@@ -21,6 +21,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { PlusSquare, Save, X } from "lucide-react";
+import { getDefaultModel } from "@/lib/models";
 
 import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
 import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
@@ -182,6 +183,11 @@ const flattenChatMessages = (messages: any[] | undefined) => {
   return flattened;
 };
 
+const normalizeForkMessageId = (id?: string | null) => {
+  if (!id) return id || "";
+  return id.replace(/(-assistant|-user|-a|-u|_a|_u)$/i, "");
+};
+
 const deriveParentMessageDetails = (node: NodeData | undefined) => {
   if (!node) return { messageId: undefined as string | undefined, text: "" };
   const flattened = flattenChatMessages(node.chatMessages);
@@ -194,7 +200,7 @@ const deriveParentMessageDetails = (node: NodeData | undefined) => {
   const chosen = assistantMessage || fallbackMessage;
   const messageText = getTextFromContent(chosen?.content).trim();
   return {
-    messageId: chosen?.id,
+    messageId: normalizeForkMessageId(chosen?.id),
     text: messageText,
   };
 };
@@ -2126,7 +2132,7 @@ export function CanvasArea({
         chatMessages: [],
         runningSummary: "",
         contextContract: "",
-        model: parentNode.model || "gpt-4",
+        model: parentNode.model || canvas.settings?.defaultModel || getDefaultModel(),
         metaTags: parentNode.metaTags || [],
         parentNodeId: parentNode._id,
         forkedFromMessageId: resolvedForkId,
@@ -2599,7 +2605,7 @@ export function CanvasArea({
         runningSummary: "",
         contextContract:
           type === "context" ? "Add context information here..." : "",
-        model: "gpt-4",
+        model: (canvas.settings?.defaultModel && canvas.settings.defaultModel !== "None" ? canvas.settings.defaultModel : getDefaultModel()),
         color: type === "entry" ? "#e8ecf3" : undefined,
         // Lineage metadata for non-primary nodes
         parentNodeId:

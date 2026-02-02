@@ -30,6 +30,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { getDefaultModel } from "@/lib/models";
 
 import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
 import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
@@ -882,7 +883,7 @@ export function CanvasAreaSmooth({
         chatMessages: [],
         runningSummary: "",
         contextContract: "",
-        model: "openai/gpt-oss-120b",
+        model: (canvas.settings?.defaultModel && canvas.settings.defaultModel !== "None" ? canvas.settings.defaultModel : getDefaultModel()),
         createdAt: new Date().toISOString(),
         position,
         color:

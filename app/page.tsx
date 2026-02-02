@@ -41,6 +41,8 @@ export default function ContextTreePage() {
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(520);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const isCreatingDefaultCanvasRef = useRef(false);
+  const [isCreatingCanvas, setIsCreatingCanvas] = useState(false);
 
   // Keyboard shortcut for left sidebar toggle (Ctrl/Cmd + Shift + L)
   useEffect(() => {
@@ -134,6 +136,9 @@ export default function ContextTreePage() {
             console.log("Auto-selecting first canvas:", data.canvases[0]._id);
             setSelectedCanvas(data.canvases[0]._id);
           } else if (data.canvases?.length === 0) {
+            if (isCreatingDefaultCanvasRef.current) return;
+            isCreatingDefaultCanvasRef.current = true;
+
             console.log("No canvases found, creating default canvas");
             // Create a default canvas for new users
             const newCanvas = storageService.createDefaultCanvas(
@@ -277,7 +282,8 @@ export default function ContextTreePage() {
   };
 
   const handleCreateCanvas = async () => {
-    if (!user?.email) return;
+    if (!user?.email || isCreatingCanvas) return;
+    setIsCreatingCanvas(true);
 
     const newCanvas = storageService.createDefaultCanvas(
       user.email,
@@ -295,15 +301,29 @@ export default function ContextTreePage() {
 
       if (response.ok) {
         const data = await response.json();
-        setCanvases([...canvases, data.canvas]);
+        setCanvases((prev) => {
+           if (prev.some(c => c._id === data.canvas._id)) return prev;
+           return [data.canvas, ...prev];
+        });
         setSelectedCanvas(newCanvas._id);
       } else {
         // Fallback to local state update
-        setCanvases([...canvases, newCanvas]);
+        setCanvases((prev) => {
+           if (prev.some(c => c._id === newCanvas._id)) return prev;
+           return [newCanvas, ...prev];
+        });
         setSelectedCanvas(newCanvas._id);
       }
     } catch (err) {
       console.error("Failed to save canvas to MongoDB", err);
+      // Ensure UI is updated even on error if local storage succeeded
+      setCanvases((prev) => {
+          if (prev.some(c => c._id === newCanvas._id)) return prev;
+          return [newCanvas, ...prev];
+      });
+      setSelectedCanvas(newCanvas._id);
+    } finally {
+        setIsCreatingCanvas(false);
     }
   };
 

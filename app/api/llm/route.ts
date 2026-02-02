@@ -61,6 +61,8 @@ export async function POST(request: NextRequest) {
 
     const payload: LLMRequest = await request.json();
 
+    console.log("SERVER SIDE LLM PAYLOAD:", JSON.stringify(payload, null, 2));
+
     // Validate required fields
     if (!payload.canvasId || !payload.nodeId || !payload.message) {
       return NextResponse.json(
@@ -68,17 +70,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Transform payload to match Backend ChatMessage schema
-    const backendPayload = {
-      message: payload.message,
-      message_id: payload.nodeId, 
-      conversation_id: payload.canvasId,
-      model_name: payload.model,
-      temperature: 0.7,
-      user_id: user.id || "anonymous",
-      // context fields can be added if frontend supports them
-    };
 
     // Add rate limiting check (optional)
     // You can implement rate limiting logic here
@@ -97,7 +88,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
         "User-Agent": "ContextTree/1.0",
       },
-      body: JSON.stringify(backendPayload),
+      body: JSON.stringify(payload),
     };
 
     // Add SSL bypass for known self-signed/expired endpoints
@@ -140,13 +131,12 @@ export async function POST(request: NextRequest) {
          return NextResponse.json({ error: errorText }, { status: response.status });
       }
 
-      return new Response(response.body, {
-        headers: {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        }
-      });
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("text/event-stream")) {
+        return await handleSSEStream(response);
+      }
+
+      return await handleLLMResponse(response);
     } catch (fetchError) {
       console.error("LLM fetch error:", fetchError);
 
@@ -247,4 +237,61 @@ async function handleLLMResponse(response: Response): Promise<NextResponse> {
       );
     }
   }
+}
+
+async function handleSSEStream(response: Response): Promise<NextResponse> {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    return NextResponse.json({ message: "No response received" }, { status: 502 });
+  }
+
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+  let combinedMessage = "";
+  let model: string | undefined;
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        if (!trimmed.startsWith("data:")) continue;
+
+        const data = trimmed.slice(5).trim();
+        if (!data || data === "[DONE]") continue;
+
+        try {
+          const parsed = JSON.parse(data);
+          const chunk =
+            parsed.message || parsed.response || parsed.content || parsed.delta;
+          if (typeof chunk === "string") {
+            combinedMessage += chunk;
+          }
+          if (parsed.model && typeof parsed.model === "string") {
+            model = parsed.model;
+          }
+        } catch {
+          combinedMessage += data;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Failed to read SSE stream:", error);
+  } finally {
+    reader.releaseLock();
+  }
+
+  console.log("LLM SSE response assembled");
+
+  return NextResponse.json({
+    message: combinedMessage || "No response received",
+    model,
+  });
 }

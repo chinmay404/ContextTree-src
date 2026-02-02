@@ -289,22 +289,35 @@ const ChatPanelInternal = ({
     setNodeLineage(buildLineage(selectedNode));
   }, [selectedNode, canvasData]);
 
+  const normalizeForkMessageId = (id?: string | null) => {
+    if (!id) return id || "";
+    return id.replace(/(-assistant|-user|-a|-u|_a|_u)$/i, "");
+  };
+
   // Function to get nodes forked from a specific message
   const getForkedNodes = useCallback(
     (messageId: string) => {
       if (!canvasData?.nodes) return [];
 
+      const normalizedMessageId = normalizeForkMessageId(messageId);
+
       return canvasData.nodes.filter((node: any) => {
-        const forkedFromId = node.forkedFromMessageId;
-        return forkedFromId === messageId || forkedFromId === messageId + "-a";
+        const forkedFromId = normalizeForkMessageId(node.forkedFromMessageId);
+        return forkedFromId === normalizedMessageId;
       });
     },
     [canvasData]
   );
 
   // Function to create a fork with the selected model
-  const createForkWithModel = async (selectedForkModel: string) => {
-    if (!selectedCanvas || !selectedNode || !pendingForkMessage) return;
+  const createForkWithModel = async (
+    selectedForkModel: string,
+    overrideMessageId?: string
+  ) => {
+    const forkMessageId = normalizeForkMessageId(
+      overrideMessageId || pendingForkMessage
+    );
+    if (!selectedCanvas || !selectedNode || !forkMessageId) return;
 
     // Create a new branch/context node (default to branch) with lineage metadata
     const newNodeId = `node_${Date.now()}_${Math.random()
@@ -319,7 +332,7 @@ const ChatPanelInternal = ({
       contextContract: "",
       model: selectedForkModel,
       parentNodeId: selectedNode,
-      forkedFromMessageId: pendingForkMessage,
+      forkedFromMessageId: forkMessageId,
       createdAt: new Date().toISOString(),
       position: {
         x: 300 + Math.random() * 150,
@@ -350,6 +363,16 @@ const ChatPanelInternal = ({
           },
         })
       );
+
+      // Update local canvasData so context lookup works immediately for the new node
+      setCanvasData((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          nodes: [...(prev.nodes || []), newNode],
+          edges: [...(prev.edges || []), edgePayload],
+        };
+      });
 
       // Fire & forget persistence
       fetch(`/api/canvases/${selectedCanvas}/nodes`, {
@@ -834,6 +857,39 @@ const ChatPanelInternal = ({
         );
         const errorText = await saveResponse.text();
         console.error("Error details:", errorText);
+
+        if (saveResponse.status === 404) {
+          try {
+            const canvasRes = await fetch(`/api/canvases/${selectedCanvas}`);
+            if (canvasRes.ok) {
+              const data = await canvasRes.json();
+              setCanvasData(data.canvas);
+            }
+          } catch (refreshErr) {
+            console.error("Failed to refresh canvas after 404:", refreshErr);
+          }
+
+          const retryResponse = await fetch(
+            `/api/canvases/${selectedCanvas}/nodes/${selectedNode}/messages`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: newMessage.id,
+                role: newMessage.role,
+                content: newMessage.content,
+                timestamp: newMessage.timestamp.toISOString(),
+              }),
+            }
+          );
+
+          if (retryResponse.ok) {
+            console.log("User message saved successfully after refresh");
+          } else {
+            const retryText = await retryResponse.text();
+            console.error("Retry failed:", retryText);
+          }
+        }
       } else {
         console.log("User message saved successfully");
       }
@@ -846,12 +902,16 @@ const ChatPanelInternal = ({
     // Call LLM API through internal proxy
     try {
       const model = getNodeModel(selectedNode);
+      const currentNode = canvasData?.nodes?.find((n: any) => n._id === selectedNode);
       const payload = {
         canvasId: selectedCanvas,
         nodeId: selectedNode,
         model,
         message_id: newMessage.id,
         message: newMessage.content,
+        parentNodeId: currentNode?.parentNodeId || null,
+        forkedFromMessageId: currentNode?.forkedFromMessageId || null,
+        isPrimary: currentNode?.primary || false,
       };
 
       // Use internal API proxy instead of direct external call
@@ -1176,9 +1236,6 @@ const ChatPanelInternal = ({
   const MessageComponent = memo(
     ({ message }: { message: Message }) => {
   const isUser = message.role === "user";
-      const [showThinking, setShowThinking] = useState<{
-        [key: string]: boolean;
-      }>({});
       const [copiedCode, setCopiedCode] = useState<{ [key: string]: boolean }>(
         {}
       );
@@ -1210,8 +1267,23 @@ const ChatPanelInternal = ({
       const handleFork = async () => {
         if (!selectedCanvas || !selectedNode) return;
 
+        let forkMessageId = normalizeForkMessageId(message.id);
+
+        if (message.role === "assistant") {
+          const messages = currentConversation?.messages || [];
+          const index = messages.findIndex((m) => m.id === message.id);
+          if (index > 0) {
+            for (let i = index - 1; i >= 0; i -= 1) {
+              if (messages[i].role === "user") {
+                forkMessageId = normalizeForkMessageId(messages[i].id);
+                break;
+              }
+            }
+          }
+        }
+
         // Show model selection dialog instead of immediately creating node
-        setPendingForkMessage(message.id.replace(/-a$/, ""));
+        setPendingForkMessage(forkMessageId);
         setShowForkModelDialog(true);
       };
 
@@ -1259,47 +1331,15 @@ const ChatPanelInternal = ({
                         (part, index) => (
                           <div key={index}>
                             {part.type === "thinking" ? (
-                              <div className="mb-3">
-                                <button
-                                  onClick={() =>
-                                    setShowThinking((prev) => ({
-                                      ...prev,
-                                      [`${message.id}-${index}`]:
-                                        !prev[`${message.id}-${index}`],
-                                    }))
-                                  }
-                                  className="flex items-center gap-2 text-xs text-purple-600 hover:text-purple-700 font-medium mb-2 transition-colors"
-                                >
-                                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
-                                  {showThinking[`${message.id}-${index}`]
-                                    ? "Hide thinking"
-                                    : "Show thinking"}
-                                  <div
-                                    className={`transform transition-transform duration-200 ${
-                                      showThinking[`${message.id}-${index}`]
-                                        ? "rotate-90"
-                                        : ""
-                                    }`}
-                                  >
-                                    ▶
-                                  </div>
-                                </button>
-                                {showThinking[`${message.id}-${index}`] && (
-                                  <div className="bg-gradient-to-r from-purple-50/80 to-indigo-50/80 border-l-4 border-purple-300 rounded-r-lg p-3 animate-in slide-in-from-top-2 duration-300 shadow-sm">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <div className="w-4 h-4 rounded-full bg-purple-100 flex items-center justify-center">
-                                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                                      </div>
-                                      <span className="text-xs font-medium text-purple-700 uppercase tracking-wide">
-                                        AI Thinking Process
-                                      </span>
-                                    </div>
-                                    <div className="text-sm text-purple-800 leading-relaxed whitespace-pre-wrap italic">
-                                      {part.content}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
+                              <details className="mb-3 rounded-xl border border-purple-100 bg-purple-50/60 px-4 py-3 text-sm text-purple-800">
+                                <summary className="cursor-pointer list-none text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-2">
+                                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-purple-500" />
+                                  Thinking
+                                </summary>
+                                <div className="mt-2 border-l-2 border-purple-200 pl-3 italic whitespace-pre-wrap">
+                                  {part.content}
+                                </div>
+                              </details>
                             ) : part.content.trim() ? (
                               <div className="prose prose-base max-w-none break-words overflow-hidden prose-slate prose-headings:font-semibold prose-headings:text-slate-900 prose-headings:break-words prose-p:text-slate-800 prose-p:leading-[1.75] prose-p:break-words prose-p:overflow-wrap-anywhere prose-p:text-[15px] prose-strong:text-slate-900 prose-strong:font-semibold prose-strong:break-words prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:break-words prose-code:text-[14px] prose-pre:bg-slate-50 prose-pre:border prose-pre:border-slate-200 prose-pre:overflow-x-auto prose-pre:text-[14px] prose-img:rounded-lg prose-img:border prose-img:border-slate-200/60 prose-img:bg-white prose-img:max-w-full prose-li:leading-[1.75] prose-li:break-words prose-li:text-[15px] prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:pl-5 prose-blockquote:py-1 prose-blockquote:italic prose-blockquote:text-slate-700 prose-blockquote:break-words prose-a:break-words prose-a:text-blue-600">
                                 <ReactMarkdown
@@ -1631,78 +1671,98 @@ const ChatPanelInternal = ({
     };
 
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-slate-800 mb-2">
-              Select Model for New Node
-            </h3>
-            <p className="text-sm text-slate-600">
-              Choose which AI model this forked node should use for
-              conversations.
-            </p>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1000] animate-in fade-in duration-200">
+        <div className="bg-white rounded-[24px] p-6 max-w-lg w-full mx-4 shadow-2xl border border-slate-100 transform scale-100 animate-in zoom-in-95 duration-200">
+          <div className="mb-6 flex items-start justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 mb-1.5 flex items-center gap-2">
+                <GitBranch className="w-5 h-5 text-indigo-500" />
+                Branch Conversation
+              </h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Create a new divergent path. This model will be locked for the entire branch.
+              </p>
+            </div>
+            <button 
+              onClick={() => setShowForkModelDialog(false)}
+              className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
+            >
+              <span className="sr-only">Close</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
           </div>
 
-          <div className="space-y-2 max-h-80 overflow-y-auto mb-6">
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto mb-8 pr-1 custom-scrollbar">
             {AVAILABLE_MODELS.map((model) => (
               <button
                 key={model.value}
                 onClick={() => setSelectedModelForFork(model.value)}
-                className={`w-full text-left p-3 rounded-xl border transition-all duration-200 group ${
+                className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 group relative overflow-hidden ${
                   selectedModelForFork === model.value
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-slate-200 hover:border-blue-300 hover:bg-blue-50"
+                    ? "border-indigo-600 bg-indigo-50/50 shadow-sm"
+                    : "border-slate-100 hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-4 relative z-10">
                   <div
-                    className={`w-2 h-2 rounded-full mt-2 ${
+                    className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors mt-0.5 ${
                       selectedModelForFork === model.value
-                        ? "bg-blue-600"
-                        : "bg-blue-500 group-hover:bg-blue-600"
+                        ? "border-indigo-600 bg-indigo-600"
+                        : "border-slate-300 bg-white group-hover:border-slate-400"
                     }`}
-                  ></div>
-                  <div>
-                    <div
-                      className={`font-medium ${
-                        selectedModelForFork === model.value
-                          ? "text-blue-800"
-                          : "text-slate-800 group-hover:text-blue-800"
-                      }`}
-                    >
-                      {model.label}
+                  >
+                    {selectedModelForFork === model.value && (
+                      <div className="w-2 h-2 bg-white rounded-full" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span
+                        className={`font-semibold text-base ${
+                          selectedModelForFork === model.value
+                            ? "text-indigo-900"
+                            : "text-slate-900"
+                        }`}
+                      >
+                        {model.label}
+                      </span>
+                      {selectedModelForFork === model.value && (
+                        <span className="text-xs font-bold text-indigo-600 bg-white px-2 py-0.5 rounded-full shadow-sm border border-indigo-100">
+                          Selected
+                        </span>
+                      )}
                     </div>
-                    <div
-                      className={`text-xs mt-1 ${
+                    <p
+                      className={`text-sm leading-snug ${
                         selectedModelForFork === model.value
-                          ? "text-blue-600"
-                          : "text-slate-500 group-hover:text-blue-600"
+                          ? "text-indigo-700"
+                          : "text-slate-500 group-hover:text-slate-700"
                       }`}
                     >
                       {model.description}
-                    </div>
+                    </p>
                   </div>
                 </div>
               </button>
             ))}
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-2 border-t border-slate-100">
             <Button
               variant="outline"
               onClick={() => {
                 setShowForkModelDialog(false);
                 setPendingForkMessage(null);
               }}
-              className="flex-1"
+              className="flex-1 h-11 text-base font-medium border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl"
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleSubmit}
-              className="flex-1 bg-blue-600 hover:bg-blue-700"
+            <Button 
+              onClick={handleSubmit} 
+              className="flex-1 h-11 text-base font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all"
             >
-              Create Node
+              Create Branch
             </Button>
           </div>
         </div>
