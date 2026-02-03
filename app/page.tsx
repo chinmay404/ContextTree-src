@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/tooltip";
 import { GlobalSearch } from "@/components/global-search";
 import { OnboardingGuide } from "@/components/onboarding-guide";
+import { FilePreviewPanel } from "@/components/file-preview-panel";
 
 export default function ContextTreePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -31,6 +32,7 @@ export default function ContextTreePage() {
   const [selectedNodeName, setSelectedNodeName] = useState<
     string | undefined
   >();
+  const [selectedNodeType, setSelectedNodeType] = useState<string | undefined>();
   const [canvases, setCanvases] = useState<CanvasData[]>([]);
   const [selectedCanvas, setSelectedCanvas] = useState<string | null>(null);
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false); // Open by default
@@ -269,10 +271,11 @@ export default function ContextTreePage() {
     return () => clearInterval(interval);
   }, [isAuthenticated, user?.email]);
 
-  const handleNodeSelect = (nodeId: string | null, nodeName?: string) => {
-    console.log(`Selecting node: ${nodeId} (${nodeName})`);
+  const handleNodeSelect = (nodeId: string | null, nodeName?: string, nodeType?: string) => {
+    console.log(`Selecting node: ${nodeId} (${nodeName}, type: ${nodeType})`);
     setSelectedNode(nodeId);
     setSelectedNodeName(nodeName);
+    setSelectedNodeType(nodeType);
 
     // Ensure chat panel is visible when a node is selected
     if (nodeId) {
@@ -548,6 +551,17 @@ export default function ContextTreePage() {
                   : "w-0 overflow-hidden border-l-0"
           }`}>
               {selectedNode && (
+                  selectedNodeType === "externalContext" ? (
+                    <FilePreviewPanel
+                      selectedNode={selectedNode}
+                      selectedNodeName={selectedNodeName}
+                      canvasId={selectedCanvas || ""}
+                      onClose={() => {
+                        setSelectedNode(null);
+                        setChatFullscreen(false);
+                      }}
+                    />
+                  ) : (
                   <ContextualConsoleComponent 
                        selectedNode={selectedNode}
                        selectedNodeName={selectedNodeName}
@@ -560,14 +574,13 @@ export default function ContextTreePage() {
                            setChatFullscreen(false);
                        }}
                        onNodeSelect={(nodeId: string, nodeName?: string) => {
+                          // Pass through locally without type implies stay in console context
+                          // If we wanted to switch type we'd need to fetch the node type here or make this callback support it
                           setSelectedNode(nodeId);
                           setSelectedNodeName(nodeName);
-                          // Maintain focus mode preference? Spec says "Focus Node -> opens Focus Mode".
-                          // If they click on navigation, they might exit focus mode implicitly or stay.
-                          // But Canvas interaction usually implies exiting Focus Mode on interaction *outside* the panel.
-                          // Here interaction is handled by CanvasArea which we are blurring.
                         }}
                   />
+                  )
               )}
           </div>
       </div>

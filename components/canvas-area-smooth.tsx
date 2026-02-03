@@ -96,7 +96,7 @@ const enhancedEdgeTypes = {
 interface CanvasAreaSmoothProps {
   canvasId: string;
   selectedNode: string | null;
-  onNodeSelect: (nodeId: string | null, nodeName?: string) => void;
+  onNodeSelect: (nodeId: string | null, nodeName?: string, nodeType?: string) => void;
 }
 
 export function CanvasAreaSmooth({
@@ -687,7 +687,7 @@ export function CanvasAreaSmooth({
               ).length,
               isRunning: false, // Will be updated based on activity
               lastActivity: node.createdAt,
-              onClick: () => onNodeSelect(node._id, node.name || "Node"),
+              onClick: () => onNodeSelect(node._id, node.name || "Node", node.type),
               onSettingsClick: () => {
                 setCustomizingNodeId(node._id);
                 setShowCustomizationPanel(true);
@@ -812,7 +812,7 @@ export function CanvasAreaSmooth({
           : node.type === "branch"
           ? "Branch Point"
           : "Context Data");
-      onNodeSelect(node.id, nodeName);
+      onNodeSelect(node.id, nodeName, node.type);
     },
     [onNodeSelect]
   );
@@ -921,7 +921,7 @@ export function CanvasAreaSmooth({
           connectionCount: 0,
           isRunning: false,
           lastActivity: new Date().toISOString(),
-          onClick: () => onNodeSelect(newNode._id, newNode.name),
+          onClick: () => onNodeSelect(newNode._id, newNode.name, newNode.type),
           onSettingsClick: () => setShowCustomizationPanel(true),
         },
         style: {
@@ -959,7 +959,7 @@ export function CanvasAreaSmooth({
           });
         });
 
-      onNodeSelect(newNode._id, newNode.name);
+      onNodeSelect(newNode._id, newNode.name, newNode.type);
     },
     [
       canvas,

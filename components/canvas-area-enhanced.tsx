@@ -109,7 +109,7 @@ const isViewportEqual = (a?: Viewport | null, b?: Viewport | null) => {
 interface CanvasAreaProps {
   canvasId: string;
   selectedNode: string | null;
-  onNodeSelect: (nodeId: string | null, nodeName?: string) => void;
+  onNodeSelect: (nodeId: string | null, nodeName?: string, nodeType?: string) => void;
 }
 
 export function CanvasAreaEnhanced({
@@ -410,7 +410,7 @@ export function CanvasAreaEnhanced({
             label: node.name,
             messageCount: node.chatMessages?.length || 0,
             isSelected: node._id === selectedNode,
-            onClick: () => onNodeSelect(node._id, node.name),
+            onClick: () => onNodeSelect(node._id, node.name, node.type),
             onSettingsClick: () => setCustomizingNodeId(node._id),
             color,
             textColor,
@@ -990,7 +990,7 @@ export function CanvasAreaEnhanced({
           label: defaultName,
           messageCount: 0,
           isSelected: false,
-          onClick: () => onNodeSelect(nodeId, defaultName),
+          onClick: () => onNodeSelect(nodeId, defaultName, resolvedType),
           onSettingsClick: () => setCustomizingNodeId(nodeId),
           color: defaultColor,
           textColor: colorScheme.text,
@@ -1427,7 +1427,7 @@ export function CanvasAreaEnhanced({
       if (event.shiftKey) {
         return;
       }
-      onNodeSelect(node.id, node.data.label);
+      onNodeSelect(node.id, node.data.label, node.type);
     },
     [onNodeSelect]
   );

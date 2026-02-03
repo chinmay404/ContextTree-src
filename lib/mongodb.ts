@@ -44,6 +44,7 @@ async function init() {
       parent_node_id text,
       forked_from_message_id text,
       is_primary boolean,
+      type text,
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now()
     );
@@ -56,6 +57,11 @@ async function init() {
   alter table if exists nodes add column if not exists parent_node_id text;
   alter table if exists nodes add column if not exists forked_from_message_id text;
   alter table if exists nodes add column if not exists is_primary boolean;
+  alter table if exists nodes add column if not exists type text;
+  -- Ensure vector extension exists before adding vector column
+  create extension if not exists vector;
+  alter table if exists nodes add column if not exists summary text;
+  alter table if exists nodes add column if not exists summary_embedding vector(768);
     create index if not exists idx_nodes_canvas on nodes(canvas_id);
     create index if not exists idx_nodes_parent on nodes(parent_node_id);
     create index if not exists idx_nodes_forked_from on nodes(forked_from_message_id);
@@ -160,7 +166,9 @@ async function init() {
       file_name text not null,
       file_type text,
       file_size integer,
-      content text,
+      content text, -- extracted text (legacy/fallback)
+      data bytea, -- raw binary content
+      mime_type text,
       processed boolean default false,
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now()
@@ -168,11 +176,30 @@ async function init() {
     create index if not exists idx_external_files_node on external_files(node_id);
     create index if not exists idx_external_files_user on external_files(user_email);
 
+    create table if not exists file_chunks (
+        id uuid primary key default gen_random_uuid(),
+        file_id text not null references external_files(id) on delete cascade,
+        chunk_index integer not null,
+        chunk_text text not null,
+        embedding vector(768),
+        created_at timestamptz not null default now()
+    );
+    create index if not exists idx_file_chunks_file_id on file_chunks(file_id);
+    -- vector index for similarity search
+    create index if not exists idx_file_chunks_embedding on file_chunks using ivfflat (embedding vector_cosine_ops) with (lists = 100);
+
+    -- Backfill for external_files updates
+    alter table if exists external_files add column if not exists data bytea;
+    alter table if exists external_files add column if not exists mime_type text;
+    
+    -- Backfill for file_chunks metadata
+    alter table if exists file_chunks add column if not exists metadata jsonb;
+
     create table if not exists context_chunks (
       id text primary key,
       file_id text not null references external_files(id) on delete cascade,
       content text not null,
-      embedding vector(1536),
+      embedding vector(768),
       chunk_index integer not null,
       token_count integer,
       created_at timestamptz not null default now()
@@ -813,6 +840,24 @@ export class MongoDBService {
             );
           }
         }
+        // Sync Edges
+        await client.query("delete from edges where canvas_id=$1", [canvas._id]);
+        for (const edge of canvas.edges) {
+          const edgeData = { ...edge } as any;
+          await client.query(
+            `insert into edges (id, canvas_id, user_email, from_node, to_node, data, created_at, updated_at)
+             values ($1,$2,$3,$4,$5,$6,now(),now())`,
+            [
+              edge._id,
+              canvas._id,
+              canvas.userId,
+              edge.from,
+              edge.to,
+              JSON.stringify(edgeData),
+            ]
+          );
+        }
+
         await client.query("COMMIT");
       } catch (e) {
         await client.query("ROLLBACK");
@@ -970,7 +1015,7 @@ export class MongoDBService {
     }
   }
 
-  async createExternalNodeAndFile(nodeData: NodeData, fileData: ExternalFileData) {
+  async createExternalNodeAndFile(nodeData: NodeData, fileData: ExternalFileData, binaryBuffer?: Buffer) {
     await ensureInit();
     const client = await pool.connect();
     try {
@@ -985,7 +1030,7 @@ export class MongoDBService {
             fileData.nodeId, 
             fileData.canvasId, 
             fileData.userEmail, 
-            JSON.stringify(nodeData), // Store the transient node data
+            JSON.stringify(nodeData), 
             false,
             'externalContext',
             nodeData.createdAt, 
@@ -994,35 +1039,36 @@ export class MongoDBService {
       );
 
       // 2. Create File
+      // Note: We deliberately use fileData.content for legacy text or extracted text if available at this stage.
+      // The binary data is stored in 'data'.
       await client.query(
-        `INSERT INTO external_files (id, user_email, node_id, canvas_id, file_name, file_type, file_size, content, processed, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `INSERT INTO external_files (id, user_email, node_id, canvas_id, file_name, file_type, file_size, content, data, mime_type, processed, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          ON CONFLICT (id) DO UPDATE SET
-           file_name = EXCLUDED.file_name,
-           file_type = EXCLUDED.file_type,
-           file_size = EXCLUDED.file_size,
-           content = EXCLUDED.content,
-           processed = EXCLUDED.processed,
-           updated_at = EXCLUDED.updated_at`,
+            file_name = EXCLUDED.file_name,
+            file_size = EXCLUDED.file_size,
+            updated_at = EXCLUDED.updated_at`,
         [
-          fileData.id,
-          fileData.userEmail,
-          fileData.nodeId,
-          fileData.canvasId,
-          fileData.fileName,
-          fileData.fileType,
-          fileData.fileSize,
-          fileData.content,
-          fileData.processed,
-          fileData.createdAt,
-          fileData.updatedAt,
+            fileData.id,
+            fileData.userEmail,
+            fileData.nodeId,
+            fileData.canvasId,
+            fileData.fileName,
+            fileData.fileType,
+            fileData.fileSize,
+            fileData.content || "", 
+            binaryBuffer || null,     // $9: data (bytea)
+            fileData.fileType,        // $10: mime_type
+            fileData.processed,
+            fileData.createdAt,
+            new Date().toISOString()
         ]
       );
-
+      
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error("Error saving external node and file:", error);
+      console.error("Error creating external node and file:", error);
       throw error;
     } finally {
       client.release();

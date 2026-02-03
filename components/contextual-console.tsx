@@ -84,7 +84,7 @@ interface ChatPanelProps {
   isCollapsed?: boolean;
   onToggleFullscreen?: () => void;
   onToggleCollapse?: () => void;
-  onNodeSelect?: (nodeId: string, nodeName?: string) => void;
+  onNodeSelect?: (nodeId: string, nodeName?: string, nodeType?: string) => void;
 }
 
 interface Message {
@@ -1239,7 +1239,8 @@ const ContextualConsole = ({
                   // Navigate to the forked node
                   onNodeSelect?.(
                     node._id,
-                    node.name || `${nodeTypeName} Node`
+                    node.name || `${nodeTypeName} Node`,
+                    node.type
                   );
                   toast({
                     title: "Navigated to branch",

@@ -138,7 +138,7 @@ export default function CanvasDemoPage() {
                     <CanvasAreaSmooth
                       canvasId={demoCanvasId}
                       selectedNode={selectedNode}
-                      onNodeSelect={setSelectedNode}
+                      onNodeSelect={(id) => setSelectedNode(id)}
                     />
                   </ReactFlowProvider>
                 </div>
