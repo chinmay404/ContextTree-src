@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { withAuth, getCurrentUser } from "@/lib/auth-utils";
 import { mongoService } from "@/lib/mongodb";
 import type { ExternalFileData } from "@/lib/storage";
+import { logUploadEvent } from "@/lib/server-side-logger";
 
 const LLM_API_URL = process.env.LLM_API_URL || process.env.NEXT_PUBLIC_LLM_API_URL;
 
@@ -10,11 +11,14 @@ export const POST = withAuth(async (request: NextRequest) => {
   try {
     const user = await getCurrentUser();
     if (!user?.email) {
+      logUploadEvent('ERROR', 'Upload attempt without authentication');
       return NextResponse.json(
         { error: "User not authenticated" },
         { status: 401 }
       );
     }
+
+    logUploadEvent('INFO', `Upload started for user: ${user.email}`);
 
     const formData = await request.formData();
     const file = formData.get("file") as File;
@@ -38,14 +42,18 @@ export const POST = withAuth(async (request: NextRequest) => {
     }
 
     if (!file) {
+      logUploadEvent('ERROR', 'No file found in request', { user: user.email });
       return NextResponse.json(
         { error: "No file uploaded" },
         { status: 400 }
       );
     }
 
+    logUploadEvent('INFO', `Processing file: ${file.name}, size: ${file.size}, type: ${file.type}`, { user: user.email });
+
      // Server-side limit check (10MB)
     if (file.size > 10 * 1024 * 1024) {
+        logUploadEvent('WARN', `File too large: ${file.name}`, { size: file.size, user: user.email });
         return NextResponse.json(
             { error: "File too large. Maximum size is 10MB." },
             { status: 413 }
@@ -91,7 +99,13 @@ export const POST = withAuth(async (request: NextRequest) => {
     };
 
     // Save to Postgres (Binary + Metadata)
-    await mongoService.createExternalNodeAndFile(nodeData, fileData, buffer);
+    try {
+        await mongoService.createExternalNodeAndFile(nodeData, fileData, buffer);
+        logUploadEvent('INFO', `File saved to DB: ${fileId}`, { user: user.email });
+    } catch (dbError) {
+        logUploadEvent('ERROR', `Failed to save file to DB: ${fileId}`, dbError);
+        throw dbError; // Re-throw to be caught by outer try-catch
+    }
 
     // Trigger Python Backend Ingestion (Fire & Forget)
     if (LLM_API_URL) {
@@ -102,7 +116,7 @@ export const POST = withAuth(async (request: NextRequest) => {
         }
         backendUrl = backendUrl.replace(/\/+$/, '') + '/files/ingest';
 
-        console.log(`Triggering ingestion: ${backendUrl}`);
+        logUploadEvent('INFO', `Triggering ingestion: ${backendUrl}`, { fileId });
 
         const ingestPayload = { 
             file_id: fileId,
@@ -116,8 +130,20 @@ export const POST = withAuth(async (request: NextRequest) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(ingestPayload)
-        }).catch(err => console.warn("Trigger ingest failed (backend might be offline):", err));
+        }).then(res => {
+            if (!res.ok) {
+                 logUploadEvent('WARN', `Ingest trigger response not OK: ${res.status}`, { fileId });
+            } else {
+                 logUploadEvent('INFO', `Ingest trigger successful`, { fileId });
+            }
+        }).catch(err => {
+            logUploadEvent('WARN', "Trigger ingest failed (backend might be offline)", err);
+        });
+    } else {
+         logUploadEvent('WARN', "LLM_API_URL not set - skipping ingestion trigger", { fileId });
     }
+
+    logUploadEvent('INFO', `Upload completed successfully`, { fileId, user: user.email });
 
     return NextResponse.json({
         success: true,
@@ -126,10 +152,11 @@ export const POST = withAuth(async (request: NextRequest) => {
     });
 
   } catch (error) {
-    console.error("Error processing file upload:", error);
+    logUploadEvent('ERROR', "Error processing file upload", error);
     return NextResponse.json(
       { error: "Failed to process file" },
       { status: 500 }
+
     );
   }
 });
