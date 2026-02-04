@@ -20,6 +20,22 @@ export const POST = withAuth(async (request: NextRequest) => {
     const file = formData.get("file") as File;
     const nodeId = formData.get("nodeId") as string;
     const canvasId = formData.get("canvasId") as string;
+    const positionRaw = formData.get("position") as string | null;
+    let position: { x: number; y: number } | undefined;
+    if (positionRaw) {
+      try {
+        const parsed = JSON.parse(positionRaw);
+        if (
+          parsed &&
+          typeof parsed.x === "number" &&
+          typeof parsed.y === "number"
+        ) {
+          position = { x: parsed.x, y: parsed.y };
+        }
+      } catch {
+        position = undefined;
+      }
+    }
 
     if (!file) {
       return NextResponse.json(
@@ -63,12 +79,14 @@ export const POST = withAuth(async (request: NextRequest) => {
           contextContract: "Processing...",
           model: "system",
           createdAt: new Date().toISOString(),
+          position,
           data: {
               label: file.name,
               content: "",
               fileType: file.type,
               size: file.size,
-              loading: true
+              loading: true,
+              fileId: fileId
           }
     };
 
@@ -115,4 +133,3 @@ export const POST = withAuth(async (request: NextRequest) => {
     );
   }
 });
-

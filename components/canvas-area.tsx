@@ -578,6 +578,56 @@ export function CanvasArea({
     }
   }, [canvasId, reactFlowInstance]);
 
+  const mergeCanvasData = useCallback(
+    (remote: CanvasData, local?: CanvasData | null): CanvasData => {
+      if (!local) return remote;
+
+      const localNodeMap = new Map(local.nodes.map((node) => [node._id, node]));
+      const mergedNodes = remote.nodes.map((node) => {
+        const localNode = localNodeMap.get(node._id);
+        if (!localNode) return node;
+        const mergedData = {
+          ...(localNode.data || {}),
+          ...(node.data || {}),
+        };
+        const position =
+          node.position ||
+          localNode.position ||
+          (localNode.data as any)?.position;
+        const dimensions = node.dimensions || localNode.dimensions;
+        return {
+          ...localNode,
+          ...node,
+          data: mergedData,
+          position,
+          dimensions,
+        };
+      });
+
+      const remoteNodeIds = new Set(remote.nodes.map((n) => n._id));
+      const extraLocalNodes = local.nodes.filter(
+        (n) => !remoteNodeIds.has(n._id)
+      );
+      const allNodes = [...mergedNodes, ...extraLocalNodes];
+
+      const nodeIdSet = new Set(allNodes.map((n) => n._id));
+      const remoteEdgeIds = new Set(remote.edges.map((e) => e._id));
+      const extraLocalEdges = (local.edges || []).filter(
+        (e) =>
+          !remoteEdgeIds.has(e._id) &&
+          nodeIdSet.has(e.from) &&
+          nodeIdSet.has(e.to)
+      );
+
+      return {
+        ...remote,
+        nodes: allNodes,
+        edges: [...remote.edges, ...extraLocalEdges],
+      };
+    },
+    []
+  );
+
   const buildFlowFromCanvas = (
     canvasData: CanvasData
   ): { nodes: Node[]; edges: Edge[]; viewportToApply?: Viewport } => {
@@ -630,6 +680,17 @@ export function CanvasArea({
       const colorScheme = getColorScheme(nodeColor || "#f8fafc");
       const nodeData =
         typeof node.data === "object" && node.data !== null ? { ...node.data } : {};
+      const nodeError =
+        typeof (nodeData as any).error === "string"
+          ? (nodeData as any).error
+          : typeof (node as any).error === "string"
+          ? (node as any).error
+          : undefined;
+      const nodeFileId =
+        (nodeData as any).fileId ||
+        (nodeData as any).file_id ||
+        (node as any).fileId ||
+        (node as any).file_id;
       let resolvedExternalContent: string | undefined;
       let resolvedExternalLoading: boolean | undefined;
       if (node.type === "externalContext") {
@@ -656,6 +717,7 @@ export function CanvasArea({
         const rootLoading =
           typeof (node as any).loading === "boolean" ? (node as any).loading : undefined;
         resolvedExternalLoading =
+          !nodeError &&
           !resolvedExternalContent &&
           (nestedLoading ?? rootLoading ?? contractIsProcessing);
 
@@ -664,6 +726,12 @@ export function CanvasArea({
         }
         if (typeof resolvedExternalLoading === "boolean") {
           (nodeData as any).loading = resolvedExternalLoading;
+        }
+        if (nodeError) {
+          (nodeData as any).error = nodeError;
+        }
+        if (nodeFileId) {
+          (nodeData as any).fileId = nodeFileId;
         }
       }
       const lastMessage = [...(node.chatMessages || [])].pop();
@@ -719,8 +787,10 @@ export function CanvasArea({
       const hiddenByCollapse = isNodeHiddenByCollapse(node._id, canvasData.nodes);
 
       // Use stored position for externalContext and context nodes to allow free movement
-      const nodePosition = ((node.type === "externalContext" || node.type === "context") && node.position)
-        ? node.position
+      const storedPosition =
+        node.position || (nodeData as any)?.position;
+      const nodePosition = ((node.type === "externalContext" || node.type === "context") && storedPosition)
+        ? (storedPosition as { x: number; y: number })
         : {
             x: branchIndex * HORIZONTAL_GAP,
             y: depth * VERTICAL_GAP,
@@ -737,6 +807,8 @@ export function CanvasArea({
         height: nodeHeight,
         data: {
           ...nodeData,
+          error: nodeError,
+          fileId: nodeFileId,
           loading:
             node.type === "externalContext"
               ? resolvedExternalLoading ?? (nodeData as any)?.loading
@@ -778,6 +850,7 @@ export function CanvasArea({
               node.type
             ),
           onSettingsClick: () => handleNodeSettingsClick(node._id),
+          onRetry: () => handleExternalRetry(node._id, nodeFileId),
         },
         style: {
           ...(nodeColor
@@ -1548,7 +1621,10 @@ export function CanvasArea({
 
         if (dbResponse.ok) {
           const responseData = await dbResponse.json();
-          canvasData = responseData.canvas;
+          const localCanvas = storageService.getCanvas(canvasId);
+          canvasData = responseData.canvas
+            ? mergeCanvasData(responseData.canvas, localCanvas)
+            : responseData.canvas;
           console.log(
             "Canvas loaded from API:",
             canvasId,
@@ -1944,34 +2020,52 @@ export function CanvasArea({
 
       console.log(`Connecting: ${params.source} -> ${params.target}`);
 
-      const sourceNode = canvas.nodes.find((n) => n._id === params.source);
-      const targetNode = canvas.nodes.find((n) => n._id === params.target);
-      if (!sourceNode || !targetNode) return;
+      const rawSourceNode = canvas.nodes.find((n) => n._id === params.source);
+      const rawTargetNode = canvas.nodes.find((n) => n._id === params.target);
+      if (!rawSourceNode || !rawTargetNode) return;
 
-      const isContextType = (node: NodeData) =>
-        node.type === "context" || node.type === "externalContext";
+      let sourceId = params.source;
+      let targetId = params.target;
+      let sourceNode = rawSourceNode;
+      let targetNode = rawTargetNode;
 
-      // Prevent context-to-context (including external) connections
-      if (isContextType(sourceNode) && isContextType(targetNode)) {
-        toast.error("Cannot connect context nodes to each other");
+      // Normalize connections so the entry node remains the root
+      if (rawTargetNode.type === "entry" && rawSourceNode.type !== "entry") {
+        sourceId = rawTargetNode._id;
+        targetId = rawSourceNode._id;
+        sourceNode = rawTargetNode;
+        targetNode = rawSourceNode;
+      }
+
+      if (sourceNode.type === "entry" && targetNode.type === "entry") {
+        toast.error("Cannot connect entry node to itself");
+        return;
+      }
+
+      const isExternalContext = (node: NodeData) =>
+        node.type === "externalContext";
+
+      // Prevent file-to-file connections only
+      if (isExternalContext(sourceNode) && isExternalContext(targetNode)) {
+        toast.error("Cannot connect file nodes to each other");
         return;
       }
 
       const newEdge: EdgeData = {
         _id: `edge_${Date.now()}`,
-        from: params.source,
-        to: params.target,
+        from: sourceId,
+        to: targetId,
         createdAt: new Date().toISOString(),
         meta: {},
       };
 
       // Always assign parent relationship when connecting (override existing if any)
       const updatedNodes = canvas.nodes.map((n) => {
-        if (n._id === params.target) {
+        if (n._id === targetId && n.type !== "entry") {
           console.log(
-            `Setting parent ${params.source} for node ${params.target}`
+            `Setting parent ${sourceId} for node ${targetId}`
           );
-          return { ...n, parentNodeId: params.source } as any;
+          return { ...n, parentNodeId: sourceId } as any;
         }
         return n;
       });
@@ -1996,13 +2090,15 @@ export function CanvasArea({
 
       // Always persist parent linkage when connecting
       console.log(
-        `Scheduling parent update: ${params.target} -> parent: ${params.source}`
+        `Scheduling parent update: ${targetId} -> parent: ${sourceId}`
       );
-      scheduleParentUpdate(params.target, { parentNodeId: params.source });
+      if (targetNode.type !== "entry") {
+        scheduleParentUpdate(targetId, { parentNodeId: sourceId });
+      }
 
       // Visual feedback for parent relationship
       toast.success(
-        `Node connected: ${params.target} → parent: ${params.source}`,
+        `Node connected: ${targetId} → parent: ${sourceId}`,
         {
           duration: 2000,
         }
@@ -2402,7 +2498,10 @@ export function CanvasArea({
       onNodesChange(changes);
 
       const positionChanges = changes.filter(
-        (c) => c.type === "position" && c.position
+        (c) =>
+          c.type === "position" &&
+          c.position &&
+          (c as any).dragging !== true
       );
       const dimensionChanges = changes.filter(
         (c) => c.type === "dimensions" && c.dimensions
@@ -2578,6 +2677,10 @@ export function CanvasArea({
       const nestedLoading = (n.data as any)?.loading;
       const rootLoading = (n as any)?.loading;
       const contract = (n as any)?.contextContract;
+      const hasError =
+        typeof (n.data as any)?.error === "string" ||
+        typeof (n as any)?.error === "string";
+      if (hasError) return false;
       return (
         nestedLoading === true ||
         rootLoading === true ||
@@ -2628,6 +2731,21 @@ export function CanvasArea({
                 : undefined;
             if (typeof rLoading === "boolean" && rLoading !== lLoading) return true;
 
+            const rError =
+              typeof (rNode.data as any)?.error === "string"
+                ? (rNode.data as any).error
+                : typeof rNode.error === "string"
+                ? rNode.error
+                : undefined;
+            const lError =
+              typeof (localNode.data as any)?.error === "string"
+                ? (localNode.data as any).error
+                : typeof (localNode as any).error === "string"
+                ? (localNode as any).error
+                : undefined;
+            if (rError && rError !== lError) return true;
+            if (!rError && lError) return true;
+
             const rContract = (rNode as any).contextContract;
             const lContract = (localNode as any).contextContract;
             if (rContract && rContract !== lContract) return true;
@@ -2637,7 +2755,7 @@ export function CanvasArea({
 
           if (changed) {
              console.log("Canvas polling detected updates");
-             setCanvas(remoteCanvas);
+             setCanvas((prev) => mergeCanvasData(remoteCanvas, prev));
           }
         } catch (e) {
           console.error("Poll error", e);
@@ -2645,7 +2763,7 @@ export function CanvasArea({
       }, 3000);
       return () => clearInterval(interval);
     }
-  }, [canvasId, canvas?.nodes]);
+  }, [canvasId, canvas?.nodes, mergeCanvasData]);
 
   const onDrop = useCallback(
     async (event: React.DragEvent) => {
@@ -2804,6 +2922,7 @@ export function CanvasArea({
             formData.append("file", file);
             formData.append("nodeId", newNodeId);
             formData.append("canvasId", canvasId);
+            formData.append("position", JSON.stringify(position));
 
             const response = await fetch("/api/upload", {
               method: "POST",
@@ -2814,6 +2933,8 @@ export function CanvasArea({
               throw new Error("Upload failed");
             }
             const data = await response.json();
+            const resolvedFileId =
+              typeof data.fileId === "string" ? data.fileId : undefined;
             const hasContent =
               typeof data.content === "string" && data.content.trim().length > 0;
             const nextLoading = !hasContent;
@@ -2835,12 +2956,13 @@ export function CanvasArea({
                             typeof data.content === "string"
                               ? data.content
                               : (n.data as any)?.content || "",
+                          ...(resolvedFileId ? { fileId: resolvedFileId } : {}),
                           ...(typeof data.size === "number"
                             ? { size: data.size }
-                            : {}),
+                            : { size: file.size }),
                           ...(typeof data.fileType === "string"
                             ? { fileType: data.fileType }
-                            : {}),
+                            : { fileType: file.type }),
                         },
                       }
                     : n
@@ -2861,12 +2983,13 @@ export function CanvasArea({
                         typeof data.content === "string"
                           ? data.content
                           : (n.data as any)?.content || "",
+                      ...(resolvedFileId ? { fileId: resolvedFileId } : {}),
                       ...(typeof data.size === "number"
                         ? { size: data.size }
-                        : {}),
+                        : { size: file.size }),
                       ...(typeof data.fileType === "string"
                         ? { fileType: data.fileType }
-                        : {}),
+                        : { fileType: file.type }),
                       onClick: () => {
                         if (onNodeSelect)
                           onNodeSelect(newNodeId, data.fileName, "externalContext");
@@ -3204,6 +3327,71 @@ export function CanvasArea({
     });
     setEditingEdgeId(null);
   };
+
+  const handleExternalRetry = useCallback(
+    async (nodeId: string, fileId?: string) => {
+      if (!canvasId) return;
+
+      const markNodeState = (loading: boolean, error?: string) => {
+        setCanvas((prev) => {
+          if (!prev) return prev;
+          const updated = {
+            ...prev,
+            nodes: prev.nodes.map((n) =>
+              n._id === nodeId
+                ? {
+                    ...n,
+                    contextContract: loading ? "Processing..." : n.contextContract,
+                    data: {
+                      ...(typeof n.data === "object" ? n.data : {}),
+                      loading,
+                      error,
+                    },
+                  }
+                : n
+            ),
+            updatedAt: new Date().toISOString(),
+          };
+          storageService.saveCanvas(updated);
+          return updated;
+        });
+        setNodes((nds) =>
+          nds.map((n) =>
+            n.id === nodeId
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    loading,
+                    error,
+                  },
+                }
+              : n
+          )
+        );
+      };
+
+      markNodeState(true, undefined);
+
+      try {
+        const response = await fetch("/api/files/retry", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nodeId, canvasId, fileId }),
+        });
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(message || "Retry failed");
+        }
+        toast.success("File reprocessing started", { duration: 2200 });
+      } catch (error) {
+        console.error("Retry failed", error);
+        markNodeState(false, "Retry failed. Please try again.");
+        toast.error("Failed to retry processing", { duration: 2400 });
+      }
+    },
+    [canvasId, setCanvas, setNodes]
+  );
 
   // Auto-layout function to organize nodes
   const handleAutoLayout = useCallback(() => {

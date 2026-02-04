@@ -17,6 +17,10 @@ import {
   Layers,
   Link2,
   FlaskConical,
+  Database,
+  Network,
+  FileText,
+  Blocks,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -106,12 +110,13 @@ export function LandingPage() {
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-tight text-slate-900">
               Visual workspace for
               <br />
-              <span className="text-slate-600">multi-LLM conversations</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-800 via-purple-700 to-slate-900 pb-2">
+                Context-Aware AI
+              </span>
             </h1>
 
             <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-              Build conversational flows visually. Branch at any point. Compare
-              AI responses side-by-side. Never lose context.
+              Build conversational flows visually. Inject data with <strong className="text-slate-900">Context Nodes</strong>. Branch at any point. Compare models side-by-side with perfect context retention.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
@@ -157,317 +162,522 @@ export function LandingPage() {
       </section>
 
       {/* Visual Problem Demo */}
-      <section id="demo" className="px-6 py-32 bg-white relative">
-        <div className="absolute inset-0 bg-slate-50/50 [mask-image:linear-gradient(to_bottom,transparent,white_20%,white_80%,transparent)]" />
-        <div className="max-w-6xl mx-auto relative z-10">
+      <section id="demo" className="px-6 py-24 bg-white">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-slate-900">
-              The Context Problem
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-slate-900">
+              Traditional chats vs ContextTree
             </h2>
-            <p className="text-slate-500 text-lg">
-              Why traditional chat interfaces hold you back
+            <p className="text-slate-600 text-lg">
+              See how context preservation changes everything
             </p>
           </div>
 
           {/* Tab Selector */}
-          <div className="flex justify-center mb-12">
-            <div className="inline-flex bg-slate-100/80 backdrop-blur-sm rounded-full p-1.5 ring-1 ring-slate-200">
-              {["problem", "solution"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`relative px-8 py-3 text-sm font-medium rounded-full transition-all duration-300 ${
-                    activeTab === tab
-                      ? "text-slate-900"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  {activeTab === tab && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute inset-0 bg-white rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-200/50"
-                      transition={{
-                        type: "spring",
-                        bounce: 0.2,
-                        duration: 0.6,
-                      }}
-                    />
-                  )}
-                  <span className="relative z-10">
-                    {tab === "problem" ? "Traditional Chat" : "ContextTree Flow"}
-                  </span>
-                </button>
-              ))}
+          <div className="flex justify-center mb-10">
+            <div className="inline-flex p-1.5 bg-slate-100 rounded-xl border border-slate-200 shadow-sm">
+              <button
+                onClick={() => setActiveTab("problem")}
+                className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                  activeTab === "problem"
+                    ? "bg-white text-slate-900 shadow-md"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Traditional Chats
+              </button>
+              <button
+                onClick={() => setActiveTab("solution")}
+                className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                  activeTab === "solution"
+                    ? "bg-white text-slate-900 shadow-md"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                ContextTree
+              </button>
             </div>
           </div>
 
-          {/* Content View */}
-          <div className="relative h-[600px] bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden shadow-xl">
-            <AnimatePresence mode="wait">
-              {activeTab === "problem" ? (
-                <motion.div
-                  key="problem"
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.3 }}
-                  className="absolute inset-0 p-8 flex flex-col items-center justify-center bg-slate-100/50"
-                >
-                  <div className="relative w-full max-w-4xl h-full">
-                    {/* Chaotic Browser Windows */}
-                    <motion.div
-                      className="absolute top-10 left-10 right-10 bottom-20 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden"
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.1 }}
-                      style={{ rotate: "-2deg" }}
-                    >
-                      <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-400" />
-                        <div className="w-3 h-3 rounded-full bg-amber-400" />
-                        <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                      </div>
-                      <div className="p-6 space-y-4 opacity-50 blur-[1px]">
-                        <div className="flex gap-4">
-                          <div className="w-8 h-8 rounded bg-slate-200" />
-                          <div className="flex-1 space-y-2">
-                            <div className="h-2 bg-slate-200 rounded w-3/4" />
-                            <div className="h-2 bg-slate-200 rounded w-1/2" />
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      className="absolute top-6 left-20 right-20 bottom-16 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden"
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      style={{ rotate: "1deg" }}
-                    >
-                      <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-400" />
-                        <div className="w-3 h-3 rounded-full bg-amber-400" />
-                        <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                      </div>
-                      <div className="p-6 space-y-4 opacity-70">
-                        <div className="flex gap-4">
-                          <div className="w-8 h-8 rounded bg-slate-200" />
-                          <div className="flex-1 space-y-2">
-                            <div className="h-2 bg-slate-200 rounded w-2/3" />
-                            <div className="h-2 bg-slate-200 rounded w-1/2" />
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] bottom-10 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden"
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                        <div className="flex gap-2">
-                          <div className="w-3 h-3 rounded-full bg-red-400" />
-                          <div className="w-3 h-3 rounded-full bg-amber-400" />
-                          <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                        </div>
-                        <div className="text-xs font-mono text-slate-400">
-                          chat-gpt-v4.html
-                        </div>
-                      </div>
-                      <div className="p-8 space-y-6">
-                        <div className="flex gap-4">
-                          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
-                            U
-                          </div>
-                          <div className="bg-slate-100 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-700">
-                            Can you explain the difference between DFS and BFS?
-                          </div>
-                        </div>
-                        <div className="flex gap-4 flex-row-reverse">
-                          <div className="w-8 h-8 rounded-lg bg-green-600 text-white flex items-center justify-center">
-                            <Bot className="w-4 h-4" />
-                          </div>
-                          <div className="bg-white border border-slate-100 shadow-sm rounded-2xl rounded-tr-sm p-4 text-sm text-slate-600">
-                            DFS (Depth-First Search) explores as far as possible
-                            along each branch before backtracking...
-                          </div>
-                        </div>
-                        <div className="flex gap-4">
-                          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
-                            U
-                          </div>
-                          <div className="bg-slate-100 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-700">
-                            What about in Python?
-                          </div>
-                        </div>
-                        <div className="flex gap-4 flex-row-reverse">
-                          <div className="w-8 h-8 rounded-lg bg-green-600 text-white flex items-center justify-center">
-                            <Bot className="w-4 h-4" />
-                          </div>
-                          <div className="bg-white border border-slate-200 shadow-sm rounded-2xl rounded-tr-sm p-4 text-sm text-slate-600">
-                            Wait, are we still talking about sorting or trees? I
-                            might have lost context from the other tab...
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Problem Overlay */}
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 1.5 }}
-                        className="absolute inset-0 bg-slate-900/5 backdrop-blur-[2px] flex items-center justify-center"
-                      >
-                        <div className="bg-white/90 backdrop-blur-xl border border-red-100 p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 max-w-sm text-center">
-                          <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-1">
-                            <AlertCircle className="w-6 h-6 text-red-500" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-1">
-                              Context Fragmented
-                            </h3>
-                            <p className="text-sm text-slate-500">
-                              Switching tabs breaks your flow. You can't compare
-                              answers easily or branch off ideas.
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    </motion.div>
+          {/* Problem View */}
+          {activeTab === "problem" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="grid md:grid-cols-3 gap-4">
+                {/* Tab 1 - GPT OSS */}
+                <div className="border border-slate-300 rounded-2xl overflow-hidden bg-white shadow-md">
+                  <div className="bg-slate-100 px-4 py-3 border-b border-slate-300 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-slate-700">
+                      GPT OSS
+                    </span>
+                    <X className="w-4 h-4 text-slate-400" />
                   </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="solution"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="absolute inset-0 bg-white"
-                >
-                  <div className="relative w-full h-full p-8 overflow-hidden">
-                    {/* Grid Background */}
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
-
-                    {/* Tree Visualization */}
-                    <div className="relative w-full h-full flex items-center justify-center">
-                      <div className="relative w-[800px] h-[500px]">
-                        <svg className="absolute inset-0 w-full h-full visible stroke-slate-300 stroke-2 fill-none">
-                          <motion.path
-                            d="M 400 50 L 400 150"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.5, delay: 0.2 }}
-                          />
-                          <motion.path
-                            d="M 400 150 C 400 150, 200 200, 200 300"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.5, delay: 0.8 }}
-                          />
-                          <motion.path
-                            d="M 400 150 C 400 150, 600 200, 600 300"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.5, delay: 0.8 }}
-                          />
-
-                          {/* Sub branches */}
-                          <motion.path
-                            d="M 200 300 L 150 400"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.5, delay: 1.5 }}
-                          />
-                          <motion.path
-                            d="M 200 300 L 250 400"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.5, delay: 1.5 }}
-                          />
-                        </svg>
-
-                        {/* Root Node */}
-                        <motion.div
-                          className="absolute top-[20px] left-1/2 -translate-x-1/2"
-                          initial={{ opacity: 0, y: -20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.5 }}
-                        >
-                          <div className="bg-slate-900 text-white px-6 py-3 rounded-xl shadow-lg border border-slate-800 flex items-center gap-3">
-                            <MessageSquare className="w-4 h-4" />
-                            <span className="font-medium text-sm">
-                              Explain DFS vs BFS
-                            </span>
-                          </div>
-                        </motion.div>
-
-                        {/* Branch Node 1 (Llama) */}
-                        <motion.div
-                          className="absolute top-[280px] left-[150px]"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.5, delay: 1.2 }}
-                        >
-                          <div className="bg-white px-5 py-4 rounded-xl shadow-lg border-2 border-blue-500 w-64 group hover:scale-105 transition-transform cursor-pointer">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-2 h-2 rounded-full bg-blue-500" />
-                              <span className="text-xs font-bold text-slate-500 uppercase">
-                                LLaMA 3
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-600 leading-relaxed">
-                              DFS goes deep, BFS goes wide. Use DFS for pathfinding,
-                              BFS for shortest path...
-                            </p>
-                          </div>
-                        </motion.div>
-
-                        {/* Branch Node 2 (Claude) */}
-                        <motion.div
-                          className="absolute top-[280px] right-[150px]"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.5, delay: 1.2 }}
-                        >
-                          <div className="bg-white px-5 py-4 rounded-xl shadow-lg border-2 border-purple-500 w-64 group hover:scale-105 transition-transform cursor-pointer">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-2 h-2 rounded-full bg-purple-500" />
-                              <span className="text-xs font-bold text-slate-500 uppercase">
-                                DeepSeek
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-600 leading-relaxed">
-                              Imagine a maze. DFS follows one wall until it hits a
-                              dead end. BFS expands like water...
-                            </p>
-                          </div>
-                        </motion.div>
-
-                        {/* Comparison Tooltip */}
-                        <motion.div
-                          className="absolute top-[240px] left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] px-3 py-1 rounded-full font-medium"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 2 }}
-                        >
-                          Comparing Parallel Contexts
-                        </motion.div>
+                  <div className="p-4 space-y-3 h-80 overflow-hidden">
+                    <div className="flex gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-slate-200 flex-shrink-0" />
+                      <div className="flex-1 bg-slate-900 text-white rounded-xl p-3 text-sm">
+                        Explain sorting algorithms
+                      </div>
+                    </div>
+                    <div className="flex gap-2.5">
+                      <Bot className="w-7 h-7 flex-shrink-0 text-slate-400" />
+                      <div className="flex-1 text-sm text-slate-700 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                        Here's a detailed explanation of sorting algorithms
+                        including bubble sort, quick sort...
+                      </div>
+                    </div>
+                    <div className="flex gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-slate-200 flex-shrink-0" />
+                      <div className="flex-1 bg-slate-900 text-white rounded-xl p-3 text-sm">
+                        Now explain in Python
+                      </div>
+                    </div>
+                    <div className="flex gap-2.5">
+                      <Bot className="w-7 h-7 flex-shrink-0 text-slate-400" />
+                      <div className="flex-1 text-sm text-slate-700 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                        Here's the Python implementation...
                       </div>
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+
+                {/* Tab 2 - DeepSeek */}
+                <div className="border border-slate-300 rounded-2xl overflow-hidden bg-white shadow-md">
+                  <div className="bg-slate-100 px-4 py-3 border-b border-slate-300 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-slate-700">
+                      DeepSeek
+                    </span>
+                    <X className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <div className="p-4 space-y-3 h-80">
+                    <div className="flex gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-slate-200 flex-shrink-0" />
+                      <div className="flex-1 bg-slate-900 text-white rounded-xl p-3 text-sm">
+                        Retyping the same question...
+                      </div>
+                    </div>
+                    <div className="flex gap-2.5">
+                      <Bot className="w-7 h-7 flex-shrink-0 text-slate-400" />
+                      <div className="flex-1 text-sm text-slate-700 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                        Different approach here...
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tab 3 - LLaMA */}
+                <div className="border border-slate-300 rounded-2xl overflow-hidden bg-white shadow-md">
+                  <div className="bg-slate-100 px-4 py-3 border-b border-slate-300 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-slate-700">
+                      LLaMA
+                    </span>
+                    <X className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <div className="p-4 space-y-3 h-80">
+                    <div className="flex gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-slate-200 flex-shrink-0" />
+                      <div className="flex-1 bg-slate-900 text-white rounded-xl p-3 text-sm">
+                        Lost context, starting over...
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-3 py-8">
+                <AlertCircle className="w-5 h-5 text-slate-500" />
+                <p className="text-sm text-slate-600 font-medium">
+                  Context lost • Switching tabs • No comparison • Starting over
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Solution View */}
+          {activeTab === "solution" && (
+            <div className="animate-in fade-in duration-300">
+              <div className="border border-slate-200 rounded-2xl overflow-hidden bg-gradient-to-br from-slate-50 to-white p-8 shadow-lg">
+                <div className="relative h-[480px]">
+                  {/* SVG Connections */}
+                  <svg
+                    className="absolute inset-0 w-full h-full pointer-events-none"
+                    style={{ zIndex: 1 }}
+                  >
+                    {/* Main connections */}
+                    <line
+                      x1="50%"
+                      y1="10%"
+                      x2="20%"
+                      y2="35%"
+                      stroke="#cbd5e1"
+                      strokeWidth="2"
+                      opacity="0.6"
+                    />
+                    <line
+                      x1="50%"
+                      y1="10%"
+                      x2="50%"
+                      y2="35%"
+                      stroke="#cbd5e1"
+                      strokeWidth="2"
+                      opacity="0.6"
+                    />
+                    <line
+                      x1="50%"
+                      y1="10%"
+                      x2="80%"
+                      y2="35%"
+                      stroke="#cbd5e1"
+                      strokeWidth="2"
+                      opacity="0.6"
+                    />
+
+                    {/* Secondary connections */}
+                    <line
+                      x1="20%"
+                      y1="48%"
+                      x2="15%"
+                      y2="75%"
+                      stroke="#cbd5e1"
+                      strokeWidth="2"
+                      opacity="0.6"
+                    />
+                    <line
+                      x1="20%"
+                      y1="48%"
+                      x2="25%"
+                      y2="75%"
+                      stroke="#cbd5e1"
+                      strokeWidth="2"
+                      opacity="0.6"
+                    />
+                    <line
+                      x1="80%"
+                      y1="48%"
+                      x2="75%"
+                      y2="75%"
+                      stroke="#cbd5e1"
+                      strokeWidth="2"
+                      opacity="0.6"
+                    />
+                    <line
+                      x1="80%"
+                      y1="48%"
+                      x2="85%"
+                      y2="75%"
+                      stroke="#cbd5e1"
+                      strokeWidth="2"
+                      opacity="0.6"
+                    />
+
+                    {/* Context Connections */}
+                    {/* CS101 -> GPT OSS */}
+                    <path
+                      d="M 12% 28% C 12% 28%, 18% 28%, 20% 35%"
+                      fill="none"
+                      stroke="#8b5cf6"
+                      strokeWidth="2"
+                      strokeDasharray="4 4"
+                      className="animate-pulse"
+                    />
+                    {/* Stats -> Benchmark */}
+                    <path
+                      d="M 85% 65% C 85% 65%, 85% 70%, 82% 75%"
+                      fill="none"
+                      stroke="#8b5cf6"
+                      strokeWidth="2"
+                      strokeDasharray="4 4"
+                      className="animate-pulse"
+                    />
+                  </svg>
+
+                  {/* Context Node 1 (Top Left) */}
+                  <div className="absolute top-[20%] left-[2%] animate-bounce-slow" style={{ zIndex: 11 }}>
+                    <div className="rounded-lg bg-purple-50 border-2 border-purple-200 p-2 w-28 shadow-sm backdrop-blur-sm">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Database className="w-3 h-3 text-purple-600" />
+                        <div className="text-xs font-semibold text-purple-900">
+                          CS101 PDF
+                        </div>
+                      </div>
+                      <div className="text-[9px] text-purple-700 leading-tight">
+                        Sorting algos theory
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Context Node 2 (Above Benchmark) */}
+                  <div className="absolute bottom-[40%] right-[10%] animate-bounce-slow" style={{ animationDelay: "1.5s", zIndex: 11 }}>
+                    <div className="rounded-lg bg-emerald-50 border-2 border-emerald-200 p-2 w-28 shadow-sm backdrop-blur-sm">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <FileText className="w-3 h-3 text-emerald-600" />
+                        <div className="text-xs font-semibold text-emerald-900">
+                          Stats.csv
+                        </div>
+                      </div>
+                      <div className="text-[9px] text-emerald-700 leading-tight">
+                        Runtime benchmarks
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Entry Node */}
+                  <div
+                    className="absolute top-[8%] left-1/2 transform -translate-x-1/2 cursor-pointer"
+                    style={{ zIndex: 10 }}
+                    onMouseEnter={() => setHoveredNode("entry")}
+                    onMouseLeave={() => setHoveredNode(null)}
+                  >
+                    <div
+                      className={`px-6 py-3 rounded-xl bg-slate-900 text-white shadow-lg transition-all ${
+                        hoveredNode === "entry" ? "scale-105 shadow-xl" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <MessageSquare className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          Explain sorting algorithms
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* First Level Branches */}
+                  <div
+                    className="absolute top-[35%] left-[18%] cursor-pointer"
+                    style={{ zIndex: 10 }}
+                    onMouseEnter={() => setHoveredNode("gpt")}
+                    onMouseLeave={() => setHoveredNode(null)}
+                  >
+                    <div
+                      className={`rounded-xl bg-white border shadow-md p-4 w-48 transition-all ${
+                        hoveredNode === "gpt"
+                          ? "border-blue-400 scale-105 shadow-xl"
+                          : "border-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                        <span className="text-sm font-semibold text-slate-900">
+                          GPT OSS
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-600 leading-relaxed">
+                        Technical explanation with code examples...
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="absolute top-[35%] left-1/2 transform -translate-x-1/2 cursor-pointer"
+                    style={{ zIndex: 10 }}
+                    onMouseEnter={() => setHoveredNode("claude")}
+                    onMouseLeave={() => setHoveredNode(null)}
+                  >
+                    <div
+                      className={`rounded-xl bg-white border shadow-md p-4 w-48 transition-all ${
+                        hoveredNode === "claude"
+                          ? "border-purple-400 scale-105 shadow-xl"
+                          : "border-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                        <span className="text-sm font-semibold text-slate-900">
+                          DeepSeek
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-600 leading-relaxed">
+                        Conceptual approach with analogies...
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="absolute top-[35%] right-[18%] cursor-pointer"
+                    style={{ zIndex: 10 }}
+                    onMouseEnter={() => setHoveredNode("gemini")}
+                    onMouseLeave={() => setHoveredNode(null)}
+                  >
+                    <div
+                      className={`rounded-xl bg-white border shadow-md p-4 w-48 transition-all ${
+                        hoveredNode === "gemini"
+                          ? "border-orange-400 scale-105 shadow-xl"
+                          : "border-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                        <span className="text-sm font-semibold text-slate-900">
+                          LLaMA
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-600 leading-relaxed">
+                        Visual diagram-based explanation...
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Second Level - Deep Branches */}
+                  <div
+                    className="absolute bottom-[20%] left-[12%]"
+                    style={{ zIndex: 10 }}
+                  >
+                    <div className="rounded-lg bg-blue-50 border border-blue-200 p-2.5 w-32 shadow-sm">
+                      <div className="text-xs font-semibold mb-1 text-slate-900">
+                        Python
+                      </div>
+                      <div className="text-[10px] text-slate-600 font-mono">
+                        def quick_sort():
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="absolute bottom-[20%] left-[27%]"
+                    style={{ zIndex: 10 }}
+                  >
+                    <div className="rounded-lg bg-blue-50 border border-blue-200 p-2.5 w-32 shadow-sm">
+                      <div className="text-xs font-semibold mb-1 text-slate-900">
+                        JavaScript
+                      </div>
+                      <div className="text-[10px] text-slate-600 font-mono">
+                        const sort = ...
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="absolute bottom-[20%] right-[27%]"
+                    style={{ zIndex: 10 }}
+                  >
+                    <div className="rounded-lg bg-orange-50 border border-orange-200 p-2.5 w-32 shadow-sm">
+                      <div className="text-xs font-semibold mb-1 text-slate-900">
+                        Visualize
+                      </div>
+                      <div className="text-[10px] text-slate-600">
+                        Interactive demo
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="absolute bottom-[20%] right-[12%]"
+                    style={{ zIndex: 10 }}
+                  >
+                    <div className="rounded-lg bg-orange-50 border border-orange-200 p-2.5 w-32 shadow-sm">
+                      <div className="text-xs font-semibold mb-1 text-slate-900">
+                        Benchmark
+                      </div>
+                      <div className="text-[10px] text-slate-600">
+                        Performance test
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-3 py-8">
+                <Check className="w-5 h-5 text-slate-900" />
+                <p className="text-sm text-slate-600 font-medium">
+                  Context preserved • Single workspace • Instant comparison •
+                  Branch anywhere
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+
+      {/* Context Node Feature Showcase */}
+      <section className="py-24 px-6 bg-slate-50 border-y border-slate-200 overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="order-2 lg:order-1">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-sm font-medium mb-6 animate-fade-in-up">
+                <Database className="w-4 h-4" />
+                <span>New Feature</span>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6 leading-tight">
+                Context Nodes: <br />
+                <span className="text-purple-600">Your Data, Connected.</span>
+              </h2>
+              <p className="text-lg text-slate-600 mb-8 leading-relaxed">
+                Stop pasting same context repeatedly. Create <strong>Context Nodes</strong> from files, databases, or API responses and wire them directly into any conversation branch.
+              </p>
+              
+              <div className="space-y-6">
+                 {[
+                    { icon: FileText, title: "Drag & Drop Files", desc: "PDFs, Text, Code - dropped right onto the canvas." },
+                    { icon: Blocks, title: "Modular Knowledge", desc: "Reuse context blocks across different conversation paths." },
+                    { icon: Network, title: "Visual Data Flow", desc: "See exactly what data is feeding into which model response." }
+                 ].map((item, i) => (
+                    <div key={i} className="flex gap-4 group">
+                      <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 shadow-sm group-hover:border-purple-200 group-hover:bg-purple-50 transition-colors">
+                        <item.icon className="w-6 h-6 text-slate-600 group-hover:text-purple-600 transition-colors" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-lg">{item.title}</h3>
+                        <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+                      </div>
+                    </div>
+                 ))}
+              </div>
+            </div>
+            
+            <div className="order-1 lg:order-2 relative">
+               {/* Visual Representation */}
+               <div className="relative rounded-2xl bg-white border border-slate-200 shadow-2xl p-8 aspect-square md:aspect-auto md:h-[500px] flex items-center justify-center overflow-hidden">
+                  <div className="absolute inset-0 bg-slate-50 opacity-50" 
+                       style={{ backgroundImage: 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
+                  </div>
+                  
+                  {/* Context Node */}
+                  <div className="absolute top-1/4 left-1/4 z-20 animate-bounce-slow">
+                     <div className="w-48 bg-white rounded-xl border-2 border-purple-500 shadow-xl p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                           <div className="p-1.5 bg-purple-100 rounded-lg">
+                              <Database className="w-4 h-4 text-purple-600" />
+                           </div>
+                           <span className="font-bold text-slate-900 text-sm">Product Specs</span>
+                        </div>
+                        <div className="h-1.5 bg-slate-100 rounded mb-1.5 w-full"></div>
+                        <div className="h-1.5 bg-slate-100 rounded mb-1.5 w-3/4"></div>
+                        <div className="h-1.5 bg-slate-100 rounded w-1/2"></div>
+                        
+                        {/* Output Handle */}
+                        <div className="absolute -right-2 top-1/2 w-4 h-4 bg-purple-500 rounded-full border-2 border-white translate-x-0"></div>
+                     </div>
+                  </div>
+
+                  {/* Chat Node */}
+                  <div className="absolute bottom-1/4 right-1/4 z-20">
+                     <div className="w-48 bg-white rounded-xl border border-slate-300 shadow-xl p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                           <div className="p-1.5 bg-slate-100 rounded-lg">
+                              <Bot className="w-4 h-4 text-slate-600" />
+                           </div>
+                           <span className="font-bold text-slate-900 text-sm">Marketing Copy</span>
+                        </div>
+                        <div className="text-xs text-slate-500 italic">Reading context...</div>
+                        
+                        {/* Input Handle */}
+                        <div className="absolute -left-2 top-1/2 w-4 h-4 bg-slate-400 rounded-full border-2 border-white translate-x-0"></div>
+                     </div>
+                  </div>
+                  
+                  {/* Connection Line */}
+                  <svg className="absolute inset-0 pointer-events-none z-10 w-full h-full">
+                     <path d="M 35% 35% C 50% 35% 50% 65% 65% 65%" stroke="#8b5cf6" strokeWidth="3" fill="none" strokeDasharray="6 4" className="animate-pulse" /> 
+                  </svg>
+               </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* How It Works - Enhanced Visual */}
-      <section id="how" className="px-6 py-24 bg-slate-50">
+      <section id="how" className="px-6 py-24 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-slate-900">

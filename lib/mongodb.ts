@@ -1075,6 +1075,44 @@ export class MongoDBService {
     }
   }
 
+  async getExternalFileByNodeId(nodeId: string, userEmail: string) {
+    await ensureInit();
+    if (!userEmail) return null;
+    try {
+      const res = await pool.query(
+        `SELECT id, file_name, file_type, file_size, processed, created_at
+         FROM external_files
+         WHERE node_id = $1 AND user_email = $2
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [nodeId, userEmail]
+      );
+      return res.rowCount ? res.rows[0] : null;
+    } catch (error) {
+      console.error("Error fetching external file by node:", error);
+      return null;
+    }
+  }
+
+  async getExternalFileBinaryByNodeId(nodeId: string, userEmail: string) {
+    await ensureInit();
+    if (!userEmail) return null;
+    try {
+      const res = await pool.query(
+        `SELECT id, file_name, file_type, file_size, processed, created_at, data
+         FROM external_files
+         WHERE node_id = $1 AND user_email = $2
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [nodeId, userEmail]
+      );
+      return res.rowCount ? res.rows[0] : null;
+    } catch (error) {
+      console.error("Error fetching external file binary:", error);
+      return null;
+    }
+  }
+
 }
 
 export const mongoService = new MongoDBService();

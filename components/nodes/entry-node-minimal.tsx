@@ -172,6 +172,11 @@ export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
         position={Position.Right}
         className="h-2 w-2 !bg-slate-700 border border-white"
       />
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="h-2 w-2 !bg-slate-700 border border-white"
+      />
     </div>
   );
 }
