@@ -8,7 +8,7 @@ import {
   type MouseEvent,
 } from "react";
 import { Handle, Position, type NodeProps } from "reactflow";
-import { ArrowDownRight, Copy, GitBranch, Minimize2 } from "lucide-react";
+import { LocateFixed, Pencil, Trash2 } from "lucide-react";
 
 interface ContextNodeData {
   label: string;
@@ -18,12 +18,10 @@ interface ContextNodeData {
   model?: string;
   timestamp?: string;
   lengthTag?: "short" | "medium" | "long";
-  onFocus?: () => void;
   onClick?: () => void;
-  onContinue?: () => void;
-  onAlternative?: () => void;
-  onCollapse?: () => void;
-  onDuplicate?: () => void;
+  onFocus?: () => void;
+  onDelete?: () => void;
+  onEdit?: () => void;
   color?: string;
   textColor?: string;
   dotColor?: string;
@@ -112,7 +110,7 @@ function ContextNodeMinimalComponent({
       >
         <div className="flex items-center justify-between text-[11px] font-semibold text-slate-800">
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
-            Reply
+            Context
           </span>
         </div>
 
@@ -141,46 +139,31 @@ function ContextNodeMinimalComponent({
       </div>
 
       <div
-        className={`pointer-events-none absolute inset-0 flex items-end justify-center pb-1 transition-opacity duration-150 ${
+        className={`absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/95 px-2 py-1 text-slate-600 shadow-lg transition-opacity duration-150 ${
           isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         }`}
       >
-        <div className="pointer-events-auto relative w-full">
-          <div className="absolute left-2 bottom-0 flex gap-1">
-            <button
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:text-slate-900"
-              aria-label="Focus"
-              onClick={handleAction(data.onFocus)}
-            >
-              <Minimize2 size={14} />
-            </button>
-          </div>
-          <div className="absolute right-2 bottom-0 flex gap-1">
-            <button
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:text-slate-900"
-              aria-label="Try alternative"
-              onClick={handleAction(data.onAlternative)}
-            >
-              <GitBranch size={14} />
-            </button>
-            <button
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:text-slate-900"
-              aria-label="More"
-              onClick={handleAction(data.onDuplicate)}
-            >
-              <Copy size={14} />
-            </button>
-          </div>
-          <div className="flex w-full items-center justify-center gap-2">
-            <button
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:text-slate-900"
-              aria-label="Continue"
-              onClick={handleAction(data.onContinue)}
-            >
-              <ArrowDownRight size={16} />
-            </button>
-          </div>
-        </div>
+        <button
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:text-slate-900"
+          aria-label="Focus node"
+          onClick={handleAction(data.onFocus)}
+        >
+          <LocateFixed size={14} />
+        </button>
+        <button
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-600 hover:border-rose-300 hover:text-rose-700"
+          aria-label="Delete node"
+          onClick={handleAction(data.onDelete)}
+        >
+          <Trash2 size={14} />
+        </button>
+        <button
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:text-slate-900"
+          aria-label="Edit node"
+          onClick={handleAction(data.onEdit)}
+        >
+          <Pencil size={14} />
+        </button>
       </div>
 
       <Handle

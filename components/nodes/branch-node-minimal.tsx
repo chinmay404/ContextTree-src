@@ -2,7 +2,7 @@
 
 import { memo, useCallback, type CSSProperties, type MouseEvent } from "react";
 import { Handle, Position, type NodeProps } from "reactflow";
-import { GitBranch, Pencil, Trash2 } from "lucide-react";
+import { LocateFixed, Pencil, Trash2 } from "lucide-react";
 
 interface BranchNodeData {
   label: string;
@@ -17,7 +17,7 @@ interface BranchNodeData {
   forkedFromMessageId?: string;
   lengthTag?: "short" | "medium" | "long";
   onClick?: () => void;
-  onFork?: () => void;
+  onFocus?: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
   color?: string;
@@ -127,10 +127,10 @@ function BranchNodeMinimalComponent({
       >
         <button
           className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:text-slate-900"
-          aria-label="Fork from last message"
-          onClick={handleAction(data.onFork)}
+          aria-label="Focus node"
+          onClick={handleAction(data.onFocus)}
         >
-          <GitBranch size={14} />
+          <LocateFixed size={14} />
         </button>
         <button
           className="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-600 hover:border-rose-300 hover:text-rose-700"

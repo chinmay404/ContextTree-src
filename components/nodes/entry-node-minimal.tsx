@@ -2,7 +2,7 @@
 
 import { useCallback, type CSSProperties, type MouseEvent } from "react";
 import { Handle, Position, type NodeProps } from "reactflow";
-import { GitBranch, Lock, Pencil, Star, Trash2 } from "lucide-react";
+import { LocateFixed, Lock, Pencil, Star, Trash2 } from "lucide-react";
 
 interface EntryNodeData {
   label: string;
@@ -13,7 +13,7 @@ interface EntryNodeData {
   timestamp?: string;
   sharedLabel?: string;
   onClick?: () => void;
-  onFork?: () => void;
+  onFocus?: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
   color?: string;
@@ -126,10 +126,10 @@ export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
       >
         <button
           className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:text-slate-900"
-          aria-label="Fork from last message"
-          onClick={handleAction(data.onFork)}
+          aria-label="Focus node"
+          onClick={handleAction(data.onFocus)}
         >
-          <GitBranch size={14} />
+          <LocateFixed size={14} />
         </button>
         <button
           className="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-600 hover:border-rose-300 hover:text-rose-700"

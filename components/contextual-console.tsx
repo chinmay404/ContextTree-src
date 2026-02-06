@@ -35,19 +35,12 @@ import {
   Circle,
   GitCommitHorizontal,
   Info,
-  MoreHorizontal,
 } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { storageService, CanvasNote } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
 import { ALL_MODELS, getDefaultModel } from "@/lib/models";
@@ -1359,29 +1352,6 @@ const ContextualConsole = ({
         }
       };
 
-      const handleFork = async () => {
-        if (!selectedCanvas || !selectedNode) return;
-
-        let forkMessageId = normalizeForkMessageId(message.id);
-
-        if (message.role === "assistant") {
-          const messages = currentConversation?.messages || [];
-          const index = messages.findIndex((m) => m.id === message.id);
-          if (index > 0) {
-            for (let i = index - 1; i >= 0; i -= 1) {
-              if (messages[i].role === "user") {
-                forkMessageId = normalizeForkMessageId(messages[i].id);
-                break;
-              }
-            }
-          }
-        }
-
-        // Show model selection dialog instead of immediately creating node
-        setPendingForkMessage(forkMessageId);
-        setShowForkModelDialog(true);
-      };
-
       return (
         <div className="group w-full text-slate-800 px-4 py-8 border-b border-black/5 last:border-0 hover:bg-slate-50/50 transition-colors">
             <div className="flex gap-4">
@@ -1406,23 +1376,7 @@ const ContextualConsole = ({
                             </span>
                         </div>
 
-                        {!isUser && (
-                           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                             <DropdownMenu>
-                               <DropdownMenuTrigger asChild>
-                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600">
-                                   <MoreHorizontal size={14} />
-                                 </Button>
-                               </DropdownMenuTrigger>
-                               <DropdownMenuContent align="end">
-                                 <DropdownMenuItem onClick={handleFork}>
-                                   <GitBranch className="mr-2 h-4 w-4" />
-                                   Fork from here
-                                 </DropdownMenuItem>
-                               </DropdownMenuContent>
-                             </DropdownMenu>
-                           </div>
-                        )}
+                        {/* Actions removed per request */}
                     </div>
                     
                     <div className="text-[15px] leading-relaxed break-words text-slate-800">
@@ -1808,7 +1762,7 @@ const ContextualConsole = ({
                 className="h-full" 
                 viewportRef={scrollViewportRef}
             >
-              <div className="min-h-[500px]">
+              <div className="min-h-[500px] pb-40">
                  
                  {(currentConversation?.messages || []).length === 0 ? (
                      <div className="px-5 text-center text-slate-400 py-10 italic text-sm">
@@ -1825,7 +1779,6 @@ const ContextualConsole = ({
                  
                  {isTyping && <div className="px-5 py-4"><TypingIndicator /></div>}
                  <div ref={messagesEndRef} className="h-px w-full" />
-                 <div className="h-32 w-full" /> {/* Spacer for floating composer */} 
               </div>
             </ScrollArea>
            )}

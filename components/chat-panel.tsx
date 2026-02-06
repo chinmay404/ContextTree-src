@@ -1294,29 +1294,6 @@ const ChatPanelInternal = ({
         }
       };
 
-      const handleFork = async () => {
-        if (!selectedCanvas || !selectedNode) return;
-
-        let forkMessageId = normalizeForkMessageId(message.id);
-
-        if (message.role === "assistant") {
-          const messages = currentConversation?.messages || [];
-          const index = messages.findIndex((m) => m.id === message.id);
-          if (index > 0) {
-            for (let i = index - 1; i >= 0; i -= 1) {
-              if (messages[i].role === "user") {
-                forkMessageId = normalizeForkMessageId(messages[i].id);
-                break;
-              }
-            }
-          }
-        }
-
-        // Show model selection dialog instead of immediately creating node
-        setPendingForkMessage(forkMessageId);
-        setShowForkModelDialog(true);
-      };
-
       return (
         <div
           className={`flex ${
@@ -1628,15 +1605,6 @@ const ChatPanelInternal = ({
                       }`}
                     >
                       <span>{timeLabel}</span>
-                      {!isUser && (
-                        <button
-                          onClick={handleFork}
-                          className="ml-3 inline-flex items-center gap-1 rounded-md border border-slate-200/80 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors duration-150 hover:border-slate-300 hover:text-slate-800 hover:bg-slate-100"
-                          title="Fork a new node from this response"
-                        >
-                          Fork
-                        </button>
-                      )}
                     </div>
                   );
                 })()}
