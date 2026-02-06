@@ -139,15 +139,21 @@ const ContextualConsole = ({
   const [nameInputValue, setNameInputValue] = useState("");
 
   // Sync name input when node changes
+  const resolvedNodeName = useMemo(() => {
+    if (!selectedNode) return selectedNodeName;
+    return conversations[selectedNode]?.nodeName || selectedNodeName;
+  }, [selectedNode, selectedNodeName, conversations]);
+
   useEffect(() => {
-    setNameInputValue(selectedNodeName || "");
-  }, [selectedNodeName]);
+    if (isEditingName) return;
+    setNameInputValue(resolvedNodeName || "");
+  }, [resolvedNodeName, isEditingName]);
 
   const handleNameSave = async () => {
       if (!selectedNode || !selectedCanvas) return;
       
       const newName = nameInputValue.trim();
-      if (!newName || newName === selectedNodeName) {
+      if (!newName || newName === resolvedNodeName) {
           setIsEditingName(false);
           return;
       }
@@ -166,6 +172,15 @@ const ContextualConsole = ({
               }
           };
       });
+      setCanvasData((prev: any) => {
+        if (!prev?.nodes) return prev;
+        return {
+          ...prev,
+          nodes: prev.nodes.map((n: any) =>
+            n._id === selectedNode ? { ...n, name: newName } : n
+          ),
+        };
+      });
 
       // Dispatch event for other components
       window.dispatchEvent(new CustomEvent("canvas-update-node", {
@@ -173,6 +188,10 @@ const ContextualConsole = ({
               nodeId: selectedNode, 
               updates: { name: newName } 
           }
+      }));
+
+      window.dispatchEvent(new CustomEvent("canvas-node-renamed", {
+          detail: { nodeId: selectedNode, name: newName }
       }));
 
       // Persist
@@ -187,6 +206,35 @@ const ContextualConsole = ({
           toast({ title: "Error", description: "Failed to save node name", variant: "destructive" });
       }
   };
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      const { nodeId, name } = e.detail || {};
+      if (!nodeId || !name) return;
+      setConversations((prev) => {
+        const current = prev[nodeId];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [nodeId]: {
+            ...current,
+            nodeName: name,
+          },
+        };
+      });
+      setCanvasData((prev: any) => {
+        if (!prev?.nodes) return prev;
+        return {
+          ...prev,
+          nodes: prev.nodes.map((n: any) =>
+            n._id === nodeId ? { ...n, name } : n
+          ),
+        };
+      });
+    };
+    window.addEventListener("canvas-node-renamed", handler as any);
+    return () => window.removeEventListener("canvas-node-renamed", handler as any);
+  }, []);
 
   // Ensure client-side rendering
   useEffect(() => {
@@ -407,9 +455,10 @@ const ContextualConsole = ({
     // Use the model name as the default node name if possible
     const modelName = AVAILABLE_MODELS.find(m => m.value === selectedForkModel)?.label || selectedForkModel;
     
+    const sourceName = resolvedNodeName || "Parent";
     const newNode = {
       _id: newNodeId,
-      name: `Branch from ${selectedNodeName ? selectedNodeName.slice(0, 15) + (selectedNodeName.length > 15 ? "..." : "") : "Parent"}`,
+      name: `Branch from ${sourceName.slice(0, 15) + (sourceName.length > 15 ? "..." : "")}`,
       primary: false,
       type: "branch",
       chatMessages: [],
@@ -747,11 +796,11 @@ const ContextualConsole = ({
       selectedNode
         ? conversations[selectedNode] ?? {
             nodeId: selectedNode,
-            nodeName: selectedNodeName ?? `Node ${selectedNode}`,
+            nodeName: resolvedNodeName ?? `Node ${selectedNode}`,
             messages: [],
           }
         : null,
-    [selectedNode, selectedNodeName, conversations]
+    [selectedNode, resolvedNodeName, conversations]
   );
 
   const messageCount = currentConversation?.messages?.length ?? 0;
@@ -1369,14 +1418,29 @@ const ContextualConsole = ({
                 
                 <div className="relative flex-1 min-w-0 overflow-hidden">
                     <div className="font-semibold text-sm text-slate-700 mb-1.5 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            {isUser ? "You" : "Language Model"}
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="truncate">{isUser ? "You" : "Language Model"}</span>
                             <span className="text-[10px] font-normal text-slate-400">
                                 {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </span>
                         </div>
 
-                        {/* Actions removed per request */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                  if (!message.id) return;
+                                  setPendingForkMessage(normalizeForkMessageId(message.id));
+                                  setShowForkModelDialog(true);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm hover:border-slate-300 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+                                title="Branch from this message"
+                                aria-label="Branch from this message"
+                            >
+                                <GitBranch size={12} className="text-indigo-500" />
+                                Branch
+                            </button>
+                        </div>
                     </div>
                     
                     <div className="text-[15px] leading-relaxed break-words text-slate-800">
@@ -1412,12 +1476,12 @@ const ContextualConsole = ({
                                                 blockquote: ({ children }) => <blockquote className="border-l-4 border-slate-200 pl-4 italic text-slate-600 my-4 bg-slate-50 py-2 pr-2 rounded-r">{children}</blockquote>,
                                                 table: ({ children }) => (
                                                     <div className="overflow-x-auto my-6 w-full border border-slate-200 rounded-lg shadow-sm">
-                                                        <table className="min-w-full divide-y divide-slate-200 bg-white text-sm">{children}</table>
+                                                        <table className="w-full table-fixed divide-y divide-slate-200 bg-white text-sm">{children}</table>
                                                     </div>
                                                 ),
                                                 thead: ({ children }) => <thead className="bg-slate-50">{children}</thead>,
-                                                th: ({ children }) => <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">{children}</th>,
-                                                td: ({ children }) => <td className="px-4 py-3 text-slate-600 border-b border-slate-100">{children}</td>,
+                                                th: ({ children }) => <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 break-words whitespace-normal align-top">{children}</th>,
+                                                td: ({ children }) => <td className="px-4 py-3 text-slate-600 border-b border-slate-100 break-words whitespace-normal align-top">{children}</td>,
                                                 a: ({ children, href }) => <a href={href} className="text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors" target="_blank" rel="noopener noreferrer">{children}</a>,
                                                 hr: () => <hr className="my-8 border-slate-200" />,
                                                 code: ({ children, className }) => {
@@ -1443,7 +1507,7 @@ const ContextualConsole = ({
                             </div>
                         )}
                     </div>
-                    {!isUser && <ForkIndicator messageId={message.id} />}
+                    <ForkIndicator messageId={message.id} />
                 </div>
             </div>
         </div>
@@ -1623,8 +1687,8 @@ const ContextualConsole = ({
                         </div>
                     ) : (
                         <div className="flex items-center gap-2 group flex-1 min-w-0 cursor-text" onClick={() => setIsEditingName(true)}>
-                             <span className="text-base font-bold text-slate-900 truncate tracking-tight hover:text-indigo-900 transition-colors" title={selectedNodeName}>
-                                {selectedNodeName || "Untitled Node"}
+                             <span className="text-base font-bold text-slate-900 truncate tracking-tight hover:text-indigo-900 transition-colors" title={resolvedNodeName}>
+                                {resolvedNodeName || "Untitled Node"}
                             </span>
                             <Edit2 size={10} className="opacity-0 group-hover:opacity-100 text-slate-400 transition-opacity" />
                         </div>

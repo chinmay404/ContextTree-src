@@ -284,6 +284,18 @@ export default function ContextTreePage() {
     }
   };
 
+  useEffect(() => {
+    const handler = (e: any) => {
+      const { nodeId, name } = e.detail || {};
+      if (!nodeId || !name) return;
+      if (nodeId === selectedNode) {
+        setSelectedNodeName(name);
+      }
+    };
+    window.addEventListener("canvas-node-renamed", handler as any);
+    return () => window.removeEventListener("canvas-node-renamed", handler as any);
+  }, [selectedNode]);
+
   const handleCreateCanvas = async () => {
     if (!user?.email || isCreatingCanvas) return;
     setIsCreatingCanvas(true);

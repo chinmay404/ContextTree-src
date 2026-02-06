@@ -487,6 +487,7 @@ export function CanvasArea({
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
   const [nodeNameInput, setNodeNameInput] = useState<string>("");
   const [nodeColorInput, setNodeColorInput] = useState<string>("#A3A3A3");
+  const [nodeColorTouched, setNodeColorTouched] = useState<boolean>(false);
   const [edgeNameInput, setEdgeNameInput] = useState<string>("");
   const [pendingConnection, setPendingConnection] = useState<
     { sourceId: string; handleId?: string | null } | null
@@ -1055,7 +1056,12 @@ export function CanvasArea({
       setEditingNodeId(nodeId);
       const node = nodes.find((n) => n.id === nodeId);
       setNodeNameInput((node as any)?.data?.label || "");
-      setNodeColorInput(String(node?.style?.background || "#A3A3A3"));
+      const resolvedColor =
+        (node as any)?.data?.color ||
+        (node as any)?.style?.background ||
+        "#f8fafc";
+      setNodeColorInput(String(resolvedColor));
+      setNodeColorTouched(false);
     },
     [nodes]
   );
@@ -2310,6 +2316,24 @@ export function CanvasArea({
       ]);
     };
     window.addEventListener("canvas-fork-node", handler as any);
+    const updateHandler = (e: any) => {
+      const { nodeId, updates } = e.detail || {};
+      if (!nodeId || !updates) return;
+      setCanvas((prev) => {
+        if (!prev) return prev;
+        const nextNodes = prev.nodes.map((n) =>
+          n._id === nodeId ? { ...n, ...updates } : n
+        );
+        const nextCanvas = {
+          ...prev,
+          nodes: nextNodes,
+          updatedAt: new Date().toISOString(),
+        };
+        storageService.saveCanvas(nextCanvas);
+        return nextCanvas;
+      });
+    };
+    window.addEventListener("canvas-update-node", updateHandler as any);
     const selectHandler = (e: any) => {
       const { nodeId } = e.detail || {};
       if (nodeId) {
@@ -2320,6 +2344,7 @@ export function CanvasArea({
     window.addEventListener("canvas-select-node", selectHandler as any);
     return () => {
       window.removeEventListener("canvas-fork-node", handler as any);
+      window.removeEventListener("canvas-update-node", updateHandler as any);
       window.removeEventListener("canvas-select-node", selectHandler as any);
     };
   }, [
@@ -3565,16 +3590,32 @@ export function CanvasArea({
   const handleNodeRename = async (nodeId: string) => {
     if (!canvas) return;
 
+    const existingNode = canvas.nodes.find((n) => n._id === nodeId);
+    if (!existingNode) return;
+
+    const trimmedName = nodeNameInput.trim();
+    const nextName =
+      trimmedName ||
+      existingNode.name ||
+      (existingNode.type === "entry" ? "Base Context" : "Untitled Node");
+
+    const shouldUpdateColor = nodeColorTouched;
     const colorScheme = getColorScheme(nodeColorInput);
+
     const updatedNodes = canvas.nodes.map((n) =>
       n._id === nodeId
-        ? {
-            ...n,
-            name: nodeNameInput,
-            color: nodeColorInput,
-            textColor: colorScheme.text,
-            dotColor: colorScheme.dot,
-          }
+        ? shouldUpdateColor
+          ? {
+              ...n,
+              name: nextName,
+              color: nodeColorInput,
+              textColor: colorScheme.text,
+              dotColor: colorScheme.dot,
+            }
+          : {
+              ...n,
+              name: nextName,
+            }
         : n
     );
     const updatedCanvas = { ...canvas, nodes: updatedNodes };
@@ -3585,74 +3626,103 @@ export function CanvasArea({
       nds.map((n) =>
         n.id === nodeId
           ? n.type === "group"
+            ? shouldUpdateColor
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    label: nextName,
+                    color: nodeColorInput,
+                    textColor: colorScheme.text,
+                    borderColor: colorScheme.dot,
+                  },
+                  style: {
+                    ...(n.style || {}),
+                    background: nodeColorInput,
+                    borderColor: colorScheme.dot,
+                    borderStyle: "dashed",
+                    borderWidth: 2,
+                    zIndex: 0,
+                  },
+                }
+              : {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    label: nextName,
+                  },
+                }
+            : shouldUpdateColor
             ? {
                 ...n,
                 data: {
                   ...n.data,
-                  label: nodeNameInput,
-                  color: nodeColorInput,
-                  textColor: colorScheme.text,
-                  borderColor: colorScheme.dot,
-                },
-                style: {
-                  ...(n.style || {}),
-                  background: nodeColorInput,
-                  borderColor: colorScheme.dot,
-                  borderStyle: "dashed",
-                  borderWidth: 2,
-                  zIndex: 0,
-                },
-              }
-            : {
-                ...n,
-                data: {
-                  ...n.data,
-                  label: nodeNameInput,
+                  label: nextName,
                   textColor: colorScheme.text,
                   dotColor: colorScheme.dot,
                 },
                 style: {
+                  ...(n.style || {}),
                   background: nodeColorInput,
                   color: colorScheme.text,
                   borderColor: colorScheme.dot,
                   zIndex: 2,
                 },
               }
+            : {
+                ...n,
+                data: {
+                  ...n.data,
+                  label: nextName,
+                },
+              }
           : n
       )
     );
 
-    // Update edges connected to this node to use the enhanced color scheme
-    setEdges((eds) =>
-      eds.map((e) =>
-        e.source === nodeId
-          ? {
-              ...e,
-              style: {
-                stroke: colorScheme.edge,
-                strokeWidth: 3,
-              },
-              markerEnd: {
-                type: MarkerType.ArrowClosed,
-                color: colorScheme.edge,
-                width: 24,
-                height: 24,
-              },
-            }
-          : e
-      )
-    );
+    if (shouldUpdateColor) {
+      // Update edges connected to this node to use the enhanced color scheme
+      setEdges((eds) =>
+        eds.map((e) =>
+          e.source === nodeId
+            ? {
+                ...e,
+                style: {
+                  stroke: colorScheme.edge,
+                  strokeWidth: 3,
+                },
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  color: colorScheme.edge,
+                  width: 24,
+                  height: 24,
+                },
+              }
+            : e
+        )
+      );
+    }
+
+    const payload: Record<string, any> = { name: nextName };
+    if (shouldUpdateColor) {
+      payload.color = nodeColorInput;
+      payload.textColor = colorScheme.text;
+      payload.dotColor = colorScheme.dot;
+    }
+
     await fetch(`/api/canvases/${canvasId}/nodes/${nodeId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: nodeNameInput,
-        color: nodeColorInput,
-        textColor: colorScheme.text,
-        dotColor: colorScheme.dot,
-      }),
+      body: JSON.stringify(payload),
     });
     setEditingNodeId(null);
+    setNodeColorTouched(false);
+
+    window.dispatchEvent(
+      new CustomEvent("canvas-node-renamed", {
+        detail: { nodeId, name: nextName },
+      })
+    );
   };
 
   // Edge rename handler
@@ -3926,7 +3996,10 @@ export function CanvasArea({
                     id="nodeColor"
                     type="color"
                     value={nodeColorInput}
-                    onChange={(e) => setNodeColorInput(e.target.value)}
+                    onChange={(e) => {
+                      setNodeColorInput(e.target.value);
+                      setNodeColorTouched(true);
+                    }}
                     className="w-16 h-10 border border-slate-200 rounded-xl cursor-pointer shadow-sm"
                   />
                   <div className="flex-1">
@@ -3943,7 +4016,10 @@ export function CanvasArea({
                       ].map((color) => (
                         <button
                           key={color}
-                          onClick={() => setNodeColorInput(color)}
+                          onClick={() => {
+                            setNodeColorInput(color);
+                            setNodeColorTouched(true);
+                          }}
                           className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-105 ${
                             nodeColorInput === color
                               ? "border-slate-400 ring-2 ring-slate-400/50 ring-offset-2 ring-offset-white"

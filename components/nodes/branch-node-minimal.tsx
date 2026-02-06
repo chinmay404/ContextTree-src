@@ -103,20 +103,24 @@ function BranchNodeMinimalComponent({
           {previewText}
         </div>
 
-        <div className="mt-3 flex items-center gap-2 border-t border-slate-200 pt-2 text-[11px] text-slate-600">
-          <span className="font-semibold text-slate-700">
+        <div className="mt-3 border-t border-slate-200 pt-2 text-[11px] text-slate-600">
+          <div
+            className="font-semibold text-slate-700 truncate"
+            title={data.metaForkLabel || "Branched from Base Context"}
+          >
             {data.metaForkLabel || "Branched from Base Context"}
-          </span>
-          <span className="h-1 w-1 rounded-full bg-slate-400" />
-          <span className="rounded-full bg-white/80 px-2 py-0.5 font-semibold text-slate-800 shadow-inner">
-            {data.model || "Model"}
-          </span>
-          <span className="h-1 w-1 rounded-full bg-slate-400" />
-          <span className="uppercase tracking-wide text-slate-500">
-            {data.lengthTag || "medium"}
-          </span>
-          <span className="h-1 w-1 rounded-full bg-slate-400" />
-          <span className="tabular-nums">{timeLabel}</span>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-white/80 px-2 py-0.5 font-semibold text-slate-800 shadow-inner">
+              {data.model || "Model"}
+            </span>
+            <span className="h-1 w-1 rounded-full bg-slate-400" />
+            <span className="uppercase tracking-wide text-slate-500">
+              {data.lengthTag || "medium"}
+            </span>
+            <span className="h-1 w-1 rounded-full bg-slate-400" />
+            <span className="tabular-nums">{timeLabel}</span>
+          </div>
         </div>
       </div>
 
