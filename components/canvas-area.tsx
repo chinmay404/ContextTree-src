@@ -1789,6 +1789,72 @@ export function CanvasArea({
     return basicNodeTypes;
   }, []);
 
+  // Auto-layout function to organize nodes
+  const handleAutoLayout = useCallback(() => {
+    const actionableNodes = nodes.filter((node) => node.type !== "group");
+    if (actionableNodes.length === 0) return;
+
+    const actionableIds = new Set(actionableNodes.map((node) => node.id));
+
+    // Find entry nodes (nodes with no incoming edges)
+    const entryNodes = actionableNodes.filter(
+      (node) =>
+        !edges.some(
+          (edge) => edge.target === node.id && actionableIds.has(edge.source)
+        )
+    );
+
+    const layoutMaps = computeLayout(canvas?.nodes || [], expandedOverflowParents);
+    const layoutedNodes = nodes.map((n) => {
+      if (n.type === "group") return n;
+      const depth = layoutMaps.depthMap.get(n.id) ?? 0;
+      const branchIndex = layoutMaps.branchIndexMap.get(n.id) ?? 0;
+      return {
+        ...n,
+        position: {
+          x: branchIndex * HORIZONTAL_GAP,
+          y: depth * VERTICAL_GAP,
+        },
+      };
+    });
+
+    setNodes(layoutedNodes);
+
+    // Save to storage
+    if (canvas) {
+      const updatedNodes = canvas.nodes.map((canvasNode) => {
+        if (canvasNode.type === "group") {
+          return canvasNode;
+        }
+        const layoutedNode = layoutedNodes.find((n) => n.id === canvasNode._id);
+        return layoutedNode
+          ? { ...canvasNode, position: layoutedNode.position }
+          : canvasNode;
+      });
+
+      const updatedCanvas: CanvasData = {
+        ...canvas,
+        nodes: updatedNodes,
+        updatedAt: new Date().toISOString(),
+      };
+
+      storageService.saveCanvas(updatedCanvas);
+      setCanvas(updatedCanvas);
+      scheduleLayoutPatch({
+        nodes: updatedNodes
+          .filter((node) => node.position)
+          .map((node) => ({
+            id: node._id,
+            position: node.position as { x: number; y: number },
+          })),
+      });
+
+      toast.success("Canvas auto-arranged!", {
+        duration: 2000,
+      });
+    }
+  }, [nodes, edges, canvas, setNodes, scheduleLayoutPatch]);
+
   // Handle Delete key for node/edge deletion and auto-layout shortcut
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -3677,73 +3743,6 @@ export function CanvasArea({
     },
     [canvasId, setCanvas, setNodes]
   );
-
-  // Auto-layout function to organize nodes
-  const handleAutoLayout = useCallback(() => {
-    const actionableNodes = nodes.filter((node) => node.type !== "group");
-    if (actionableNodes.length === 0) return;
-
-    const actionableIds = new Set(actionableNodes.map((node) => node.id));
-
-    // Find entry nodes (nodes with no incoming edges)
-    const entryNodes = actionableNodes.filter(
-      (node) =>
-        !edges.some(
-          (edge) =>
-            edge.target === node.id && actionableIds.has(edge.source)
-        )
-    );
-
-    const layoutMaps = computeLayout(canvas?.nodes || [], expandedOverflowParents);
-    const layoutedNodes = nodes.map((n) => {
-      if (n.type === "group") return n;
-      const depth = layoutMaps.depthMap.get(n.id) ?? 0;
-      const branchIndex = layoutMaps.branchIndexMap.get(n.id) ?? 0;
-      return {
-        ...n,
-        position: {
-          x: branchIndex * HORIZONTAL_GAP,
-          y: depth * VERTICAL_GAP,
-        },
-      };
-    });
-
-    setNodes(layoutedNodes);
-
-    // Save to storage
-    if (canvas) {
-      const updatedNodes = canvas.nodes.map((canvasNode) => {
-        if (canvasNode.type === "group") {
-          return canvasNode;
-        }
-        const layoutedNode = layoutedNodes.find((n) => n.id === canvasNode._id);
-        return layoutedNode
-          ? { ...canvasNode, position: layoutedNode.position }
-          : canvasNode;
-      });
-
-      const updatedCanvas: CanvasData = {
-        ...canvas,
-        nodes: updatedNodes,
-        updatedAt: new Date().toISOString(),
-      };
-
-      storageService.saveCanvas(updatedCanvas);
-      setCanvas(updatedCanvas);
-      scheduleLayoutPatch({
-        nodes: updatedNodes
-          .filter((node) => node.position)
-          .map((node) => ({
-            id: node._id,
-            position: node.position as { x: number; y: number },
-          })),
-      });
-
-      toast.success("Canvas auto-arranged!", {
-        duration: 2000,
-      });
-    }
-  }, [nodes, edges, canvas, setNodes, scheduleLayoutPatch]);
 
   return (
     <div
