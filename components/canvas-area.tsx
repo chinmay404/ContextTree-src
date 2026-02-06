@@ -2496,8 +2496,38 @@ export function CanvasArea({
           onDelete: (edgeId: string) => {
             // Delete edge with confirmation
             if (confirm("Delete this connection?")) {
+              const edgeToDelete = canvas.edges.find((e) => e._id === edgeId);
               const updatedEdges = canvas.edges.filter((e) => e._id !== edgeId);
-              const updatedCanvas = { ...canvas, edges: updatedEdges };
+              let updatedNodes = canvas.nodes;
+              if (edgeToDelete) {
+                const targetNode = canvas.nodes.find(
+                  (n) => n._id === edgeToDelete.to
+                );
+                if (
+                  targetNode &&
+                  (targetNode as any).parentNodeId === edgeToDelete.from
+                ) {
+                  const stillInbound = updatedEdges.some(
+                    (e) => e.to === edgeToDelete.to
+                  );
+                  if (!stillInbound) {
+                    updatedNodes = canvas.nodes.map((n) =>
+                      n._id === edgeToDelete.to
+                        ? { ...n, parentNodeId: undefined }
+                        : n
+                    );
+                    scheduleParentUpdate(edgeToDelete.to, {
+                      parentNodeId: undefined,
+                    });
+                  }
+                }
+              }
+              const updatedCanvas = {
+                ...canvas,
+                edges: updatedEdges,
+                nodes: updatedNodes,
+                updatedAt: new Date().toISOString(),
+              };
               storageService.saveCanvas(updatedCanvas);
               setCanvas(updatedCanvas);
               setEdges((eds) => eds.filter((e) => e.id !== edgeId));

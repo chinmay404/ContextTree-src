@@ -6,6 +6,7 @@ import {
   getSmoothStepPath,
   type EdgeProps,
 } from "reactflow";
+import { X } from "lucide-react";
 
 interface CustomEdgeMinimalData {
   label?: string;
@@ -13,9 +14,11 @@ interface CustomEdgeMinimalData {
   animated?: boolean;
   baseColor?: string;
   highlightColor?: string;
+  onDelete?: (edgeId: string) => void;
 }
 
 export function CustomEdgeMinimal({
+  id,
   sourceX,
   sourceY,
   targetX,
@@ -56,11 +59,13 @@ export function CustomEdgeMinimal({
 
   const label = data?.label || data?.condition;
   const labelHighlight = data?.highlightColor || strokeColor;
+  const canDelete = typeof data?.onDelete === "function";
+  const showDelete = canDelete && selected;
 
   return (
     <>
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={edgeStyle} />
-      {label && (
+      {(label || showDelete) && (
         <EdgeLabelRenderer>
           <div
             style={{
@@ -70,22 +75,40 @@ export function CustomEdgeMinimal({
             }}
             className="nodrag nopan"
           >
-            <div
-              className={`rounded border bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm ${
-                isAnimated
-                  ? "border-blue-200/80 text-slate-700 shadow"
-                  : "border-slate-200"
-              }`}
-              style={
-                isAnimated
-                  ? {
-                      boxShadow: "0 4px 12px rgba(59, 130, 246, 0.08)",
-                      borderColor: `${labelHighlight}33`,
-                    }
-                  : undefined
-              }
-            >
-              {label}
+            <div className="flex items-center gap-2">
+              {label && (
+                <div
+                  className={`rounded border bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm ${
+                    isAnimated
+                      ? "border-blue-200/80 text-slate-700 shadow"
+                      : "border-slate-200"
+                  }`}
+                  style={
+                    isAnimated
+                      ? {
+                          boxShadow: "0 4px 12px rgba(59, 130, 246, 0.08)",
+                          borderColor: `${labelHighlight}33`,
+                        }
+                      : undefined
+                  }
+                >
+                  {label}
+                </div>
+              )}
+              {showDelete && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    data?.onDelete?.(id);
+                  }}
+                  className="pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-600 shadow-sm transition-colors hover:border-rose-300 hover:text-rose-700"
+                  title="Disconnect"
+                  aria-label="Disconnect"
+                >
+                  <X size={12} />
+                </button>
+              )}
             </div>
           </div>
         </EdgeLabelRenderer>
