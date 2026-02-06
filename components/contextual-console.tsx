@@ -1426,20 +1426,22 @@ const ContextualConsole = ({
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                  if (!message.id) return;
-                                  setPendingForkMessage(normalizeForkMessageId(message.id));
-                                  setShowForkModelDialog(true);
-                                }}
-                                className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm hover:border-slate-300 hover:text-slate-900 hover:bg-slate-50 transition-colors"
-                                title="Branch from this message"
-                                aria-label="Branch from this message"
-                            >
-                                <GitBranch size={12} className="text-indigo-500" />
-                                Branch
-                            </button>
+                            {!isUser && (
+                              <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!message.id) return;
+                                    setPendingForkMessage(normalizeForkMessageId(message.id));
+                                    setShowForkModelDialog(true);
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm hover:border-slate-300 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+                                  title="Branch from this message"
+                                  aria-label="Branch from this message"
+                              >
+                                  <GitBranch size={12} className="text-indigo-500" />
+                                  Branch
+                              </button>
+                            )}
                         </div>
                     </div>
                     
