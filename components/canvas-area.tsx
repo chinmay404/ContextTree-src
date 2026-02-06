@@ -871,6 +871,9 @@ export function CanvasArea({
             ),
           onSettingsClick: () => handleNodeSettingsClick(node._id),
           onRetry: () => handleExternalRetry(node._id, nodeFileId),
+          onFork: () => handleForkFromNode(node._id),
+          onDelete: () => deleteNodeById(node._id, { confirm: true }),
+          onEdit: () => handleNodeSettingsClick(node._id),
         },
         style: {
           ...(nodeColor
@@ -1449,6 +1452,287 @@ export function CanvasArea({
     createGroupNode(position);
   }, [createGroupNode, reactFlowInstance]);
 
+  const deleteNodeById = useCallback(
+    (nodeId: string, options: { confirm?: boolean } = {}) => {
+      if (!canvas || !nodeId) return;
+      const primaryNodeId = canvas.primaryNodeId;
+      if (nodeId === primaryNodeId) {
+        alert("Main node cannot be deleted.");
+        return;
+      }
+
+      if (options.confirm) {
+        const ok = window.confirm(
+          "Really delete this node? This cannot be undone."
+        );
+        if (!ok) return;
+      }
+
+      const children = canvas.nodes.filter(
+        (n) => (n as any).parentNodeId === nodeId
+      );
+      const updatedNodes = canvas.nodes
+        .filter((n) => n._id !== nodeId)
+        .map((n) =>
+          (n as any).parentNodeId === nodeId
+            ? { ...n, parentNodeId: undefined }
+            : n
+        );
+      const updatedEdges = canvas.edges.filter(
+        (e) => e.from !== nodeId && e.to !== nodeId
+      );
+      const updatedCanvas = {
+        ...canvas,
+        nodes: updatedNodes,
+        edges: updatedEdges,
+        updatedAt: new Date().toISOString(),
+      };
+
+      storageService.saveCanvas(updatedCanvas);
+      setCanvas(updatedCanvas);
+      setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+      setEdges((eds) =>
+        eds.filter((e) => e.source !== nodeId && e.target !== nodeId)
+      );
+      scheduleCanvasSave(updatedCanvas);
+
+      if (selectedNode === nodeId) {
+        onNodeSelect(null);
+      }
+
+      fetch(`/api/canvases/${canvasId}/nodes/${nodeId}`, {
+        method: "DELETE",
+      })
+        .then((res) => {
+          if (!res.ok) {
+            console.error("Failed to delete node from backend", res.status);
+          }
+        })
+        .catch((err) =>
+          console.error("Error deleting node from backend", err)
+        );
+
+      children.forEach((child) => {
+        scheduleParentUpdate(child._id, { parentNodeId: undefined });
+      });
+    },
+    [
+      canvas,
+      canvasId,
+      onNodeSelect,
+      scheduleCanvasSave,
+      scheduleParentUpdate,
+      selectedNode,
+      setCanvas,
+      setEdges,
+      setNodes,
+    ]
+  );
+
+  const handleForkFromNode = useCallback(
+    (nodeId: string) => {
+      if (!canvas) return;
+      const parentNode = canvas.nodes.find((n) => n._id === nodeId);
+      if (!parentNode) return;
+
+      if (parentNode.type === "externalContext" || parentNode.type === "context") {
+        toast.error("Cannot fork from context nodes");
+        return;
+      }
+
+      const { messageId: forkedFromMessageId, text: parentMessageText } =
+        deriveParentMessageDetails(parentNode);
+
+      if (!forkedFromMessageId && !parentMessageText) {
+        toast.error("No messages found to fork from in this node");
+        return;
+      }
+
+      const resolvedForkId =
+        forkedFromMessageId || generateEntityId("msgref");
+
+      const layout = computeLayout(canvas.nodes, expandedOverflowParents);
+      const parentDepth = layout.depthMap.get(parentNode._id) ?? 0;
+      const parentBranch = layout.branchIndexMap.get(parentNode._id) ?? 0;
+      const existingAltCount = canvas.nodes.filter(
+        (n) => (n as any).parentNodeId === parentNode._id && n.type === "branch"
+      ).length;
+      const altOffsets = [-1, 1, -2];
+      const branchIndex =
+        parentBranch + altOffsets[Math.min(existingAltCount, altOffsets.length - 1)];
+      const position = {
+        x: branchIndex * HORIZONTAL_GAP,
+        y: (parentDepth + 1) * VERTICAL_GAP,
+      };
+
+      const createdAt = new Date().toISOString();
+      const newNodeId = generateEntityId("node");
+      const baseColor = parentNode.color;
+      const colorScheme = getColorScheme(baseColor || "#f8fafc");
+      const fallbackLabel = parentNode.name
+        ? `${parentNode.name} branch`
+        : "New Branch";
+      const nodeLabel = truncateLabel(parentMessageText, fallbackLabel);
+      const preview = nodeLabel;
+      const lengthTag = getLengthTag(preview);
+      const parentName =
+        parentNode.name ||
+        (parentNode.type === "entry" ? "Base Context" : "Node");
+      const metaForkLabel = `Branched from ${parentName}`;
+      const branchBadgeValue = branchBadge(existingAltCount);
+
+      const newNode: NodeData = {
+        _id: newNodeId,
+        primary: false,
+        type: "branch",
+        name: nodeLabel,
+        color: baseColor,
+        textColor: colorScheme.text,
+        dotColor: colorScheme.dot,
+        chatMessages: [],
+        runningSummary: "",
+        contextContract: "",
+        model:
+          parentNode.model || canvas.settings?.defaultModel || getDefaultModel(),
+        metaTags: parentNode.metaTags || [],
+        parentNodeId: parentNode._id,
+        forkedFromMessageId: resolvedForkId,
+        createdAt,
+        position,
+      };
+
+      const newEdgeId = generateEntityId("edge");
+      const newEdge: EdgeData = {
+        _id: newEdgeId,
+        from: parentNode._id,
+        to: newNodeId,
+        createdAt,
+        meta: {
+          parentMessage: parentMessageText,
+        },
+      };
+
+      const updatedCanvas: CanvasData = {
+        ...canvas,
+        nodes: [...canvas.nodes, newNode],
+        edges: [...canvas.edges, newEdge],
+        updatedAt: createdAt,
+      };
+
+      storageService.saveCanvas(updatedCanvas);
+      setCanvas(updatedCanvas);
+
+      const flowNode: Node = {
+        id: newNodeId,
+        type: newNode.type,
+        position,
+        data: {
+          label: nodeLabel,
+          messageCount: 0,
+          model: newNode.model,
+          metaTags: newNode.metaTags || [],
+          lastMessageAt: createdAt,
+          createdAt,
+          primary: newNode.primary,
+          isSelected: false,
+          color: baseColor,
+          textColor: colorScheme.text,
+          dotColor: colorScheme.dot,
+          parentNodeId: parentNode._id,
+          forkedFromMessageId: resolvedForkId,
+          preview,
+          lengthTag,
+          timestamp: createdAt,
+          metaForkLabel,
+          depth: parentDepth + 1,
+          branchBadge: branchBadgeValue,
+          onClick: () => onNodeSelect(newNodeId, nodeLabel, newNode.type),
+          onFork: () => handleForkFromNode(newNodeId),
+          onDelete: () => deleteNodeById(newNodeId, { confirm: true }),
+          onEdit: () => handleNodeSettingsClick(newNodeId),
+        },
+        style: {
+          ...(baseColor
+            ? {
+                background: baseColor,
+                color: colorScheme.text,
+                borderColor: colorScheme.dot,
+              }
+            : {}),
+          zIndex: 2,
+          boxShadow:
+            parentDepth + 1 > 0
+              ? `0 ${2 + parentDepth + 1}px ${8 + (parentDepth + 1) * 2}px rgba(0,0,0,0.06)`
+              : undefined,
+        },
+      };
+
+      setNodes((nds) => [...nds, flowNode]);
+
+      const edgeColor = colorScheme.edge || "#94a3b8";
+      const flowEdge: Edge = {
+        id: newEdgeId,
+        source: parentNode._id,
+        target: newNodeId,
+        data: {
+          ...newEdge.meta,
+          baseColor: edgeColor,
+          highlightColor: EDGE_HIGHLIGHT_COLOR,
+          animated: false,
+        },
+        type: "custom",
+        style: {
+          stroke: edgeColor,
+          strokeWidth: 1.8,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: edgeColor,
+          width: 18,
+          height: 18,
+        },
+        animated: false,
+        selectable: true,
+      };
+
+      setEdges((eds) => addEdge(flowEdge, eds));
+
+      scheduleParentUpdate(newNodeId, {
+        parentNodeId: parentNode._id,
+        forkedFromMessageId: resolvedForkId,
+      });
+
+      fetch(`/api/canvases/${canvasId}/nodes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newNode,
+          forkedFromMessageId: resolvedForkId,
+        }),
+      }).catch((err) => console.error("Failed to save node to MongoDB", err));
+
+      fetch(`/api/canvases/${canvasId}/edges`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newEdge),
+      }).catch((err) => console.error("Failed to save edge to MongoDB", err));
+
+      onNodeSelect(newNodeId, nodeLabel, newNode.type);
+      toast.success("Forked from last message", { duration: 2200 });
+    },
+    [
+      canvas,
+      canvasId,
+      expandedOverflowParents,
+      onNodeSelect,
+      scheduleParentUpdate,
+      setCanvas,
+      setEdges,
+      setNodes,
+      toast,
+    ]
+  );
+
   useEffect(() => {
     return () => {
       if (layoutSaveTimerRef.current) {
@@ -1509,59 +1793,8 @@ export function CanvasArea({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Delete") {
-        // Prevent deletion of primary node
-        if (selectedNode && canvas) {
-          const primaryNodeId = canvas.primaryNodeId;
-          if (selectedNode === primaryNodeId) {
-            alert("Main node cannot be deleted.");
-            return;
-          }
-          // Remove node and detach children lineage
-          const children = canvas.nodes.filter(
-            (n) => (n as any).parentNodeId === selectedNode
-          );
-          const updatedNodes = canvas.nodes
-            .filter((n) => n._id !== selectedNode)
-            .map((n) =>
-              (n as any).parentNodeId === selectedNode
-                ? { ...n, parentNodeId: undefined }
-                : n
-            );
-          const updatedEdges = canvas.edges.filter(
-            (e) => e.from !== selectedNode && e.to !== selectedNode
-          );
-          const updatedCanvas = {
-            ...canvas,
-            nodes: updatedNodes,
-            edges: updatedEdges,
-          };
-          storageService.saveCanvas(updatedCanvas);
-          setCanvas(updatedCanvas);
-          setNodes((nds) => nds.filter((n) => n.id !== selectedNode));
-          setEdges((eds) =>
-            eds.filter(
-              (e) => e.source !== selectedNode && e.target !== selectedNode
-            )
-          );
-          scheduleCanvasSave(updatedCanvas);
-          // If the deleted node was currently selected (open in chat), clear selection to close chat panel
-          onNodeSelect(null);
-          // Delete node from backend
-          fetch(`/api/canvases/${canvasId}/nodes/${selectedNode}`, {
-            method: "DELETE",
-          })
-            .then((res) => {
-              if (!res.ok) {
-                console.error("Failed to delete node from backend", res.status);
-              }
-            })
-            .catch((err) =>
-              console.error("Error deleting node from backend", err)
-            );
-          // Persist cleared parent for children
-          children.forEach((child) => {
-            scheduleParentUpdate(child._id, { parentNodeId: undefined });
-          });
+        if (selectedNode) {
+          deleteNodeById(selectedNode);
         }
         // Delete selected edge
         if (selectedEdge && canvas) {
@@ -1622,7 +1855,16 @@ export function CanvasArea({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNode, selectedEdge, canvas, canvasId, setNodes, setEdges]);
+  }, [
+    selectedNode,
+    selectedEdge,
+    canvas,
+    canvasId,
+    setNodes,
+    setEdges,
+    deleteNodeById,
+    handleAutoLayout,
+  ]);
 
   useEffect(() => {
     const loadCanvas = async () => {
@@ -1958,7 +2200,11 @@ export function CanvasArea({
               branchBadge: branchBadgeValue,
               sharedLabel:
                 node.type === "entry" ? "Shared by all branches" : undefined,
-              onClick: () => onNodeSelect(node._id, node.name || "Node", node.type),
+              onClick: () =>
+                onNodeSelect(node._id, node.name || "Node", node.type),
+              onFork: () => handleForkFromNode(node._id),
+              onDelete: () => deleteNodeById(node._id, { confirm: true }),
+              onEdit: () => handleNodeSettingsClick(node._id),
             },
             style: {
               zIndex: 2,
@@ -2010,7 +2256,15 @@ export function CanvasArea({
       window.removeEventListener("canvas-fork-node", handler as any);
       window.removeEventListener("canvas-select-node", selectHandler as any);
     };
-  }, [canvasId, setNodes, setEdges, onNodeSelect]);
+  }, [
+    canvasId,
+    deleteNodeById,
+    handleForkFromNode,
+    handleNodeSettingsClick,
+    onNodeSelect,
+    setEdges,
+    setNodes,
+  ]);
 
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
@@ -2068,6 +2322,11 @@ export function CanvasArea({
       // Prevent file-to-file connections only
       if (isExternalContext(sourceNode) && isExternalContext(targetNode)) {
         toast.error("Cannot connect file nodes to each other");
+        return;
+      }
+
+      if (targetNode.type === "context") {
+        toast.error("Context nodes cannot receive incoming connections");
         return;
       }
 
@@ -2366,6 +2625,9 @@ export function CanvasArea({
           depth: parentDepth + 1,
           branchBadge: branchBadgeValue,
           onClick: () => onNodeSelect(newNodeId, nodeLabel, newNode.type),
+          onFork: () => handleForkFromNode(newNodeId),
+          onDelete: () => deleteNodeById(newNodeId, { confirm: true }),
+          onEdit: () => handleNodeSettingsClick(newNodeId),
         },
         style: {
           ...(baseColor
@@ -3195,6 +3457,9 @@ export function CanvasArea({
           sharedLabel:
             type === "entry" ? "Shared by all branches" : undefined,
           onClick: () => onNodeSelect(newNode._id, flowNodeLabel, newNode.type),
+          onFork: () => handleForkFromNode(newNode._id),
+          onDelete: () => deleteNodeById(newNode._id, { confirm: true }),
+          onEdit: () => handleNodeSettingsClick(newNode._id),
         },
         style: {
           zIndex: 2,

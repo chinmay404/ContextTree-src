@@ -323,6 +323,12 @@ export function CanvasAreaSmooth({
 
       console.log(`Connecting: ${params.source} -> ${params.target}`);
 
+      const targetNode = canvas.nodes.find((n) => n._id === params.target);
+      if (targetNode?.type === "context") {
+        toast.error("Context nodes cannot receive incoming connections");
+        return;
+      }
+
       const newEdge: EdgeData = {
         _id: `edge_${Date.now()}`,
         from: params.source,

@@ -2,12 +2,7 @@
 
 import { memo, useCallback, type CSSProperties, type MouseEvent } from "react";
 import { Handle, Position, type NodeProps } from "reactflow";
-import {
-  ArrowDownRight,
-  Copy,
-  GitBranch,
-  Minimize2,
-} from "lucide-react";
+import { GitBranch, Pencil, Trash2 } from "lucide-react";
 
 interface BranchNodeData {
   label: string;
@@ -22,10 +17,9 @@ interface BranchNodeData {
   forkedFromMessageId?: string;
   lengthTag?: "short" | "medium" | "long";
   onClick?: () => void;
-  onContinue?: () => void;
-  onAlternative?: () => void;
-  onCollapse?: () => void;
-  onDuplicate?: () => void;
+  onFork?: () => void;
+  onDelete?: () => void;
+  onEdit?: () => void;
   color?: string;
   textColor?: string;
   dotColor?: string;
@@ -133,31 +127,24 @@ function BranchNodeMinimalComponent({
       >
         <button
           className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:text-slate-900"
-          aria-label="Continue"
-          onClick={handleAction(data.onContinue)}
-        >
-          <ArrowDownRight size={14} />
-        </button>
-        <button
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:text-slate-900"
-          aria-label="Try alternative"
-          onClick={handleAction(data.onAlternative)}
+          aria-label="Fork from last message"
+          onClick={handleAction(data.onFork)}
         >
           <GitBranch size={14} />
         </button>
         <button
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:text-slate-900"
-          aria-label="Collapse"
-          onClick={handleAction(data.onCollapse)}
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-600 hover:border-rose-300 hover:text-rose-700"
+          aria-label="Delete node"
+          onClick={handleAction(data.onDelete)}
         >
-          <Minimize2 size={14} />
+          <Trash2 size={14} />
         </button>
         <button
           className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:text-slate-900"
-          aria-label="Duplicate"
-          onClick={handleAction(data.onDuplicate)}
+          aria-label="Edit node"
+          onClick={handleAction(data.onEdit)}
         >
-          <Copy size={14} />
+          <Pencil size={14} />
         </button>
       </div>
 

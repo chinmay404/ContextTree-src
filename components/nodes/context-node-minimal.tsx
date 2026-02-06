@@ -184,11 +184,6 @@ function ContextNodeMinimalComponent({
       </div>
 
       <Handle
-        type="target"
-        position={Position.Top}
-        className="h-2 w-2 !bg-slate-600 border border-white"
-      />
-      <Handle
         type="source"
         position={Position.Bottom}
         className="h-2 w-2 !bg-slate-600 border border-white"

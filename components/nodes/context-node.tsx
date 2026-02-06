@@ -45,11 +45,6 @@ export function ContextNode({ data, selected }: NodeProps<ContextNodeData>) {
       </div>
 
       <Handle
-        type="target"
-        position={Position.Top}
-        className="w-3 h-3 bg-purple-500"
-      />
-      <Handle
         type="source"
         position={Position.Bottom}
         className="w-3 h-3 bg-purple-500"
