@@ -583,6 +583,16 @@ export function CanvasArea({
       if (!local) return remote;
 
       const localNodeMap = new Map(local.nodes.map((node) => [node._id, node]));
+      const resolveChatMessages = (target: any): any[] | undefined => {
+        if (!target) return undefined;
+        if (Array.isArray(target.chatMessages)) return target.chatMessages;
+        if (Array.isArray(target?.data?.chatMessages))
+          return target.data.chatMessages;
+        if (Array.isArray(target?.data?.data?.chatMessages))
+          return target.data.data.chatMessages;
+        return undefined;
+      };
+
       const mergedNodes = remote.nodes.map((node) => {
         const localNode = localNodeMap.get(node._id);
         if (!localNode) return node;
@@ -595,9 +605,19 @@ export function CanvasArea({
           localNode.position ||
           (localNode.data as any)?.position;
         const dimensions = node.dimensions || localNode.dimensions;
+        const remoteChat = resolveChatMessages(node);
+        const localChat = resolveChatMessages(localNode);
+        const mergedChat =
+          remoteChat && remoteChat.length > 0
+            ? remoteChat
+            : localChat && localChat.length > 0
+            ? localChat
+            : remoteChat ?? localChat;
+
         return {
           ...localNode,
           ...node,
+          chatMessages: mergedChat,
           data: mergedData,
           position,
           dimensions,

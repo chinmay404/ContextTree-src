@@ -553,8 +553,16 @@ const ContextualConsole = ({
         setCanvasData(canvas); // Update canvas data for lineage info
         const node = canvas.nodes?.find((n: any) => n._id === selectedNode);
 
-        if (node && node.chatMessages) {
-          const processedMessages = node.chatMessages
+        const extractRawMessages = (target: any): any[] => {
+          if (!target) return [];
+          if (Array.isArray(target.chatMessages)) return target.chatMessages;
+          if (Array.isArray(target?.data?.chatMessages)) return target.data.chatMessages;
+          if (Array.isArray(target?.data?.data?.chatMessages)) return target.data.data.chatMessages;
+          return [];
+        };
+
+        const normalizeMessages = (raw: any[]) =>
+          raw
             .flatMap((msg: any, idx: number) => {
               // New format: turn { id, user?, assistant? }
               if (msg.user || msg.assistant) {
@@ -564,7 +572,9 @@ const ContextualConsole = ({
                     id: `${msg.id}-u`,
                     role: "user",
                     content: msg.user.content,
-                    timestamp: new Date(msg.user.timestamp),
+                    timestamp: msg.user.timestamp
+                      ? new Date(msg.user.timestamp)
+                      : new Date(),
                   });
                 }
                 if (msg.assistant) {
@@ -572,7 +582,9 @@ const ContextualConsole = ({
                     id: `${msg.id}-a`,
                     role: "assistant",
                     content: msg.assistant.content,
-                    timestamp: new Date(msg.assistant.timestamp),
+                    timestamp: msg.assistant.timestamp
+                      ? new Date(msg.assistant.timestamp)
+                      : new Date(),
                   });
                 }
                 return parts;
@@ -591,6 +603,24 @@ const ContextualConsole = ({
             })
             .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
+        const rawMessages = extractRawMessages(node);
+        let processedMessages =
+          rawMessages.length > 0 ? normalizeMessages(rawMessages) : [];
+
+        if (processedMessages.length === 0) {
+          const localMessages = storageService.getNodeMessages(
+            selectedCanvas,
+            selectedNode
+          );
+          if (localMessages.length > 0) {
+            console.log(
+              `Using localStorage fallback for node ${selectedNode} (${localMessages.length} messages)`
+            );
+            processedMessages = normalizeMessages(localMessages);
+          }
+        }
+
+        if (processedMessages.length > 0) {
           console.log(
             `Loaded ${processedMessages.length} messages for node ${selectedNode}`
           );
