@@ -4,9 +4,11 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getSmoothStepPath,
+  useStore,
   type EdgeProps,
 } from "reactflow";
 import { X } from "lucide-react";
+import { getEdgeParams } from "./floating-utils";
 
 interface CustomEdgeMinimalData {
   label?: string;
@@ -30,14 +32,24 @@ export function CustomEdgeMinimal({
   selected,
   markerEnd,
   animated,
+  source,
+  target,
 }: EdgeProps<CustomEdgeMinimalData>) {
+  const sourceNode = useStore((state) => state.nodeInternals.get(source));
+  const targetNode = useStore((state) => state.nodeInternals.get(target));
+
+  const edgeParams =
+    sourceNode && targetNode
+      ? getEdgeParams(sourceNode, targetNode)
+      : null;
+
   const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
+    sourceX: edgeParams?.sx ?? sourceX,
+    sourceY: edgeParams?.sy ?? sourceY,
+    sourcePosition: edgeParams?.sourcePos ?? sourcePosition,
+    targetX: edgeParams?.tx ?? targetX,
+    targetY: edgeParams?.ty ?? targetY,
+    targetPosition: edgeParams?.targetPos ?? targetPosition,
     borderRadius: 24,
   });
 

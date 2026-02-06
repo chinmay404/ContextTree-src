@@ -34,6 +34,7 @@ import { ExternalContextNode } from "./nodes/external-context-node";
 
 // Edge imports
 import { CustomEdgeMinimal as CustomEdge } from "./edges/custom-edge-minimal";
+import { FloatingConnectionLine } from "./edges/floating-connection-line";
 import { NodeCustomizationPanel } from "./node-customization/node-customization-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -3902,7 +3903,8 @@ export function CanvasArea({
         selectionKeyCode="Shift"
         selectNodesOnDrag={true}
         panOnDrag={true}
-  connectionLineType={ConnectionLineType.SmoothStep}
+        connectionLineType={ConnectionLineType.SmoothStep}
+        connectionLineComponent={FloatingConnectionLine}
         onInit={(instance) => {
           // Restore viewport state if available
           if (canvas?.viewportState) {
