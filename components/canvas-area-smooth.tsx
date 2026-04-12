@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useCallback, useMemo, useState, useEffect, useRef } from "react";
-import ReactFlow, {
+import { ReactFlow, 
   type Node,
   type Edge,
   type EdgeChange,
