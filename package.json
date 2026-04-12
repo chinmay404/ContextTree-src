@@ -74,6 +74,7 @@
     "react": "^19",
     "react-day-picker": "9.8.0",
     "react-dom": "^19",
+    "reactflow": "npm:@xyflow/react@^12.10.2",
     "react-hook-form": "^7.60.0",
     "react-intersection-observer": "^9.16.0",
     "react-markdown": "^10.1.0",
