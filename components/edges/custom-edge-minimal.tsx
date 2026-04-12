@@ -3,10 +3,11 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
+  type Edge,
   getSmoothStepPath,
-  useStore,
+  useInternalNode,
   type EdgeProps,
-} from "reactflow";
+} from "@xyflow/react";
 import { X } from "lucide-react";
 import { getEdgeParams } from "./floating-utils";
 
@@ -14,10 +15,11 @@ interface CustomEdgeMinimalData {
   label?: string;
   condition?: string;
   animated?: boolean;
-  baseColor?: string;
-  highlightColor?: string;
   onDelete?: (edgeId: string) => void;
+  [key: string]: unknown;
 }
+
+type CustomEdgeType = Edge<CustomEdgeMinimalData, "custom">;
 
 export function CustomEdgeMinimal({
   id,
@@ -34,14 +36,12 @@ export function CustomEdgeMinimal({
   animated,
   source,
   target,
-}: EdgeProps<CustomEdgeMinimalData>) {
-  const sourceNode = useStore((state) => state.nodeInternals.get(source));
-  const targetNode = useStore((state) => state.nodeInternals.get(target));
+}: EdgeProps<CustomEdgeType>) {
+  const sourceNode = useInternalNode(source);
+  const targetNode = useInternalNode(target);
 
   const edgeParams =
-    sourceNode && targetNode
-      ? getEdgeParams(sourceNode, targetNode)
-      : null;
+    sourceNode && targetNode ? getEdgeParams(sourceNode, targetNode) : null;
 
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX: edgeParams?.sx ?? sourceX,
@@ -50,29 +50,25 @@ export function CustomEdgeMinimal({
     targetX: edgeParams?.tx ?? targetX,
     targetY: edgeParams?.ty ?? targetY,
     targetPosition: edgeParams?.targetPos ?? targetPosition,
-    borderRadius: 24,
+    borderRadius: 20,
   });
 
-  const strokeColor = (style.stroke as string | undefined) || "#94a3b8";
+  const strokeColor = (style.stroke as string | undefined) || "#cbd5e1";
   const isAnimated = animated || data?.animated;
+
   const edgeStyle = {
     ...style,
     stroke: strokeColor,
-    strokeWidth: selected ? 2.6 : isAnimated ? 2.2 : 1.6,
-    opacity: selected ? 1 : isAnimated ? 0.96 : 0.88,
-    strokeLinecap: "round",
+    strokeWidth: selected ? 2.2 : isAnimated ? 1.8 : 1.35,
+    opacity: selected ? 0.96 : 0.82,
+    strokeLinecap: "round" as const,
     ...(isAnimated
-      ? {
-          strokeDasharray: "14 10",
-          animation: "dashMove 1s linear infinite",
-        }
+      ? { strokeDasharray: "7 9", animation: "dashMove 1.6s linear infinite" }
       : {}),
   };
 
   const label = data?.label || data?.condition;
-  const labelHighlight = data?.highlightColor || strokeColor;
-  const canDelete = typeof data?.onDelete === "function";
-  const showDelete = canDelete && selected;
+  const showDelete = typeof data?.onDelete === "function" && selected;
 
   return (
     <>
@@ -87,38 +83,23 @@ export function CustomEdgeMinimal({
             }}
             className="nodrag nopan"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {label && (
-                <div
-                  className={`rounded border bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm ${
-                    isAnimated
-                      ? "border-blue-200/80 text-slate-700 shadow"
-                      : "border-slate-200"
-                  }`}
-                  style={
-                    isAnimated
-                      ? {
-                          boxShadow: "0 4px 12px rgba(59, 130, 246, 0.08)",
-                          borderColor: `${labelHighlight}33`,
-                        }
-                      : undefined
-                  }
-                >
+                <span className="rounded-full border border-slate-800 bg-slate-900/90 px-2.5 py-1 text-[10px] font-medium text-white shadow-lg backdrop-blur-sm">
                   {label}
-                </div>
+                </span>
               )}
               {showDelete && (
                 <button
                   type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
+                  onClick={(e) => {
+                    e.stopPropagation();
                     data?.onDelete?.(id);
                   }}
-                  className="pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-600 shadow-sm transition-colors hover:border-rose-300 hover:text-rose-700"
-                  title="Disconnect"
+                  className="pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-lg hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500"
                   aria-label="Disconnect"
                 >
-                  <X size={12} />
+                  <X size={10} />
                 </button>
               )}
             </div>

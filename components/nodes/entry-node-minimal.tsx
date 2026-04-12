@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, type CSSProperties, type MouseEvent } from "react";
-import { Handle, Position, type NodeProps } from "reactflow";
-import { LocateFixed, Lock, Pencil, Star, Trash2 } from "lucide-react";
+import { memo, useCallback, type MouseEvent } from "react";
+import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
+import { MessageSquare, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-interface EntryNodeData {
+export interface EntryNodeData {
   label: string;
   messageCount: number;
   isSelected: boolean;
@@ -19,149 +20,103 @@ interface EntryNodeData {
   color?: string;
   textColor?: string;
   dotColor?: string;
-  metaTags?: string[];
-  lastMessageAt?: string;
-  createdAt?: string;
-  primary?: boolean;
   highlightTier?: 0 | 1 | 2;
+  primary?: boolean;
+  [key: string]: unknown;
 }
 
-export function EntryNodeMinimal({ data, selected }: NodeProps<EntryNodeData>) {
-  const handleClick = useCallback(() => {
-    data.onClick?.();
-  }, [data]);
+type EntryNodeType = Node<EntryNodeData, "entry">;
 
-  const handleAction = useCallback(
-    (action?: () => void) => (event: MouseEvent) => {
-      event.stopPropagation();
-      (action || data.onClick)?.();
+function EntryNodeComponent({ data, selected }: NodeProps<EntryNodeType>) {
+  const handleClick = useCallback(() => data.onClick?.(), [data]);
+  const stop = useCallback(
+    (action?: () => void) => (e: MouseEvent) => {
+      e.stopPropagation();
+      action?.();
     },
-    [data]
+    []
   );
 
-  const isActive = selected || data.isSelected;
-  const accentColor = data.dotColor || "#0f172a";
-  const textColor = data.textColor || "#0f172a";
-  const backgroundColor = data.color || "#e8ecf3";
-  const faded = data.highlightTier === undefined && !isActive;
-
-  const borderColor = isActive
-    ? accentColor
-    : data.highlightTier === 1
-    ? "rgba(59,130,246,0.5)"
-    : data.highlightTier === 2
-    ? "rgba(148,163,184,0.5)"
-    : "rgba(148,163,184,0.7)";
-
-  const cardStyle: CSSProperties = {
-    backgroundColor,
-    color: textColor,
-    borderColor,
-  };
-
-  const timeLabel = data.timestamp
-    ? new Date(data.timestamp).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "—";
+  const active = selected || data.isSelected;
+  const accent = data.dotColor || "#ffffff";
+  const preview = data.preview || data.sharedLabel || "Base context";
+  const handleClassName = cn(
+    "!h-3 !w-3 !border-[3px] !transition-all !duration-200 !ease-out",
+    active
+      ? "!scale-100 !opacity-100"
+      : "!scale-75 !opacity-0 group-hover:!scale-100 group-hover:!opacity-100"
+  );
 
   return (
     <div
-      className={`group relative min-w-[320px] max-w-[440px] cursor-pointer ${
-        faded ? "opacity-80" : "opacity-100"
-      }`}
+      className="group relative min-w-[280px] max-w-[340px] cursor-pointer"
       onClick={handleClick}
+      data-slot="entry-node"
     >
       <div
-        className={`rounded-2xl border-[3px] px-5 py-4 text-sm shadow-sm transition-all duration-200 overflow-hidden ${
-          isActive
-            ? "shadow-md ring-2 ring-slate-500/20"
-            : "hover:shadow-md"
-        }`}
-        style={cardStyle}
+        className={cn(
+          "rounded-[24px] border px-5 py-4 text-sm text-white shadow-[0_18px_44px_rgba(15,23,42,0.16)] transition-all duration-200",
+          active
+            ? "border-slate-950 bg-slate-950 ring-1 ring-slate-900/10"
+            : "border-slate-900 bg-slate-900 hover:-translate-y-0.5 hover:shadow-[0_22px_50px_rgba(15,23,42,0.18)]"
+        )}
       >
-        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-800">
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white shadow-sm">
-              <Star size={14} />
-            </span>
-            <span className="uppercase tracking-wide text-slate-700">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white">
+            <MessageSquare size={15} />
+          </span>
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/55">
+              Base Context
+            </div>
+            <div className="truncate text-sm font-semibold text-white">
               {data.label || "Base Context"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-500">
-            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold">
-              Anchor
-            </span>
-            <Lock size={14} />
+            </div>
           </div>
         </div>
 
-        <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-          {data.sharedLabel || "Context snapshot at T0"}
-        </div>
-
-        <div className="mt-3 text-sm font-medium leading-relaxed text-slate-900 line-clamp-3 break-words">
-          {data.preview || "Context Snapshot"}
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 text-[11px] text-slate-600">
-          <span className="rounded-full bg-white/80 px-2 py-1 font-semibold text-slate-800 shadow-inner">
-            {data.model || "Model"}
-          </span>
-          <span className="h-1 w-1 rounded-full bg-slate-400" />
-          <span className="tabular-nums">{timeLabel}</span>
-          <span className="h-1 w-1 rounded-full bg-slate-400" />
-          <span className="font-semibold text-slate-700">
-            {data.sharedLabel || "Shared by all branches"}
-          </span>
-        </div>
+        <p className="mt-3 text-[13px] leading-6 text-white/72 line-clamp-2">
+          {preview}
+        </p>
       </div>
 
-      <div
-        className={`absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/95 px-2 py-1 text-slate-600 shadow transition-opacity duration-150 ${
-          data.primary ? "opacity-0 group-hover:opacity-100" : isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-        }`}
-      >
+      {!data.primary && (
         <button
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:text-slate-900"
-          aria-label="Focus node"
-          onClick={handleAction(data.onFocus)}
+          className="absolute -top-2 -right-2 hidden h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-lg group-hover:flex hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500"
+          onClick={stop(data.onDelete)}
+          aria-label="Delete"
+          data-slot="entry-node-delete"
         >
-          <LocateFixed size={14} />
+          <Trash2 size={12} />
         </button>
-        <button
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-600 hover:border-rose-300 hover:text-rose-700"
-          aria-label="Delete node"
-          onClick={handleAction(data.onDelete)}
-        >
-          <Trash2 size={14} />
-        </button>
-        <button
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:text-slate-900"
-          aria-label="Edit node"
-          onClick={handleAction(data.onEdit)}
-        >
-          <Pencil size={14} />
-        </button>
-      </div>
+      )}
 
       <Handle
         type="source"
         position={Position.Bottom}
-        className="h-2 w-2 !bg-slate-700 border border-white"
+        className={handleClassName}
+        style={{ backgroundColor: "#ffffff", borderColor: "#0f172a" }}
       />
       <Handle
         type="source"
         position={Position.Right}
-        className="h-2 w-2 !bg-slate-700 border border-white"
+        className={handleClassName}
+        style={{ backgroundColor: "#ffffff", borderColor: "#0f172a" }}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className={handleClassName}
+        style={{ backgroundColor: accent, borderColor: "#0f172a" }}
       />
       <Handle
         type="target"
         position={Position.Top}
-        className="h-2 w-2 !bg-slate-700 border border-white"
+        className={handleClassName}
+        style={{ backgroundColor: accent, borderColor: "#0f172a" }}
       />
     </div>
   );
 }
+
+export const EntryNodeMinimal = memo(EntryNodeComponent);

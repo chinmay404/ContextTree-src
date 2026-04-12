@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   GitBranch,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { ModelProviderIcon } from "@/components/model-badge";
 
 export function LandingPage() {
   const router = useRouter();
@@ -414,7 +416,11 @@ export function LandingPage() {
                         >
                           <div className="bg-white px-5 py-4 rounded-xl shadow-lg border-2 border-blue-500 w-64 group hover:scale-105 transition-transform cursor-pointer">
                             <div className="flex items-center gap-2 mb-2">
-                              <div className="w-2 h-2 rounded-full bg-blue-500" />
+                              <ModelProviderIcon
+                                modelId="llama-3.3-70b-versatile"
+                                provider="Meta"
+                                size={16}
+                              />
                               <span className="text-xs font-bold text-slate-500 uppercase">
                                 LLaMA 3
                               </span>
@@ -435,7 +441,11 @@ export function LandingPage() {
                         >
                           <div className="bg-white px-5 py-4 rounded-xl shadow-lg border-2 border-purple-500 w-64 group hover:scale-105 transition-transform cursor-pointer">
                             <div className="flex items-center gap-2 mb-2">
-                              <div className="w-2 h-2 rounded-full bg-purple-500" />
+                              <ModelProviderIcon
+                                modelId="deepseek-r1-distill-llama-70b"
+                                provider="DeepSeek"
+                                size={16}
+                              />
                               <span className="text-xs font-bold text-slate-500 uppercase">
                                 DeepSeek
                               </span>
@@ -513,14 +523,29 @@ export function LandingPage() {
                         </div>
                       </div>
                       <div className="mt-3 flex items-center gap-2">
-                        <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                          Llama
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                          <ModelProviderIcon
+                            modelId="llama-3.3-70b-versatile"
+                            provider="Meta"
+                            size={14}
+                          />
+                          <span>Llama</span>
                         </div>
-                        <div className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                          DeepSeek
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                          <ModelProviderIcon
+                            modelId="deepseek-r1-distill-llama-70b"
+                            provider="DeepSeek"
+                            size={14}
+                          />
+                          <span>DeepSeek</span>
                         </div>
-                        <div className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium">
-                          Mixtral
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium">
+                          <ModelProviderIcon
+                            modelId="mixtral-8x7b"
+                            provider="Mistral"
+                            size={14}
+                          />
+                          <span>Mixtral</span>
                         </div>
                       </div>
                     </div>

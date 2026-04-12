@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ModelBadge } from "@/components/model-badge";
 import {
   Search,
   FileText,
@@ -85,6 +86,8 @@ export function GlobalSearch({
         // Add null checks for node and node.data
         if (!node || !node.data) return;
 
+        const resolvedNodeId = (node as any)._id || (node as any).id;
+        if (!resolvedNodeId) return;
         const nodeLabel = node.data.label || "Untitled Node";
         const nodeLabelMatch = nodeLabel.toLowerCase().includes(query);
         const nodeModel = node.data.model || "";
@@ -144,7 +147,7 @@ export function GlobalSearch({
           results.push({
             canvasId: canvas._id,
             canvasTitle,
-            nodeId: node.id,
+            nodeId: resolvedNodeId,
             nodeLabel,
             nodeType: node.type || "default",
             model: nodeModel,
@@ -159,7 +162,7 @@ export function GlobalSearch({
           results.push({
             canvasId: canvas._id,
             canvasTitle,
-            nodeId: node.id,
+            nodeId: resolvedNodeId,
             nodeLabel,
             nodeType: node.type || "default",
             model: nodeModel,
@@ -173,7 +176,7 @@ export function GlobalSearch({
           results.push({
             canvasId: canvas._id,
             canvasTitle,
-            nodeId: node.id,
+            nodeId: resolvedNodeId,
             nodeLabel,
             nodeType: node.type || "default",
             model: nodeModel,
@@ -187,7 +190,7 @@ export function GlobalSearch({
           results.push({
             canvasId: canvas._id,
             canvasTitle,
-            nodeId: node.id,
+            nodeId: resolvedNodeId,
             nodeLabel,
             nodeType: node.type || "default",
             model: nodeModel,
@@ -434,7 +437,11 @@ export function GlobalSearch({
                       {result.model && (
                         <>
                           <span>•</span>
-                          <span className="truncate">{result.model}</span>
+                          <ModelBadge
+                            modelId={result.model}
+                            size="sm"
+                            className="max-w-[180px]"
+                          />
                         </>
                       )}
                     </div>

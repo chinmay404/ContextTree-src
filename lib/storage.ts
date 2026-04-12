@@ -194,7 +194,7 @@ class StorageService {
 
     // Fire-and-forget: persist to server-side DB if possible
     try {
-      if (typeof window !== "undefined" && window.fetch) {
+      if (typeof window !== "undefined") {
         // Don't block UI; attempt to persist note to server API
         fetch(`/api/canvases/${canvasId}/note`, {
           method: "PUT",
@@ -232,7 +232,11 @@ class StorageService {
   }
 
   // Create default canvas structure
-  createDefaultCanvas(userId: string, title = "New Canvas"): CanvasData {
+  createDefaultCanvas(
+    userId: string,
+    title = "New Canvas",
+    defaultModel = getDefaultModel()
+  ): CanvasData {
     const canvasId = `canvas_${Date.now()}`;
     const entryNodeId = `node_${Date.now()}`;
 
@@ -243,7 +247,7 @@ class StorageService {
       chatMessages: [],
       runningSummary: "",
       contextContract: "",
-      model: getDefaultModel(),
+      model: defaultModel,
       parentNodeId: undefined,
       forkedFromMessageId: undefined,
       createdAt: new Date().toISOString(),
@@ -259,7 +263,7 @@ class StorageService {
       metaTags: [],
       settings: {
         description: "",
-        defaultModel: getDefaultModel(),
+        defaultModel,
       },
       nodes: [entryNode],
       edges: [],
@@ -372,4 +376,3 @@ export interface ContextChunkData {
   tokenCount?: number;
   createdAt: string;
 }
-
