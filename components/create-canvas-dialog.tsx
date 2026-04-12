@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Sparkles } from "lucide-react";
-import { ALL_MODELS } from "@/lib/models";
-import { cn, generateCanvasTitle } from "@/lib/utils";
+import { generateCanvasTitle } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ModelProviderIcon } from "@/components/model-badge";
+import { ModelSelectionPanel } from "@/components/model-selection-panel";
 
 type CreateCanvasDialogProps = {
   open: boolean;
@@ -102,51 +101,11 @@ export const CreateCanvasDialog = ({
             )}
           </div>
 
-          <div
-            className="grid max-h-[46vh] gap-2 overflow-y-auto pr-1 md:grid-cols-2"
-            data-slot="create-canvas-model-grid"
-          >
-            {ALL_MODELS.map((model) => {
-              const isSelected = selectedModel === model.id;
-
-              return (
-                <button
-                  key={model.id}
-                  type="button"
-                  onClick={() => setSelectedModel(model.id)}
-                  className={cn(
-                    "rounded-2xl border px-4 py-3 text-left transition-all",
-                    "hover:-translate-y-0.5 hover:shadow-md",
-                    isSelected
-                      ? "border-indigo-500 bg-indigo-50 shadow-sm"
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  )}
-                  data-slot="create-canvas-model-option"
-                >
-                  <div className="flex items-start gap-3">
-                    <ModelProviderIcon
-                      modelId={model.id}
-                      provider={model.provider}
-                      size={20}
-                      className="mt-0.5"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-semibold text-slate-900">
-                          {model.name}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
-                        {model.provider}
-                      </p>
-                      <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                        {model.description}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="max-h-[52vh] overflow-y-auto pr-1">
+            <ModelSelectionPanel
+              selectedModel={selectedModel}
+              onSelect={setSelectedModel}
+            />
           </div>
         </div>
 

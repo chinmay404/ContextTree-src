@@ -1,14 +1,15 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth, getCurrentUser } from "@/lib/auth-utils";
+import { buildFilesIngestUrl, resolveLlmApiUrl } from "@/lib/llm-backend";
 import { mongoService } from "@/lib/mongodb";
 import type { ExternalFileData } from "@/lib/storage";
 import { logUploadEvent } from "@/lib/server-side-logger";
 
-const LLM_API_URL = process.env.LLM_API_URL || process.env.NEXT_PUBLIC_LLM_API_URL;
-
 export const POST = withAuth(async (request: NextRequest) => {
   try {
+    const llmApiUrl = resolveLlmApiUrl();
+
     const user = await getCurrentUser();
     if (!user?.email) {
       logUploadEvent('ERROR', 'Upload attempt without authentication');
@@ -108,13 +109,8 @@ export const POST = withAuth(async (request: NextRequest) => {
     }
 
     // Trigger Python Backend Ingestion (Fire & Forget)
-    if (LLM_API_URL) {
-        // We construct the URL for the Python backend
-        let backendUrl = LLM_API_URL;
-        if (backendUrl.includes('/chat')) {
-            backendUrl = backendUrl.substring(0, backendUrl.indexOf('/chat'));
-        }
-        backendUrl = backendUrl.replace(/\/+$/, '') + '/files/ingest';
+    if (llmApiUrl) {
+        const backendUrl = buildFilesIngestUrl(llmApiUrl);
 
         logUploadEvent('INFO', `Triggering ingestion: ${backendUrl}`, { fileId });
 
@@ -140,7 +136,7 @@ export const POST = withAuth(async (request: NextRequest) => {
             logUploadEvent('WARN', "Trigger ingest failed (backend might be offline)", err);
         });
     } else {
-         logUploadEvent('WARN', "LLM_API_URL not set - skipping ingestion trigger", { fileId });
+         logUploadEvent('WARN', "LLM API backend not resolved - skipping ingestion trigger", { fileId });
     }
 
     logUploadEvent('INFO', `Upload completed successfully`, { fileId, user: user.email });

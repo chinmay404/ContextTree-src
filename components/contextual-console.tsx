@@ -20,19 +20,13 @@ import {
 } from "lucide-react";
 import { storageService } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
-import { ALL_MODELS, getDefaultModel } from "@/lib/models";
+import { getDefaultModel } from "@/lib/models";
 import { ModelBadge, ModelProviderIcon } from "@/components/model-badge";
+import { ModelSelectionPanel } from "@/components/model-selection-panel";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github.css";
-
-const AVAILABLE_MODELS = ALL_MODELS.map((m) => ({
-  value: m.id,
-  label: m.name,
-  description: m.description,
-  provider: m.provider,
-}));
 
 // ─── Types ──────────────────────────────────────────────────
 interface ChatPanelProps {
@@ -625,36 +619,11 @@ const ContextualConsole = ({
               <X size={18} />
             </button>
           </div>
-          <div className="space-y-2 max-h-[50vh] overflow-y-auto mb-4">
-            {AVAILABLE_MODELS.map((m) => (
-              <button
-                key={m.value}
-                onClick={() => setModel(m.value)}
-                className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
-                  model === m.value ? "border-indigo-500 bg-indigo-50/50" : "border-slate-100 hover:border-slate-200"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <ModelProviderIcon
-                    modelId={m.value}
-                    provider={m.provider}
-                    size={20}
-                    className="mt-0.5"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <div className="truncate font-medium text-sm text-slate-800">
-                        {m.label}
-                      </div>
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                        {m.provider}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-500 mt-0.5">{m.description}</div>
-                  </div>
-                </div>
-              </button>
-            ))}
+          <div className="max-h-[56vh] overflow-y-auto mb-4 pr-1">
+            <ModelSelectionPanel
+              selectedModel={model}
+              onSelect={setModel}
+            />
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { setShowForkDialog(false); setPendingForkMsg(null); }} className="flex-1 rounded-xl">Cancel</Button>

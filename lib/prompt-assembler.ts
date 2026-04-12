@@ -278,6 +278,20 @@ Please provide a structured response following this format:
       "gpt-3.5-turbo": 4096,
       "claude-3": 100000,
       "gemini-pro": 30720,
+      "gemini/gemini-3-flash-preview": 1048576,
+      "gemini/gemini-2.0-flash": 1048576,
+      "gemini/gemini-1.5-pro": 1048576,
+      "gemini/gemini-1.5-flash": 1048576,
+      "moonshotai/kimi-k2-instruct": 262144,
+      "moonshotai/kimi-k2-instruct-0905": 262144,
+      "z-ai/glm-4.7": 131072,
+      "deepseek-ai/deepseek-v3.1": 131072,
+      "deepseek-ai/deepseek-v3.2": 131072,
+      "mistralai/mistral-large-3-675b-instruct-2512": 131072,
+      "openai/gpt-oss-120b": 131072,
+      "openai/gpt-oss-20b": 131072,
+      "groq/compound": 131072,
+      "groq/compound-mini": 131072,
     };
 
     const limits = { ...defaultLimits, ...modelLimits };

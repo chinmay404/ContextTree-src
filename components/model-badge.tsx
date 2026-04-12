@@ -11,6 +11,8 @@ type ModelProviderKey =
   | "groq"
   | "anthropic"
   | "google"
+  | "nvidia"
+  | "zai"
   | "deepseek"
   | "alibaba"
   | "moonshot"
@@ -66,6 +68,14 @@ const PROVIDER_THEME: Record<
     badge: "border-amber-100 bg-amber-50 text-amber-800",
     icon: "border-amber-200/80 bg-white/90",
   },
+  nvidia: {
+    badge: "border-lime-100 bg-lime-50 text-lime-900",
+    icon: "border-lime-200/80 bg-white/90",
+  },
+  zai: {
+    badge: "border-emerald-100 bg-emerald-50 text-emerald-900",
+    icon: "border-emerald-200/80 bg-white/90",
+  },
   deepseek: {
     badge: "border-cyan-100 bg-cyan-50 text-cyan-800",
     icon: "border-cyan-200/80 bg-white/90",
@@ -98,6 +108,8 @@ const PROVIDER_DISPLAY_NAME: Record<ModelProviderKey, string> = {
   groq: "Groq",
   anthropic: "Anthropic",
   google: "Google",
+  nvidia: "NVIDIA",
+  zai: "Z AI",
   deepseek: "DeepSeek",
   alibaba: "Alibaba Cloud",
   moonshot: "Moonshot AI",
@@ -140,6 +152,18 @@ const normalizeProviderKey = (value?: string | null): ModelProviderKey => {
     normalized.includes("gemma")
   ) {
     return "google";
+  }
+
+  if (normalized.includes("nvidia") || normalized.includes("nemotron")) {
+    return "nvidia";
+  }
+
+  if (
+    normalized.includes("z ai") ||
+    normalized.includes("z-ai") ||
+    normalized.includes("glm")
+  ) {
+    return "zai";
   }
 
   if (normalized.includes("deepseek")) {
@@ -221,6 +245,9 @@ const resolveLobeIconAsset = ({
   if (value.includes("gemini")) return { id: "gemini", type: "color" };
   if (value.includes("gemma")) return { id: "gemma", type: "color" };
   if (value.includes("llama")) return { id: "meta", type: "color" };
+  if (value.includes("nvidia") || value.includes("nemotron")) {
+    return { id: "nvidia", type: "color" };
+  }
   if (value.includes("deepseek")) return { id: "deepseek", type: "color" };
   if (/qwen|qwq|qvq/.test(value)) return { id: "qwen", type: "color" };
   if (value.includes("kimi")) return { id: "kimi", type: "color" };
@@ -243,6 +270,10 @@ const resolveLobeIconAsset = ({
       return { id: "anthropic", type: "mono" };
     case "google":
       return { id: "google", type: "color" };
+    case "nvidia":
+      return { id: "nvidia", type: "color" };
+    case "zai":
+      return null;
     case "deepseek":
       return { id: "deepseek", type: "color" };
     case "alibaba":

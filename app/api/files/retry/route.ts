@@ -1,11 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withAuth, getCurrentUser } from "@/lib/auth-utils";
+import { buildFilesIngestUrl, resolveLlmApiUrl } from "@/lib/llm-backend";
 import { mongoService } from "@/lib/mongodb";
-
-const LLM_API_URL = process.env.LLM_API_URL || process.env.NEXT_PUBLIC_LLM_API_URL;
 
 export const POST = withAuth(async (request: NextRequest) => {
   try {
+    const llmApiUrl = resolveLlmApiUrl();
+
     const user = await getCurrentUser();
     if (!user?.email) {
       return NextResponse.json(
@@ -73,18 +74,14 @@ export const POST = withAuth(async (request: NextRequest) => {
       user.email
     );
 
-    if (!LLM_API_URL) {
+    if (!llmApiUrl) {
       return NextResponse.json({
         success: true,
-        warning: "LLM_API_URL not configured",
+        warning: "LLM API backend not configured",
       });
     }
 
-    let backendUrl = LLM_API_URL;
-    if (backendUrl.includes("/chat")) {
-      backendUrl = backendUrl.substring(0, backendUrl.indexOf("/chat"));
-    }
-    backendUrl = backendUrl.replace(/\/+$/, "") + "/files/ingest";
+    const backendUrl = buildFilesIngestUrl(llmApiUrl);
 
     const ingestPayload = {
       file_id: resolvedFileId,

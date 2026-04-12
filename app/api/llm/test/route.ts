@@ -1,23 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server";
+import {
+  isKnownUntrustedSSL,
+  redactBackendUrl,
+  resolveLlmApiUrl,
+} from "@/lib/llm-backend";
 
 // Force Node.js runtime for HTTPS agent functionality
 export const runtime = "nodejs";
 
-// Bypassing SSL check for expired certificates
-if (process.env.NODE_ENV !== 'production' || (process.env.LLM_API_URL || "").includes("duckdns.org")) {
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
+const LLM_API_URL = resolveLlmApiUrl();
 
-const LLM_API_URL =
-  process.env.LLM_API_URL || process.env.NEXT_PUBLIC_LLM_API_URL;
+// Bypassing SSL check for expired certificates
+if (
+  process.env.NODE_ENV !== "production" ||
+  (LLM_API_URL || "").includes("duckdns.org")
+) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
 
 export async function GET(request: NextRequest) {
   const testResults = {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
-    llmApiUrl: LLM_API_URL
-      ? LLM_API_URL.replace(/\/[^\/]*$/, "/***")
-      : "Not configured",
+    llmApiUrl: redactBackendUrl(LLM_API_URL),
     tests: [] as any[],
   };
 
@@ -40,11 +45,7 @@ export async function GET(request: NextRequest) {
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
     // SSL handling logic matching main route
-    const isUntrustedSSL =
-      LLM_API_URL.includes("18.213.206.235") ||
-      LLM_API_URL.includes("localhost") ||
-      LLM_API_URL.includes("127.0.0.1") ||
-      LLM_API_URL.includes("duckdns.org");
+    const isUntrustedSSL = isKnownUntrustedSSL(LLM_API_URL);
 
     const response = await fetch(LLM_API_URL, {
       method: "POST",
