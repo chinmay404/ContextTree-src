@@ -261,7 +261,10 @@ export class MongoDBService {
        where n.id=$1 and n.canvas_id=$2 and c.user_email=$3`,
       [nodeId, canvasId, userEmail]
     );
-    if (!res.rowCount) return null;
+    if (!res.rowCount) {
+      const canvas = await this.getCanvas(canvasId, userEmail);
+      return canvas?.nodes.find((node) => node._id === nodeId) || null;
+    }
     const n = { ...(res.rows[0].data || {}), _id: res.rows[0].id } as any;
     // Attach messages (flat form) for convenience
     const mRows = await pool.query(
@@ -667,28 +670,63 @@ export class MongoDBService {
     userEmail?: string
   ): Promise<boolean> {
     await ensureInit();
-    // Delete normalized node (cascade removes messages)
-    const del = await pool.query(
-      "delete from nodes where id=$1 and canvas_id=$2",
-      [nodeId, canvasId]
-    );
-    if (!del.rowCount) return false;
-    // Update embedded JSON
-    const cRes = await pool.query("select data from canvases where id=$1", [
-      canvasId,
-    ]);
-    if (cRes.rowCount) {
-      const canvasData = cRes.rows[0].data;
-      canvasData.nodes = canvasData.nodes.filter((n: any) => n._id !== nodeId);
-      canvasData.edges = canvasData.edges.filter(
-        (e: any) => e.from !== nodeId && e.to !== nodeId
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const canvasRes = await client.query(
+        userEmail
+          ? "select data from canvases where id=$1 and user_email=$2 for update"
+          : "select data from canvases where id=$1 for update",
+        userEmail ? [canvasId, userEmail] : [canvasId]
       );
-      await pool.query(
+
+      if (!canvasRes.rowCount) {
+        await client.query("ROLLBACK");
+        return false;
+      }
+
+      const canvasData = canvasRes.rows[0].data;
+      const hadCanvasNode = Array.isArray(canvasData.nodes)
+        ? canvasData.nodes.some((node: any) => node._id === nodeId)
+        : false;
+
+      canvasData.nodes = (canvasData.nodes || []).filter(
+        (node: any) => node._id !== nodeId
+      );
+      canvasData.edges = (canvasData.edges || []).filter(
+        (edge: any) => edge.from !== nodeId && edge.to !== nodeId
+      );
+
+      await client.query(
+        "delete from external_files where node_id=$1 and canvas_id=$2",
+        [nodeId, canvasId]
+      );
+
+      const del = await client.query(
+        "delete from nodes where id=$1 and canvas_id=$2",
+        [nodeId, canvasId]
+      );
+
+      if (!hadCanvasNode && !del.rowCount) {
+        await client.query("ROLLBACK");
+        return false;
+      }
+
+      await client.query(
         "update canvases set data=$2, updated_at=now() where id=$1",
         [canvasId, canvasData]
       );
+
+      await client.query("COMMIT");
+      return true;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("removeNode error", error);
+      throw error;
+    } finally {
+      client.release();
     }
-    return true;
   }
 
   // Edge operations
@@ -1020,22 +1058,64 @@ export class MongoDBService {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      
-      // 1. Create Node (ensure partial node exists to satisfy FK)
+
+      await this.ensureUser(fileData.userEmail);
+
+      const canvasRes = await client.query(
+        `select data
+           from canvases
+          where id = $1 and user_email = $2
+          for update`,
+        [fileData.canvasId, fileData.userEmail]
+      );
+
+      if (!canvasRes.rowCount) {
+        throw new Error(`Canvas ${fileData.canvasId} not found for upload`);
+      }
+
+      const nodePayload = { ...nodeData } as any;
+      delete nodePayload.chatMessages;
+
+      // 1. Create or update the node so the FK and canvas JSON stay in sync.
       await client.query(
         `INSERT INTO nodes (id, canvas_id, user_email, data, is_primary, type, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         ON CONFLICT (id) DO NOTHING`,
+         ON CONFLICT (id) DO UPDATE SET
+           canvas_id = EXCLUDED.canvas_id,
+           user_email = EXCLUDED.user_email,
+           data = EXCLUDED.data,
+           is_primary = EXCLUDED.is_primary,
+           type = EXCLUDED.type,
+           updated_at = EXCLUDED.updated_at`,
         [
             fileData.nodeId, 
             fileData.canvasId, 
             fileData.userEmail, 
-            JSON.stringify(nodeData), 
+            nodePayload, 
             false,
             'externalContext',
             nodeData.createdAt, 
             new Date().toISOString()
         ]
+      );
+
+      const canvasData = canvasRes.rows[0].data;
+      const existingNodeIndex = (canvasData.nodes || []).findIndex(
+        (node: any) => node._id === fileData.nodeId
+      );
+
+      if (existingNodeIndex === -1) {
+        canvasData.nodes = [...(canvasData.nodes || []), nodeData];
+      } else {
+        canvasData.nodes[existingNodeIndex] = {
+          ...canvasData.nodes[existingNodeIndex],
+          ...nodeData,
+        };
+      }
+
+      await client.query(
+        "update canvases set data=$2, updated_at=now() where id=$1",
+        [fileData.canvasId, canvasData]
       );
 
       // 2. Create File

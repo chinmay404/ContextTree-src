@@ -144,13 +144,18 @@ export const POST = withAuth(async (request: NextRequest) => {
     return NextResponse.json({
         success: true,
         fileId: fileId,
-        fileName: file.name
-    });
+        fileName: file.name,
+        nodeId,
+        processing: true,
+      });
 
   } catch (error) {
     logUploadEvent('ERROR', "Error processing file upload", error);
     return NextResponse.json(
-      { error: "Failed to process file" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to process file",
+      },
       { status: 500 }
 
     );

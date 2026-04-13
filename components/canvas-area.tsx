@@ -131,6 +131,23 @@ const derivePreview = (node: NodeData | null | undefined): string => {
   return node.name?.trim() || "";
 };
 
+const isProcessingExternalNode = (node: NodeData | null | undefined) => {
+  if (!node || node.type !== "externalContext") return false;
+  const data = typeof node.data === "object" && node.data ? (node.data as Record<string, any>) : {};
+  const content = typeof data.content === "string" ? data.content.trim() : "";
+  const error = typeof data.error === "string" ? data.error.trim() : "";
+  const contract = typeof (node as any).contextContract === "string" ? (node as any).contextContract.trim().toLowerCase() : "";
+  return !error && !content && (Boolean(data.loading) || contract === "processing...");
+};
+
+const isReadyExternalNode = (node: NodeData | null | undefined) => {
+  if (!node || node.type !== "externalContext") return true;
+  const data = typeof node.data === "object" && node.data ? (node.data as Record<string, any>) : {};
+  const content = typeof data.content === "string" ? data.content.trim() : "";
+  const error = typeof data.error === "string" ? data.error.trim() : "";
+  return Boolean(content) && !error;
+};
+
 const lengthTag = (text: string): "short" | "medium" | "long" => {
   const len = text.trim().length;
   return len <= 80 ? "short" : len <= 220 ? "medium" : "long";
@@ -517,9 +534,10 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
         // External context resolution
         if (node.type === "externalContext") {
           const content = (nodeData as any).content || (node as any).content || (node as any).contextContract || "";
-          const isProcessing = ((node as any).contextContract || "").trim().toLowerCase() === "processing...";
+          const isProcessing = isProcessingExternalNode(node);
           if (content) (nodeData as any).content = content;
           (nodeData as any).loading = !nodeError && !content && isProcessing;
+          (nodeData as any).disabled = isProcessing;
           if (nodeError) (nodeData as any).error = nodeError;
         }
 
@@ -564,6 +582,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
           style: { zIndex: 2 },
           hidden: isHiddenByCollapse(node._id, data.nodes),
           draggable: node.type !== "entry",
+          connectable: !(node.type === "externalContext" && isProcessingExternalNode(node)),
         } as Node;
       });
 
@@ -708,14 +727,64 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     fetch(`/api/canvases/${canvasId}/edges/${edgeId}`, { method: "DELETE" }).catch(() => {});
   }, [canvas, canvasId, scheduleParentUpdate, setEdges]);
 
+  const pollForExternalContent = useCallback(async (nodeId: string, label: string) => {
+    for (let attempt = 0; attempt < 18; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, attempt < 6 ? 1500 : 3000));
+
+      try {
+        const res = await fetch(`/api/canvases/${canvasId}`, { cache: "no-cache" });
+        if (!res.ok) continue;
+
+        const payload = await res.json();
+        const refreshed = payload?.canvas as CanvasData | undefined;
+        if (!refreshed) continue;
+
+        const nextCanvas = mergeCanvasData(refreshed, storageService.getCanvas(canvasId));
+        const node = nextCanvas.nodes.find((item) => item._id === nodeId);
+        const nodeData = (node?.data && typeof node.data === "object" ? node.data : {}) as Record<string, any>;
+        const content = typeof nodeData.content === "string" ? nodeData.content.trim() : "";
+        const error = typeof nodeData.error === "string" ? nodeData.error.trim() : "";
+
+        if (!node) continue;
+
+        storageService.saveCanvas(nextCanvas);
+        setCanvas(nextCanvas);
+
+        if (error) {
+          toast.error(`Failed to process ${label}`);
+          return;
+        }
+
+        if (content) {
+          toast.success(`${label} is ready`);
+          return;
+        }
+      } catch {
+        // Keep polling quietly while the background worker finishes.
+      }
+    }
+  }, [canvasId]);
+
   const retryExternal = useCallback(async (nodeId: string, fileId: string) => {
     if (!fileId) return;
     try {
-      const res = await fetch(`/api/files/${fileId}/reprocess`, { method: "POST" });
-      if (res.ok) toast.success("Reprocessing file...");
-      else toast.error("Failed to reprocess");
-    } catch { toast.error("Failed to reprocess"); }
-  }, []);
+      const res = await fetch("/api/files/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nodeId, canvasId, fileId }),
+      });
+      if (res.ok) {
+        const nodeLabel =
+          canvas?.nodes.find((item) => item._id === nodeId)?.name || "file";
+        toast.success("Reprocessing file...");
+        void pollForExternalContent(nodeId, nodeLabel);
+      } else {
+        toast.error("Failed to reprocess");
+      }
+    } catch {
+      toast.error("Failed to reprocess");
+    }
+  }, [canvas?.nodes, canvasId, pollForExternalContent]);
 
   const handleGroupResize = useCallback((nodeId: string, size: { width: number; height: number }) => {
     setNodes((nds) => nds.map((n) => n.id === nodeId ? { ...n, style: { ...n.style, width: size.width, height: size.height } } : n));
@@ -800,6 +869,10 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     if (srcNode.type === "externalContext" && tgtNode.type === "externalContext") {
       toast.error("Cannot connect file nodes"); return;
     }
+    if (!isReadyExternalNode(srcNode) || !isReadyExternalNode(tgtNode)) {
+      toast.error("Wait for the file to finish processing before connecting it");
+      return;
+    }
 
     const edgeData: EdgeData = {
       _id: `edge_${Date.now()}`, from: srcId, to: tgtId,
@@ -824,9 +897,20 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   }, [canvas, canvasId, scheduleParentUpdate, setEdges, deleteEdge]);
 
   const onConnectStart = useCallback((_: MouseEvent | TouchEvent, params: any) => {
-    if (params?.nodeId && params.handleType !== "target") setPendingConn({ sourceId: params.nodeId });
-    else setPendingConn(null);
-  }, []);
+    if (!params?.nodeId || params.handleType === "target") {
+      setPendingConn(null);
+      return;
+    }
+
+    const sourceNode = canvas?.nodes.find((node) => node._id === params.nodeId);
+    if (sourceNode && !isReadyExternalNode(sourceNode)) {
+      toast.error("Wait for the file to finish processing before connecting it");
+      setPendingConn(null);
+      return;
+    }
+
+    setPendingConn({ sourceId: params.nodeId });
+  }, [canvas]);
 
   const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
     if (!pendingConn || !canvas) { setPendingConn(null); return; }
@@ -880,6 +964,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
 
     const bounds = wrapperRef.current.getBoundingClientRect();
     const pos = flow.screenToFlowPosition({ x: event.clientX - bounds.left, y: event.clientY - bounds.top });
+    let workingCanvas = canvas;
 
     for (const file of Array.from(files)) {
       const nodeId = genId("node");
@@ -891,9 +976,42 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
         data: { label: file.name, fileType: file.type, size: file.size, loading: true },
       } as any;
 
-      const updated: CanvasData = { ...canvas, nodes: [...canvas.nodes, newNode], updatedAt: now };
-      storageService.saveCanvas(updated);
-      setCanvas(updated);
+      workingCanvas = { ...workingCanvas, nodes: [...workingCanvas.nodes, newNode], updatedAt: now };
+      storageService.saveCanvas(workingCanvas);
+      setCanvas(workingCanvas);
+
+      const removeOptimisticNode = () => {
+        workingCanvas = {
+          ...workingCanvas,
+          nodes: workingCanvas.nodes.filter((n) => n._id !== nodeId),
+          edges: workingCanvas.edges.filter((e) => e.from !== nodeId && e.to !== nodeId),
+          updatedAt: new Date().toISOString(),
+        };
+        storageService.saveCanvas(workingCanvas);
+        setCanvas(workingCanvas);
+      };
+
+      try {
+        const nodeRes = await fetch(`/api/canvases/${canvasId}/nodes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newNode),
+        });
+
+        if (!nodeRes.ok) {
+          const detail = await nodeRes.json().catch(() => null);
+          const message =
+            detail?.error || `Failed to create upload node for ${file.name}`;
+
+          removeOptimisticNode();
+          toast.error(message);
+          continue;
+        }
+      } catch {
+        removeOptimisticNode();
+        toast.error(`Failed to create upload node for ${file.name}`);
+        continue;
+      }
 
       const formData = new FormData();
       formData.append("file", file);
@@ -902,29 +1020,95 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
       formData.append("position", JSON.stringify(pos));
 
       try {
-        const res = await fetch("/api/files/upload", { method: "POST", body: formData });
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
         if (res.ok) {
           const data = await res.json();
-          setCanvas((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              nodes: prev.nodes.map((n) =>
-                n._id === nodeId
-                  ? { ...n, contextContract: data.content || "", data: { ...((n.data || {}) as any), content: data.content, loading: false, fileId: data.fileId } } as any
-                  : n
-              ),
-            };
-          });
-          toast.success(`${file.name} uploaded`);
+          workingCanvas = {
+            ...workingCanvas,
+            nodes: workingCanvas.nodes.map((n) =>
+              n._id === nodeId
+                ? {
+                    ...n,
+                    contextContract: "Processing...",
+                    data: {
+                      ...((n.data || {}) as any),
+                      loading: true,
+                      fileId: data.fileId,
+                      error: undefined,
+                    },
+                  } as any
+                : n
+            ),
+          };
+          storageService.saveCanvas(workingCanvas);
+          setCanvas(workingCanvas);
+          toast.success(`${file.name} uploaded. Processing started.`);
+          void pollForExternalContent(nodeId, file.name);
         } else {
-          toast.error(`Failed to upload ${file.name}`);
+          const detail = await res.json().catch(() => null);
+          workingCanvas = {
+            ...workingCanvas,
+            nodes: workingCanvas.nodes.map((n) =>
+              n._id === nodeId
+                ? {
+                    ...n,
+                    contextContract: "Upload failed",
+                    data: {
+                      ...((n.data || {}) as any),
+                      loading: false,
+                      error: detail?.error || "Upload failed",
+                    },
+                  } as any
+                : n
+            ),
+          };
+          storageService.saveCanvas(workingCanvas);
+          setCanvas(workingCanvas);
+          fetch(`/api/canvases/${canvasId}/nodes/${nodeId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contextContract: "Upload failed",
+              data: {
+                ...((newNode.data || {}) as any),
+                loading: false,
+                error: detail?.error || "Upload failed",
+              },
+            }),
+          }).catch(() => {});
+          toast.error(detail?.error || `Failed to upload ${file.name}`);
         }
       } catch {
+        workingCanvas = {
+          ...workingCanvas,
+          nodes: workingCanvas.nodes.map((n) =>
+            n._id === nodeId
+              ? {
+                  ...n,
+                  contextContract: "Upload failed",
+                  data: { ...((n.data || {}) as any), loading: false, error: "Upload failed" },
+                } as any
+              : n
+          ),
+        };
+        storageService.saveCanvas(workingCanvas);
+        setCanvas(workingCanvas);
+        fetch(`/api/canvases/${canvasId}/nodes/${nodeId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contextContract: "Upload failed",
+            data: {
+              ...((newNode.data || {}) as any),
+              loading: false,
+              error: "Upload failed",
+            },
+          }),
+        }).catch(() => {});
         toast.error(`Failed to upload ${file.name}`);
       }
     }
-  }, [canvas, canvasId, flow]);
+  }, [canvas, canvasId, flow, pollForExternalContent]);
 
   const onDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }, []);
 

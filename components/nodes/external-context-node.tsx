@@ -1,8 +1,8 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useCallback, type MouseEvent } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { AlertTriangle, FileUp, Loader2 } from "lucide-react";
+import { AlertTriangle, FileUp, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ExternalContextNodeData {
@@ -13,6 +13,7 @@ interface ExternalContextNodeData {
   isSelected: boolean;
   onClick?: () => void;
   onRetry?: () => void;
+  onDelete?: () => void;
   loading?: boolean;
   error?: string;
   [key: string]: unknown;
@@ -24,8 +25,16 @@ function ExternalContextNodeComponent({
   data,
   selected,
 }: NodeProps<ExternalContextNodeType>) {
+  const stop = useCallback(
+    (action?: () => void) => (e: MouseEvent) => {
+      e.stopPropagation();
+      action?.();
+    },
+    []
+  );
   const hasError = Boolean(data.error);
   const isLoading = Boolean(data.loading) && !hasError;
+  const isConnectable = !hasError && !isLoading && Boolean(data.content);
   const active = selected || data.isSelected;
 
   const accent = hasError ? "#ef4444" : "#f59e0b";
@@ -45,6 +54,7 @@ function ExternalContextNodeComponent({
     <div
       className={cn(
         "group w-[300px] cursor-pointer rounded-[24px] border-2 bg-white px-5 py-4 text-sm shadow-[0_18px_44px_rgba(148,163,184,0.18)] transition-all duration-200",
+        isLoading && "cursor-progress opacity-90",
         active
           ? "ring-1 ring-slate-900/6"
           : "hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(148,163,184,0.22)]"
@@ -93,31 +103,46 @@ function ExternalContextNodeComponent({
         {previewText}
       </p>
 
-      <Handle
-        type="target"
-        position={Position.Top}
-        className={handleClassName}
-        style={{ backgroundColor: accent, borderColor: "#ffffff" }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        className={handleClassName}
-        style={{ backgroundColor: accent, borderColor: "#ffffff" }}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className={handleClassName}
-        style={{ backgroundColor: accent, borderColor: "#ffffff" }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        className={handleClassName}
-        style={{ backgroundColor: accent, borderColor: "#ffffff" }}
-      />
+      {data.onDelete && (
+        <button
+          className="absolute -top-2 -right-2 hidden h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-lg group-hover:flex hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500"
+          onClick={stop(data.onDelete)}
+          aria-label="Delete"
+          data-slot="external-context-node-delete"
+        >
+          <Trash2 size={12} />
+        </button>
+      )}
+
+      {isConnectable && (
+        <>
+          <Handle
+            type="target"
+            position={Position.Top}
+            className={handleClassName}
+            style={{ backgroundColor: accent, borderColor: "#ffffff" }}
+          />
+          <Handle
+            type="target"
+            position={Position.Left}
+            className={handleClassName}
+            style={{ backgroundColor: accent, borderColor: "#ffffff" }}
+          />
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            className={handleClassName}
+            style={{ backgroundColor: accent, borderColor: "#ffffff" }}
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="right"
+            className={handleClassName}
+            style={{ backgroundColor: accent, borderColor: "#ffffff" }}
+          />
+        </>
+      )}
     </div>
   );
 }

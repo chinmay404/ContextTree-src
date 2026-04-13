@@ -18,8 +18,11 @@ export async function POST(
       );
     }
 
-    // For any non-primary node, ensure lineage metadata exists
-    if (!node.primary && node.type !== "group") {
+    // Only forked conversation nodes require lineage metadata.
+    const requiresLineage =
+      !node.primary && (node.type === "branch" || node.type === "context");
+
+    if (requiresLineage) {
       if (!node.parentNodeId || !node.forkedFromMessageId) {
         return NextResponse.json(
           {

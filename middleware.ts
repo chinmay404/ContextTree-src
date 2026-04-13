@@ -15,6 +15,7 @@ export default withAuth(
           pathname.startsWith("/auth/") ||
           pathname.startsWith("/api/auth/") ||
           pathname.startsWith("/api/") || // Allow all API routes to handle their own auth
+          pathname.startsWith("/.well-known/") ||
           pathname === "/" ||
           pathname === "/waitlist" || // Allow waitlist page
           pathname === "/profile" || // Allow profile page (it handles auth internally)
@@ -42,6 +43,6 @@ export const config = {
      * - public folder
      * - static assets (.svg, .png, .jpg, etc.)
      */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.ico|.*\\.webp|public/).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|\\.well-known|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.ico|.*\\.webp|public/).*)",
   ],
 };
