@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Edit2,
   ChevronRight,
+  MessageSquareDashed,
 } from "lucide-react";
 import { storageService } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
@@ -53,18 +54,46 @@ const normalizeForkId = (id?: string | null) =>
 
 const genId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
+const dedupeMessages = (items: Message[]): Message[] => {
+  const byId = new Map<string, Message>();
+  for (const item of items) {
+    byId.set(item.id, item);
+  }
+  return Array.from(byId.values()).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+};
+
 const normalizeMessages = (raw: any[], nodeId: string): Message[] =>
-  raw
-    .flatMap((msg: any, idx: number) => {
+  dedupeMessages(
+    raw.flatMap((msg: any, idx: number) => {
       if (msg.user || msg.assistant) {
-        const parts: any[] = [];
-        if (msg.user) parts.push({ id: `${msg.id}-u`, role: "user", content: msg.user.content, timestamp: msg.user.timestamp ? new Date(msg.user.timestamp) : new Date() });
-        if (msg.assistant) parts.push({ id: `${msg.id}-a`, role: "assistant", content: msg.assistant.content, timestamp: msg.assistant.timestamp ? new Date(msg.assistant.timestamp) : new Date() });
+        const parts: Message[] = [];
+        const baseId = msg.id || `msg-${idx}-${nodeId}`;
+        if (msg.user) {
+          parts.push({
+            id: baseId,
+            role: "user",
+            content: msg.user.content,
+            timestamp: msg.user.timestamp ? new Date(msg.user.timestamp) : new Date(),
+          });
+        }
+        if (msg.assistant) {
+          parts.push({
+            id: `${baseId}_ai`,
+            role: "assistant",
+            content: msg.assistant.content,
+            timestamp: msg.assistant.timestamp ? new Date(msg.assistant.timestamp) : new Date(),
+          });
+        }
         return parts;
       }
-      return [{ id: msg.id || `msg-${idx}-${nodeId}`, role: msg.role, content: msg.content, timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date() }];
+      return [{
+        id: msg.id || `msg-${idx}-${nodeId}`,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+      }];
     })
-    .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  );
 
 const extractMessages = (node: any): any[] => {
   if (Array.isArray(node?.chatMessages)) return node.chatMessages;
@@ -259,7 +288,7 @@ const ContextualConsole = ({
     const canvasId = selectedCanvas;
 
     const userMsg: Message = { id: genId(), role: "user", content: inputValue, timestamp: new Date() };
-    const updatedMsgs = [...currentMessages, userMsg];
+    const updatedMsgs = dedupeMessages([...currentMessages, userMsg]);
     setMessages((p) => ({ ...p, [nodeId]: updatedMsgs }));
     storageService.saveNodeMessages(canvasId, nodeId, updatedMsgs.map((m) => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp.toISOString() })));
 
@@ -299,7 +328,7 @@ const ContextualConsole = ({
 
       // ── Streaming path ─────────────────────────────────────────────────
       if (contentType.includes("text/event-stream") && res.body) {
-        const botMsgId = genId();
+        const botMsgId = `${userMsg.id}_ai`;
         const botTimestamp = new Date();
         let fullContent = "";
         let summary: string | undefined;
@@ -345,10 +374,10 @@ const ContextualConsole = ({
                   // Update the assistant message in-place as tokens arrive
                   setMessages((p) => ({
                     ...p,
-                    [nodeId]: [
+                    [nodeId]: dedupeMessages([
                       ...updatedMsgs,
                       { id: botMsgId, role: "assistant" as const, content: fullContent, timestamp: botTimestamp },
-                    ],
+                    ]),
                   }));
                 }
               } catch (parseErr) {
@@ -365,7 +394,7 @@ const ContextualConsole = ({
         if (!fullContent) throw new Error("No response received from model");
 
         const botMsg: Message = { id: botMsgId, role: "assistant", content: fullContent, timestamp: botTimestamp };
-        const allMsgs = [...updatedMsgs, botMsg];
+        const allMsgs = dedupeMessages([...updatedMsgs, botMsg]);
         setMessages((p) => ({ ...p, [nodeId]: allMsgs }));
         storageService.saveNodeMessages(canvasId, nodeId, allMsgs.map((m) => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp.toISOString() })));
 
@@ -386,8 +415,8 @@ const ContextualConsole = ({
 
       // ── Non-streaming JSON path ────────────────────────────────────────
       const data = await res.json();
-      const botMsg: Message = { id: genId(), role: "assistant", content: data.message, timestamp: new Date() };
-      const allMsgs = [...updatedMsgs, botMsg];
+      const botMsg: Message = { id: `${userMsg.id}_ai`, role: "assistant", content: data.message, timestamp: new Date() };
+      const allMsgs = dedupeMessages([...updatedMsgs, botMsg]);
       setMessages((p) => ({ ...p, [nodeId]: allMsgs }));
       storageService.saveNodeMessages(canvasId, nodeId, allMsgs.map((m) => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp.toISOString() })));
 
@@ -568,7 +597,7 @@ const ContextualConsole = ({
                   <button
                     key={n._id}
                     onClick={() => onNodeSelect?.(n._id, n.name, n.type)}
-                    className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-200"
+                    className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-200 transition-colors"
                   >
                     {n.name || "Branch"}
                   </button>
@@ -588,14 +617,12 @@ const ContextualConsole = ({
         <ModelProviderIcon
           modelId={activeModelId}
           size={28}
-          className="rounded-full flex-shrink-0 animate-pulse"
+          className="rounded-full flex-shrink-0"
         />
-        <div className="pt-2">
-          <div className="flex gap-1">
-            <div className="h-2 w-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: "0ms" }} />
-            <div className="h-2 w-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: "150ms" }} />
-            <div className="h-2 w-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: "300ms" }} />
-          </div>
+        <div className="pt-2 flex items-center gap-1">
+          <div className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse" style={{ animationDelay: "0ms" }} />
+          <div className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse" style={{ animationDelay: "200ms" }} />
+          <div className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse" style={{ animationDelay: "400ms" }} />
         </div>
       </div>
     </div>
@@ -712,8 +739,11 @@ const ContextualConsole = ({
           <ScrollArea className="h-full" viewportRef={scrollRef}>
             <div className="pb-36">
               {currentMessages.length === 0 ? (
-                <div className="px-5 py-16 text-center text-slate-400 text-sm">
-                  No messages yet. Start a conversation.
+                <div className="px-5 py-20 text-center">
+                  <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-300">
+                    <MessageSquareDashed size={18} strokeWidth={1.5} />
+                  </div>
+                  <p className="text-sm text-slate-400">Start a conversation</p>
                 </div>
               ) : (
                 currentMessages.map((msg) => <MessageItem key={msg.id} message={msg} />)

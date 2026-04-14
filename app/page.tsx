@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, LayoutGrid } from "lucide-react";
 import { CanvasArea } from "@/components/canvas-area";
 import { ReactFlowProvider } from "@xyflow/react";
 import { ContextStrip } from "@/components/context-strip";
@@ -211,6 +212,20 @@ export default function ContextTreePage() {
     if (!user?.email || isCreatingCanvas) return;
     setIsCreatingCanvas(true);
 
+    const focusPrimaryNode = (canvas: CanvasData) => {
+      const primaryNode =
+        canvas.nodes.find((node) => node._id === canvas.primaryNodeId) ||
+        canvas.nodes[0];
+
+      setSelectedCanvas(canvas._id);
+      setSelectedNode(primaryNode?._id ?? null);
+      setSelectedNodeName(
+        primaryNode?.name || (primaryNode?.type === "entry" ? "Base Context" : undefined)
+      );
+      setSelectedNodeType(primaryNode?.type);
+      setChatFullscreen(false);
+    };
+
     const newCanvas = storageService.createDefaultCanvas(user.email, title, model);
     storageService.saveCanvas(newCanvas);
 
@@ -225,13 +240,13 @@ export default function ContextTreePage() {
       setCanvases((prev) =>
         prev.some((c) => c._id === canvas._id) ? prev : [canvas, ...prev]
       );
-      setSelectedCanvas(canvas._id);
+      focusPrimaryNode(canvas);
       setIsCreateCanvasDialogOpen(false);
     } catch {
       setCanvases((prev) =>
         prev.some((c) => c._id === newCanvas._id) ? prev : [newCanvas, ...prev]
       );
-      setSelectedCanvas(newCanvas._id);
+      focusPrimaryNode(newCanvas);
       setIsCreateCanvasDialogOpen(false);
     } finally {
       setIsCreatingCanvas(false);
@@ -326,9 +341,14 @@ export default function ContextTreePage() {
   // ── Loading / auth gates ────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50">
+      <motion.div
+        className="h-screen flex items-center justify-center bg-slate-50"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
         <LoadingSpinner size="lg" text="Loading ContextTree..." />
-      </div>
+      </motion.div>
     );
   }
 
@@ -338,7 +358,12 @@ export default function ContextTreePage() {
   const showRightPanel = !!selectedNode;
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-slate-50 font-sans">
+    <motion.div
+      className="flex flex-col h-screen w-full overflow-hidden bg-slate-50 font-sans"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+    >
       <CreateCanvasDialog
         open={isCreateCanvasDialogOpen}
         onOpenChange={setIsCreateCanvasDialogOpen}
@@ -355,10 +380,13 @@ export default function ContextTreePage() {
 
       <div className="flex flex-1 overflow-hidden relative pt-14">
         {/* Left sidebar — workspace list */}
-        <div
-          className={`flex flex-col border-r border-slate-200 bg-white transition-all duration-300 ease-in-out z-30 ${
-            leftSidebarCollapsed || chatFullscreen ? "w-0 overflow-hidden opacity-0" : "w-60"
-          }`}
+        <motion.div
+          className="flex flex-col border-r border-slate-200 bg-white z-30 overflow-hidden"
+          animate={{
+            width: leftSidebarCollapsed || chatFullscreen ? 0 : 240,
+            opacity: leftSidebarCollapsed || chatFullscreen ? 0 : 1,
+          }}
+          transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
         >
           <CanvasList
             canvases={canvases.map((canvas) => ({
@@ -378,41 +406,66 @@ export default function ContextTreePage() {
             onRenameCanvas={handleRenameCanvas}
             onCollapse={() => setLeftSidebarCollapsed(true)}
           />
-        </div>
+        </motion.div>
 
         {/* Canvas — primary surface */}
-        <div
-          className={`flex-1 relative transition-all duration-300 ease-in-out ${
-            chatFullscreen ? "opacity-10 pointer-events-none blur-sm scale-[0.98]" : "opacity-100"
-          }`}
+        <motion.div
+          className="flex-1 relative"
+          animate={{
+            opacity: chatFullscreen ? 0.1 : 1,
+            scale: chatFullscreen ? 0.98 : 1,
+            filter: chatFullscreen ? "blur(4px)" : "blur(0px)",
+          }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          style={{ pointerEvents: chatFullscreen ? "none" : "auto" }}
         >
-          {selectedCanvas ? (
-            <ReactFlowProvider>
-              <CanvasArea
-                canvasId={selectedCanvas}
-                selectedNode={selectedNode}
-                onNodeSelect={handleNodeSelect}
-              />
-            </ReactFlowProvider>
-          ) : (
-            <div className="flex items-center justify-center h-full bg-slate-50">
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
-                  <Plus size={24} />
+          <AnimatePresence mode="wait">
+            {selectedCanvas ? (
+              <motion.div
+                key={selectedCanvas}
+                className="h-full"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <ReactFlowProvider>
+                  <CanvasArea
+                    canvasId={selectedCanvas}
+                    selectedNode={selectedNode}
+                    onNodeSelect={handleNodeSelect}
+                  />
+                </ReactFlowProvider>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="empty"
+                className="flex items-center justify-center h-full bg-slate-50"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+              >
+                <div className="text-center space-y-4">
+                  <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-slate-300">
+                    <LayoutGrid size={22} strokeWidth={1.5} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-slate-600 text-sm font-medium">No canvas selected</p>
+                    <p className="text-slate-400 text-xs">Select or create a canvas to start building</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openCreateCanvasDialog(canvases.length === 0 ? "My First Project" : generateCanvasTitle())}
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-slate-800 active:scale-[0.98]"
+                  >
+                    <Plus size={14} />
+                    New Canvas
+                  </button>
                 </div>
-                <p className="text-slate-500 text-sm">Select or create a canvas to start</p>
-                <button
-                  type="button"
-                  onClick={() => openCreateCanvasDialog(canvases.length === 0 ? "My First Project" : generateCanvasTitle())}
-                  className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
-                >
-                  <Plus size={14} />
-                  Create Canvas
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
         {/* Resize handle */}
         {showRightPanel && !chatFullscreen && (
@@ -475,6 +528,6 @@ export default function ContextTreePage() {
         onOpenChange={setIsSearchOpen}
       />
       <OnboardingGuide />
-    </div>
+    </motion.div>
   );
 }

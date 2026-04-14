@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,6 +29,8 @@ import {
   Search,
   Trash2,
   LayoutGrid,
+  GitBranch,
+  CircleDot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -119,21 +122,28 @@ export function CanvasList({
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const CanvasItem = ({ canvas }: { canvas: Canvas }) => (
-    <div
+  const CanvasItem = ({ canvas, index = 0 }: { canvas: Canvas; index?: number }) => (
+    <motion.div
       role="button"
       tabIndex={0}
       onClick={() => onSelectCanvas(canvas._id)}
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.2, delay: index * 0.03, ease: "easeOut" }}
       className={cn(
-        "group relative flex w-full items-start gap-2 rounded-md py-1.5 px-2 text-left transition-all hover:bg-slate-100",
+        "group relative flex w-full items-start gap-2 rounded-lg py-1.5 px-2 text-left transition-colors hover:bg-slate-100",
         selectedCanvas === canvas._id
-          ? "bg-indigo-50 ring-1 ring-indigo-200"
+          ? "bg-indigo-50/70 ring-1 ring-indigo-200/60"
           : "transparent"
       )}
     >
       {/* Active Indicator Bar */}
       {selectedCanvas === canvas._id && (
-        <div className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r bg-indigo-600" />
+        <motion.div
+          layoutId="canvas-active-indicator"
+          className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r bg-indigo-600"
+          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+        />
       )}
 
       <div className="min-w-0 flex-1 pl-1">
@@ -144,7 +154,7 @@ export function CanvasList({
             )}>
             {canvas.title}
             </p>
-            
+
              {/* 3-Dot Menu */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -156,8 +166,8 @@ export function CanvasList({
                     }}
                     className={cn(
                         "ml-1 h-5 w-5 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-600",
-                        "opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity", // Only show on hover/focus
-                        selectedCanvas === canvas._id && "opacity-100" // Always show if selected
+                        "opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity",
+                        selectedCanvas === canvas._id && "opacity-100"
                     )}
                 >
                     <MoreVertical size={14} />
@@ -168,7 +178,6 @@ export function CanvasList({
                     <DropdownMenuItem
                     onClick={(e) => {
                         e.stopPropagation();
-                        // Simple prompt for now, consistent with existing behavior
                         const newTitle = prompt("Rename canvas:", canvas.title);
                         if (newTitle && newTitle.trim()) {
                         onRenameCanvas(canvas._id, newTitle.trim());
@@ -208,17 +217,22 @@ export function CanvasList({
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
-        
+
         {/* Metadata Line */}
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-500">
-          <span>{canvas.nodeCount} nodes</span>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-400">
+          <span className="inline-flex items-center gap-0.5">
+            <CircleDot size={9} className="text-slate-300" />
+            {canvas.nodeCount}
+          </span>
+          <span className="inline-flex items-center gap-0.5">
+            <GitBranch size={9} className="text-slate-300" />
+            {canvas.branchCount || 0}
+          </span>
           <span className="text-slate-300">·</span>
-          <span>{canvas.branchCount || 0} branches</span>
-           <span className="text-slate-300">·</span>
           <span>{formatTimeAgo(canvas.updatedAt || canvas.createdAt)}</span>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 
   return (
@@ -259,8 +273,8 @@ export function CanvasList({
          ) : searchQuery ? (
             /* Search Results (Flat List) */
             <div className="space-y-0.5">
-               {groupedCanvases.today.concat(groupedCanvases.week, groupedCanvases.older).map(canvas => (
-                   <CanvasItem key={canvas._id} canvas={canvas} />
+               {groupedCanvases.today.concat(groupedCanvases.week, groupedCanvases.older).map((canvas, i) => (
+                   <CanvasItem key={canvas._id} canvas={canvas} index={i} />
                ))}
                {groupedCanvases.today.length + groupedCanvases.week.length + groupedCanvases.older.length === 0 && (
                  <p className="py-4 text-center text-xs text-slate-500">No matches found</p>
@@ -271,22 +285,22 @@ export function CanvasList({
             <div className="space-y-4">
                {groupedCanvases.today.length > 0 && (
                  <div className="space-y-0.5">
-                    <h3 className="mb-1 px-2 text-[10px] font-bold uppercase text-slate-400">Today</h3>
-                    {groupedCanvases.today.map(canvas => <CanvasItem key={canvas._id} canvas={canvas} />)}
+                    <h3 className="mb-1 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Today</h3>
+                    {groupedCanvases.today.map((canvas, i) => <CanvasItem key={canvas._id} canvas={canvas} index={i} />)}
                  </div>
                )}
-               
+
                {groupedCanvases.week.length > 0 && (
                  <div className="space-y-0.5">
-                    <h3 className="mb-1 px-2 text-[10px] font-bold uppercase text-slate-400">This Week</h3>
-                    {groupedCanvases.week.map(canvas => <CanvasItem key={canvas._id} canvas={canvas} />)}
+                    <h3 className="mb-1 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">This Week</h3>
+                    {groupedCanvases.week.map((canvas, i) => <CanvasItem key={canvas._id} canvas={canvas} index={i} />)}
                  </div>
                )}
-               
+
                {groupedCanvases.older.length > 0 && (
                  <div className="space-y-0.5">
-                    <h3 className="mb-1 px-2 text-[10px] font-bold uppercase text-slate-400">Older</h3>
-                    {groupedCanvases.older.map(canvas => <CanvasItem key={canvas._id} canvas={canvas} />)}
+                    <h3 className="mb-1 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Older</h3>
+                    {groupedCanvases.older.map((canvas, i) => <CanvasItem key={canvas._id} canvas={canvas} index={i} />)}
                  </div>
                )}
             </div>

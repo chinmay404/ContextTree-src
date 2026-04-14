@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Dialog,
   DialogContent,
@@ -408,8 +409,11 @@ export function GlobalSearch({
           ) : (
             <div className="py-2">
               {searchResults.map((result, index) => (
-                <button
+                <motion.button
                   key={`${result.canvasId}-${result.nodeId}-${index}`}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.15, delay: Math.min(index * 0.03, 0.3) }}
                   onClick={() => handleNavigate(result)}
                   className={`w-full px-6 py-3 flex items-start gap-4 hover:bg-slate-50 transition-colors text-left ${
                     index === selectedIndex
@@ -462,12 +466,12 @@ export function GlobalSearch({
                   <div className="flex-shrink-0 mt-1">
                     <ChevronRight
                       size={16}
-                      className={`text-slate-400 transition-transform ${
+                      className={`text-slate-400 transition-transform duration-150 ${
                         index === selectedIndex ? "translate-x-1" : ""
                       }`}
                     />
                   </div>
-                </button>
+                </motion.button>
               ))}
             </div>
           )}

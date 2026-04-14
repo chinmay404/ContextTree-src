@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 interface ExternalContextNodeData {
   label: string;
   content?: string;
+  previewText?: string;
   fileType?: string;
   size?: number;
   isSelected: boolean;
@@ -15,6 +16,7 @@ interface ExternalContextNodeData {
   onRetry?: () => void;
   onDelete?: () => void;
   loading?: boolean;
+  disabled?: boolean;
   error?: string;
   [key: string]: unknown;
 }
@@ -34,14 +36,15 @@ function ExternalContextNodeComponent({
   );
   const hasError = Boolean(data.error);
   const isLoading = Boolean(data.loading) && !hasError;
-  const isConnectable = !hasError && !isLoading && Boolean(data.content);
+  const isDisabled = Boolean(data.disabled) || isLoading;
+  const isConnectable = !hasError && !isDisabled && Boolean(data.content);
   const active = selected || data.isSelected;
 
   const accent = hasError ? "#ef4444" : "#f59e0b";
   const previewText = hasError
     ? data.error || "Processing failed"
     : isLoading
-    ? "Processing file..."
+    ? data.previewText || "Processing file..."
     : data.content || "No content";
   const handleClassName = cn(
     "!h-3 !w-3 !border-[3px] !transition-all !duration-200 !ease-out",
@@ -54,7 +57,7 @@ function ExternalContextNodeComponent({
     <div
       className={cn(
         "group w-[300px] cursor-pointer rounded-[24px] border-2 bg-white px-5 py-4 text-sm shadow-[0_18px_44px_rgba(148,163,184,0.18)] transition-all duration-200",
-        isLoading && "cursor-progress opacity-90",
+        isDisabled && "cursor-progress opacity-90",
         active
           ? "ring-1 ring-slate-900/6"
           : "hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(148,163,184,0.22)]"
@@ -62,6 +65,7 @@ function ExternalContextNodeComponent({
       style={{ borderColor: hasError ? "#fca5a5" : active ? accent : "#fcd34d" }}
       onClick={() => data.onClick?.()}
       data-slot="external-context-node"
+      aria-disabled={isDisabled}
     >
       <div className="flex items-start gap-3">
         <span

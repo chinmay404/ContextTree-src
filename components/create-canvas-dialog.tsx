@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import { Plus, Sparkles, Loader2 } from "lucide-react";
 import { generateCanvasTitle } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +53,7 @@ export const CreateCanvasDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-2xl border-slate-200 bg-white p-0 shadow-2xl"
+        className="flex max-h-[88vh] !w-[min(96vw,1180px)] !max-w-[min(96vw,1180px)] sm:!max-w-[min(96vw,1180px)] flex-col overflow-hidden border-slate-200 bg-white p-0 shadow-2xl"
         data-slot="create-canvas-dialog"
       >
         <div className="border-b border-slate-100 px-6 py-5">
@@ -84,7 +85,7 @@ export const CreateCanvasDialog = ({
           </div>
         </div>
 
-        <div className="px-6 py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           <div className="mb-3 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
@@ -101,7 +102,7 @@ export const CreateCanvasDialog = ({
             )}
           </div>
 
-          <div className="max-h-[52vh] overflow-y-auto pr-1">
+          <div className="pr-1">
             <ModelSelectionPanel
               selectedModel={selectedModel}
               onSelect={setSelectedModel}
@@ -109,7 +110,7 @@ export const CreateCanvasDialog = ({
           </div>
         </div>
 
-        <DialogFooter className="border-t border-slate-100 px-6 py-4 sm:justify-between">
+        <DialogFooter className="border-t border-slate-100 px-6 py-4 sm:flex-row sm:justify-between">
           <Button
             type="button"
             variant="outline"
@@ -121,11 +122,15 @@ export const CreateCanvasDialog = ({
           </Button>
           <Button
             type="button"
-            className="rounded-xl bg-slate-900 text-white hover:bg-slate-800"
+            className="rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all active:scale-[0.98]"
             onClick={handleCreate}
             disabled={isCreating || !title.trim() || !selectedModel}
           >
-            <Plus className="mr-2 h-4 w-4" />
+            {isCreating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="mr-2 h-4 w-4" />
+            )}
             {isCreating ? "Creating..." : "Create Canvas"}
           </Button>
         </DialogFooter>

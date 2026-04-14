@@ -13,6 +13,7 @@ import {
 import {
   MODEL_SELECTION_SECTIONS,
   RECOMMENDED_MODELS,
+  getModelById,
   type ModelConfig,
 } from "@/lib/models";
 import { ModelProviderIcon } from "@/components/model-badge";
@@ -44,35 +45,35 @@ const renderModelCard = ({
       }}
       disabled={isDisabled}
       className={cn(
-        "group relative overflow-hidden rounded-2xl border p-4 text-left transition-all",
-        "hover:-translate-y-0.5 hover:shadow-md",
+        "group relative flex min-h-[60px] min-w-[172px] flex-1 basis-[196px] items-center gap-3 overflow-hidden rounded-2xl border px-3 py-3 text-left transition-all",
+        "hover:-translate-y-0.5 hover:shadow-sm",
         isSelected && !isDisabled
-          ? "border-indigo-500 bg-indigo-50/80 shadow-sm"
+          ? "border-indigo-500 bg-indigo-50/90 shadow-[0_8px_24px_rgba(79,70,229,0.12)]"
           : "border-slate-200 bg-white",
         !isDisabled && "hover:border-slate-300",
-        isDisabled && "cursor-not-allowed border-slate-200/90 bg-slate-50/90"
+        isDisabled && "cursor-not-allowed border-slate-200/90 bg-slate-50/95 opacity-75"
       )}
       data-slot="model-selection-option"
       aria-pressed={isSelected}
       aria-disabled={isDisabled}
       title={isDisabled ? model.disabledReason || "Currently unavailable" : undefined}
     >
-      <div className={cn("flex items-start gap-3", isDisabled && "blur-[0.8px] opacity-65")}>
+      <div className={cn("flex min-w-0 flex-1 items-center gap-3", isDisabled && "opacity-80")}>
         <ModelProviderIcon
           modelId={model.id}
           provider={model.provider}
-          size={20}
-          className="mt-0.5"
+          size={18}
+          className="shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <div className="truncate text-sm font-semibold text-slate-900">
               {model.name}
             </div>
             {model.badge && (
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em]",
+                  "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em]",
                   isDisabled
                     ? "bg-slate-200/80 text-slate-600"
                     : "bg-emerald-50 text-emerald-700"
@@ -82,22 +83,19 @@ const renderModelCard = ({
               </span>
             )}
           </div>
-          <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
             {model.provider}
-          </div>
-          <div className="mt-2 text-xs leading-relaxed text-slate-500">
-            {model.description}
           </div>
         </div>
       </div>
 
       {isDisabled && (
         <>
-          <div className="absolute inset-0 bg-white/35" />
-          <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 shadow-sm">
+          <div className="pointer-events-none absolute inset-0 bg-white/25" />
+          <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 shadow-sm">
             <Lock className="h-3 w-3" />
             Locked
-          </div>
+          </span>
         </>
       )}
     </button>
@@ -112,6 +110,7 @@ export function ModelSelectionPanel({
   const defaultOpenSections = MODEL_SELECTION_SECTIONS.filter((section) => section.defaultOpen).map(
     (section) => section.id
   );
+  const selectedModelConfig = selectedModel ? getModelById(selectedModel) : undefined;
 
   return (
     <div className={cn("space-y-4", className)} data-slot="model-selection-panel">
@@ -128,7 +127,7 @@ export function ModelSelectionPanel({
           </div>
         </div>
 
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="flex flex-wrap gap-2">
           {RECOMMENDED_MODELS.map((model) =>
             renderModelCard({
               model,
@@ -138,6 +137,37 @@ export function ModelSelectionPanel({
           )}
         </div>
       </div>
+
+      {selectedModelConfig && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <ModelProviderIcon
+              modelId={selectedModelConfig.id}
+              provider={selectedModelConfig.provider}
+              size={20}
+              className="mt-0.5"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="text-sm font-semibold text-slate-900">
+                  {selectedModelConfig.name}
+                </div>
+                {selectedModelConfig.badge && (
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                    {selectedModelConfig.badge}
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                {selectedModelConfig.provider}
+              </div>
+              <div className="mt-2 text-sm leading-relaxed text-slate-600">
+                {selectedModelConfig.description}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Accordion
         type="multiple"
@@ -179,7 +209,7 @@ export function ModelSelectionPanel({
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pb-4">
-                <div className="grid gap-2 md:grid-cols-2">
+                <div className="flex flex-wrap gap-2">
                   {section.models.map((model) =>
                     renderModelCard({
                       model,

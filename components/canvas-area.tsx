@@ -373,6 +373,18 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     }, 8000);
   }, [canvasId, viewport]);
 
+  const persistCanvasNow = useCallback(async (data: CanvasData) => {
+    const res = await fetch(`/api/canvases/${canvasId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...data, viewportState: viewport }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to persist canvas (${res.status})`);
+    }
+  }, [canvasId, viewport]);
+
   const flushLayout = useCallback(async () => {
     if (layoutTimerRef.current) { clearTimeout(layoutTimerRef.current); layoutTimerRef.current = null; }
     const pending = pendingLayoutRef.current;
@@ -533,10 +545,13 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
 
         // External context resolution
         if (node.type === "externalContext") {
-          const content = (nodeData as any).content || (node as any).content || (node as any).contextContract || "";
+          const content = (nodeData as any).content || (node as any).content || "";
           const isProcessing = isProcessingExternalNode(node);
           if (content) (nodeData as any).content = content;
-          (nodeData as any).loading = !nodeError && !content && isProcessing;
+          (nodeData as any).previewText = isProcessing
+            ? "Processing..."
+            : content || (node as any).contextContract || "";
+          (nodeData as any).loading = !nodeError && isProcessing;
           (nodeData as any).disabled = isProcessing;
           if (nodeError) (nodeData as any).error = nodeError;
         }
@@ -581,7 +596,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
           },
           style: { zIndex: 2 },
           hidden: isHiddenByCollapse(node._id, data.nodes),
-          draggable: node.type !== "entry",
+          draggable: node.type !== "entry" && !(node.type === "externalContext" && isProcessingExternalNode(node)),
           connectable: !(node.type === "externalContext" && isProcessingExternalNode(node)),
         } as Node;
       });
@@ -704,9 +719,11 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
     scheduleCanvasSave(updated);
     if (selectedNode === nodeId) onNodeSelect(null);
-    fetch(`/api/canvases/${canvasId}/nodes/${nodeId}`, { method: "DELETE" }).catch(() => {});
+    void persistCanvasNow(updated).catch(() => {
+      toast.error("Failed to sync node deletion");
+    });
     children.forEach((c) => scheduleParentUpdate(c._id, { parentNodeId: undefined }));
-  }, [canvas, canvasId, selectedNode, onNodeSelect, scheduleCanvasSave, scheduleParentUpdate, setNodes, setEdges]);
+  }, [canvas, persistCanvasNow, selectedNode, onNodeSelect, scheduleCanvasSave, scheduleParentUpdate, setNodes, setEdges]);
 
   const deleteEdge = useCallback((edgeId: string) => {
     if (!canvas || !confirm("Delete this connection?")) return;
@@ -910,6 +927,16 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     }
 
     setPendingConn({ sourceId: params.nodeId });
+  }, [canvas]);
+
+  const isValidConnection = useCallback((connection: Connection) => {
+    if (!canvas || !connection.source || !connection.target) return false;
+    const sourceNode = canvas.nodes.find((node) => node._id === connection.source);
+    const targetNode = canvas.nodes.find((node) => node._id === connection.target);
+    if (!sourceNode || !targetNode) return false;
+    if (!isReadyExternalNode(sourceNode) || !isReadyExternalNode(targetNode)) return false;
+    if (sourceNode.type === "externalContext" && targetNode.type === "externalContext") return false;
+    return true;
   }, [canvas]);
 
   const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
@@ -1279,6 +1306,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
         onConnect={onConnect}
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
+        isValidConnection={isValidConnection}
         onNodeClick={onNodeClick}
         onNodeDragStop={onNodeDragStop}
         onPaneClick={() => onNodeSelect(null)}
