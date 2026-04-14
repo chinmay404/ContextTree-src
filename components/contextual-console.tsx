@@ -49,8 +49,44 @@ interface Message {
 }
 
 // ─── Helpers ────────────────────────────────────────────────
-const normalizeForkId = (id?: string | null) =>
-  (id || "").replace(/(-assistant|-user|-a|-u|_a|_u)$/i, "");
+const ASSISTANT_ID_SUFFIXES = ["_assistant", "-assistant", "_ai", "_a", "-a"];
+const USER_ID_SUFFIXES = ["_user", "-user", "_u", "-u"];
+
+const splitMessageId = (id?: string | null) => {
+  let value = (id || "").trim();
+  let role: "user" | "assistant" = "user";
+
+  let changed = true;
+  while (changed && value) {
+    changed = false;
+
+    for (const suffix of ASSISTANT_ID_SUFFIXES) {
+      if (value.endsWith(suffix)) {
+        role = "assistant";
+        value = value.slice(0, -suffix.length);
+        changed = true;
+        break;
+      }
+    }
+
+    if (changed) continue;
+
+    for (const suffix of USER_ID_SUFFIXES) {
+      if (value.endsWith(suffix)) {
+        value = value.slice(0, -suffix.length);
+        changed = true;
+        break;
+      }
+    }
+  }
+
+  return { baseId: value, role };
+};
+
+const normalizeForkId = (id?: string | null) => {
+  const { baseId, role } = splitMessageId(id);
+  return baseId ? (role === "assistant" ? `${baseId}_ai` : baseId) : "";
+};
 
 const genId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
@@ -87,7 +123,15 @@ const normalizeMessages = (raw: any[], nodeId: string): Message[] =>
         return parts;
       }
       return [{
-        id: msg.id || `msg-${idx}-${nodeId}`,
+        id: (() => {
+          const rawId = msg.id || `msg-${idx}-${nodeId}`;
+          const { baseId, role } = splitMessageId(rawId);
+          return baseId
+            ? role === "assistant"
+              ? `${baseId}_ai`
+              : baseId
+            : rawId;
+        })(),
         role: msg.role,
         content: msg.content,
         timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),

@@ -291,7 +291,31 @@ const ChatPanelInternal = ({
 
   const normalizeForkMessageId = (id?: string | null) => {
     if (!id) return id || "";
-    return id.replace(/(-assistant|-user|-a|-u|_a|_u)$/i, "");
+    let value = id.trim();
+    let role: "user" | "assistant" = "user";
+    let changed = true;
+
+    while (changed && value) {
+      changed = false;
+      for (const suffix of ["_assistant", "-assistant", "_ai", "_a", "-a"]) {
+        if (value.endsWith(suffix)) {
+          role = "assistant";
+          value = value.slice(0, -suffix.length);
+          changed = true;
+          break;
+        }
+      }
+      if (changed) continue;
+      for (const suffix of ["_user", "-user", "_u", "-u"]) {
+        if (value.endsWith(suffix)) {
+          value = value.slice(0, -suffix.length);
+          changed = true;
+          break;
+        }
+      }
+    }
+
+    return role === "assistant" ? `${value}_ai` : value;
   };
 
   // Function to get nodes forked from a specific message

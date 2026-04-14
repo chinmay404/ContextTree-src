@@ -14,6 +14,43 @@ if (!DATABASE_URL) {
 // Single shared pool
 const pool = new Pool({ connectionString: DATABASE_URL });
 
+const ASSISTANT_ID_SUFFIXES = ["_assistant", "-assistant", "_ai", "_a", "-a"];
+const USER_ID_SUFFIXES = ["_user", "-user", "_u", "-u"];
+
+function normalizeTurnId(id?: string | null) {
+  let value = String(id || "").trim();
+  let role: "user" | "assistant" = "user";
+
+  let changed = true;
+  while (changed && value) {
+    changed = false;
+
+    for (const suffix of ASSISTANT_ID_SUFFIXES) {
+      if (value.endsWith(suffix)) {
+        role = "assistant";
+        value = value.slice(0, -suffix.length);
+        changed = true;
+        break;
+      }
+    }
+
+    if (changed) continue;
+
+    for (const suffix of USER_ID_SUFFIXES) {
+      if (value.endsWith(suffix)) {
+        value = value.slice(0, -suffix.length);
+        changed = true;
+        break;
+      }
+    }
+  }
+
+  return {
+    baseId: value,
+    role,
+  };
+}
+
 async function init() {
   // Create tables if they don't exist. Intentionally simple – no migrations required per request.
   await pool.query(`
@@ -921,16 +958,25 @@ export class MongoDBService {
     for (const item of raw) {
       if (!item) continue;
       if (item.role && item.content) {
+        const normalized = normalizeTurnId(item.id);
+        const stableId =
+          normalized.baseId
+            ? item.role === "assistant"
+              ? `${normalized.baseId}_a`
+              : `${normalized.baseId}_u`
+            : item.id;
         out.push({
-          id: item.id,
+          id: stableId,
           role: item.role,
           content: item.content,
           timestamp: item.timestamp || new Date().toISOString(),
         });
       } else if (item.user || item.assistant) {
+        const normalized = normalizeTurnId(item.id);
+        const baseId = normalized.baseId || item.id;
         if (item.user) {
           out.push({
-            id: item.id + "_u",
+            id: `${baseId}_u`,
             role: "user",
             content: item.user.content,
             timestamp: item.user.timestamp || new Date().toISOString(),
@@ -938,7 +984,7 @@ export class MongoDBService {
         }
         if (item.assistant) {
           out.push({
-            id: item.id + "_a",
+            id: `${baseId}_a`,
             role: "assistant",
             content: item.assistant.content,
             timestamp: item.assistant.timestamp || new Date().toISOString(),

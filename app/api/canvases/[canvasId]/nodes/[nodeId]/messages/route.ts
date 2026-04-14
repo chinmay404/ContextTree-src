@@ -15,6 +15,38 @@ interface ChatTurn {
   assistant?: { content: string; timestamp: string };
 }
 
+const ASSISTANT_ID_SUFFIXES = ["_assistant", "-assistant", "_ai", "_a", "-a"];
+const USER_ID_SUFFIXES = ["_user", "-user", "_u", "-u"];
+
+function normalizeTurnId(id?: string | null) {
+  let value = String(id || "").trim();
+
+  let changed = true;
+  while (changed && value) {
+    changed = false;
+
+    for (const suffix of ASSISTANT_ID_SUFFIXES) {
+      if (value.endsWith(suffix)) {
+        value = value.slice(0, -suffix.length);
+        changed = true;
+        break;
+      }
+    }
+
+    if (changed) continue;
+
+    for (const suffix of USER_ID_SUFFIXES) {
+      if (value.endsWith(suffix)) {
+        value = value.slice(0, -suffix.length);
+        changed = true;
+        break;
+      }
+    }
+  }
+
+  return value;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ canvasId: string; nodeId: string }> }
@@ -92,11 +124,12 @@ export async function POST(
       turns = [];
       for (let i = 0; i < legacy.length; i++) {
         const m = legacy[i];
+        const turnId = normalizeTurnId(m.id) || genId();
         if (m.role === "user") {
           const next = legacy[i + 1];
           if (next && next.role === "assistant") {
             turns.push({
-              id: m.id || genId(),
+              id: turnId,
               user: {
                 content: m.content,
                 timestamp: m.timestamp || new Date().toISOString(),
@@ -109,7 +142,7 @@ export async function POST(
             i++; // consume assistant
           } else {
             turns.push({
-              id: m.id || genId(),
+              id: turnId,
               user: {
                 content: m.content,
                 timestamp: m.timestamp || new Date().toISOString(),
@@ -118,7 +151,7 @@ export async function POST(
           }
         } else if (m.role === "assistant") {
           turns.push({
-            id: m.id || genId(),
+            id: turnId,
             assistant: {
               content: m.content,
               timestamp: m.timestamp || new Date().toISOString(),
@@ -133,7 +166,7 @@ export async function POST(
     const ts = message.timestamp || new Date().toISOString();
     if (message.role === "user") {
       turns.push({
-        id: message.id || genId(),
+        id: normalizeTurnId(message.id) || genId(),
         user: { content: message.content, timestamp: ts },
       });
     } else if (message.role === "assistant") {
@@ -148,7 +181,7 @@ export async function POST(
       }
       if (!attached) {
         turns.push({
-          id: message.id || genId(),
+          id: normalizeTurnId(message.id) || genId(),
           assistant: { content: message.content, timestamp: ts },
         });
       }
