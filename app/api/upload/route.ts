@@ -99,6 +99,27 @@ export const POST = withAuth(async (request: NextRequest) => {
           }
     };
 
+    const markUploadFailure = async (message: string) => {
+      try {
+        await mongoService.updateNode(
+          canvasId,
+          nodeId,
+          {
+            contextContract: message,
+            data: {
+              ...(nodeData.data || {}),
+              loading: false,
+              error: message,
+              fileId,
+            },
+          } as any,
+          user.email
+        );
+      } catch (patchError) {
+        logUploadEvent("WARN", "Failed to persist upload error state", patchError);
+      }
+    };
+
     // Save to Postgres (Binary + Metadata)
     try {
         await mongoService.createExternalNodeAndFile(nodeData, fileData, buffer);
@@ -108,35 +129,59 @@ export const POST = withAuth(async (request: NextRequest) => {
         throw dbError; // Re-throw to be caught by outer try-catch
     }
 
-    // Trigger Python Backend Ingestion (Fire & Forget)
-    if (llmApiUrl) {
-        const backendUrl = buildFilesIngestUrl(llmApiUrl);
+    if (!llmApiUrl) {
+      const message = "Document processing backend is not configured";
+      logUploadEvent("ERROR", message, { fileId });
+      await markUploadFailure(message);
+      return NextResponse.json({ error: message }, { status: 503 });
+    }
 
-        logUploadEvent('INFO', `Triggering ingestion: ${backendUrl}`, { fileId });
+    const backendUrl = buildFilesIngestUrl(llmApiUrl);
+    logUploadEvent("INFO", `Triggering ingestion: ${backendUrl}`, { fileId });
 
-        const ingestPayload = { 
-            file_id: fileId,
-            user_email: user.email,
-            node_id: nodeId,
-            canvas_id: canvasId
-        };
+    const ingestPayload = {
+      file_id: fileId,
+      user_email: user.email,
+      node_id: nodeId,
+      canvas_id: canvasId,
+    };
 
-        // Fire and forget - don't await to keep UI snappy
-        fetch(backendUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(ingestPayload)
-        }).then(res => {
-            if (!res.ok) {
-                 logUploadEvent('WARN', `Ingest trigger response not OK: ${res.status}`, { fileId });
-            } else {
-                 logUploadEvent('INFO', `Ingest trigger successful`, { fileId });
-            }
-        }).catch(err => {
-            logUploadEvent('WARN', "Trigger ingest failed (backend might be offline)", err);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const ingestResponse = await fetch(backendUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ingestPayload),
+        signal: controller.signal,
+      });
+
+      if (!ingestResponse.ok) {
+        const detail = (await ingestResponse.text().catch(() => "")).trim();
+        const message =
+          detail ||
+          `Document processing backend responded with ${ingestResponse.status}`;
+        logUploadEvent("ERROR", "Ingest trigger response not OK", {
+          fileId,
+          status: ingestResponse.status,
+          detail: message,
         });
-    } else {
-         logUploadEvent('WARN', "LLM API backend not resolved - skipping ingestion trigger", { fileId });
+        await markUploadFailure(message);
+        return NextResponse.json({ error: message }, { status: 502 });
+      }
+
+      logUploadEvent("INFO", "Ingest trigger successful", { fileId });
+    } catch (ingestError) {
+      const message =
+        ingestError instanceof Error && ingestError.name === "AbortError"
+          ? "Timed out while starting document processing"
+          : "Failed to reach document processing backend";
+      logUploadEvent("ERROR", message, ingestError);
+      await markUploadFailure(message);
+      return NextResponse.json({ error: message }, { status: 502 });
+    } finally {
+      clearTimeout(timeout);
     }
 
     logUploadEvent('INFO', `Upload completed successfully`, { fileId, user: user.email });
