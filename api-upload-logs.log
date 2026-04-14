@@ -1,0 +1,12 @@
+[2026-04-14T15:33:29.762Z] [INFO] Upload started for user: chinmaypisal46@gmail.com 
+[2026-04-14T15:33:29.769Z] [INFO] Processing file: Context%20Tree-%20A%20Comprehensive%20Architectural%20Bluepr....pdf (copy).pdf, size: 139623, type: application/pdf {"user":"chinmaypisal46@gmail.com"}
+[2026-04-14T15:33:32.839Z] [INFO] File saved to DB: 1511cd9e-e019-407f-8ee3-b3e0ab617f41 {"user":"chinmaypisal46@gmail.com"}
+[2026-04-14T15:33:32.842Z] [INFO] Triggering ingestion: http://127.0.0.1:8000/api/v1/files/ingest {"fileId":"1511cd9e-e019-407f-8ee3-b3e0ab617f41"}
+[2026-04-14T15:33:32.853Z] [INFO] Upload completed successfully {"fileId":"1511cd9e-e019-407f-8ee3-b3e0ab617f41","user":"chinmaypisal46@gmail.com"}
+[2026-04-14T15:33:32.929Z] [INFO] Ingest trigger successful {"fileId":"1511cd9e-e019-407f-8ee3-b3e0ab617f41"}
+[2026-04-14T16:12:47.078Z] [INFO] Upload started for user: chinmaypisal46@gmail.com 
+[2026-04-14T16:12:47.091Z] [INFO] Processing file: Building an Intelligent RAG Agent over SharePoint with Claude_ Architecture and Production Guide.pdf, size: 443808, type: application/pdf {"user":"chinmaypisal46@gmail.com"}
+[2026-04-14T16:12:51.035Z] [INFO] File saved to DB: 25059128-10ad-46a6-82c1-4a44fcff1e63 {"user":"chinmaypisal46@gmail.com"}
+[2026-04-14T16:12:51.035Z] [INFO] Triggering ingestion: http://127.0.0.1:8000/api/v1/files/ingest {"fileId":"25059128-10ad-46a6-82c1-4a44fcff1e63"}
+[2026-04-14T16:12:51.037Z] [INFO] Upload completed successfully {"fileId":"25059128-10ad-46a6-82c1-4a44fcff1e63","user":"chinmaypisal46@gmail.com"}
+[2026-04-14T16:12:51.043Z] [INFO] Ingest trigger successful {"fileId":"25059128-10ad-46a6-82c1-4a44fcff1e63"}
