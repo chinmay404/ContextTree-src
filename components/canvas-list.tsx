@@ -251,6 +251,7 @@ export function CanvasList({
           <button
             onClick={onCreateCanvas}
             title="New Canvas (⌘N)"
+            data-tour="create-canvas"
             className="group relative flex items-center justify-center h-6 w-6 rounded-md text-slate-500 hover:text-white hover:bg-slate-900 transition-all active:scale-95"
           >
             <Plus size={14} className="transition-transform group-hover:rotate-90" />

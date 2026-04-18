@@ -412,6 +412,7 @@ export default function ContextTreePage() {
         {/* Canvas — primary surface */}
         <motion.div
           className="flex-1 relative"
+          data-tour="canvas-surface"
           animate={{
             opacity: chatFullscreen ? 0.1 : 1,
             scale: chatFullscreen ? 0.98 : 1,
@@ -548,6 +549,7 @@ export default function ContextTreePage() {
 
         {/* Right panel — contextual console */}
         <div
+          data-tour="right-panel"
           className={`bg-white transition-all duration-300 ease-in-out flex flex-col border-l border-slate-200 ${
             showRightPanel
               ? chatFullscreen
@@ -598,7 +600,7 @@ export default function ContextTreePage() {
         open={isSearchOpen}
         onOpenChange={setIsSearchOpen}
       />
-      <OnboardingGuide />
+      {selectedCanvas && !isCreateCanvasDialogOpen ? <OnboardingGuide /> : null}
     </motion.div>
   );
 }
