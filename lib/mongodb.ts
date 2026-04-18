@@ -243,6 +243,17 @@ async function init() {
     );
     create index if not exists idx_context_chunks_file on context_chunks(file_id);
 
+    create table if not exists user_api_keys (
+      user_email text not null references users(email) on delete cascade,
+      provider text not null,
+      encrypted_key text not null,
+      key_hint text,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      primary key (user_email, provider)
+    );
+    create index if not exists idx_user_api_keys_provider on user_api_keys(provider);
+
   `);
 }
 
@@ -1236,6 +1247,87 @@ export class MongoDBService {
     } catch (error) {
       console.error("Error fetching external file binary:", error);
       return null;
+    }
+  }
+
+  async getUserApiKeyStatuses(userEmail: string) {
+    await ensureInit();
+    if (!userEmail) return [];
+
+    try {
+      const res = await pool.query(
+        `SELECT provider, key_hint, updated_at
+         FROM user_api_keys
+         WHERE user_email = $1`,
+        [userEmail]
+      );
+      return res.rows;
+    } catch (error) {
+      console.error("Error fetching user API key statuses:", error);
+      return [];
+    }
+  }
+
+  async getUserApiKeyRecord(userEmail: string, provider: string) {
+    await ensureInit();
+    if (!userEmail || !provider) return null;
+
+    try {
+      const res = await pool.query(
+        `SELECT user_email, provider, encrypted_key, key_hint, updated_at
+         FROM user_api_keys
+         WHERE user_email = $1 AND provider = $2
+         LIMIT 1`,
+        [userEmail, provider]
+      );
+      return res.rowCount ? res.rows[0] : null;
+    } catch (error) {
+      console.error("Error fetching user API key:", error);
+      return null;
+    }
+  }
+
+  async upsertUserApiKey(
+    userEmail: string,
+    provider: string,
+    encryptedKey: string,
+    keyHint: string
+  ) {
+    await ensureInit();
+    if (!userEmail || !provider || !encryptedKey) return null;
+
+    try {
+      const res = await pool.query(
+        `INSERT INTO user_api_keys (user_email, provider, encrypted_key, key_hint, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, now(), now())
+         ON CONFLICT (user_email, provider) DO UPDATE SET
+           encrypted_key = EXCLUDED.encrypted_key,
+           key_hint = EXCLUDED.key_hint,
+           updated_at = now()
+         RETURNING provider, key_hint, updated_at`,
+        [userEmail, provider, encryptedKey, keyHint]
+      );
+      return res.rows[0] || null;
+    } catch (error) {
+      console.error("Error saving user API key:", error);
+      return null;
+    }
+  }
+
+  async deleteUserApiKey(userEmail: string, provider: string) {
+    await ensureInit();
+    if (!userEmail || !provider) return false;
+
+    try {
+      await pool.query(
+        `DELETE FROM user_api_keys
+         WHERE user_email = $1 AND provider = $2`,
+        [userEmail, provider]
+      );
+      return true;
+    } catch (error) {
+      console.error("Error deleting user API key:", error);
+      return false;
     }
   }
 

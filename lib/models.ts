@@ -12,6 +12,8 @@ export interface ModelConfig {
   availability?: ModelAvailability;
   badge?: string;
   disabledReason?: string;
+  requiresByok?: boolean;
+  byokProvider?: "openai" | "anthropic";
 }
 
 export interface ModelSelectionSection {
@@ -117,40 +119,44 @@ const LIVE_MODELS: ModelConfig[] = [
 
 const LOCKED_MODELS: ModelConfig[] = [
   {
-    id: "openai/gpt-5.4",
-    name: "ChatGPT 5.4",
-    description: "Official ChatGPT-grade model. Kept visible here, but still disabled for now.",
+    id: "openai/gpt-5",
+    name: "GPT-5",
+    description: "Official OpenAI flagship model. Unlock it with your own OpenAI API key.",
     provider: "OpenAI",
-    availability: "disabled",
-    badge: "Locked",
-    disabledReason: "OpenAI direct provider is not enabled yet.",
+    availability: "enabled",
+    badge: "BYOK",
+    requiresByok: true,
+    byokProvider: "openai",
   },
   {
-    id: "openai/gpt-5.4-mini",
-    name: "ChatGPT 5.4 Mini",
-    description: "Smaller ChatGPT option for faster production usage once OpenAI is turned on.",
+    id: "openai/gpt-5-mini",
+    name: "GPT-5 Mini",
+    description: "Faster OpenAI option for lighter chats and quick branches. Unlock it with your own OpenAI API key.",
     provider: "OpenAI",
-    availability: "disabled",
-    badge: "Locked",
-    disabledReason: "OpenAI direct provider is not enabled yet.",
+    availability: "enabled",
+    badge: "BYOK",
+    requiresByok: true,
+    byokProvider: "openai",
   },
   {
-    id: "anthropic/claude-sonnet-4-5",
-    name: "Claude Sonnet 4.5",
-    description: "Balanced Claude model for high-quality chat and writing. Visible, but disabled.",
+    id: "anthropic/claude-sonnet-4-20250514",
+    name: "Claude Sonnet 4",
+    description: "Balanced Claude model for high-quality chat and writing. Unlock it with your own Anthropic API key.",
     provider: "Anthropic",
-    availability: "disabled",
-    badge: "Locked",
-    disabledReason: "Anthropic provider is not enabled yet.",
+    availability: "enabled",
+    badge: "BYOK",
+    requiresByok: true,
+    byokProvider: "anthropic",
   },
   {
-    id: "anthropic/claude-opus-4-1",
+    id: "anthropic/claude-opus-4-1-20250805",
     name: "Claude Opus 4.1",
-    description: "Highest-end Claude tier for deeper reasoning when Anthropic is turned on.",
+    description: "Highest-end Claude tier for deeper reasoning. Unlock it with your own Anthropic API key.",
     provider: "Anthropic",
-    availability: "disabled",
-    badge: "Locked",
-    disabledReason: "Anthropic provider is not enabled yet.",
+    availability: "enabled",
+    badge: "BYOK",
+    requiresByok: true,
+    byokProvider: "anthropic",
   },
   {
     id: "gemini/gemini-2.5-pro",
@@ -282,22 +288,22 @@ export const MODEL_SELECTION_SECTIONS: ModelSelectionSection[] = [
     id: "anthropic",
     name: "Anthropic",
     provider: "Anthropic",
-    description: "Claude is shown in the catalog, but still intentionally disabled.",
+    description: "Connect your Anthropic key to unlock Claude models securely for your own account.",
     defaultOpen: false,
     models: resolveModels([
-      "anthropic/claude-sonnet-4-5",
-      "anthropic/claude-opus-4-1",
+      "anthropic/claude-sonnet-4-20250514",
+      "anthropic/claude-opus-4-1-20250805",
     ]),
   },
   {
     id: "openai",
     name: "GPT / OpenAI",
     provider: "OpenAI",
-    description: "ChatGPT entries stay visible but locked until the direct provider is enabled.",
+    description: "Connect your OpenAI key to unlock GPT models securely for your own account.",
     defaultOpen: false,
     models: resolveModels([
-      "openai/gpt-5.4",
-      "openai/gpt-5.4-mini",
+      "openai/gpt-5",
+      "openai/gpt-5-mini",
     ]),
   },
   {

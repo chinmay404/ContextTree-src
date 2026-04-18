@@ -446,28 +446,36 @@ const ForkDialog = memo(function ForkDialog({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 rounded-2xl bg-white p-5 shadow-2xl">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <GitBranch size={18} className="text-indigo-500" /> Branch
-              Conversation
-            </h3>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Choose a model for the new branch
-            </p>
+      <div className="mx-4 flex max-h-[86vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="border-b border-slate-100 px-6 py-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <GitBranch size={18} className="text-indigo-500" /> Branch
+                Conversation
+              </h3>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Choose a model for the new branch
+              </p>
+            </div>
+            <button
+              onClick={onCancel}
+              className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100"
+            >
+              <X size={18} />
+            </button>
           </div>
-          <button
-            onClick={onCancel}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100"
-          >
-            <X size={18} />
-          </button>
         </div>
-        <div className="max-h-[56vh] overflow-y-auto mb-4 pr-1">
-          <ModelSelectionPanel selectedModel={model} onSelect={setModel} />
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          <ModelSelectionPanel
+            selectedModel={model}
+            onSelect={setModel}
+            compact
+          />
         </div>
-        <div className="flex gap-2">
+
+        <div className="flex gap-2 border-t border-slate-100 px-6 py-4">
           <Button
             variant="outline"
             onClick={onCancel}

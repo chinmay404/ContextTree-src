@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { ApiKeySettingsDialog } from "@/components/api-key-settings-dialog";
 
 export default function ProfilePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -37,6 +38,7 @@ export default function ProfilePage() {
     canvasIds: string[];
   } | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [isApiKeysOpen, setIsApiKeysOpen] = useState(false);
 
   useEffect(() => {
     const loadUserStats = async () => {
@@ -93,6 +95,11 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <ApiKeySettingsDialog
+        open={isApiKeysOpen}
+        onOpenChange={setIsApiKeysOpen}
+      />
+
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/50 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4">
@@ -165,9 +172,14 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <Button variant="outline" size="sm" className="self-start">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="self-start"
+                  onClick={() => setIsApiKeysOpen(true)}
+                >
                   <Settings className="w-4 h-4 mr-2" />
-                  Settings
+                  API Keys
                 </Button>
               </div>
             </CardHeader>

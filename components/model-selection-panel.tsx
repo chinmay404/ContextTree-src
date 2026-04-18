@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import {
   Lock,
   Sparkles,
+  KeyRound,
 } from "lucide-react";
 import {
   Accordion,
@@ -16,6 +18,9 @@ import {
   getModelById,
   type ModelConfig,
 } from "@/lib/models";
+import { useByokStatus } from "@/hooks/use-byok-status";
+import { ApiKeySettingsDialog } from "@/components/api-key-settings-dialog";
+import type { ByokProvider, ProviderKeyStatusMap } from "@/lib/byok";
 import { ModelProviderIcon } from "@/components/model-badge";
 import { cn } from "@/lib/utils";
 
@@ -23,42 +28,72 @@ type ModelSelectionPanelProps = {
   selectedModel: string | null;
   onSelect: (modelId: string) => void;
   className?: string;
+  compact?: boolean;
 };
 
 const renderModelCard = ({
   model,
   isSelected,
   onSelect,
+  statuses,
+  onManageKeys,
 }: {
   model: ModelConfig;
   isSelected: boolean;
   onSelect: (modelId: string) => void;
+  statuses: ProviderKeyStatusMap;
+  onManageKeys: (provider?: ByokProvider) => void;
 }) => {
-  const isDisabled = model.availability === "disabled";
+  const requiresByok = Boolean(model.requiresByok && model.byokProvider);
+  const providerStatus =
+    requiresByok && model.byokProvider ? statuses[model.byokProvider] : null;
+  const isDisabledByCatalog = model.availability === "disabled";
+  const isUnavailable = isDisabledByCatalog || (requiresByok && !providerStatus?.configured);
+  const statusLabel = requiresByok
+    ? providerStatus?.configured
+      ? "Connected"
+      : "Connect key"
+    : model.badge;
 
   return (
     <button
       key={model.id}
       type="button"
       onClick={() => {
-        if (!isDisabled) onSelect(model.id);
+        if (isDisabledByCatalog) return;
+        if (requiresByok && !providerStatus?.configured) {
+          onManageKeys(model.byokProvider);
+          return;
+        }
+        onSelect(model.id);
       }}
-      disabled={isDisabled}
       className={cn(
         "group relative flex min-h-[60px] min-w-[172px] flex-1 basis-[196px] items-center gap-3 overflow-hidden rounded-2xl border px-3 py-3 text-left transition-all",
         "hover:-translate-y-0.5 hover:shadow-sm",
-        isSelected && !isDisabled
+        isSelected && !isUnavailable
           ? "border-indigo-500 bg-indigo-50/90 shadow-[0_8px_24px_rgba(79,70,229,0.12)]"
           : "border-slate-200 bg-white",
-        !isDisabled && "hover:border-slate-300",
-        isDisabled && "cursor-not-allowed border-slate-200/90 bg-slate-50/95 opacity-75"
+        !isUnavailable && "hover:border-slate-300",
+        isUnavailable && "border-slate-200/90 bg-slate-50/95",
+        requiresByok && !providerStatus?.configured && "hover:border-indigo-200 hover:bg-indigo-50/40"
       )}
       data-slot="model-selection-option"
       aria-pressed={isSelected}
-      aria-disabled={isDisabled}
-      title={isDisabled ? model.disabledReason || "Currently unavailable" : undefined}
+      aria-disabled={isUnavailable}
+      title={
+        isDisabledByCatalog
+          ? model.disabledReason || "Currently unavailable"
+          : requiresByok && !providerStatus?.configured
+            ? `Connect your ${model.provider} key to unlock this model`
+            : undefined
+      }
     >
-      <div className={cn("flex min-w-0 flex-1 items-center gap-3", isDisabled && "opacity-80")}>
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 items-center gap-3",
+          isUnavailable && "opacity-90"
+        )}
+      >
         <ModelProviderIcon
           modelId={model.id}
           provider={model.provider}
@@ -70,16 +105,20 @@ const renderModelCard = ({
             <div className="truncate text-sm font-semibold text-slate-900">
               {model.name}
             </div>
-            {model.badge && (
+            {statusLabel && (
               <span
                 className={cn(
                   "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em]",
-                  isDisabled
+                  isDisabledByCatalog
                     ? "bg-slate-200/80 text-slate-600"
+                    : requiresByok && providerStatus?.configured
+                      ? "bg-emerald-50 text-emerald-700"
+                      : requiresByok
+                        ? "bg-indigo-50 text-indigo-700"
                     : "bg-emerald-50 text-emerald-700"
                 )}
               >
-                {model.badge}
+                {statusLabel}
               </span>
             )}
           </div>
@@ -89,7 +128,7 @@ const renderModelCard = ({
         </div>
       </div>
 
-      {isDisabled && (
+      {isDisabledByCatalog && (
         <>
           <div className="pointer-events-none absolute inset-0 bg-white/25" />
           <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 shadow-sm">
@@ -106,14 +145,96 @@ export function ModelSelectionPanel({
   selectedModel,
   onSelect,
   className,
+  compact = false,
 }: ModelSelectionPanelProps) {
+  const { statuses, refresh } = useByokStatus();
+  const [isKeyDialogOpen, setIsKeyDialogOpen] = useState(false);
+  const [requestedProvider, setRequestedProvider] = useState<ByokProvider | undefined>();
   const defaultOpenSections = MODEL_SELECTION_SECTIONS.filter((section) => section.defaultOpen).map(
     (section) => section.id
   );
   const selectedModelConfig = selectedModel ? getModelById(selectedModel) : undefined;
 
+  const handleManageKeys = (provider?: ByokProvider) => {
+    setRequestedProvider(provider);
+    setIsKeyDialogOpen(true);
+  };
+
   return (
     <div className={cn("space-y-4", className)} data-slot="model-selection-panel">
+      <ApiKeySettingsDialog
+        open={isKeyDialogOpen}
+        onOpenChange={setIsKeyDialogOpen}
+        initialProvider={requestedProvider}
+        onKeysChanged={refresh}
+      />
+
+      <div
+        className={cn(
+          "rounded-2xl border border-slate-200 bg-white shadow-sm",
+          compact ? "p-3" : "p-4"
+        )}
+      >
+        <div
+          className={cn(
+            "gap-3",
+            compact
+              ? "flex flex-col"
+              : "flex flex-col sm:flex-row sm:items-center sm:justify-between"
+          )}
+        >
+          <div className="flex items-start gap-3">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+              <KeyRound className="h-4 w-4" />
+            </span>
+            <div>
+              <div className="text-sm font-semibold text-slate-900">
+                Bring Your Own Key
+              </div>
+              <div className="text-xs leading-relaxed text-slate-500">
+                Claude and GPT stay private to your account. We store the key encrypted
+                server-side and unlock those models only after you connect it.
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleManageKeys()}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-white",
+              compact ? "w-full justify-center" : "self-start sm:self-auto"
+            )}
+          >
+            Manage keys
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(["openai", "anthropic"] as const).map((provider) => {
+            const providerStatus = statuses[provider];
+            return (
+              <button
+                key={provider}
+                type="button"
+                onClick={() => handleManageKeys(provider)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors",
+                  providerStatus.configured
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
+                )}
+              >
+                <span>{provider === "openai" ? "OpenAI" : "Anthropic"}</span>
+                <span className="text-[10px] tracking-[0.16em] opacity-80">
+                  {providerStatus.configured ? providerStatus.keyHint || "Connected" : "Not connected"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-sky-50 p-4">
         <div className="mb-3 flex items-center gap-2">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
@@ -133,6 +254,8 @@ export function ModelSelectionPanel({
               model,
               isSelected: selectedModel === model.id,
               onSelect,
+              statuses,
+              onManageKeys: handleManageKeys,
             })
           )}
         </div>
@@ -215,6 +338,8 @@ export function ModelSelectionPanel({
                       model,
                       isSelected: selectedModel === model.id,
                       onSelect,
+                      statuses,
+                      onManageKeys: handleManageKeys,
                     })
                   )}
                 </div>
