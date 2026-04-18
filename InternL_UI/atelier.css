@@ -1,0 +1,346 @@
+/**
+ * atelier.css
+ * ----------------------------------------------------------------------------
+ * Design tokens + ReactFlow overrides for ContextTree's "Atelier" interior UI.
+ * Drop these into your app/globals.css (append at the bottom).
+ */
+
+/* ─── Design tokens ────────────────────────────────────────────────── */
+:root {
+  /* Paper surfaces */
+  --at-paper:        #FBF9F4;
+  --at-paper-soft:   #F4F0E6;
+  --at-paper-edge:   #E8E2D1;
+  --at-paper-shadow: rgba(58, 44, 20, 0.04);
+
+  /* Ink (text) */
+  --at-ink:          #0A0E1A;
+  --at-ink-soft:     #2A3142;
+  --at-ink-muted:    #6B7280;
+  --at-ink-faint:    #9CA3AF;
+
+  /* Accents */
+  --at-moss:         #2D5F3F;
+  --at-moss-soft:    #5B8A6D;
+  --at-moss-tint:    rgba(45, 95, 63, 0.08);
+  --at-moss-dark:    #234A32;
+
+  --at-amber:        #C97B2F;
+  --at-amber-soft:   #E09A55;
+  --at-amber-tint:   rgba(201, 123, 47, 0.08);
+
+  --at-indigo:       #4338CA;
+  --at-indigo-tint:  rgba(67, 56, 202, 0.06);
+
+  /* Typography */
+  --at-font-serif:   'Fraunces', Georgia, serif;
+  --at-font-sans:    var(--font-geist-sans, 'Geist Sans', system-ui, sans-serif);
+  --at-font-mono:    var(--font-geist-mono, 'Geist Mono', 'SFMono-Regular', monospace);
+
+  /* Radii */
+  --at-radius-sm:  6px;
+  --at-radius-md:  10px;
+  --at-radius-lg:  14px;
+  --at-radius-xl:  18px;
+
+  /* Shadows — warm-tinted */
+  --at-shadow-sm:  0 1px 2px var(--at-paper-shadow);
+  --at-shadow-md:  0 1px 2px var(--at-paper-shadow), 0 4px 12px var(--at-paper-shadow);
+  --at-shadow-lg:  0 2px 4px var(--at-paper-shadow), 0 12px 32px rgba(58, 44, 20, 0.08);
+  --at-shadow-focus: 0 0 0 3px rgba(45, 95, 63, 0.18);
+}
+
+/* ─── Canvas surface ───────────────────────────────────────────────── */
+.atelier-canvas {
+  background-color: var(--at-paper);
+  background-image:
+    linear-gradient(to right, rgba(10, 14, 26, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(10, 14, 26, 0.045) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+}
+
+/* Softens the edges of the canvas with a subtle vignette */
+.atelier-canvas::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 80% 70% at center,
+    transparent 0%,
+    transparent 60%,
+    rgba(58, 44, 20, 0.03) 100%
+  );
+  z-index: 0;
+}
+
+/* ─── ReactFlow overrides ──────────────────────────────────────────── */
+
+/* Strip default node outline — each node owns its own selection styling */
+.react-flow__node.selected {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.react-flow__node:focus,
+.react-flow__node:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ReactFlow attribution — remove the watermark area */
+.react-flow__attribution {
+  display: none;
+}
+
+/* Pan/zoom controls — restyle to paper-button feel */
+.react-flow__controls {
+  background: var(--at-paper-soft) !important;
+  border: 1px solid var(--at-paper-edge) !important;
+  border-radius: var(--at-radius-md) !important;
+  box-shadow: var(--at-shadow-sm) !important;
+  padding: 4px !important;
+  display: flex !important;
+  gap: 2px !important;
+  flex-direction: row !important;
+  bottom: 16px !important;
+  right: 16px !important;
+  left: auto !important;
+}
+
+.react-flow__controls button {
+  background: transparent !important;
+  border: none !important;
+  color: var(--at-ink-soft) !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: var(--at-radius-sm) !important;
+  transition: all 150ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.react-flow__controls button:hover {
+  background: var(--at-paper) !important;
+  color: var(--at-ink) !important;
+  transform: none !important;
+}
+
+.react-flow__controls button svg {
+  fill: currentColor !important;
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* Hide the lock (interactive) button — we don't need it */
+.react-flow__controls-interactive {
+  display: none !important;
+}
+
+/* Minimap — restyle as "Contents" panel */
+.react-flow__minimap {
+  background: var(--at-paper-soft) !important;
+  border: 1px solid var(--at-paper-edge) !important;
+  border-radius: var(--at-radius-md) !important;
+  box-shadow: var(--at-shadow-sm) !important;
+  padding: 0 !important;
+  bottom: 72px !important;
+  right: 16px !important;
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(45, 95, 63, 0.08) !important;
+  stroke: var(--at-moss) !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Connection line while dragging an edge */
+.react-flow__connection-path {
+  stroke: var(--at-moss) !important;
+  stroke-width: 2 !important;
+  stroke-dasharray: 4 4 !important;
+  animation: atelier-dash-flow 0.8s linear infinite !important;
+}
+
+@keyframes atelier-dash-flow {
+  to { stroke-dashoffset: -16; }
+}
+
+/* Edge hover — subtle glow */
+.react-flow__edge:hover .react-flow__edge-path {
+  filter: drop-shadow(0 0 4px rgba(45, 95, 63, 0.3));
+}
+
+/* ─── Paper button — reusable utility class ────────────────────────── */
+.atelier-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: var(--at-paper-soft);
+  border: 1px solid var(--at-paper-edge);
+  border-radius: var(--at-radius-md);
+  color: var(--at-ink-soft);
+  font-family: var(--at-font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  transition: all 150ms cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.atelier-button:hover {
+  background: var(--at-paper);
+  border-color: var(--at-moss-soft);
+  color: var(--at-ink);
+}
+
+.atelier-button:active {
+  transform: translateY(1px);
+}
+
+.atelier-button:focus-visible {
+  outline: none;
+  box-shadow: var(--at-shadow-focus);
+}
+
+.atelier-button[data-variant="primary"] {
+  background: var(--at-moss);
+  border-color: var(--at-moss);
+  color: var(--at-paper);
+}
+
+.atelier-button[data-variant="primary"]:hover {
+  background: var(--at-moss-dark);
+}
+
+.atelier-button[data-variant="ghost"] {
+  background: transparent;
+  border-color: transparent;
+}
+
+.atelier-button[data-variant="ghost"]:hover {
+  background: var(--at-paper);
+  border-color: var(--at-paper-edge);
+}
+
+.atelier-button[data-variant="danger"] {
+  color: #B42F2F;
+}
+
+.atelier-button[data-variant="danger"]:hover {
+  background: rgba(180, 47, 47, 0.05);
+  border-color: rgba(180, 47, 47, 0.3);
+  color: #8A1F1F;
+}
+
+/* ─── Paper chip (used for model badges, tags) ─────────────────────── */
+.atelier-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--at-paper);
+  border: 1px solid var(--at-paper-edge);
+  border-radius: var(--at-radius-sm);
+  font-family: var(--at-font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--at-ink-soft);
+  line-height: 1.2;
+}
+
+.atelier-chip[data-accent="moss"] {
+  color: var(--at-moss);
+  background: var(--at-moss-tint);
+  border-color: rgba(45, 95, 63, 0.2);
+}
+
+.atelier-chip[data-accent="amber"] {
+  color: var(--at-amber);
+  background: var(--at-amber-tint);
+  border-color: rgba(201, 123, 47, 0.2);
+}
+
+.atelier-chip[data-accent="indigo"] {
+  color: var(--at-indigo);
+  background: var(--at-indigo-tint);
+  border-color: rgba(67, 56, 202, 0.2);
+}
+
+/* ─── Type label (the italic Fraunces eyebrow) ─────────────────────── */
+.atelier-type-label {
+  font-family: var(--at-font-serif);
+  font-style: italic;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--at-ink-muted);
+}
+
+.atelier-type-label[data-accent="moss"] { color: var(--at-moss); }
+.atelier-type-label[data-accent="amber"] { color: var(--at-amber); }
+.atelier-type-label[data-accent="indigo"] { color: var(--at-indigo); }
+
+/* ─── Streaming dots indicator ─────────────────────────────────────── */
+@keyframes atelier-pulse-dot {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+.atelier-streaming {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.atelier-streaming span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--at-moss);
+  animation: atelier-pulse-dot 1.2s infinite ease-in-out;
+}
+
+.atelier-streaming span:nth-child(2) { animation-delay: 0.2s; }
+.atelier-streaming span:nth-child(3) { animation-delay: 0.4s; }
+
+/* ─── Shimmer for skeleton loading ─────────────────────────────────── */
+@keyframes atelier-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.atelier-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--at-paper-soft) 0%,
+    var(--at-paper) 50%,
+    var(--at-paper-soft) 100%
+  );
+  background-size: 200% 100%;
+  animation: atelier-shimmer 1.8s linear infinite;
+}
+
+/* ─── Reduced motion ───────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .atelier-streaming span,
+  .atelier-shimmer,
+  .react-flow__connection-path {
+    animation: none !important;
+  }
+
+  .atelier-button,
+  .react-flow__controls button,
+  .atelier-card {
+    transition: none !important;
+  }
+}
+
+/* ─── Respect focus for keyboard users ─────────────────────────────── */
+.atelier-card:focus-visible,
+.atelier-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--at-shadow-focus);
+}

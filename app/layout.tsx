@@ -1,15 +1,24 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { Fraunces } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/auth-provider";
 import { AOSProvider } from "@/components/aos-provider";
 import { Toaster } from "@/components/ui/toaster";
 
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "ContextTree - Conversational Flow Builder",
+  title: "ContextTree — Learn Anything Deeply with AI",
   description:
-    "Build and test conversational flows with visual nodes and AI integration",
+    "A visual canvas for studying with AI. Branch for every rabbit hole. Never lose your main thread. Works with Claude, GPT-4, Gemini, and open-source models.",
   icons: {
     icon: "/tree-icon.svg",
     shortcut: "/tree-icon.svg",
@@ -23,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${fraunces.variable}`}>
       <head>
         <style>{`
 html {

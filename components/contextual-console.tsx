@@ -26,6 +26,7 @@ import {
   Edit2,
   ChevronRight,
   MessageSquareDashed,
+  Send,
 } from "lucide-react";
 import { storageService } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
@@ -208,13 +209,17 @@ const MessageItem = memo(function MessageItem({
 
   return (
     <div
-      className={`group px-5 py-5 ${isUser ? "" : "bg-slate-50/50"} border-b border-slate-100/60 last:border-0`}
+      className={`group px-5 py-4 ${isUser ? "" : "bg-[var(--at-paper-soft)]/40"} border-b last:border-0`}
+      style={{ borderColor: "var(--at-paper-edge)" }}
     >
       <div className="flex gap-3 max-w-3xl mx-auto">
         <div className="flex-shrink-0 pt-0.5">
           {isUser ? (
-            <div className="h-7 w-7 rounded-full flex items-center justify-center bg-slate-200">
-              <User size={14} className="text-slate-600" />
+            <div
+              className="h-7 w-7 rounded-full flex items-center justify-center"
+              style={{ background: "var(--at-moss-tint)", color: "var(--at-moss)" }}
+            >
+              <User size={14} />
             </div>
           ) : (
             <ModelProviderIcon
@@ -227,10 +232,16 @@ const MessageItem = memo(function MessageItem({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-slate-800">
+            <span
+              className="text-sm font-semibold"
+              style={{ color: "var(--at-ink)", fontFamily: "var(--at-font-sans)" }}
+            >
               {isUser ? "You" : "Assistant"}
             </span>
-            <span className="text-[10px] text-slate-400">
+            <span
+              className="text-[10px]"
+              style={{ fontFamily: "var(--at-font-mono)", color: "var(--at-ink-faint)" }}
+            >
               {new Date(message.timestamp).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -240,9 +251,11 @@ const MessageItem = memo(function MessageItem({
               {!isUser && (
                 <button
                   onClick={() => onStartFork(message.id)}
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                  className="atelier-button"
+                  data-variant="ghost"
+                  style={{ padding: "3px 8px", fontSize: 10.5, height: 22 }}
                 >
-                  <GitBranch size={10} /> Branch
+                  <GitBranch size={10} /> Fork
                 </button>
               )}
               <button
@@ -251,26 +264,46 @@ const MessageItem = memo(function MessageItem({
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
                 }}
-                className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 hover:text-slate-600"
+                className="atelier-button"
+                data-variant="ghost"
+                style={{ padding: 0, width: 22, height: 22 }}
               >
                 {copied ? <Check size={10} /> : <Copy size={10} />}
               </button>
             </div>
           </div>
 
-          <div className="text-[15px] leading-relaxed text-slate-800">
+          <div
+            className="leading-relaxed"
+            style={{
+              fontFamily: "var(--at-font-sans)",
+              fontSize: 14.5,
+              color: "var(--at-ink)",
+            }}
+          >
             {isUser ? (
               <div className="whitespace-pre-wrap">{message.content}</div>
             ) : (
-              <div className="prose prose-slate prose-sm max-w-none prose-p:leading-relaxed prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-200 prose-code:before:content-none prose-code:after:content-none">
+              <div className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:rounded-lg prose-code:before:content-none prose-code:after:content-none"
+                style={{ color: "var(--at-ink)" }}
+              >
                 {parseThinking(message.content).map((part, i) => (
                   <div key={i}>
                     {part.type === "thinking" ? (
-                      <details className="mb-3 rounded-lg border border-purple-100 bg-purple-50/30 px-3 py-2 text-sm">
-                        <summary className="cursor-pointer text-xs font-medium text-purple-600">
+                      <details className="mb-3 rounded-lg px-3 py-2 text-sm"
+                        style={{
+                          border: "1px solid var(--at-amber-tint)",
+                          background: "var(--at-amber-tint)",
+                        }}
+                      >
+                        <summary className="cursor-pointer text-xs font-medium"
+                          style={{ color: "var(--at-amber)", fontFamily: "var(--at-font-serif)", fontStyle: "italic" }}
+                        >
                           Thinking
                         </summary>
-                        <div className="mt-2 border-l-2 border-purple-200 pl-3 italic text-purple-700 whitespace-pre-wrap text-xs">
+                        <div className="mt-2 pl-3 italic whitespace-pre-wrap text-xs"
+                          style={{ borderLeft: "2px solid var(--at-amber-soft)", color: "var(--at-ink-soft)" }}
+                        >
                           {part.content}
                         </div>
                       </details>
@@ -283,7 +316,9 @@ const MessageItem = memo(function MessageItem({
                             <p className="mb-3 last:mb-0">{children}</p>
                           ),
                           ul: ({ children }) => (
-                            <ul className="list-disc pl-5 mb-3 space-y-1">
+                            <ul className="list-disc pl-5 mb-3 space-y-1"
+                              style={{ "--tw-prose-bullets": "var(--at-amber)" } as any}
+                            >
                               {children}
                             </ul>
                           ),
@@ -293,66 +328,136 @@ const MessageItem = memo(function MessageItem({
                             </ol>
                           ),
                           h1: ({ children }) => (
-                            <h1 className="text-xl font-bold mb-3 mt-5 first:mt-0">
+                            <h1 className="mb-3 mt-5 first:mt-0"
+                              style={{
+                                fontFamily: "var(--at-font-serif)",
+                                fontWeight: 500,
+                                fontSize: 20,
+                                letterSpacing: "-0.01em",
+                                color: "var(--at-ink)",
+                              }}
+                            >
                               {children}
                             </h1>
                           ),
                           h2: ({ children }) => (
-                            <h2 className="text-lg font-bold mb-2 mt-5">
+                            <h2 className="mb-2 mt-5"
+                              style={{
+                                fontFamily: "var(--at-font-serif)",
+                                fontWeight: 500,
+                                fontSize: 17,
+                                color: "var(--at-ink)",
+                              }}
+                            >
                               {children}
                             </h2>
                           ),
                           h3: ({ children }) => (
-                            <h3 className="text-base font-semibold mb-2 mt-4">
+                            <h3 className="mb-2 mt-4"
+                              style={{
+                                fontFamily: "var(--at-font-serif)",
+                                fontWeight: 500,
+                                fontSize: 15,
+                                color: "var(--at-ink)",
+                              }}
+                            >
                               {children}
                             </h3>
                           ),
                           blockquote: ({ children }) => (
-                            <blockquote className="border-l-3 border-slate-200 pl-3 italic text-slate-600 my-3">
+                            <blockquote
+                              className="pl-3 italic my-3"
+                              style={{
+                                borderLeft: "2px solid var(--at-amber)",
+                                color: "var(--at-ink-soft)",
+                              }}
+                            >
                               {children}
                             </blockquote>
                           ),
                           code: ({ children, className }) => {
                             if (!className)
                               return (
-                                <code className="bg-slate-100 px-1 py-0.5 rounded text-[13px] font-mono text-pink-600">
+                                <code
+                                  style={{
+                                    background: "var(--at-paper)",
+                                    color: "var(--at-ink-soft)",
+                                    padding: "1px 5px",
+                                    borderRadius: 4,
+                                    fontFamily: "var(--at-font-mono)",
+                                    fontSize: 12.5,
+                                  }}
+                                >
                                   {children}
                                 </code>
                               );
                             return (
-                              <code className={`${className} text-sm font-mono`}>
+                              <code
+                                className={className}
+                                style={{ fontFamily: "var(--at-font-mono)", fontSize: 12.5 }}
+                              >
                                 {children}
                               </code>
                             );
                           },
                           pre: ({ children }) => (
                             <div className="relative my-4">
-                              <pre className="bg-[#1e1e1e] !text-[#d4d4d4] p-4 rounded-lg overflow-x-auto text-sm leading-relaxed">
+                              <pre
+                                style={{
+                                  background: "var(--at-ink)",
+                                  color: "var(--at-paper)",
+                                  padding: "14px 16px",
+                                  borderRadius: 8,
+                                  overflowX: "auto",
+                                  fontSize: 12.5,
+                                  fontFamily: "var(--at-font-mono)",
+                                  lineHeight: 1.55,
+                                }}
+                              >
                                 {children}
                               </pre>
                             </div>
                           ),
                           table: ({ children }) => (
-                            <div className="overflow-x-auto my-4 border border-slate-200 rounded-lg">
-                              <table className="w-full divide-y divide-slate-200 text-sm">
-                                {children}
-                              </table>
+                            <div
+                              className="overflow-x-auto my-4 rounded-lg"
+                              style={{ border: "1px solid var(--at-paper-edge)" }}
+                            >
+                              <table className="w-full text-sm">{children}</table>
                             </div>
                           ),
                           th: ({ children }) => (
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 bg-slate-50">
+                            <th
+                              className="px-3 py-2 text-left text-xs font-semibold"
+                              style={{
+                                background: "var(--at-paper-soft)",
+                                color: "var(--at-ink-muted)",
+                                borderBottom: "1px solid var(--at-paper-edge)",
+                              }}
+                            >
                               {children}
                             </th>
                           ),
                           td: ({ children }) => (
-                            <td className="px-3 py-2 text-slate-600 border-b border-slate-100">
+                            <td
+                              className="px-3 py-2"
+                              style={{
+                                color: "var(--at-ink-soft)",
+                                borderBottom: "1px solid var(--at-paper-edge)",
+                              }}
+                            >
                               {children}
                             </td>
                           ),
                           a: ({ children, href }) => (
                             <a
                               href={href}
-                              className="text-blue-600 hover:underline"
+                              style={{
+                                color: "var(--at-moss)",
+                                textDecoration: "underline",
+                                textDecorationColor: "var(--at-moss-soft)",
+                                textUnderlineOffset: 3,
+                              }}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
@@ -371,13 +476,22 @@ const MessageItem = memo(function MessageItem({
           </div>
 
           {forkedNodes.length > 0 && (
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
-              <GitBranch size={10} />
+            <div
+              className="mt-2 flex flex-wrap items-center gap-1.5"
+              style={{
+                fontFamily: "var(--at-font-sans)",
+                fontSize: 11,
+                color: "var(--at-ink-muted)",
+              }}
+            >
+              <GitBranch size={10} style={{ color: "var(--at-amber)" }} />
               {forkedNodes.map((n) => (
                 <button
                   key={n._id}
                   onClick={() => onSelectForkedNode(n._id, n.name, n.type)}
-                  className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-200 transition-colors"
+                  className="atelier-chip"
+                  data-accent="amber"
+                  style={{ cursor: "pointer", fontSize: 10.5 }}
                 >
                   {n.name || "Branch"}
                 </button>
@@ -402,26 +516,20 @@ const TypingIndicator = memo(function TypingIndicator({
   activeModelId: string;
 }) {
   return (
-    <div className="px-5 py-5 bg-slate-50/50">
+    <div
+      className="px-5 py-4"
+      style={{ background: "var(--at-paper-soft)", borderBottom: "1px solid var(--at-paper-edge)" }}
+    >
       <div className="flex gap-3 max-w-3xl mx-auto">
         <ModelProviderIcon
           modelId={activeModelId}
           size={28}
           className="rounded-full flex-shrink-0"
         />
-        <div className="pt-2 flex items-center gap-1">
-          <div
-            className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse"
-            style={{ animationDelay: "0ms" }}
-          />
-          <div
-            className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse"
-            style={{ animationDelay: "200ms" }}
-          />
-          <div
-            className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse"
-            style={{ animationDelay: "400ms" }}
-          />
+        <div className="pt-2 atelier-streaming">
+          <span />
+          <span />
+          <span />
         </div>
       </div>
     </div>
@@ -445,42 +553,74 @@ const ForkDialog = memo(function ForkDialog({
   }, [open]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 rounded-2xl bg-white p-5 shadow-2xl">
-        <div className="flex items-center justify-between mb-4">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(10,14,26,0.4)] backdrop-blur-sm">
+      <div
+        className="w-full max-w-md mx-4 p-5"
+        style={{
+          background: "var(--at-paper)",
+          border: "1px solid var(--at-paper-edge)",
+          borderRadius: "var(--at-radius-xl)",
+          boxShadow: "var(--at-shadow-lg)",
+        }}
+      >
+        <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <GitBranch size={18} className="text-indigo-500" /> Branch
-              Conversation
+            <div
+              style={{
+                fontFamily: "var(--at-font-serif)",
+                fontStyle: "italic",
+                fontSize: 11,
+                color: "var(--at-amber)",
+                letterSpacing: "0.02em",
+              }}
+            >
+              Fork · new branch
+            </div>
+            <h3
+              className="flex items-center gap-2 mt-1"
+              style={{
+                fontFamily: "var(--at-font-serif)",
+                fontWeight: 500,
+                fontSize: 20,
+                color: "var(--at-ink)",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              <GitBranch size={18} style={{ color: "var(--at-amber)" }} />
+              Branch the conversation
             </h3>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Choose a model for the new branch
+            <p
+              className="mt-1"
+              style={{
+                fontFamily: "var(--at-font-sans)",
+                fontSize: 13,
+                color: "var(--at-ink-muted)",
+              }}
+            >
+              Choose a model for the new thread.
             </p>
           </div>
-          <button
-            onClick={onCancel}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100"
+          <button onClick={onCancel} className="atelier-button" data-variant="ghost"
+            style={{ padding: 0, width: 32, height: 32 }}
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
         <div className="max-h-[56vh] overflow-y-auto mb-4 pr-1">
           <ModelSelectionPanel selectedModel={model} onSelect={setModel} />
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={onCancel}
-            className="flex-1 rounded-xl"
-          >
+          <button onClick={onCancel} className="atelier-button flex-1" style={{ justifyContent: "center" }}>
             Cancel
-          </Button>
-          <Button
+          </button>
+          <button
             onClick={() => onConfirm(model)}
-            className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="atelier-button flex-1"
+            data-variant="primary"
+            style={{ justifyContent: "center" }}
           >
             Create Branch
-          </Button>
+          </button>
         </div>
       </div>
     </div>
@@ -1159,18 +1299,47 @@ const ContextualConsole = ({
           setPendingForkMsg(null);
         }}
       />
-      <div className="flex flex-col h-full bg-white w-full relative">
+      <div
+        className="flex flex-col h-full w-full relative"
+        style={{
+          background: "var(--at-paper-soft)",
+          borderLeft: "1px solid var(--at-paper-edge)",
+          fontFamily: "var(--at-font-sans)",
+        }}
+      >
         {/* Header */}
-        <div className="flex-none border-b border-slate-100 bg-white z-10">
-          <div className="px-4 py-2.5 flex items-center justify-between">
-            <div className="flex-1 min-w-0 flex items-center gap-2">
+        <div
+          className="flex-none z-10"
+          style={{ borderBottom: "1px solid var(--at-paper-edge)", background: "var(--at-paper-soft)" }}
+        >
+          <div className="px-5 py-3 flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div
+                style={{
+                  fontFamily: "var(--at-font-serif)",
+                  fontStyle: "italic",
+                  fontSize: 11,
+                  color: "var(--at-ink-muted)",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                Conversing with
+              </div>
+
               {nodeLineage.length > 1 && (
-                <div className="flex items-center gap-0.5 text-[11px] text-slate-400 mr-2">
+                <div
+                  className="mt-0.5 flex flex-wrap items-center gap-0.5"
+                  style={{
+                    fontFamily: "var(--at-font-mono)",
+                    fontSize: 10,
+                    color: "var(--at-ink-muted)",
+                  }}
+                >
                   {nodeLineage.slice(0, -1).map((n) => (
                     <span key={n.id} className="flex items-center gap-0.5">
                       <button
                         onClick={() => onNodeSelect?.(n.id, n.name)}
-                        className="hover:text-slate-600 truncate max-w-[60px]"
+                        className="hover:text-[var(--at-moss)] truncate max-w-[80px] transition-colors"
                         title={n.name}
                       >
                         {n.name}
@@ -1181,59 +1350,89 @@ const ContextualConsole = ({
                 </div>
               )}
 
-              {isEditingName ? (
-                <input
-                  autoFocus
-                  className="text-sm font-semibold text-slate-900 bg-transparent border-b-2 border-indigo-500 px-0 py-0 focus:outline-none flex-1"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  onBlur={saveName}
-                  onKeyDown={(e) => e.key === "Enter" && saveName()}
-                />
-              ) : (
-                <button
-                  onClick={() => setIsEditingName(true)}
-                  className="text-sm font-semibold text-slate-900 truncate hover:text-indigo-700 transition-colors flex items-center gap-1 group"
-                >
-                  {resolvedName || "Untitled"}
-                  <Edit2
-                    size={10}
-                    className="text-slate-300 group-hover:text-slate-500"
+              <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+                {isEditingName ? (
+                  <input
+                    autoFocus
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    onBlur={saveName}
+                    onKeyDown={(e) => e.key === "Enter" && saveName()}
+                    style={{
+                      fontFamily: "var(--at-font-serif)",
+                      fontWeight: 400,
+                      fontSize: 17,
+                      color: "var(--at-ink)",
+                      background: "transparent",
+                      border: "none",
+                      borderBottom: "1.5px solid var(--at-moss)",
+                      outline: "none",
+                      padding: 0,
+                      minWidth: 180,
+                      letterSpacing: "-0.01em",
+                    }}
                   />
-                </button>
-              )}
+                ) : (
+                  <button
+                    onClick={() => setIsEditingName(true)}
+                    className="group inline-flex items-center gap-1 truncate"
+                    style={{
+                      fontFamily: "var(--at-font-serif)",
+                      fontWeight: 400,
+                      fontSize: 17,
+                      color: "var(--at-ink)",
+                      letterSpacing: "-0.01em",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    <span className="truncate">{resolvedName || "Untitled"}</span>
+                    <Edit2
+                      size={11}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ color: "var(--at-ink-faint)" }}
+                    />
+                  </button>
+                )}
+              </div>
 
-              <ModelBadge
-                modelId={activeModelId}
-                size="sm"
-                className="max-w-[220px] whitespace-nowrap"
-              />
+              <div
+                className="mt-1.5 flex items-center gap-1.5 flex-wrap"
+                style={{
+                  fontFamily: "var(--at-font-mono)",
+                  fontSize: 10.5,
+                  color: "var(--at-ink-muted)",
+                }}
+              >
+                <ModelBadge
+                  modelId={activeModelId}
+                  size="sm"
+                  className="max-w-[220px] whitespace-nowrap !shadow-none"
+                />
+              </div>
             </div>
 
-            <div className="flex items-center gap-0.5 ml-2">
+            <div className="flex items-center gap-1 shrink-0">
               {onToggleFullscreen && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-slate-400 hover:text-slate-600"
+                <button
                   onClick={onToggleFullscreen}
+                  className="atelier-button"
+                  data-variant="ghost"
+                  style={{ padding: 0, width: 30, height: 30 }}
+                  aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
                 >
-                  {isFullscreen ? (
-                    <Minimize2 size={14} />
-                  ) : (
-                    <Maximize2 size={14} />
-                  )}
-                </Button>
+                  {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
               )}
               {onClose && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-slate-400 hover:text-slate-600"
+                <button
                   onClick={onClose}
+                  className="atelier-button"
+                  data-variant="ghost"
+                  style={{ padding: 0, width: 30, height: 30 }}
+                  aria-label="Close"
                 >
                   <X size={14} />
-                </Button>
+                </button>
               )}
             </div>
           </div>
@@ -1245,18 +1444,60 @@ const ContextualConsole = ({
             <div className="pb-36">
               {isLoadingMessages && currentMessages.length === 0 ? (
                 <div className="px-5 py-20 flex flex-col items-center gap-3">
-                  <div className="h-6 w-6 rounded-full border-2 border-slate-200 border-t-slate-900 animate-spin" />
-                  <p className="text-xs font-medium text-slate-400">
-                    Loading conversation…
+                  <div
+                    className="h-6 w-6 rounded-full border-2 animate-spin"
+                    style={{
+                      borderColor: "var(--at-paper-edge)",
+                      borderTopColor: "var(--at-moss)",
+                    }}
+                  />
+                  <p
+                    style={{
+                      fontFamily: "var(--at-font-serif)",
+                      fontStyle: "italic",
+                      fontSize: 12,
+                      color: "var(--at-ink-muted)",
+                    }}
+                  >
+                    Opening notes…
                   </p>
                 </div>
               ) : currentMessages.length === 0 ? (
-                <div className="px-5 py-20 text-center">
-                  <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-300">
+                <div className="px-8 py-16 text-center">
+                  <div
+                    className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl"
+                    style={{
+                      background: "var(--at-paper)",
+                      border: "1px solid var(--at-paper-edge)",
+                      color: "var(--at-moss)",
+                    }}
+                  >
                     <MessageSquareDashed size={18} strokeWidth={1.5} />
                   </div>
-                  <p className="text-sm text-slate-400">
-                    Start a conversation
+                  <h3
+                    style={{
+                      fontFamily: "var(--at-font-serif)",
+                      fontWeight: 400,
+                      fontSize: 20,
+                      color: "var(--at-ink)",
+                      lineHeight: 1.3,
+                      marginBottom: 8,
+                      letterSpacing: "-0.005em",
+                    }}
+                  >
+                    A blank page.
+                  </h3>
+                  <p
+                    style={{
+                      fontFamily: "var(--at-font-sans)",
+                      fontSize: 13,
+                      color: "var(--at-ink-muted)",
+                      lineHeight: 1.55,
+                      maxWidth: 260,
+                      margin: "0 auto",
+                    }}
+                  >
+                    Ask the first question to start this thread.
                   </p>
                 </div>
               ) : (
@@ -1280,7 +1521,13 @@ const ContextualConsole = ({
           {showScrollBtn && (
             <button
               onClick={() => scrollToBottom("smooth")}
-              className="absolute bottom-36 left-1/2 -translate-x-1/2 z-10 h-8 w-8 rounded-full border border-slate-200 bg-white shadow-md flex items-center justify-center text-slate-500 hover:text-slate-700 hover:shadow-lg transition-all"
+              className="absolute bottom-36 left-1/2 -translate-x-1/2 z-10 h-8 w-8 rounded-full flex items-center justify-center transition-all"
+              style={{
+                background: "var(--at-paper)",
+                border: "1px solid var(--at-paper-edge)",
+                color: "var(--at-ink-muted)",
+                boxShadow: "var(--at-shadow-md)",
+              }}
             >
               <ArrowDown size={14} />
             </button>
@@ -1288,12 +1535,25 @@ const ContextualConsole = ({
         </div>
 
         {/* Composer */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-8 z-20 bg-gradient-to-t from-white via-white/95 to-transparent pointer-events-none">
+        <div
+          className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-8 z-20 pointer-events-none"
+          style={{
+            background: "linear-gradient(to top, var(--at-paper-soft) 60%, rgba(244,240,230,0.6) 85%, transparent 100%)",
+          }}
+        >
           <div className="max-w-3xl mx-auto pointer-events-auto">
-            <div className="rounded-2xl bg-slate-100 focus-within:bg-white focus-within:ring-1 focus-within:ring-slate-300 focus-within:shadow-md transition-all flex items-end p-1.5">
+            <div
+              className="flex items-end p-2 transition-all"
+              style={{
+                background: "var(--at-paper)",
+                border: "1px solid var(--at-paper-edge)",
+                borderRadius: "var(--at-radius-lg)",
+                boxShadow: "var(--at-shadow-sm)",
+              }}
+            >
               <Textarea
                 ref={textareaRef}
-                placeholder="Message..."
+                placeholder="Ask anything…"
                 value={inputValue}
                 onChange={(e) => {
                   setInputValue(e.target.value);
@@ -1306,20 +1566,30 @@ const ContextualConsole = ({
                   }
                 }}
                 disabled={isTyping || !selectedNode}
-                className="min-h-[40px] max-h-[180px] flex-1 resize-none border-0 bg-transparent px-3 py-2.5 text-[15px] focus-visible:ring-0 placeholder:text-slate-400 text-slate-900"
+                className="min-h-[40px] max-h-[180px] flex-1 resize-none border-0 bg-transparent px-2.5 py-2 focus-visible:ring-0"
+                style={{
+                  fontFamily: "var(--at-font-sans)",
+                  fontSize: 15,
+                  lineHeight: 1.55,
+                  color: "var(--at-ink)",
+                }}
               />
-              <div className="pb-1 pr-1 self-end">
+              <div className="pb-0.5 pr-0.5 self-end">
                 <Button
                   onClick={handleSend}
                   disabled={!inputValue.trim() || isTyping}
                   size="icon"
-                  className={`h-8 w-8 rounded-full transition-all ${
-                    inputValue.trim()
-                      ? "bg-slate-900 text-white hover:bg-black"
-                      : "bg-slate-200 text-slate-400"
-                  }`}
+                  className="h-9 w-9 rounded-[10px] transition-all"
+                  style={{
+                    background: inputValue.trim() && !isTyping ? "var(--at-moss)" : "var(--at-paper-soft)",
+                    color: inputValue.trim() && !isTyping ? "var(--at-paper)" : "var(--at-ink-faint)",
+                    border: "1px solid",
+                    borderColor: inputValue.trim() && !isTyping ? "var(--at-moss)" : "var(--at-paper-edge)",
+                    boxShadow: inputValue.trim() && !isTyping ? "var(--at-shadow-sm)" : "none",
+                  }}
+                  aria-label="Send"
                 >
-                  <ArrowRight size={15} strokeWidth={2.5} />
+                  <Send size={14} />
                 </Button>
               </div>
             </div>
