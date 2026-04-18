@@ -53,21 +53,28 @@ export const CreateCanvasDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[88vh] !w-[min(96vw,1180px)] !max-w-[min(96vw,1180px)] sm:!max-w-[min(96vw,1180px)] flex-col overflow-hidden border-slate-200 bg-white p-0 shadow-2xl"
+        className="flex max-h-[88vh] !w-[min(96vw,1180px)] !max-w-[min(96vw,1180px)] sm:!max-w-[min(96vw,1180px)] flex-col overflow-hidden border-slate-200 bg-white p-0 shadow-[0_40px_100px_-30px_rgba(15,23,42,0.35)]"
         data-slot="create-canvas-dialog"
       >
-        <div className="border-b border-slate-100 px-6 py-5">
-          <DialogHeader className="space-y-2 text-left">
-            <DialogTitle className="flex items-center gap-2 text-xl text-slate-900">
-              <Sparkles className="h-5 w-5 text-indigo-500" />
+        <div className="relative border-b border-slate-100 px-6 py-5 overflow-hidden">
+          {/* Subtle aurora header background */}
+          <div className="pointer-events-none absolute -top-32 -left-10 w-[420px] h-[420px] rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.12),transparent_70%)]" />
+          <div className="pointer-events-none absolute -top-32 right-0 w-[380px] h-[380px] rounded-full bg-[radial-gradient(closest-side,rgba(168,85,247,0.10),transparent_70%)]" />
+
+          <DialogHeader className="relative space-y-2 text-left">
+            <DialogTitle className="flex items-center gap-2.5 text-xl text-slate-900">
+              <span className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm">
+                <Sparkles className="h-4 w-4" />
+                <span className="absolute inset-0 rounded-lg ring-1 ring-inset ring-white/20" />
+              </span>
               Create Canvas
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500">
-              Pick a starting model for this canvas instead of inheriting the old default.
+              Pick a starting model. It becomes the default for the base context and new branches.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-5 space-y-2">
+          <div className="relative mt-5 space-y-2">
             <label
               htmlFor="create-canvas-title"
               className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
@@ -79,7 +86,7 @@ export const CreateCanvasDialog = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="My First Project"
-              className="h-11 rounded-xl border-slate-200 bg-slate-50 text-sm font-medium text-slate-800"
+              className="h-11 rounded-xl border-slate-200 bg-white/70 backdrop-blur text-sm font-medium text-slate-800 focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-400 transition-colors"
               data-slot="create-canvas-title-input"
             />
           </div>

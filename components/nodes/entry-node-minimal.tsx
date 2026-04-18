@@ -2,7 +2,7 @@
 
 import { memo, useCallback, type MouseEvent } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { MessageSquare, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface EntryNodeData {
@@ -38,10 +38,11 @@ function EntryNodeComponent({ data, selected }: NodeProps<EntryNodeType>) {
   );
 
   const active = selected || data.isSelected;
-  const accent = data.dotColor || "#ffffff";
-  const preview = data.preview || data.sharedLabel || "Base context";
+  const title = (data.label || "Base Context").trim();
+  const preview = (data.preview || "").trim();
+
   const handleClassName = cn(
-    "!h-3 !w-3 !border-[3px] !transition-all !duration-200 !ease-out",
+    "!h-2 !w-2 !border-2 !border-slate-800 !bg-white !transition-all !duration-200 !ease-out",
     active
       ? "!scale-100 !opacity-100"
       : "!scale-75 !opacity-0 group-hover:!scale-100 group-hover:!opacity-100"
@@ -49,72 +50,76 @@ function EntryNodeComponent({ data, selected }: NodeProps<EntryNodeType>) {
 
   return (
     <div
-      className="group relative min-w-[280px] max-w-[340px] cursor-pointer"
+      className="group relative w-[300px] cursor-pointer"
       onClick={handleClick}
       data-slot="entry-node"
     >
+      {/* Ambient glow on selection */}
+      {active && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -inset-2 rounded-[22px] opacity-60 blur-xl bg-[radial-gradient(closest-side,rgba(99,102,241,0.35),transparent_70%)]"
+        />
+      )}
+
       <div
         className={cn(
-          "rounded-[24px] border px-5 py-4 text-sm text-white shadow-[0_18px_44px_rgba(15,23,42,0.16)] transition-all duration-200",
+          "relative overflow-hidden rounded-[18px] transition-all duration-300 ease-out",
+          "bg-gradient-to-b from-slate-900 to-slate-950 text-white",
           active
-            ? "border-slate-950 bg-slate-950 ring-1 ring-slate-900/10"
-            : "border-slate-900 bg-slate-900 hover:-translate-y-0.5 hover:shadow-[0_22px_50px_rgba(15,23,42,0.18)]"
+            ? "shadow-[0_14px_32px_-14px_rgba(15,23,42,0.55),0_2px_4px_rgba(15,23,42,0.1)] ring-[1.5px] ring-indigo-400/70"
+            : "shadow-[0_1px_2px_rgba(15,23,42,0.08),0_8px_20px_-10px_rgba(15,23,42,0.35)] ring-1 ring-slate-900/60 hover:-translate-y-[1px] hover:shadow-[0_2px_4px_rgba(15,23,42,0.08),0_14px_28px_-10px_rgba(15,23,42,0.45)]"
         )}
       >
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white">
-            <MessageSquare size={15} />
-          </span>
-          <div className="min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/55">
-              Base Context
-            </div>
-            <div className="truncate text-sm font-semibold text-white">
-              {data.label || "Base Context"}
-            </div>
-          </div>
-        </div>
+        {/* Premium top highlight — Apple-style "glass light" */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
+        />
+        {/* Soft accent orb */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-14 -right-10 h-32 w-32 rounded-full bg-indigo-500/15 blur-2xl"
+        />
 
-        <p className="mt-3 text-[13px] leading-6 text-white/72 line-clamp-2">
-          {preview}
-        </p>
+        <div className="relative px-4 py-3.5">
+          {/* Type label — tasteful, not shouting */}
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+            <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/50">
+              Base Context
+            </span>
+          </div>
+
+          {/* Title */}
+          <h3 className="text-[14.5px] font-semibold leading-[1.3] text-white truncate tracking-[-0.006em]">
+            {title}
+          </h3>
+
+          {/* Preview */}
+          {preview && (
+            <p className="mt-1.5 text-[12.5px] leading-[1.5] text-white/55 line-clamp-2">
+              {preview}
+            </p>
+          )}
+        </div>
       </div>
 
       {!data.primary && (
         <button
-          className="absolute -top-2 -right-2 hidden h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-lg group-hover:flex hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500"
+          className="absolute -top-2 -right-2 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-md group-hover:flex hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500 transition-colors"
           onClick={stop(data.onDelete)}
           aria-label="Delete"
           data-slot="entry-node-delete"
         >
-          <Trash2 size={12} />
+          <Trash2 size={11} />
         </button>
       )}
 
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className={handleClassName}
-        style={{ backgroundColor: "#ffffff", borderColor: "#0f172a" }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        className={handleClassName}
-        style={{ backgroundColor: "#ffffff", borderColor: "#0f172a" }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        className={handleClassName}
-        style={{ backgroundColor: accent, borderColor: "#0f172a" }}
-      />
-      <Handle
-        type="target"
-        position={Position.Top}
-        className={handleClassName}
-        style={{ backgroundColor: accent, borderColor: "#0f172a" }}
-      />
+      <Handle type="source" position={Position.Bottom} className={handleClassName} />
+      <Handle type="source" position={Position.Right} className={handleClassName} />
+      <Handle type="target" position={Position.Left} className={handleClassName} />
+      <Handle type="target" position={Position.Top} className={handleClassName} />
     </div>
   );
 }

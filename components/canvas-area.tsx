@@ -335,8 +335,19 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   const [expandedOverflow, setExpandedOverflow] = useState<Set<string>>(new Set());
   const [collapsedNodes] = useState<Set<string>>(new Set());
   const [pendingConn, setPendingConn] = useState<{ sourceId: string } | null>(null);
-  const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
   const lastViewportRef = useRef<Viewport | null>(null);
+  // Keep viewport in a ref so debounced savers don't force callback re-creation
+  // on every pan frame (big perf win when the canvas has many nodes).
+  const viewportRef = useRef<Viewport>({ x: 0, y: 0, zoom: 1 });
+  // Tracks the canvasId we are currently loading so late responses from a
+  // previously-selected canvas cannot overwrite the newer one.
+  const loadTokenRef = useRef(0);
+  const activeCanvasIdRef = useRef<string>(canvasId);
+  useEffect(() => {
+    activeCanvasIdRef.current = canvasId;
+  }, [canvasId]);
 
   // Debounce refs
   const layoutTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -368,22 +379,22 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
       fetch(`/api/canvases/${canvasId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, viewportState: viewport }),
+        body: JSON.stringify({ ...data, viewportState: viewportRef.current }),
       }).catch(() => toast.error("Failed to save"));
     }, 8000);
-  }, [canvasId, viewport]);
+  }, [canvasId]);
 
   const persistCanvasNow = useCallback(async (data: CanvasData) => {
     const res = await fetch(`/api/canvases/${canvasId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, viewportState: viewport }),
+      body: JSON.stringify({ ...data, viewportState: viewportRef.current }),
     });
 
     if (!res.ok) {
       throw new Error(`Failed to persist canvas (${res.status})`);
     }
-  }, [canvasId, viewport]);
+  }, [canvasId]);
 
   const flushLayout = useCallback(async () => {
     if (layoutTimerRef.current) { clearTimeout(layoutTimerRef.current); layoutTimerRef.current = null; }
@@ -562,9 +573,16 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
         const parentNode = data.nodes.find((n) => n._id === (node as any).parentNodeId);
         const parentName = parentNode?.name || (parentNode?.type === "entry" ? "Base Context" : undefined);
         const storedPos = node.position || (nodeData as any)?.position;
+        const hasValidStoredPos =
+          storedPos &&
+          typeof storedPos.x === "number" &&
+          typeof storedPos.y === "number" &&
+          // Treat (0,0) as "never positioned" so multiple unpositioned nodes
+          // don't stack on top of each other.
+          !(storedPos.x === 0 && storedPos.y === 0);
         // Keep the base entry node anchored to the computed tree root, but let
         // every other node retain manual drag positions once they exist.
-        const position = node.type !== "entry" && storedPos
+        const position = node.type !== "entry" && hasValidStoredPos
           ? storedPos
           : { x: branch * HORIZONTAL_GAP, y: depth * VERTICAL_GAP };
 
@@ -1140,57 +1158,105 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   const onDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }, []);
 
   // ─── Load canvas ──────────────────────────────────────────
+  // Race-safe: each load gets a unique token. Only the most recent response
+  // is allowed to commit. Aborts in-flight fetches when the user switches
+  // canvases so we never paint the wrong graph.
   useEffect(() => {
     if (!canvasId) return;
+    const token = ++loadTokenRef.current;
+    const controller = new AbortController();
+
+    // Optimistic: seed state from localStorage so switching feels instant.
+    const cached = storageService.getCanvas(canvasId);
+    if (cached) {
+      setCanvas(cached);
+      setLoadError(null);
+    } else {
+      setCanvas(null);
+      setNodes([]);
+      setEdges([]);
+    }
+    setIsLoadingCanvas(true);
+
     const load = async () => {
       let data: CanvasData | null = null;
+      let failed = false;
       try {
-        const res = await fetch(`/api/canvases/${canvasId}`, { cache: "no-cache" });
+        const res = await fetch(`/api/canvases/${canvasId}`, {
+          cache: "no-cache",
+          signal: controller.signal,
+        });
         if (res.ok) {
           const json = await res.json();
           const local = storageService.getCanvas(canvasId);
           data = json.canvas ? mergeCanvasData(json.canvas, local) : json.canvas;
           if (data) storageService.saveCanvas(data);
+        } else if (res.status === 404) {
+          failed = true;
         } else {
           data = storageService.getCanvas(canvasId);
         }
-      } catch {
+      } catch (e: any) {
+        if (e?.name === "AbortError") return; // silent
         data = storageService.getCanvas(canvasId);
+        if (!data) failed = true;
       }
 
-      if (data) {
-        setCanvas(data);
-        const built = buildFlow(data);
-        setNodes(built.nodes);
-        setEdges(built.edges);
-        if (built.viewport) {
-          lastViewportRef.current = built.viewport;
-          setViewport(built.viewport);
-          flow.setViewport(built.viewport, { duration: 0 });
-        }
-      } else {
+      // Stale response guard: if the user already switched canvases, drop.
+      if (loadTokenRef.current !== token) return;
+      if (activeCanvasIdRef.current !== canvasId) return;
+
+      setIsLoadingCanvas(false);
+
+      if (failed && !data) {
+        setLoadError("Couldn't load this canvas. It may have been deleted.");
         setCanvas(null);
         setNodes([]);
         setEdges([]);
+        return;
+      }
+
+      if (data) {
+        setLoadError(null);
+        setCanvas(data);
+        if (data.viewportState) {
+          lastViewportRef.current = data.viewportState;
+          viewportRef.current = data.viewportState;
+          // Use requestAnimationFrame so the viewport is applied after the
+          // graph has had a chance to render the new nodes.
+          requestAnimationFrame(() => {
+            if (activeCanvasIdRef.current === canvasId) {
+              flow.setViewport(data!.viewportState!, { duration: 0 });
+            }
+          });
+        }
       }
     };
     load();
-  }, [canvasId]);
 
-  // Rebuild when canvas, selection, or overflow changes
+    return () => {
+      controller.abort();
+    };
+  }, [canvasId, flow, setEdges, setNodes]);
+
+  // Rebuild ReactFlow graph when the underlying canvas, selection, or
+  // overflow expansion changes. This is the SINGLE source of truth for
+  // rendering — the loader only touches `canvas`.
   useEffect(() => {
     if (!canvas) return;
     const built = buildFlow(canvas);
     setNodes(built.nodes);
     setEdges(built.edges);
-  }, [canvas, expandedOverflow, selectedNode]);
+  }, [canvas, expandedOverflow, selectedNode, buildFlow, setEdges, setNodes]);
 
   // Zoom to selected node
   useEffect(() => {
     if (selectedNode) zoomTo(selectedNode);
   }, [selectedNode, zoomTo]);
 
-  // Listen for fork events from chat panel
+  // Listen for fork events from chat panel. We dedupe by node id so a late
+  // server echo (from the chat panel's fire-and-forget POST) doesn't add the
+  // same node/edge twice — a common cause of "duplicate node" flicker.
   useEffect(() => {
     const handler = (e: any) => {
       const { canvasId: cid, node, edge } = e.detail || {};
@@ -1210,10 +1276,17 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
 
       setCanvas((prev) => {
         if (!prev) return prev;
+        const alreadyHasNode = prev.nodes.some((n) => n._id === positionedNode._id);
+        const alreadyHasEdge = edge
+          ? prev.edges.some(
+              (e) => e._id === edge._id || (e.from === edge.from && e.to === edge.to)
+            )
+          : true;
+        if (alreadyHasNode && alreadyHasEdge) return prev;
         const updated = {
           ...prev,
-          nodes: [...prev.nodes, positionedNode],
-          edges: edge ? [...prev.edges, edge] : prev.edges,
+          nodes: alreadyHasNode ? prev.nodes : [...prev.nodes, positionedNode],
+          edges: edge && !alreadyHasEdge ? [...prev.edges, edge] : prev.edges,
         };
         storageService.saveCanvas(updated);
         return updated;
@@ -1290,6 +1363,8 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   }, [applyAutoLayout]);
 
   // ─── Render ───────────────────────────────────────────────
+  const hasNoVisibleNodes = !isLoadingCanvas && canvas && canvas.nodes.length === 0;
+
   return (
     <div
       className="relative h-full w-full overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]"
@@ -1298,6 +1373,84 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
       onDragOver={onDragOver}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94)_42%,_rgba(241,245,249,0.84)_100%)]" />
+
+      {/* Loading shimmer — shown only when we have no cached canvas yet */}
+      {isLoadingCanvas && !canvas && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/60 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 rounded-full border-2 border-slate-200 border-t-slate-900 animate-spin" />
+            <p className="text-xs font-medium text-slate-500">Loading canvas…</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error state — bad canvas id or server failure */}
+      {loadError && !isLoadingCanvas && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+          <div className="max-w-sm text-center space-y-3 px-6">
+            <div className="mx-auto w-12 h-12 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500">
+              <LayoutGrid size={20} />
+            </div>
+            <p className="text-sm font-semibold text-slate-900">{loadError}</p>
+            <button
+              onClick={() => {
+                setLoadError(null);
+                setIsLoadingCanvas(true);
+                loadTokenRef.current += 1;
+                // Trigger a retry by bumping activeCanvasIdRef
+                const t = canvasId;
+                activeCanvasIdRef.current = "";
+                requestAnimationFrame(() => {
+                  activeCanvasIdRef.current = t;
+                  setCanvas((c) => c); // no-op state update to re-run effects
+                });
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Empty canvas hint */}
+      {hasNoVisibleNodes && !loadError && (
+        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+          <div className="pointer-events-auto text-center space-y-2 px-6 py-4 rounded-2xl bg-white/80 backdrop-blur border border-slate-200 shadow-sm">
+            <p className="text-sm font-medium text-slate-700">This canvas is empty</p>
+            <p className="text-xs text-slate-500">Right-click anywhere to drop your first node</p>
+          </div>
+        </div>
+      )}
+
+      {/* Canvas insights chip — small, always-on summary of the graph */}
+      {canvas && canvas.nodes.length > 0 && !loadError && (
+        <div className="pointer-events-none absolute top-4 left-4 z-20 select-none">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/85 backdrop-blur-md px-3 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm">
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-900" />
+              <span className="tabular-nums text-slate-900">{canvas.nodes.length}</span>
+              <span className="text-slate-400">nodes</span>
+            </span>
+            <span className="h-3 w-px bg-slate-200" />
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              <span className="tabular-nums text-slate-900">
+                {canvas.nodes.filter((n: any) => n.type === "branch").length}
+              </span>
+              <span className="text-slate-400">branches</span>
+            </span>
+            <span className="h-3 w-px bg-slate-200" />
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+              <span className="tabular-nums text-slate-900">
+                {new Set(canvas.nodes.map((n: any) => n.model).filter(Boolean)).size}
+              </span>
+              <span className="text-slate-400">models</span>
+            </span>
+          </div>
+        </div>
+      )}
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -1325,19 +1478,19 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
         onInit={(instance) => {
           if (canvas?.viewportState) {
             instance.setViewport(canvas.viewportState);
-            setViewport(canvas.viewportState);
+            viewportRef.current = canvas.viewportState;
           } else {
             setTimeout(() => {
               instance.fitView({ padding: 0.15 });
-              setViewport(instance.getViewport());
+              viewportRef.current = instance.getViewport();
             }, 100);
           }
         }}
+        // onMove runs on every pan frame. Store only to ref (no re-render)
+        // to keep dragging buttery-smooth even on large graphs.
         onMove={(_, vp) => {
-          const last = lastViewportRef.current;
-          if (last && Math.abs(last.x - vp.x) < 4 && Math.abs(last.y - vp.y) < 4 && Math.abs(last.zoom - vp.zoom) < 0.01) return;
           lastViewportRef.current = vp;
-          setViewport(vp);
+          viewportRef.current = vp;
         }}
         onMoveEnd={handleMoveEnd}
         panOnDrag
@@ -1369,22 +1522,26 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
           zoomable
           ariaLabel="Canvas overview"
           position="bottom-right"
-          nodeBorderRadius={12}
-          nodeStrokeWidth={1.5}
-          bgColor="rgba(255,255,255,0.94)"
-          maskColor="rgba(15,23,42,0.05)"
-          maskStrokeColor="#cbd5e1"
-          maskStrokeWidth={1.5}
+          nodeBorderRadius={8}
+          nodeStrokeWidth={1.2}
+          bgColor="rgba(255,255,255,0.96)"
+          maskColor="rgba(15,23,42,0.04)"
+          maskStrokeColor="#e2e8f0"
+          maskStrokeWidth={1}
+          style={{ height: 100, width: 150 }}
           nodeColor={(node) => {
+            if (node.id === selectedNode) return "#4f46e5";
             if (node.type === "entry") return "#0f172a";
-            return ((node.data as any)?.color as string | undefined) || "#ffffff";
+            if (node.type === "branch") return "#a78bfa";
+            if (node.type === "externalContext") return "#f59e0b";
+            return ((node.data as any)?.color as string | undefined) || "#cbd5e1";
           }}
           nodeStrokeColor={(node) => {
-            if (node.id === selectedNode) return "#0f172a";
+            if (node.id === selectedNode) return "#4f46e5";
             if (node.type === "entry") return "#0f172a";
-            return ((node.data as any)?.dotColor as string | undefined) || "#cbd5e1";
+            return "#e2e8f0";
           }}
-          className="!rounded-2xl !border !border-slate-200/80 !bg-white/95 !shadow-xl backdrop-blur-md"
+          className="!rounded-xl !border !border-slate-200/80 !bg-white/95 !shadow-lg backdrop-blur-md"
           onNodeClick={(_, node) =>
             onNodeSelect(
               node.id,

@@ -238,38 +238,69 @@ export function CanvasList({
   return (
     <div className="flex h-full flex-col bg-slate-50/50">
       {/* Header Area */}
-      <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-3 py-3">
+      <div className="flex flex-col gap-2.5 border-b border-slate-200 bg-white px-3 py-3">
         <div className="flex items-center justify-between">
-           <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Workspace</span>
-           <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6 text-slate-400 hover:text-slate-900"
-              onClick={onCreateCanvas}
-              title="New Canvas"
-           >
-              <Plus size={16} />
-           </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+              Workspace
+            </span>
+            <span className="rounded-full bg-slate-100 text-slate-500 text-[9px] font-semibold px-1.5 py-0.5 tabular-nums">
+              {canvases.length}
+            </span>
+          </div>
+          <button
+            onClick={onCreateCanvas}
+            title="New Canvas (⌘N)"
+            className="group relative flex items-center justify-center h-6 w-6 rounded-md text-slate-500 hover:text-white hover:bg-slate-900 transition-all active:scale-95"
+          >
+            <Plus size={14} className="transition-transform group-hover:rotate-90" />
+          </button>
         </div>
-        
+
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search..."
-            className="h-8 rounded-md border-slate-200 bg-slate-50 pl-8 text-xs font-medium placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-slate-300"
+            placeholder="Search canvases..."
+            className="h-8 rounded-lg border-slate-200 bg-slate-50/80 pl-8 pr-7 text-xs font-medium placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-slate-300 focus-visible:bg-white transition-colors"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-200 flex items-center justify-center"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
         </div>
       </div>
 
       {/* List Area */}
-      <div className="flex-1 overflow-y-auto px-2 py-2">
+      <div className="flex-1 overflow-y-auto px-2 py-2 custom-scrollbar">
          {canvases.length === 0 ? (
-             <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
-                <LayoutGrid className="mb-2 h-8 w-8" />
-                <p className="text-xs font-medium">No canvases yet</p>
-             </div>
+             <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="flex flex-col items-center justify-center py-12 text-center"
+             >
+                <div className="relative mb-3 w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center">
+                    <LayoutGrid className="h-5 w-5 text-slate-400" />
+                    <div className="pointer-events-none absolute -inset-1 rounded-2xl bg-indigo-400/5 blur-md" />
+                </div>
+                <p className="text-xs font-medium text-slate-500">No canvases yet</p>
+                <p className="mt-1 text-[10px] text-slate-400 max-w-[180px] leading-relaxed">
+                    Create your first canvas to start branching conversations.
+                </p>
+                <button
+                    onClick={onCreateCanvas}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-slate-900 text-white text-[10px] font-medium px-2.5 py-1.5 hover:bg-slate-800 transition-colors active:scale-95"
+                >
+                    <Plus size={11} /> New Canvas
+                </button>
+             </motion.div>
          ) : searchQuery ? (
             /* Search Results (Flat List) */
             <div className="space-y-0.5">

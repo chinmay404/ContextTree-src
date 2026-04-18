@@ -1,1095 +1,1191 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useInView,
+  useMotionValue,
+  useSpring,
+} from "framer-motion";
 import {
   ArrowRight,
-  GitBranch,
-  Zap,
+  ArrowUpRight,
   Check,
-  Play,
+  GitBranch,
+  Sparkles,
   MessageSquare,
-  AlertCircle,
-  X,
-  Bot,
-  Code,
-  Clock,
-  TrendingUp,
   Layers,
-  Link2,
   FlaskConical,
+  Cpu,
+  CornerDownRight,
+  Command,
+  FileText,
+  Workflow,
+  MousePointer2,
+  Zap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ModelProviderIcon } from "@/components/model-badge";
 
-export function LandingPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [activeTab, setActiveTab] = useState("problem");
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [activeStep, setActiveStep] = useState(0);
+/* ──────────────────────────────────────────────────────────────────────────
+   Atomic helpers
+   ──────────────────────────────────────────────────────────────────────── */
 
+const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+const FadeIn: React.FC<
+  React.PropsWithChildren<{ delay?: number; y?: number; className?: string }>
+> = ({ children, delay = 0, y = 14, className }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, amount: 0.25 });
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      initial={{ opacity: 0, y }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.7, delay, ease: EASE_OUT }}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Hero — Live Mini Canvas
+   Shows exactly what the product does: one prompt branching into multiple
+   models on an infinite canvas.
+   ──────────────────────────────────────────────────────────────────────── */
+
+const HERO_MODELS: Array<{
+  id: string;
+  name: string;
+  provider: string;
+  accent: string;
+  reply: string;
+}> = [
+  {
+    id: "llama-3.3-70b-versatile",
+    name: "Llama 3.3",
+    provider: "Meta",
+    accent: "from-blue-500/70 to-indigo-500/40",
+    reply:
+      "Use DFS for pathfinding where memory is tight. BFS if you need the shortest path in unweighted graphs.",
+  },
+  {
+    id: "deepseek-r1-distill-llama-70b",
+    name: "DeepSeek R1",
+    provider: "DeepSeek",
+    accent: "from-violet-500/70 to-fuchsia-500/40",
+    reply:
+      "Think of it like a maze. DFS commits to a wall and walks it. BFS expands like ripples — level by level.",
+  },
+];
+
+function HeroCanvas() {
+  // Lightweight typing simulation for the reply cards
+  const [typed, setTyped] = useState([0, 0]);
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveStep((prev) => (prev + 1) % 3);
-    }, 3000);
-    return () => clearInterval(interval);
+    const id = setInterval(() => {
+      setTyped(([a, b]) => [
+        Math.min(a + 2, HERO_MODELS[0].reply.length),
+        Math.min(b + 2, HERO_MODELS[1].reply.length),
+      ]);
+    }, 35);
+    return () => clearInterval(id);
   }, []);
 
-  const handleSubmit = () => {
-    if (email && email.includes("@")) {
-      setIsSubmitted(true);
-      setTimeout(() => {
-        setIsSubmitted(false);
-        setEmail("");
-      }, 3000);
-    }
-  };
-
-  const handleGetStarted = () => {
-    router.push("/auth/signin");
-  };
+  // Float effect
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const rx = useSpring(useTransform(my, [-40, 40], [4, -4]), {
+    stiffness: 80,
+    damping: 20,
+  });
+  const ry = useSpring(useTransform(mx, [-40, 40], [-4, 4]), {
+    stiffness: 80,
+    damping: 20,
+  });
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 border-b border-slate-200 bg-white/80 backdrop-blur-xl">
-        <div className="px-6 py-4 flex justify-between items-center max-w-7xl mx-auto">
-          <div className="flex items-center space-x-2.5 text-xl font-semibold">
+    <motion.div
+      className="relative w-full aspect-[5/4] md:aspect-[4/3]"
+      onMouseMove={(e) => {
+        const bounds = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+        mx.set(e.clientX - bounds.left - bounds.width / 2);
+        my.set(e.clientY - bounds.top - bounds.height / 2);
+      }}
+      onMouseLeave={() => {
+        mx.set(0);
+        my.set(0);
+      }}
+      style={{ perspective: 1400 }}
+    >
+      {/* Ambient gradient */}
+      <div className="absolute -inset-16 bg-[radial-gradient(50%_50%_at_50%_45%,rgba(99,102,241,0.14),transparent_70%)] pointer-events-none" />
+      <div className="absolute -inset-16 bg-[radial-gradient(35%_35%_at_80%_20%,rgba(168,85,247,0.12),transparent_70%)] pointer-events-none" />
+
+      <motion.div
+        className="relative h-full w-full rounded-[28px] border border-slate-200/80 bg-white/70 backdrop-blur-xl shadow-[0_40px_90px_-30px_rgba(15,23,42,0.18)] overflow-hidden"
+        style={{ rotateX: rx, rotateY: ry, transformStyle: "preserve-3d" }}
+      >
+        {/* Canvas toolbar */}
+        <div className="absolute top-0 left-0 right-0 h-11 border-b border-slate-100 bg-white/80 backdrop-blur-md flex items-center px-4 gap-3 z-20">
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+            <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+            <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+          </div>
+          <div className="h-4 w-px bg-slate-200" />
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
+            <Workflow className="w-3.5 h-3.5" />
+            <span>DFS vs BFS · canvas</span>
+          </div>
+          <div className="flex-1" />
+          <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 text-[10px] font-mono text-slate-500">
+            <Command className="w-3 h-3" /> K
+          </div>
+        </div>
+
+        {/* Grid background */}
+        <div className="absolute inset-0 pt-11">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.05)_1px,transparent_1px)] bg-[size:22px_22px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_40%,#000_60%,transparent_100%)]" />
+        </div>
+
+        {/* Connecting branch svg */}
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          viewBox="0 0 600 480"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <linearGradient id="hero-edge-a" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#818cf8" stopOpacity="0.1" />
+            </linearGradient>
+            <linearGradient id="hero-edge-b" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stopColor="#a855f7" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#d8b4fe" stopOpacity="0.1" />
+            </linearGradient>
+          </defs>
+          <motion.path
+            d="M 300 140 C 300 200, 160 230, 140 310"
+            stroke="url(#hero-edge-a)"
+            strokeWidth="2"
+            fill="none"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 1.2, ease: EASE_OUT, delay: 0.5 }}
+          />
+          <motion.path
+            d="M 300 140 C 300 200, 440 230, 460 310"
+            stroke="url(#hero-edge-b)"
+            strokeWidth="2"
+            fill="none"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 1.2, ease: EASE_OUT, delay: 0.5 }}
+          />
+          {/* Flow dots */}
+          <motion.circle
+            r="3"
+            fill="#6366f1"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 0] }}
+            transition={{ duration: 2.4, repeat: Infinity, delay: 1.8 }}
+          >
+            <animateMotion
+              dur="2.4s"
+              repeatCount="indefinite"
+              begin="1.8s"
+              path="M 300 140 C 300 200, 160 230, 140 310"
+            />
+          </motion.circle>
+          <motion.circle
+            r="3"
+            fill="#a855f7"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 0] }}
+            transition={{ duration: 2.4, repeat: Infinity, delay: 2 }}
+          >
+            <animateMotion
+              dur="2.4s"
+              repeatCount="indefinite"
+              begin="2s"
+              path="M 300 140 C 300 200, 440 230, 460 310"
+            />
+          </motion.circle>
+        </svg>
+
+        {/* Root prompt node */}
+        <motion.div
+          className="absolute left-1/2 -translate-x-1/2 top-[18%] z-10"
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.1 }}
+        >
+          <div className="group relative rounded-2xl bg-slate-900 text-white px-5 py-3.5 shadow-xl shadow-slate-900/20 ring-1 ring-slate-800 min-w-[260px]">
+            <div className="flex items-center gap-2 text-[11px] text-slate-400 mb-1.5">
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span className="font-mono uppercase tracking-wider">prompt</span>
+            </div>
+            <div className="text-sm font-medium leading-snug">
+              Explain the difference between DFS and BFS.
+            </div>
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-slate-900 ring-2 ring-white" />
+          </div>
+        </motion.div>
+
+        {/* Branch A */}
+        <motion.div
+          className="absolute left-[6%] top-[62%] w-[40%] z-10"
+          initial={{ opacity: 0, y: 16, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, ease: EASE_OUT, delay: 1.1 }}
+        >
+          <ReplyCard
+            model={HERO_MODELS[0]}
+            text={HERO_MODELS[0].reply.slice(0, typed[0])}
+            progress={typed[0] / HERO_MODELS[0].reply.length}
+            accent="indigo"
+          />
+        </motion.div>
+
+        {/* Branch B */}
+        <motion.div
+          className="absolute right-[6%] top-[62%] w-[40%] z-10"
+          initial={{ opacity: 0, y: 16, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, ease: EASE_OUT, delay: 1.3 }}
+        >
+          <ReplyCard
+            model={HERO_MODELS[1]}
+            text={HERO_MODELS[1].reply.slice(0, typed[1])}
+            progress={typed[1] / HERO_MODELS[1].reply.length}
+            accent="violet"
+          />
+        </motion.div>
+
+        {/* Floating cursor hint */}
+        <motion.div
+          className="absolute left-1/2 top-[48%] -translate-x-1/2 z-20 pointer-events-none"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 2.4, duration: 0.4 }}
+        >
+          <div className="flex items-center gap-1.5 rounded-full bg-slate-900/90 text-white text-[10px] font-medium px-2.5 py-1 shadow-lg backdrop-blur">
+            <MousePointer2 className="w-3 h-3" />
+            <span>fork here</span>
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Floating chips */}
+      <motion.div
+        className="absolute -left-6 top-[28%] hidden md:block"
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 1.8, duration: 0.5 }}
+      >
+        <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs shadow-lg border border-slate-200/80">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="font-medium text-slate-700">Context preserved</span>
+        </div>
+      </motion.div>
+
+      <motion.div
+        className="absolute -right-4 bottom-[18%] hidden md:block"
+        initial={{ opacity: 0, x: 10 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 2.1, duration: 0.5 }}
+      >
+        <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs shadow-lg border border-slate-200/80">
+          <GitBranch className="w-3.5 h-3.5 text-indigo-500" />
+          <span className="font-medium text-slate-700">2 branches · 1 root</span>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function ReplyCard({
+  model,
+  text,
+  progress,
+  accent,
+}: {
+  model: (typeof HERO_MODELS)[number];
+  text: string;
+  progress: number;
+  accent: "indigo" | "violet";
+}) {
+  const ring =
+    accent === "indigo"
+      ? "ring-indigo-200/80 shadow-indigo-100"
+      : "ring-violet-200/80 shadow-violet-100";
+  const bar =
+    accent === "indigo"
+      ? "from-indigo-500 to-blue-500"
+      : "from-violet-500 to-fuchsia-500";
+
+  return (
+    <div
+      className={`relative rounded-2xl bg-white ring-1 ${ring} shadow-[0_20px_40px_-20px_rgba(15,23,42,0.18)] overflow-hidden`}
+    >
+      <div className={`h-0.5 bg-gradient-to-r ${bar} w-full`} />
+      <div className="p-3.5">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <ModelProviderIcon
+              modelId={model.id}
+              provider={model.provider}
+              size={20}
+            />
+            <div>
+              <div className="text-[11px] font-semibold text-slate-900 leading-none">
+                {model.name}
+              </div>
+              <div className="text-[9px] uppercase tracking-wider text-slate-400 mt-0.5">
+                {model.provider}
+              </div>
+            </div>
+          </div>
+          <div className="text-[9px] font-mono text-slate-400">
+            {Math.round(progress * 100)}%
+          </div>
+        </div>
+        <p className="text-[11px] leading-relaxed text-slate-600 min-h-[48px]">
+          {text}
+          {progress < 1 && (
+            <span className="inline-block w-1 h-3 bg-slate-400 ml-0.5 align-middle animate-pulse" />
+          )}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Side-by-side problem comparison
+   ──────────────────────────────────────────────────────────────────────── */
+
+function ProblemComparison() {
+  return (
+    <div className="grid md:grid-cols-2 gap-5 items-stretch">
+      {/* Before */}
+      <FadeIn>
+        <div className="relative h-full rounded-2xl border border-slate-200 bg-slate-50/60 p-6 overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+              Before
+            </div>
+            <span className="text-[10px] font-medium text-rose-600 bg-rose-50 px-2 py-1 rounded-full border border-rose-100">
+              linear chat
+            </span>
+          </div>
+          <h3 className="text-xl md:text-2xl font-semibold text-slate-900 leading-tight mb-2">
+            One thread. Context drifts. Decisions get lost.
+          </h3>
+          <p className="text-sm text-slate-600 leading-relaxed mb-5">
+            You open four tabs, paste the same question into each, try to
+            remember which model said what, and lose the thread.
+          </p>
+
+          <div className="space-y-2">
+            {[
+              { u: "What's the difference between DFS and BFS?", r: "Answer on trees…" },
+              { u: "What about in Python?", r: "Wait — sorting or trees?" },
+              { u: "Can you show example code?", r: "Which context again?" },
+            ].map((m, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 6 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08 }}
+                className="rounded-xl border border-slate-200 bg-white p-3 text-[12px]"
+              >
+                <div className="text-slate-500 text-[10px] mb-1 font-mono uppercase">
+                  you
+                </div>
+                <div className="text-slate-800 mb-2">{m.u}</div>
+                <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1 font-mono uppercase">
+                  model
+                </div>
+                <div className="text-slate-500 italic">{m.r}</div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Frustration glyph */}
+          <div className="pointer-events-none absolute -bottom-8 -right-8 w-48 h-48 rounded-full bg-rose-100/40 blur-2xl" />
+        </div>
+      </FadeIn>
+
+      {/* After */}
+      <FadeIn delay={0.15}>
+        <div className="relative h-full rounded-2xl border border-slate-900/10 bg-white p-6 shadow-[0_30px_60px_-30px_rgba(15,23,42,0.15)] overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">
+              After · ContextTree
+            </div>
+            <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100">
+              branching canvas
+            </span>
+          </div>
+          <h3 className="text-xl md:text-2xl font-semibold text-slate-900 leading-tight mb-2">
+            One canvas. Every path alive. Compare answers side-by-side.
+          </h3>
+          <p className="text-sm text-slate-600 leading-relaxed mb-5">
+            Pick any message, fork it to a different model, keep going. Context
+            is inherited automatically — never contaminated.
+          </p>
+
+          <MiniTree />
+
+          <div className="pointer-events-none absolute -top-8 -right-8 w-48 h-48 rounded-full bg-indigo-100/50 blur-2xl" />
+        </div>
+      </FadeIn>
+    </div>
+  );
+}
+
+function MiniTree() {
+  return (
+    <div className="relative rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 overflow-hidden">
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:18px_18px] opacity-30" />
+      <div className="relative h-48">
+        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 200">
+          <motion.path
+            d="M 150 30 C 150 60, 70 80, 70 120"
+            stroke="#a5b4fc"
+            strokeWidth="1.5"
+            fill="none"
+            initial={{ pathLength: 0 }}
+            whileInView={{ pathLength: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.9 }}
+          />
+          <motion.path
+            d="M 150 30 C 150 60, 230 80, 230 120"
+            stroke="#c4b5fd"
+            strokeWidth="1.5"
+            fill="none"
+            initial={{ pathLength: 0 }}
+            whileInView={{ pathLength: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.9, delay: 0.1 }}
+          />
+          <motion.path
+            d="M 70 120 C 70 150, 40 160, 40 180"
+            stroke="#a5b4fc"
+            strokeWidth="1.5"
+            fill="none"
+            initial={{ pathLength: 0 }}
+            whileInView={{ pathLength: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.6 }}
+          />
+          <motion.path
+            d="M 70 120 C 70 150, 110 160, 110 180"
+            stroke="#a5b4fc"
+            strokeWidth="1.5"
+            fill="none"
+            initial={{ pathLength: 0 }}
+            whileInView={{ pathLength: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.7 }}
+          />
+        </svg>
+
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-medium px-2.5 py-1 rounded-md shadow-sm">
+          DFS vs BFS?
+        </div>
+
+        <div className="absolute top-[58%] left-[12%] bg-white border border-indigo-200 text-indigo-900 text-[10px] font-medium px-2 py-1 rounded-md shadow-sm flex items-center gap-1">
+          <ModelProviderIcon modelId="llama" provider="Meta" size={12} />
+          Llama
+        </div>
+        <div className="absolute top-[58%] right-[12%] bg-white border border-violet-200 text-violet-900 text-[10px] font-medium px-2 py-1 rounded-md shadow-sm flex items-center gap-1">
+          <ModelProviderIcon modelId="deepseek" provider="DeepSeek" size={12} />
+          DeepSeek
+        </div>
+
+        <div className="absolute bottom-1 left-[5%] bg-white border border-slate-200 text-slate-700 text-[10px] font-medium px-2 py-0.5 rounded-md">
+          Python
+        </div>
+        <div className="absolute bottom-1 left-[30%] bg-white border border-slate-200 text-slate-700 text-[10px] font-medium px-2 py-0.5 rounded-md">
+          Go
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   How it works
+   ──────────────────────────────────────────────────────────────────────── */
+
+const STEPS = [
+  {
+    n: "01",
+    title: "Prompt",
+    desc: "Drop a message on your canvas. Choose any model — Llama, Mixtral, DeepSeek, Gemma and more.",
+    icon: MessageSquare,
+    art: <StepPromptArt />,
+  },
+  {
+    n: "02",
+    title: "Branch",
+    desc: "Fork any point in the conversation. Each branch inherits only its parent context — zero contamination.",
+    icon: GitBranch,
+    art: <StepBranchArt />,
+  },
+  {
+    n: "03",
+    title: "Compare",
+    desc: "Run the same prompt across models, watch replies stream in parallel, keep the path that wins.",
+    icon: Layers,
+    art: <StepCompareArt />,
+  },
+];
+
+function StepPromptArt() {
+  return (
+    <div className="relative h-32 rounded-xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 p-3 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(99,102,241,0.08),transparent_60%)]" />
+      <div className="relative bg-slate-900 text-white rounded-lg px-3 py-2 text-[11px] shadow-lg inline-flex items-center gap-2">
+        <MessageSquare className="w-3 h-3" />
+        Build a story about…
+      </div>
+      <div className="flex gap-1.5 mt-3 relative">
+        {["llama-3.3-70b-versatile", "deepseek-r1-distill-llama-70b", "mixtral-8x7b", "gemma-7b"].map(
+          (m, i) => (
+            <motion.div
+              key={m}
+              initial={{ opacity: 0, y: 6 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 * i }}
+            >
+              <ModelProviderIcon modelId={m} size={22} />
+            </motion.div>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StepBranchArt() {
+  return (
+    <div className="relative h-32 rounded-xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 overflow-hidden">
+      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 128">
+        <motion.path
+          d="M 100 20 L 100 60"
+          stroke="#0f172a"
+          strokeWidth="2"
+          initial={{ pathLength: 0 }}
+          whileInView={{ pathLength: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4 }}
+        />
+        <motion.path
+          d="M 100 60 C 100 80, 60 90, 50 110"
+          stroke="#6366f1"
+          strokeWidth="2"
+          fill="none"
+          initial={{ pathLength: 0 }}
+          whileInView={{ pathLength: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        />
+        <motion.path
+          d="M 100 60 C 100 80, 140 90, 150 110"
+          stroke="#a855f7"
+          strokeWidth="2"
+          fill="none"
+          initial={{ pathLength: 0 }}
+          whileInView={{ pathLength: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        />
+        <circle cx="100" cy="20" r="4" fill="#0f172a" />
+        <circle cx="100" cy="60" r="4" fill="#0f172a" />
+        <circle cx="50" cy="110" r="4" fill="#6366f1" />
+        <circle cx="150" cy="110" r="4" fill="#a855f7" />
+      </svg>
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[9px] font-mono uppercase tracking-wider text-slate-400">
+        root
+      </div>
+      <div className="absolute bottom-1 left-[18%] text-[9px] font-medium text-indigo-600">
+        path a
+      </div>
+      <div className="absolute bottom-1 right-[18%] text-[9px] font-medium text-violet-600">
+        path b
+      </div>
+    </div>
+  );
+}
+
+function StepCompareArt() {
+  return (
+    <div className="relative h-32 rounded-xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 p-3 overflow-hidden">
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { color: "indigo", w: "92%" },
+          { color: "violet", w: "78%" },
+        ].map((c, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 4 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.1 }}
+            className={`rounded-lg border ${
+              c.color === "indigo"
+                ? "border-indigo-200 bg-indigo-50/40"
+                : "border-violet-200 bg-violet-50/40"
+            } p-2`}
+          >
+            <div className="space-y-1">
+              <div className="h-1 bg-slate-200 rounded w-4/5" />
+              <div className="h-1 bg-slate-200 rounded w-full" />
+              <div className="h-1 bg-slate-200 rounded w-3/4" />
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <div className="text-[9px] font-medium text-slate-500">
+                quality
+              </div>
+              <div className="text-[9px] font-bold text-slate-800">{c.w}</div>
+            </div>
+            <div className="mt-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                whileInView={{ width: c.w }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.3 + i * 0.1 }}
+                className={`h-full ${
+                  c.color === "indigo" ? "bg-indigo-500" : "bg-violet-500"
+                }`}
+              />
+            </div>
+          </motion.div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center gap-1.5 text-[9px] font-medium text-emerald-700">
+        <Check className="w-3 h-3" />
+        Keeping path A
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Supported models marquee
+   ──────────────────────────────────────────────────────────────────────── */
+
+const MARQUEE_MODELS = [
+  { id: "llama-3.3-70b-versatile", provider: "Meta", label: "Llama 3.3" },
+  { id: "deepseek-r1-distill-llama-70b", provider: "DeepSeek", label: "DeepSeek R1" },
+  { id: "mixtral-8x7b", provider: "Mistral", label: "Mixtral 8x7B" },
+  { id: "gemma-7b", provider: "Google", label: "Gemma" },
+  { id: "qwen-2.5-72b", provider: "Alibaba", label: "Qwen 2.5" },
+  { id: "kimi-k2", provider: "Moonshot", label: "Kimi K2" },
+  { id: "allam", provider: "SDAIA", label: "Allam" },
+  { id: "compound-beta", provider: "Groq", label: "Compound" },
+];
+
+function ModelsMarquee() {
+  const items = [...MARQUEE_MODELS, ...MARQUEE_MODELS];
+  return (
+    <div className="relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-slate-50 to-transparent z-10" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-slate-50 to-transparent z-10" />
+      <motion.div
+        className="flex gap-3 py-2"
+        initial={{ x: 0 }}
+        animate={{ x: "-50%" }}
+        transition={{
+          duration: 32,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+      >
+        {items.map((m, i) => (
+          <div
+            key={i}
+            className="shrink-0 inline-flex items-center gap-2 rounded-full bg-white border border-slate-200 px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm"
+          >
+            <ModelProviderIcon modelId={m.id} provider={m.provider} size={18} />
+            <span>{m.label}</span>
+            <span className="text-slate-400 text-[10px] uppercase tracking-wider font-mono">
+              {m.provider}
+            </span>
+          </div>
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Features
+   ──────────────────────────────────────────────────────────────────────── */
+
+const FEATURES = [
+  {
+    icon: GitBranch,
+    title: "Visual branching",
+    desc: "Fork at any message. Every branch is a clean, isolated thread on an infinite canvas.",
+  },
+  {
+    icon: Layers,
+    title: "Context isolation",
+    desc: "A branch inherits only its ancestors. No bleed-over, no silent contamination.",
+  },
+  {
+    icon: Cpu,
+    title: "10+ open models",
+    desc: "Llama, Mixtral, DeepSeek, Gemma, Qwen, Kimi and more — one prompt, many brains.",
+  },
+  {
+    icon: FileText,
+    title: "Attach context",
+    desc: "Drop docs, notes, and structured data into nodes. They flow down the tree automatically.",
+  },
+  {
+    icon: FlaskConical,
+    title: "Experiment mode",
+    desc: "Sweep prompts, temperatures and models in parallel. Find the best configuration fast.",
+    badge: "Soon",
+  },
+  {
+    icon: Workflow,
+    title: "Reusable flows",
+    desc: "Save a canvas as a template. Replay the branching logic on a new task in one click.",
+    badge: "Soon",
+  },
+];
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Main landing page
+   ──────────────────────────────────────────────────────────────────────── */
+
+export function LandingPage() {
+  const router = useRouter();
+  const [activeStep, setActiveStep] = useState(0);
+  const [navElevated, setNavElevated] = useState(false);
+
+  const { scrollY } = useScroll();
+  const heroY = useTransform(scrollY, [0, 600], [0, -60]);
+
+  useEffect(() => {
+    const id = setInterval(() => setActiveStep((p) => (p + 1) % 3), 3400);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => setNavElevated(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const handleGetStarted = () => router.push("/auth/signin");
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden selection:bg-slate-900 selection:text-white">
+      {/* Ambient gradient wash */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute -top-1/3 left-1/2 -translate-x-1/2 w-[1200px] h-[1200px] rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.10),transparent_70%)]" />
+        <div className="absolute top-[30%] -right-40 w-[700px] h-[700px] rounded-full bg-[radial-gradient(closest-side,rgba(168,85,247,0.09),transparent_70%)]" />
+      </div>
+
+      {/* NAV */}
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          navElevated
+            ? "bg-white/75 backdrop-blur-xl border-b border-slate-200/80"
+            : "bg-transparent"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
             <Image
               src="/tree-icon.svg"
               alt="ContextTree"
-              width={24}
-              height={24}
-              className="w-6 h-6"
+              width={26}
+              height={26}
+              className="w-7 h-7"
             />
-            <span className="text-slate-900">ContextTree</span>
+            <span className="text-[17px] font-semibold tracking-tight text-slate-900">
+              ContextTree
+            </span>
+            <span className="ml-2 hidden sm:inline-flex items-center gap-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 border border-slate-200">
+              <Sparkles className="w-2.5 h-2.5" /> Beta
+            </span>
           </div>
-          <div className="hidden md:flex items-center space-x-8 text-sm font-medium">
-            <a
-              href="#features"
-              className="text-slate-600 hover:text-slate-900 transition-colors"
-            >
+          <div className="hidden md:flex items-center gap-7 text-sm text-slate-600 font-medium">
+            <a href="#what" className="hover:text-slate-900 transition-colors">
+              What it is
+            </a>
+            <a href="#how" className="hover:text-slate-900 transition-colors">
+              How it works
+            </a>
+            <a href="#features" className="hover:text-slate-900 transition-colors">
               Features
             </a>
-            <a
-              href="#how"
-              className="text-slate-600 hover:text-slate-900 transition-colors"
-            >
-              How It Works
-            </a>
-            <a
-              href="#use-cases"
-              className="text-slate-600 hover:text-slate-900 transition-colors"
-            >
-              Use Cases
+            <a href="#models" className="hover:text-slate-900 transition-colors">
+              Models
             </a>
           </div>
           <button
             onClick={handleGetStarted}
-            className="px-5 py-2 text-sm font-medium bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
+            className="group inline-flex items-center gap-2 bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded-xl shadow-sm hover:shadow-md hover:bg-slate-800 transition-all"
           >
             Get Started
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </button>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center space-y-8 mb-20">
-            <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 bg-white shadow-sm">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              <span>Now in Beta</span>
-            </div>
-
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-tight text-slate-900">
-              Visual workspace for
-              <br />
-              <span className="text-slate-600">multi-LLM conversations</span>
-            </h1>
-
-            <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-              Build conversational flows visually. Branch at any point. Compare
-              AI responses side-by-side. Never lose context.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <button
-                onClick={handleGetStarted}
-                className="group px-7 py-3.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all flex items-center space-x-2 font-medium shadow-lg hover:shadow-xl"
-              >
-                <span>Get Started Free</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <a
-                href="#demo"
-                className="px-7 py-3.5 border border-slate-300 rounded-xl hover:bg-slate-100 transition-all flex items-center space-x-2 font-medium bg-white shadow-sm"
-              >
-                <Play className="w-4 h-4" />
-                <span>See How It Works</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Stats Bar */}
-          <div className="grid grid-cols-3 gap-8 py-12 border-y border-slate-200">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-slate-900 mb-2">10+</div>
-              <div className="text-sm text-slate-600 font-medium">
-                Open-Source Models
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-slate-900 mb-2">∞</div>
-              <div className="text-sm text-slate-600 font-medium">
-                Unlimited Branches
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-slate-900 mb-2">100%</div>
-              <div className="text-sm text-slate-600 font-medium">
-                Context Preserved
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Visual Problem Demo */}
-      <section id="demo" className="px-6 py-32 bg-white relative">
-        <div className="absolute inset-0 bg-slate-50/50 [mask-image:linear-gradient(to_bottom,transparent,white_20%,white_80%,transparent)]" />
-        <div className="max-w-6xl mx-auto relative z-10">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-slate-900">
-              The Context Problem
-            </h2>
-            <p className="text-slate-500 text-lg">
-              Why traditional chat interfaces hold you back
-            </p>
-          </div>
-
-          {/* Tab Selector */}
-          <div className="flex justify-center mb-12">
-            <div className="inline-flex bg-slate-100/80 backdrop-blur-sm rounded-full p-1.5 ring-1 ring-slate-200">
-              {["problem", "solution"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`relative px-8 py-3 text-sm font-medium rounded-full transition-all duration-300 ${
-                    activeTab === tab
-                      ? "text-slate-900"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  {activeTab === tab && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute inset-0 bg-white rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-200/50"
-                      transition={{
-                        type: "spring",
-                        bounce: 0.2,
-                        duration: 0.6,
-                      }}
-                    />
-                  )}
-                  <span className="relative z-10">
-                    {tab === "problem" ? "Traditional Chat" : "ContextTree Flow"}
+      {/* HERO */}
+      <section className="relative pt-32 md:pt-40 pb-20 md:pb-28 px-6">
+        <motion.div style={{ y: heroY }} className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)] gap-12 lg:gap-16 items-center">
+            <div className="relative z-10">
+              <FadeIn>
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/80 backdrop-blur px-3 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
                   </span>
-                </button>
-              ))}
+                  Open beta · free forever for core
+                </div>
+              </FadeIn>
+
+              <FadeIn delay={0.05}>
+                <h1 className="mt-6 text-[44px] md:text-[60px] lg:text-[68px] leading-[1.02] tracking-[-0.02em] font-semibold text-slate-900">
+                  Branch your chats.
+                  <br />
+                  <span className="relative inline-block">
+                    <span className="bg-gradient-to-br from-slate-900 via-indigo-700 to-violet-700 bg-clip-text text-transparent">
+                      Compare models,
+                    </span>
+                  </span>
+                  <br />
+                  side by side.
+                </h1>
+              </FadeIn>
+
+              <FadeIn delay={0.12}>
+                <p className="mt-6 max-w-xl text-lg text-slate-600 leading-relaxed">
+                  ContextTree is a visual canvas for LLM conversations. Pick
+                  any message, fork it to a different model, and watch answers
+                  stream in parallel — without ever losing context.
+                </p>
+              </FadeIn>
+
+              <FadeIn delay={0.18}>
+                <div className="mt-8 flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={handleGetStarted}
+                    className="btn-sheen group relative inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-slate-900/20 hover:shadow-xl hover:shadow-slate-900/25 transition-all hover:bg-slate-800 active:scale-[0.98]"
+                  >
+                    <span>Start free</span>
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                    <span className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/10 pointer-events-none" />
+                  </button>
+                  <a
+                    href="#how"
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/80 backdrop-blur border border-slate-200 px-5 py-3 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-white transition-all"
+                  >
+                    <CornerDownRight className="w-4 h-4 text-slate-400" />
+                    See how it works
+                  </a>
+                </div>
+              </FadeIn>
+
+              <FadeIn delay={0.24}>
+                <div className="mt-10 flex items-center gap-5 text-[11px] text-slate-500 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    No credit card
+                  </div>
+                  <div className="h-3 w-px bg-slate-200" />
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    10+ open models
+                  </div>
+                  <div className="h-3 w-px bg-slate-200" />
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    Auto-save
+                  </div>
+                </div>
+              </FadeIn>
             </div>
+
+            <FadeIn delay={0.2}>
+              <HeroCanvas />
+            </FadeIn>
           </div>
+        </motion.div>
+      </section>
 
-          {/* Content View */}
-          <div className="relative h-[600px] bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden shadow-xl">
-            <AnimatePresence mode="wait">
-              {activeTab === "problem" ? (
-                <motion.div
-                  key="problem"
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.3 }}
-                  className="absolute inset-0 p-8 flex flex-col items-center justify-center bg-slate-100/50"
-                >
-                  <div className="relative w-full max-w-4xl h-full">
-                    {/* Chaotic Browser Windows */}
-                    <motion.div
-                      className="absolute top-10 left-10 right-10 bottom-20 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden"
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.1 }}
-                      style={{ rotate: "-2deg" }}
-                    >
-                      <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-400" />
-                        <div className="w-3 h-3 rounded-full bg-amber-400" />
-                        <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                      </div>
-                      <div className="p-6 space-y-4 opacity-50 blur-[1px]">
-                        <div className="flex gap-4">
-                          <div className="w-8 h-8 rounded bg-slate-200" />
-                          <div className="flex-1 space-y-2">
-                            <div className="h-2 bg-slate-200 rounded w-3/4" />
-                            <div className="h-2 bg-slate-200 rounded w-1/2" />
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      className="absolute top-6 left-20 right-20 bottom-16 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden"
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      style={{ rotate: "1deg" }}
-                    >
-                      <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-400" />
-                        <div className="w-3 h-3 rounded-full bg-amber-400" />
-                        <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                      </div>
-                      <div className="p-6 space-y-4 opacity-70">
-                        <div className="flex gap-4">
-                          <div className="w-8 h-8 rounded bg-slate-200" />
-                          <div className="flex-1 space-y-2">
-                            <div className="h-2 bg-slate-200 rounded w-2/3" />
-                            <div className="h-2 bg-slate-200 rounded w-1/2" />
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] bottom-10 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden"
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                        <div className="flex gap-2">
-                          <div className="w-3 h-3 rounded-full bg-red-400" />
-                          <div className="w-3 h-3 rounded-full bg-amber-400" />
-                          <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                        </div>
-                        <div className="text-xs font-mono text-slate-400">
-                          chat-gpt-v4.html
-                        </div>
-                      </div>
-                      <div className="p-8 space-y-6">
-                        <div className="flex gap-4">
-                          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
-                            U
-                          </div>
-                          <div className="bg-slate-100 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-700">
-                            Can you explain the difference between DFS and BFS?
-                          </div>
-                        </div>
-                        <div className="flex gap-4 flex-row-reverse">
-                          <div className="w-8 h-8 rounded-lg bg-green-600 text-white flex items-center justify-center">
-                            <Bot className="w-4 h-4" />
-                          </div>
-                          <div className="bg-white border border-slate-100 shadow-sm rounded-2xl rounded-tr-sm p-4 text-sm text-slate-600">
-                            DFS (Depth-First Search) explores as far as possible
-                            along each branch before backtracking...
-                          </div>
-                        </div>
-                        <div className="flex gap-4">
-                          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
-                            U
-                          </div>
-                          <div className="bg-slate-100 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-700">
-                            What about in Python?
-                          </div>
-                        </div>
-                        <div className="flex gap-4 flex-row-reverse">
-                          <div className="w-8 h-8 rounded-lg bg-green-600 text-white flex items-center justify-center">
-                            <Bot className="w-4 h-4" />
-                          </div>
-                          <div className="bg-white border border-slate-200 shadow-sm rounded-2xl rounded-tr-sm p-4 text-sm text-slate-600">
-                            Wait, are we still talking about sorting or trees? I
-                            might have lost context from the other tab...
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Problem Overlay */}
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 1.5 }}
-                        className="absolute inset-0 bg-slate-900/5 backdrop-blur-[2px] flex items-center justify-center"
-                      >
-                        <div className="bg-white/90 backdrop-blur-xl border border-red-100 p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 max-w-sm text-center">
-                          <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-1">
-                            <AlertCircle className="w-6 h-6 text-red-500" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-1">
-                              Context Fragmented
-                            </h3>
-                            <p className="text-sm text-slate-500">
-                              Switching tabs breaks your flow. You can't compare
-                              answers easily or branch off ideas.
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="solution"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="absolute inset-0 bg-white"
-                >
-                  <div className="relative w-full h-full p-8 overflow-hidden">
-                    {/* Grid Background */}
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
-
-                    {/* Tree Visualization */}
-                    <div className="relative w-full h-full flex items-center justify-center">
-                      <div className="relative w-[800px] h-[500px]">
-                        <svg className="absolute inset-0 w-full h-full visible stroke-slate-300 stroke-2 fill-none">
-                          <motion.path
-                            d="M 400 50 L 400 150"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.5, delay: 0.2 }}
-                          />
-                          <motion.path
-                            d="M 400 150 C 400 150, 200 200, 200 300"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.5, delay: 0.8 }}
-                          />
-                          <motion.path
-                            d="M 400 150 C 400 150, 600 200, 600 300"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.5, delay: 0.8 }}
-                          />
-
-                          {/* Sub branches */}
-                          <motion.path
-                            d="M 200 300 L 150 400"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.5, delay: 1.5 }}
-                          />
-                          <motion.path
-                            d="M 200 300 L 250 400"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.5, delay: 1.5 }}
-                          />
-                        </svg>
-
-                        {/* Root Node */}
-                        <motion.div
-                          className="absolute top-[20px] left-1/2 -translate-x-1/2"
-                          initial={{ opacity: 0, y: -20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.5 }}
-                        >
-                          <div className="bg-slate-900 text-white px-6 py-3 rounded-xl shadow-lg border border-slate-800 flex items-center gap-3">
-                            <MessageSquare className="w-4 h-4" />
-                            <span className="font-medium text-sm">
-                              Explain DFS vs BFS
-                            </span>
-                          </div>
-                        </motion.div>
-
-                        {/* Branch Node 1 (Llama) */}
-                        <motion.div
-                          className="absolute top-[280px] left-[150px]"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.5, delay: 1.2 }}
-                        >
-                          <div className="bg-white px-5 py-4 rounded-xl shadow-lg border-2 border-blue-500 w-64 group hover:scale-105 transition-transform cursor-pointer">
-                            <div className="flex items-center gap-2 mb-2">
-                              <ModelProviderIcon
-                                modelId="llama-3.3-70b-versatile"
-                                provider="Meta"
-                                size={16}
-                              />
-                              <span className="text-xs font-bold text-slate-500 uppercase">
-                                LLaMA 3
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-600 leading-relaxed">
-                              DFS goes deep, BFS goes wide. Use DFS for pathfinding,
-                              BFS for shortest path...
-                            </p>
-                          </div>
-                        </motion.div>
-
-                        {/* Branch Node 2 (Claude) */}
-                        <motion.div
-                          className="absolute top-[280px] right-[150px]"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.5, delay: 1.2 }}
-                        >
-                          <div className="bg-white px-5 py-4 rounded-xl shadow-lg border-2 border-purple-500 w-64 group hover:scale-105 transition-transform cursor-pointer">
-                            <div className="flex items-center gap-2 mb-2">
-                              <ModelProviderIcon
-                                modelId="deepseek-r1-distill-llama-70b"
-                                provider="DeepSeek"
-                                size={16}
-                              />
-                              <span className="text-xs font-bold text-slate-500 uppercase">
-                                DeepSeek
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-600 leading-relaxed">
-                              Imagine a maze. DFS follows one wall until it hits a
-                              dead end. BFS expands like water...
-                            </p>
-                          </div>
-                        </motion.div>
-
-                        {/* Comparison Tooltip */}
-                        <motion.div
-                          className="absolute top-[240px] left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] px-3 py-1 rounded-full font-medium"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 2 }}
-                        >
-                          Comparing Parallel Contexts
-                        </motion.div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+      {/* MODELS STRIP */}
+      <section id="models" className="py-6">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="mb-4 text-center text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
+            Powered by the best open-source models
           </div>
+          <ModelsMarquee />
         </div>
       </section>
 
-      {/* How It Works - Enhanced Visual */}
-      <section id="how" className="px-6 py-24 bg-slate-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-slate-900">
-              How it works
-            </h2>
-            <p className="text-slate-600 text-lg">
-              Three steps to better conversations
-            </p>
-          </div>
+      {/* WHAT IT IS — The aha moment */}
+      <section id="what" className="px-6 py-24 md:py-32">
+        <div className="max-w-7xl mx-auto">
+          <FadeIn>
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[11px] font-medium text-slate-600 mb-5">
+                <Zap className="w-3 h-3 text-amber-500" /> Why it exists
+              </div>
+              <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-900 leading-[1.08]">
+                Chat interfaces force you into a straight line.
+                <br />
+                <span className="text-slate-500">
+                  Real thinking branches.
+                </span>
+              </h2>
+            </div>
+          </FadeIn>
 
-          <div className="relative">
-            {/* Connection Line */}
-            <div className="hidden md:block absolute top-24 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+          <ProblemComparison />
+        </div>
+      </section>
 
-            {/* Animated Dots on Line */}
-            <div className="hidden md:block absolute top-24 left-1/6 w-3 h-3 bg-slate-400 rounded-full -translate-y-1/2 animate-pulse" />
-            <div
-              className="hidden md:block absolute top-24 left-1/2 w-3 h-3 bg-slate-400 rounded-full -translate-y-1/2 -translate-x-1/2 animate-pulse"
-              style={{ animationDelay: "0.5s" }}
-            />
-            <div
-              className="hidden md:block absolute top-24 right-1/6 w-3 h-3 bg-slate-400 rounded-full -translate-y-1/2 animate-pulse"
-              style={{ animationDelay: "1s" }}
-            />
+      {/* HOW IT WORKS */}
+      <section id="how" className="relative px-6 py-24 md:py-32 bg-white border-y border-slate-200/60">
+        <div className="max-w-7xl mx-auto">
+          <FadeIn>
+            <div className="text-center max-w-2xl mx-auto mb-16">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600 mb-5">
+                <Workflow className="w-3 h-3 text-indigo-500" /> How it works
+              </div>
+              <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-900 leading-[1.08]">
+                Three moves. One canvas. Every path preserved.
+              </h2>
+            </div>
+          </FadeIn>
 
-            <div className="grid md:grid-cols-3 gap-8 mb-16 relative">
-              {[
-                {
-                  step: "01",
-                  title: "Start Conversation",
-                  description:
-                    "Choose your LLM and ask your question. Every message becomes a visual node on your canvas.",
-                  icon: MessageSquare,
-                  visual: (
-                    <div className="mt-6 bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0">
-                          <MessageSquare className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex-1 space-y-2">
-                          <div className="h-2 bg-slate-200 rounded w-full" />
-                          <div className="h-2 bg-slate-200 rounded w-3/4" />
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                          <ModelProviderIcon
-                            modelId="llama-3.3-70b-versatile"
-                            provider="Meta"
-                            size={14}
-                          />
-                          <span>Llama</span>
-                        </div>
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                          <ModelProviderIcon
-                            modelId="deepseek-r1-distill-llama-70b"
-                            provider="DeepSeek"
-                            size={14}
-                          />
-                          <span>DeepSeek</span>
-                        </div>
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium">
-                          <ModelProviderIcon
-                            modelId="mixtral-8x7b"
-                            provider="Mistral"
-                            size={14}
-                          />
-                          <span>Mixtral</span>
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  step: "02",
-                  title: "Branch & Compare",
-                  description:
-                    "Fork at any point. Try different models on the same prompt. Each branch maintains clean, isolated context.",
-                  icon: GitBranch,
-                  visual: (
-                    <div className="mt-6 bg-white rounded-xl p-4 border border-slate-200 shadow-sm relative">
-                      <div className="flex justify-center mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center">
-                          <GitBranch className="w-5 h-5 text-white" />
-                        </div>
-                      </div>
-                      <svg className="w-full h-16" viewBox="0 0 100 60">
-                        <line
-                          x1="50"
-                          y1="0"
-                          x2="30"
-                          y2="40"
-                          stroke="#cbd5e1"
-                          strokeWidth="2"
-                        />
-                        <line
-                          x1="50"
-                          y1="0"
-                          x2="70"
-                          y2="40"
-                          stroke="#cbd5e1"
-                          strokeWidth="2"
-                        />
-                        <circle cx="50" cy="0" r="4" fill="#0f172a" />
-                        <circle cx="30" cy="40" r="4" fill="#3b82f6" />
-                        <circle cx="70" cy="40" r="4" fill="#8b5cf6" />
-                      </svg>
-                      <div className="flex justify-between text-xs text-slate-600 font-medium">
-                        <span>Path A</span>
-                        <span>Path B</span>
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  step: "03",
-                  title: "Evaluate & Iterate",
-                  description:
-                    "Compare responses side-by-side. Follow the best path forward. Your entire conversation tree auto-saves.",
-                  icon: TrendingUp,
-                  visual: (
-                    <div className="mt-6 bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs text-slate-600 font-medium">
-                                Response Quality
-                              </span>
-                              <span className="text-xs text-slate-900 font-bold">
-                                92%
-                              </span>
-                            </div>
-                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-emerald-500 rounded-full"
-                                style={{ width: "92%" }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs text-slate-600 font-medium">
-                                Context Preserved
-                              </span>
-                              <span className="text-xs text-slate-900 font-bold">
-                                100%
-                              </span>
-                            </div>
-                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-blue-500 rounded-full"
-                                style={{ width: "100%" }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="pt-2 flex items-center gap-2 text-xs text-emerald-600 font-medium">
-                          <Check className="w-4 h-4" />
-                          <span>Auto-saved</span>
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className={`relative transition-all duration-500 ${
-                    activeStep === i ? "scale-105" : "scale-100"
+          <div className="grid md:grid-cols-3 gap-5">
+            {STEPS.map((step, i) => (
+              <FadeIn key={i} delay={0.08 * i}>
+                <motion.div
+                  animate={{
+                    scale: activeStep === i ? 1.02 : 1,
+                  }}
+                  transition={{ duration: 0.4, ease: EASE_OUT }}
+                  className={`group relative h-full rounded-2xl border p-6 transition-all duration-500 ${
+                    activeStep === i
+                      ? "bg-slate-900 text-white border-slate-900 shadow-[0_40px_80px_-40px_rgba(15,23,42,0.35)]"
+                      : "bg-white border-slate-200 hover:border-slate-300"
                   }`}
                 >
-                  {/* Step Number Badge */}
-                  <div className="absolute -top-4 -left-4 z-10">
+                  <div className="flex items-center gap-3 mb-5">
                     <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ${
-                        activeStep === i
-                          ? "bg-slate-900 text-white shadow-lg scale-110"
-                          : "bg-white text-slate-900 border-2 border-slate-200"
+                      className={`text-[10px] font-mono font-bold tracking-widest ${
+                        activeStep === i ? "text-indigo-300" : "text-slate-400"
                       }`}
                     >
-                      {item.step}
+                      {step.n}
+                    </div>
+                    <div
+                      className={`h-px flex-1 ${
+                        activeStep === i ? "bg-slate-700" : "bg-slate-200"
+                      }`}
+                    />
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        activeStep === i
+                          ? "bg-white/10 text-white"
+                          : "bg-slate-100 text-slate-900"
+                      }`}
+                    >
+                      <step.icon className="w-4 h-4" />
                     </div>
                   </div>
-
-                  {/* Main Card */}
-                  <div
-                    className={`p-8 rounded-2xl border transition-all duration-300 ${
-                      activeStep === i
-                        ? "bg-slate-900 text-white border-slate-900 shadow-2xl"
-                        : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-lg"
+                  <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
+                  <p
+                    className={`text-sm leading-relaxed mb-5 ${
+                      activeStep === i ? "text-slate-300" : "text-slate-600"
                     }`}
                   >
-                    <div
-                      className={`w-14 h-14 rounded-xl flex items-center justify-center mb-6 transition-all ${
-                        activeStep === i
-                          ? "bg-white"
-                          : "bg-slate-50 border border-slate-200"
-                      }`}
-                    >
-                      <item.icon
-                        className={`w-7 h-7 ${
-                          activeStep === i ? "text-slate-900" : "text-slate-900"
-                        }`}
-                      />
-                    </div>
-                    <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
-                    <p
-                      className={`text-sm leading-relaxed mb-4 ${
-                        activeStep === i ? "text-slate-300" : "text-slate-600"
-                      }`}
-                    >
-                      {item.description}
-                    </p>
-
-                    {/* Visual Demo */}
-                    <div
-                      className={
-                        activeStep === i ? "opacity-100" : "opacity-60"
-                      }
-                    >
-                      {item.visual}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Progress Indicator */}
-            <div className="flex justify-center gap-2 mt-8">
-              {[0, 1, 2].map((i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveStep(i)}
-                  className={`transition-all duration-300 ${
-                    activeStep === i
-                      ? "w-8 h-2 bg-slate-900 rounded-full"
-                      : "w-2 h-2 bg-slate-300 rounded-full hover:bg-slate-400"
-                  }`}
-                  aria-label={`Step ${i + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section id="features" className="px-6 py-24 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-slate-900">
-              Core capabilities
-            </h2>
-            <p className="text-slate-600 text-lg">
-              Professional tools for AI experimentation
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                icon: GitBranch,
-                title: "Visual Branching",
-                description:
-                  "Fork conversations at any point. Each path maintains isolated context without contamination.",
-                visual: (
-                  <div className="mt-4 relative h-24 bg-gradient-to-br from-slate-50 to-white rounded-xl p-4 border border-slate-200">
-                    <div className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900 rounded-lg text-white text-[10px] font-semibold shadow-sm">
-                      Root
-                    </div>
-                    <div className="absolute bottom-3 left-1/4 px-2.5 py-1.5 bg-slate-200 border border-slate-300 rounded-lg text-[10px] font-medium shadow-sm">
-                      Branch A
-                    </div>
-                    <div className="absolute bottom-3 right-1/4 px-2.5 py-1.5 bg-slate-200 border border-slate-300 rounded-lg text-[10px] font-medium shadow-sm">
-                      Branch B
-                    </div>
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                      <line
-                        x1="50%"
-                        y1="30%"
-                        x2="35%"
-                        y2="70%"
-                        stroke="#cbd5e1"
-                        strokeWidth="2"
-                      />
-                      <line
-                        x1="50%"
-                        y1="30%"
-                        x2="65%"
-                        y2="70%"
-                        stroke="#cbd5e1"
-                        strokeWidth="2"
-                      />
-                    </svg>
-                  </div>
-                ),
-              },
-              {
-                icon: Zap,
-                title: "Open-Source Models",
-                description:
-                  "Test multiple open-source models (Llama, Mixtral, Gemma, DeepSeek) side-by-side via Groq. Fast and free.",
-                visual: (
-                  <div className="mt-4 flex gap-2">
-                    <div className="flex-1 h-20 bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-xl p-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mb-2"></div>
-                      <div className="space-y-1.5">
-                        <div className="h-1 bg-slate-200 rounded w-3/4"></div>
-                        <div className="h-1 bg-slate-200 rounded w-1/2"></div>
-                        <div className="h-1 bg-slate-200 rounded w-2/3"></div>
-                      </div>
-                    </div>
-                    <div className="flex-1 h-20 bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-xl p-3">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full mb-2"></div>
-                      <div className="space-y-1.5">
-                        <div className="h-1 bg-slate-200 rounded w-2/3"></div>
-                        <div className="h-1 bg-slate-200 rounded w-3/4"></div>
-                        <div className="h-1 bg-slate-200 rounded w-1/2"></div>
-                      </div>
-                    </div>
-                    <div className="flex-1 h-20 bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-xl p-3">
-                      <div className="w-2 h-2 bg-orange-500 rounded-full mb-2"></div>
-                      <div className="space-y-1.5">
-                        <div className="h-1 bg-slate-200 rounded w-1/2"></div>
-                        <div className="h-1 bg-slate-200 rounded w-2/3"></div>
-                        <div className="h-1 bg-slate-200 rounded w-3/4"></div>
-                      </div>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                icon: Layers,
-                title: "Context Isolation",
-                description:
-                  "Each branch inherits only its parent context. Zero contamination between conversation paths.",
-                visual: (
-                  <div className="mt-4 bg-gradient-to-br from-slate-50 to-white rounded-xl p-4 border border-slate-200">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <div className="w-6 h-6 bg-slate-900 rounded-lg flex items-center justify-center text-white text-[10px] font-bold">
-                        A
-                      </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-                      <div className="w-6 h-6 bg-slate-400 rounded-lg flex items-center justify-center text-white text-[10px] font-bold">
-                        B
-                      </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-                      <div className="w-6 h-6 bg-slate-900 border-2 border-slate-500 rounded-lg flex items-center justify-center text-white text-[10px] font-bold">
-                        C
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-slate-600 text-center font-medium">
-                      C inherits: A → B only
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                icon: Clock,
-                title: "Auto-Save",
-                description:
-                  "Every change saves automatically. Never lose your work or conversation history.",
-                visual: (
-                  <div className="mt-4 flex items-center justify-center h-24 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200">
-                    <div className="relative">
-                      <div className="w-12 h-12 rounded-xl border-2 border-slate-900 flex items-center justify-center">
-                        <Clock className="w-6 h-6 text-slate-900" />
-                      </div>
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm">
-                        <Check className="w-3 h-3 text-white" />
-                      </div>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                icon: Link2,
-                title: "Context Linking",
-                description:
-                  "Link relevant context nodes to any conversation branch. Keep instructions and data organized.",
-                badge: "Coming Soon",
-                visual: (
-                  <div className="mt-4 bg-gradient-to-br from-slate-50 to-white rounded-xl p-4 border border-slate-200 space-y-2">
-                    <div className="px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-[10px] font-semibold text-center text-slate-700">
-                      📄 Knowledge Base
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="flex-1 h-6 bg-white border border-slate-300 rounded-lg text-[9px] flex items-center justify-center text-slate-600">
-                        Doc
-                      </div>
-                      <div className="flex-1 h-6 bg-white border border-slate-300 rounded-lg text-[9px] flex items-center justify-center text-slate-600">
-                        API
-                      </div>
-                      <div className="flex-1 h-6 bg-white border border-slate-300 rounded-lg text-[9px] flex items-center justify-center text-slate-600">
-                        Data
-                      </div>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                icon: FlaskConical,
-                title: "Experiment Mode",
-                description:
-                  "Test multiple prompts and parameters simultaneously. Find optimal configurations faster.",
-                badge: "Coming Soon",
-                visual: (
-                  <div className="mt-4 bg-gradient-to-br from-slate-50 to-white rounded-xl p-4 border border-slate-200">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-[10px]">
-                        <div className="w-16 text-slate-600 font-medium">
-                          Temp:
-                        </div>
-                        <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-slate-900 w-3/4"></div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-[10px]">
-                        <div className="w-16 text-slate-600 font-medium">
-                          Max Tok:
-                        </div>
-                        <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-slate-900 w-1/2"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ),
-              },
-            ].map((feature, i) => (
-              <div
-                key={i}
-                className="group p-6 rounded-2xl border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all bg-white relative"
-              >
-                {feature.badge && (
-                  <div className="absolute top-5 right-5 text-[10px] font-semibold text-slate-500 px-3 py-1 bg-slate-100 rounded-full border border-slate-200">
-                    {feature.badge}
-                  </div>
-                )}
-                <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center mb-4">
-                  <feature.icon className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-lg font-bold mb-2 text-slate-900">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-slate-600 leading-relaxed mb-3">
-                  {feature.description}
-                </p>
-                {feature.visual}
-              </div>
+                    {step.desc}
+                  </p>
+                  {step.art}
+                </motion.div>
+              </FadeIn>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* Use Cases */}
-      <section id="use-cases" className="px-6 py-24 bg-slate-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-slate-900">
-              Built for professionals
-            </h2>
-            <p className="text-slate-600 text-lg">
-              From research to production
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                title: "Researchers",
-                description:
-                  "Compare model outputs systematically. Document hypothesis testing. Export conversation trees for reproducible research.",
-                features: [
-                  "Multi-model analysis",
-                  "Export findings",
-                  "Reproducible experiments",
-                ],
-              },
-              {
-                title: "Developers",
-                description:
-                  "Prototype AI features faster. Test prompts across providers. Debug conversations with instant feedback loops.",
-                features: [
-                  "Rapid prototyping",
-                  "API evaluation",
-                  "Prompt engineering",
-                ],
-              },
-              {
-                title: "Product Teams",
-                description:
-                  "Explore different conversation flows. Test user scenarios. Find the best AI interaction patterns for your product.",
-                features: [
-                  "Flow exploration",
-                  "Scenario testing",
-                  "Pattern discovery",
-                ],
-              },
-            ].map((useCase, i) => (
-              <div
-                key={i}
-                className="p-8 rounded-2xl border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all bg-white"
-              >
-                <h3 className="text-2xl font-bold mb-3 text-slate-900">
-                  {useCase.title}
-                </h3>
-                <p className="text-slate-600 leading-relaxed mb-6">
-                  {useCase.description}
-                </p>
-                <div className="space-y-2.5">
-                  {useCase.features.map((feature, j) => (
-                    <div
-                      key={j}
-                      className="flex items-center gap-2.5 text-sm text-slate-600"
-                    >
-                      <div className="w-1.5 h-1.5 bg-slate-900 rounded-full"></div>
-                      <span className="font-medium">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="px-6 py-32 bg-white">
-        <div className="max-w-3xl mx-auto text-center space-y-8">
-          <div className="space-y-4">
-            <h2 className="text-5xl md:text-6xl font-bold tracking-tight text-slate-900">
-              Start building smarter conversations
-            </h2>
-            <p className="text-xl text-slate-600">
-              Join the beta. Free forever for core features.
-            </p>
-          </div>
-
-          {!isSubmitted ? (
-            <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-                placeholder="your@email.com"
-                className="flex-1 px-5 py-3.5 rounded-xl bg-white border border-slate-300 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all text-slate-900 placeholder-slate-400 text-sm shadow-sm"
-              />
+          <div className="flex justify-center gap-1.5 mt-10">
+            {[0, 1, 2].map((i) => (
               <button
-                onClick={handleSubmit}
-                className="px-7 py-3.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all font-medium text-sm whitespace-nowrap shadow-lg hover:shadow-xl"
-              >
-                Get Started
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center space-x-2.5 py-3.5 px-6 bg-emerald-50 border border-emerald-200 rounded-xl max-w-md mx-auto">
-              <Check className="w-5 h-5 text-emerald-600" />
-              <span className="text-sm font-medium text-emerald-900">
-                You're on the list! Check your email.
-              </span>
-            </div>
-          )}
-
-          <div className="flex items-center justify-center gap-6 text-sm text-slate-500 pt-4">
-            <span className="font-medium">Free beta access</span>
-            <span>•</span>
-            <span className="font-medium">No credit card required</span>
-            <span>•</span>
-            <span className="font-medium">Start immediately</span>
+                key={i}
+                onClick={() => setActiveStep(i)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  activeStep === i
+                    ? "w-8 bg-slate-900"
+                    : "w-1.5 bg-slate-300 hover:bg-slate-400"
+                }`}
+                aria-label={`Step ${i + 1}`}
+              />
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="px-6 py-12 border-t border-slate-200 bg-slate-50">
+      {/* FEATURES */}
+      <section id="features" className="px-6 py-24 md:py-32">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
-            <div className="flex items-center space-x-2.5 font-bold text-lg">
-              <Image
-                src="/tree-icon.svg"
-                alt="ContextTree"
-                width={24}
-                height={24}
-                className="w-6 h-6"
-              />
-              <span className="text-slate-900">ContextTree</span>
+          <FadeIn>
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
+              <div>
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[11px] font-medium text-slate-600 mb-4">
+                  <Sparkles className="w-3 h-3 text-violet-500" /> Features
+                </div>
+                <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-900 leading-[1.08] max-w-2xl">
+                  Built like a real tool.
+                  <br />
+                  <span className="text-slate-500">
+                    Not another chat wrapper.
+                  </span>
+                </h2>
+              </div>
+              <p className="text-slate-600 max-w-sm text-base leading-relaxed">
+                Keyboard-first, auto-saving, infinite canvas. The details that
+                matter when you spend hours in it.
+              </p>
             </div>
-            <div className="flex gap-8 text-sm font-medium text-slate-600">
-              <a
-                href="#features"
-                className="hover:text-slate-900 transition-colors"
-              >
-                Features
-              </a>
-              <a href="#how" className="hover:text-slate-900 transition-colors">
-                How It Works
-              </a>
-              <a
-                href="#use-cases"
-                className="hover:text-slate-900 transition-colors"
-              >
-                Use Cases
-              </a>
-            </div>
+          </FadeIn>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {FEATURES.map((f, i) => (
+              <FadeIn key={i} delay={0.04 * i}>
+                <motion.div
+                  whileHover={{ y: -4 }}
+                  transition={{ duration: 0.25, ease: EASE_OUT }}
+                  className="group relative h-full rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-[0_20px_40px_-20px_rgba(15,23,42,0.1)]"
+                >
+                  {f.badge && (
+                    <span className="absolute top-5 right-5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-semibold px-2 py-0.5 border border-slate-200">
+                      {f.badge}
+                    </span>
+                  )}
+                  <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center shadow-sm">
+                    <f.icon className="w-[18px] h-[18px] text-white" strokeWidth={2} />
+                    <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/10" />
+                  </div>
+                  <h3 className="mt-5 text-base font-semibold text-slate-900">
+                    {f.title}
+                  </h3>
+                  <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
+                    {f.desc}
+                  </p>
+                  <div className="mt-4 flex items-center text-[11px] font-medium text-slate-400 group-hover:text-indigo-600 transition-colors">
+                    Learn more
+                    <ArrowUpRight className="w-3 h-3 ml-0.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  </div>
+                </motion.div>
+              </FadeIn>
+            ))}
           </div>
-          <div className="text-center text-sm text-slate-500">
-            © 2025 ContextTree. Built for better AI conversations.
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="px-6 pb-24">
+        <div className="max-w-5xl mx-auto">
+          <FadeIn>
+            <div className="relative rounded-3xl overflow-hidden bg-slate-900 text-white px-8 py-16 md:px-16 md:py-20">
+              {/* Aurora */}
+              <div className="absolute inset-0 opacity-60">
+                <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-indigo-600/40 blur-3xl" />
+                <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-violet-600/40 blur-3xl" />
+              </div>
+
+              {/* Grid */}
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:28px_28px]" />
+
+              <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-10">
+                <div>
+                  <h2 className="text-3xl md:text-5xl font-semibold tracking-tight leading-[1.1] max-w-xl">
+                    Start branching your conversations today.
+                  </h2>
+                  <p className="mt-4 text-slate-400 max-w-lg text-base">
+                    Sign up in seconds. Open a canvas. Drop a prompt. Fork it.
+                    That's it — you're thinking in trees now.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 md:min-w-[220px]">
+                  <button
+                    onClick={handleGetStarted}
+                    className="btn-sheen group inline-flex items-center justify-center gap-2 rounded-xl bg-white text-slate-900 px-6 py-3.5 font-medium text-sm shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                  >
+                    Start free
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </button>
+                  <div className="text-[11px] text-slate-500 text-center font-medium">
+                    Free beta access · no credit card
+                  </div>
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="px-6 pb-10">
+        <div className="max-w-7xl mx-auto border-t border-slate-200 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <Image
+              src="/tree-icon.svg"
+              alt="ContextTree"
+              width={20}
+              height={20}
+              className="w-5 h-5 opacity-80"
+            />
+            <span className="text-sm font-semibold text-slate-700">
+              ContextTree
+            </span>
+            <span className="text-xs text-slate-400">
+              © {new Date().getFullYear()}
+            </span>
+          </div>
+          <div className="flex items-center gap-6 text-xs font-medium text-slate-500">
+            <a href="#what" className="hover:text-slate-900 transition-colors">
+              What
+            </a>
+            <a href="#how" className="hover:text-slate-900 transition-colors">
+              How
+            </a>
+            <a href="#features" className="hover:text-slate-900 transition-colors">
+              Features
+            </a>
+            <a
+              href="#models"
+              className="hover:text-slate-900 transition-colors"
+            >
+              Models
+            </a>
           </div>
         </div>
       </footer>
