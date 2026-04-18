@@ -29,12 +29,14 @@ import { getDefaultModel } from "@/lib/models";
 import { toast } from "sonner";
 import { Focus, LayoutGrid } from "lucide-react";
 
-import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
-import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
-import { ContextNodeMinimal as ContextNode } from "./nodes/context-node-minimal";
+import {
+  EntryNodeAtelier as EntryNode,
+  BranchNodeAtelier as BranchNode,
+  ContextNodeAtelier as ContextNode,
+} from "./nodes/atelier-nodes";
 import { GroupNode } from "./nodes/group-node";
 import { ExternalContextNode } from "./nodes/external-context-node";
-import { CustomEdgeMinimal as CustomEdge } from "./edges/custom-edge-minimal";
+import { AtelierEdge as CustomEdge } from "./edges/atelier-edge";
 import { FloatingConnectionLine } from "./edges/floating-connection-line";
 import {
   storageService,
@@ -625,9 +627,26 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
         const isAnimated = animatedEdges.has(edge._id);
         const src = data.nodes.find((n) => n._id === edge.from);
         const tgt = data.nodes.find((n) => n._id === edge.to);
-        const isExternal = src?.type === "externalContext" || tgt?.type === "externalContext";
-        const ec = isExternal ? "#f59e0b" : colorScheme(src?.color || "#f8fafc").edge || "#cbd5e1";
-        const stroke = isAnimated ? EDGE_HIGHLIGHT_COLOR : ec;
+        const isExternal =
+          src?.type === "externalContext" || tgt?.type === "externalContext";
+
+        // Atelier edge taxonomy:
+        //   context → attach lines to/from reference nodes (indigo dotted)
+        //   branch  → any edge that leads into a branch node (amber dashed)
+        //   main    → everything else — the primary thread (moss solid)
+        const edgeKind: "main" | "branch" | "context" = isExternal
+          ? "context"
+          : tgt?.type === "branch"
+          ? "branch"
+          : "main";
+
+        const arrowColor =
+          edgeKind === "context"
+            ? "#4338CA"
+            : edgeKind === "branch"
+            ? "#C97B2F"
+            : "#2D5F3F";
+
         return {
           id: edge._id,
           source: edge.from,
@@ -636,13 +655,21 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
           animated: isAnimated,
           data: {
             ...(edge.meta || {}),
+            edgeType: edgeKind,
+            streaming: isAnimated,
             animated: isAnimated,
             onDelete: (id: string) => deleteEdge(id),
           },
-          style: { stroke, strokeWidth: isAnimated ? 2.2 : 1.5 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: stroke, width: 16, height: 16 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: arrowColor,
+            width: 16,
+            height: 16,
+          },
           selectable: true,
-          hidden: isHiddenByCollapse(edge.from, data.nodes) || isHiddenByCollapse(edge.to, data.nodes),
+          hidden:
+            isHiddenByCollapse(edge.from, data.nodes) ||
+            isHiddenByCollapse(edge.to, data.nodes),
         } as Edge;
       });
 
@@ -922,12 +949,18 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     fetch(`/api/canvases/${canvasId}/edges`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(edgeData) }).catch(() => {});
     if (tgtNode.type !== "entry") scheduleParentUpdate(tgtId, { parentNodeId: srcId });
 
-    const ec = colorScheme(srcNode?.color || "#f8fafc").edge || "#cbd5e1";
+    const edgeKind =
+      srcNode.type === "externalContext" || tgtNode.type === "externalContext"
+        ? "context"
+        : tgtNode.type === "branch"
+        ? "branch"
+        : "main";
+    const arrowColor =
+      edgeKind === "context" ? "#4338CA" : edgeKind === "branch" ? "#C97B2F" : "#2D5F3F";
     setEdges((eds) => addEdge({
       id: edgeData._id, source: srcId, target: tgtId, type: "custom",
-      data: { onDelete: (id: string) => deleteEdge(id) },
-      style: { stroke: ec, strokeWidth: 1.5 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: ec, width: 16, height: 16 },
+      data: { edgeType: edgeKind, onDelete: (id: string) => deleteEdge(id) },
+      markerEnd: { type: MarkerType.ArrowClosed, color: arrowColor, width: 16, height: 16 },
     }, eds));
   }, [canvas, canvasId, scheduleParentUpdate, setEdges, deleteEdge]);
 
@@ -1367,45 +1400,48 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]"
+      className="atelier-canvas relative h-full w-full overflow-hidden rounded-[28px] border border-[var(--at-paper-edge)] shadow-[var(--at-shadow-lg)]"
       ref={wrapperRef}
       onDrop={onDrop}
       onDragOver={onDragOver}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94)_42%,_rgba(241,245,249,0.84)_100%)]" />
 
       {/* Loading shimmer — shown only when we have no cached canvas yet */}
       {isLoadingCanvas && !canvas && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/60 backdrop-blur-sm">
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-[var(--at-paper)]/70 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 rounded-full border-2 border-slate-200 border-t-slate-900 animate-spin" />
-            <p className="text-xs font-medium text-slate-500">Loading canvas…</p>
+            <div className="h-8 w-8 rounded-full border-2 border-[var(--at-paper-edge)] border-t-[var(--at-moss)] animate-spin" />
+            <p className="text-xs font-medium text-[var(--at-ink-muted)]" style={{ fontFamily: "var(--at-font-serif)", fontStyle: "italic" }}>
+              Opening canvas…
+            </p>
           </div>
         </div>
       )}
 
-      {/* Error state — bad canvas id or server failure */}
+      {/* Error state */}
       {loadError && !isLoadingCanvas && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-[var(--at-paper)]/85 backdrop-blur-sm">
           <div className="max-w-sm text-center space-y-3 px-6">
-            <div className="mx-auto w-12 h-12 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500">
+            <div className="mx-auto w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ background: "rgba(180,47,47,0.06)", border: "1px solid rgba(180,47,47,0.2)", color: "#8A1F1F" }}>
               <LayoutGrid size={20} />
             </div>
-            <p className="text-sm font-semibold text-slate-900">{loadError}</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--at-ink)" }}>{loadError}</p>
             <button
               onClick={() => {
                 setLoadError(null);
                 setIsLoadingCanvas(true);
                 loadTokenRef.current += 1;
-                // Trigger a retry by bumping activeCanvasIdRef
                 const t = canvasId;
                 activeCanvasIdRef.current = "";
                 requestAnimationFrame(() => {
                   activeCanvasIdRef.current = t;
-                  setCanvas((c) => c); // no-op state update to re-run effects
+                  setCanvas((c) => c);
                 });
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors"
+              className="atelier-button"
+              data-variant="primary"
+              style={{ fontSize: 12 }}
             >
               Retry
             </button>
@@ -1416,37 +1452,60 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
       {/* Empty canvas hint */}
       {hasNoVisibleNodes && !loadError && (
         <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-          <div className="pointer-events-auto text-center space-y-2 px-6 py-4 rounded-2xl bg-white/80 backdrop-blur border border-slate-200 shadow-sm">
-            <p className="text-sm font-medium text-slate-700">This canvas is empty</p>
-            <p className="text-xs text-slate-500">Right-click anywhere to drop your first node</p>
+          <div className="pointer-events-auto text-center space-y-2 px-6 py-4 rounded-2xl"
+            style={{
+              background: "var(--at-paper-soft)",
+              border: "1px solid var(--at-paper-edge)",
+              boxShadow: "var(--at-shadow-sm)",
+            }}
+          >
+            <p style={{ fontFamily: "var(--at-font-serif)", fontStyle: "italic", fontSize: 13, color: "var(--at-moss)" }}>
+              A blank page
+            </p>
+            <p className="text-sm" style={{ fontFamily: "var(--at-font-sans)", color: "var(--at-ink-soft)" }}>
+              Right-click anywhere to drop your first node
+            </p>
           </div>
         </div>
       )}
 
-      {/* Canvas insights chip — small, always-on summary of the graph */}
+      {/* Canvas insights chip — Atelier "table of contents" strip */}
       {canvas && canvas.nodes.length > 0 && !loadError && (
         <div className="pointer-events-none absolute top-4 left-4 z-20 select-none">
-          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/85 backdrop-blur-md px-3 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm">
+          <div
+            className="pointer-events-auto flex items-center gap-2 px-3 py-1.5"
+            style={{
+              background: "var(--at-paper-soft)",
+              border: "1px solid var(--at-paper-edge)",
+              borderRadius: "var(--at-radius-md)",
+              boxShadow: "var(--at-shadow-sm)",
+              fontFamily: "var(--at-font-mono)",
+              fontSize: 11,
+              color: "var(--at-ink-muted)",
+            }}
+          >
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-900" />
-              <span className="tabular-nums text-slate-900">{canvas.nodes.length}</span>
-              <span className="text-slate-400">nodes</span>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--at-moss)" }} />
+              <span className="tabular-nums" style={{ color: "var(--at-ink)" }}>
+                {canvas.nodes.length}
+              </span>
+              <span>nodes</span>
             </span>
-            <span className="h-3 w-px bg-slate-200" />
+            <span style={{ color: "var(--at-paper-edge)" }}>·</span>
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-              <span className="tabular-nums text-slate-900">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--at-amber)" }} />
+              <span className="tabular-nums" style={{ color: "var(--at-ink)" }}>
                 {canvas.nodes.filter((n: any) => n.type === "branch").length}
               </span>
-              <span className="text-slate-400">branches</span>
+              <span>branches</span>
             </span>
-            <span className="h-3 w-px bg-slate-200" />
+            <span style={{ color: "var(--at-paper-edge)" }}>·</span>
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
-              <span className="tabular-nums text-slate-900">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--at-indigo)" }} />
+              <span className="tabular-nums" style={{ color: "var(--at-ink)" }}>
                 {new Set(canvas.nodes.map((n: any) => n.model).filter(Boolean)).size}
               </span>
-              <span className="text-slate-400">models</span>
+              <span>models</span>
             </span>
           </div>
         </div>
@@ -1469,11 +1528,10 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
         fitViewOptions={{ padding: 0.15 }}
         connectionLineType={ConnectionLineType.SmoothStep}
         connectionLineComponent={FloatingConnectionLine}
-        connectionLineStyle={{ stroke: "#cbd5e1", strokeWidth: 1.35 }}
+        connectionLineStyle={{ stroke: "#2D5F3F", strokeWidth: 1.5, strokeDasharray: "4 4" }}
         defaultEdgeOptions={{
           type: "custom",
-          style: { stroke: "#d5dee8", strokeWidth: 1.35 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: "#cbd5e1", width: 14, height: 14 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: "#2D5F3F", width: 14, height: 14 },
         }}
         onInit={(instance) => {
           if (canvas?.viewportState) {
@@ -1503,19 +1561,13 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
         maxZoom={1.8}
         className="relative z-10 !bg-transparent"
       >
+        {/* Paper grid is painted by the .atelier-canvas wrapper (CSS).
+            Use a transparent dots bg just to satisfy ReactFlow internals. */}
         <Background
-          id="minor-grid"
-          variant={BackgroundVariant.Lines}
+          variant={BackgroundVariant.Dots}
           gap={24}
-          lineWidth={1}
-          color="#edf2f7"
-        />
-        <Background
-          id="major-grid"
-          variant={BackgroundVariant.Lines}
-          gap={120}
-          lineWidth={1}
-          color="#e2e8f0"
+          size={0}
+          color="transparent"
         />
         <MiniMap
           pannable
@@ -1524,24 +1576,26 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
           position="bottom-right"
           nodeBorderRadius={8}
           nodeStrokeWidth={1.2}
-          bgColor="rgba(255,255,255,0.96)"
-          maskColor="rgba(15,23,42,0.04)"
-          maskStrokeColor="#e2e8f0"
-          maskStrokeWidth={1}
+          bgColor="#F4F0E6"
+          maskColor="rgba(45,95,63,0.08)"
+          maskStrokeColor="#2D5F3F"
+          maskStrokeWidth={1.2}
           style={{ height: 100, width: 150 }}
           nodeColor={(node) => {
-            if (node.id === selectedNode) return "#4f46e5";
-            if (node.type === "entry") return "#0f172a";
-            if (node.type === "branch") return "#a78bfa";
-            if (node.type === "externalContext") return "#f59e0b";
-            return ((node.data as any)?.color as string | undefined) || "#cbd5e1";
+            if (node.id === selectedNode) return "#2D5F3F";
+            if (node.type === "entry") return "#2D5F3F";
+            if (node.type === "branch") return "#C97B2F";
+            if (node.type === "externalContext" || node.type === "context") return "#4338CA";
+            return "#9CA3AF";
           }}
           nodeStrokeColor={(node) => {
-            if (node.id === selectedNode) return "#4f46e5";
-            if (node.type === "entry") return "#0f172a";
-            return "#e2e8f0";
+            if (node.id === selectedNode) return "#2D5F3F";
+            if (node.type === "entry") return "#2D5F3F";
+            if (node.type === "branch") return "#C97B2F";
+            if (node.type === "externalContext" || node.type === "context") return "#4338CA";
+            return "#E8E2D1";
           }}
-          className="!rounded-xl !border !border-slate-200/80 !bg-white/95 !shadow-lg backdrop-blur-md"
+          className="!rounded-xl !border !border-[var(--at-paper-edge)] !bg-[var(--at-paper-soft)] !shadow-sm"
           onNodeClick={(_, node) =>
             onNodeSelect(
               node.id,

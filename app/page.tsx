@@ -342,12 +342,13 @@ export default function ContextTreePage() {
   if (isLoading) {
     return (
       <motion.div
-        className="h-screen flex items-center justify-center bg-slate-50"
+        className="h-screen flex items-center justify-center"
+        style={{ background: "var(--at-paper)" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <LoadingSpinner size="lg" text="Loading ContextTree..." />
+        <LoadingSpinner size="lg" text="Opening your atelier…" />
       </motion.div>
     );
   }
@@ -359,7 +360,8 @@ export default function ContextTreePage() {
 
   return (
     <motion.div
-      className="flex flex-col h-screen w-full overflow-hidden bg-slate-50 font-sans"
+      className="flex flex-col h-screen w-full overflow-hidden"
+      style={{ background: "var(--at-paper-soft)", fontFamily: "var(--at-font-sans)" }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
@@ -382,7 +384,11 @@ export default function ContextTreePage() {
       <div className="flex flex-1 overflow-hidden relative pt-14">
         {/* Left sidebar — workspace list */}
         <motion.div
-          className="flex flex-col border-r border-slate-200 bg-white z-30 overflow-hidden"
+          className="flex flex-col z-30 overflow-hidden"
+          style={{
+            background: "var(--at-paper-soft)",
+            borderRight: "1px solid var(--at-paper-edge)",
+          }}
           animate={{
             width: leftSidebarCollapsed || chatFullscreen ? 0 : 240,
             opacity: leftSidebarCollapsed || chatFullscreen ? 0 : 1,
@@ -442,69 +448,99 @@ export default function ContextTreePage() {
             ) : (
               <motion.div
                 key="empty"
-                className="relative flex items-center justify-center h-full overflow-hidden"
+                className="atelier-canvas relative flex items-center justify-center h-full overflow-hidden"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, ease: "easeOut" }}
               >
-                {/* Ambient background */}
-                <div className="absolute inset-0 bg-slate-50">
-                  <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.04)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_55%_at_50%_50%,#000_45%,transparent_100%)]" />
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] h-[720px] rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.08),transparent_70%)]" />
-                </div>
-
-                <div className="relative text-center space-y-6 max-w-sm px-6">
-                  {/* Animated tree icon */}
+                <div className="relative text-center max-w-sm px-6 space-y-5">
                   <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    className="mx-auto w-20 h-20 rounded-3xl bg-white border border-slate-200 flex items-center justify-center shadow-sm relative"
+                    className="mx-auto w-16 h-16 flex items-center justify-center"
+                    style={{
+                      background: "var(--at-paper)",
+                      border: "1px solid var(--at-paper-edge)",
+                      borderRadius: "var(--at-radius-xl)",
+                      boxShadow: "var(--at-shadow-sm)",
+                      color: "var(--at-moss)",
+                    }}
                   >
-                    <svg width="40" height="40" viewBox="0 0 40 40" className="text-slate-700">
+                    <svg width="36" height="36" viewBox="0 0 40 40">
                       <motion.line
                         x1="20" y1="8" x2="20" y2="20"
-                        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
+                        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
                         initial={{ pathLength: 0 }}
                         animate={{ pathLength: 1 }}
                         transition={{ delay: 0.35, duration: 0.4 }}
                       />
                       <motion.path
                         d="M 20 20 C 20 26, 10 26, 10 32"
-                        stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"
+                        stroke="#C97B2F" strokeWidth="1.5" fill="none" strokeLinecap="round"
+                        strokeDasharray="4 2"
                         initial={{ pathLength: 0 }}
                         animate={{ pathLength: 1 }}
                         transition={{ delay: 0.55, duration: 0.5 }}
                       />
                       <motion.path
                         d="M 20 20 C 20 26, 30 26, 30 32"
-                        stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"
+                        stroke="#4338CA" strokeWidth="1.3" fill="none" strokeLinecap="round"
+                        strokeDasharray="1 3"
                         initial={{ pathLength: 0 }}
                         animate={{ pathLength: 1 }}
                         transition={{ delay: 0.55, duration: 0.5 }}
                       />
-                      <motion.circle cx="20" cy="8" r="2.5" fill="currentColor"
+                      <motion.circle cx="20" cy="8" r="2.5" fill="#2D5F3F"
                         initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.25 }} />
-                      <motion.circle cx="10" cy="32" r="2.5" fill="#6366f1"
+                      <motion.circle cx="10" cy="32" r="2.5" fill="#C97B2F"
                         initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.95 }} />
-                      <motion.circle cx="30" cy="32" r="2.5" fill="#a855f7"
+                      <motion.circle cx="30" cy="32" r="2.5" fill="#4338CA"
                         initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 1.05 }} />
                     </svg>
-                    <div className="pointer-events-none absolute -inset-2 rounded-[20px] bg-indigo-400/10 blur-xl" />
                   </motion.div>
 
                   <motion.div
-                    className="space-y-1.5"
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                   >
-                    <p className="text-slate-900 text-lg font-semibold tracking-tight">
-                      Start a new canvas
+                    <p
+                      style={{
+                        fontFamily: "var(--at-font-serif)",
+                        fontStyle: "italic",
+                        fontSize: 13,
+                        color: "var(--at-moss)",
+                        letterSpacing: "0.02em",
+                      }}
+                    >
+                      A blank page
                     </p>
-                    <p className="text-slate-500 text-sm leading-relaxed">
-                      One prompt, many branches. Compare models side-by-side on an
-                      infinite, auto-saving canvas.
+                    <h2
+                      className="mt-2"
+                      style={{
+                        fontFamily: "var(--at-font-serif)",
+                        fontWeight: 400,
+                        fontSize: 28,
+                        color: "var(--at-ink)",
+                        letterSpacing: "-0.01em",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      Start a new canvas.
+                    </h2>
+                    <p
+                      className="mt-3 mx-auto"
+                      style={{
+                        fontFamily: "var(--at-font-sans)",
+                        fontSize: 14,
+                        color: "var(--at-ink-muted)",
+                        lineHeight: 1.6,
+                        maxWidth: 320,
+                      }}
+                    >
+                      One prompt. Every rabbit hole its own branch. Your main
+                      thread stays clean.
                     </p>
                   </motion.div>
 
@@ -517,15 +553,18 @@ export default function ContextTreePage() {
                     <button
                       type="button"
                       onClick={() => openCreateCanvasDialog(canvases.length === 0 ? "My First Project" : generateCanvasTitle())}
-                      className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-slate-900/10 hover:shadow-xl hover:shadow-slate-900/20 transition-all hover:bg-slate-800 active:scale-[0.98]"
+                      className="atelier-button"
+                      data-variant="primary"
+                      style={{ padding: "8px 14px", fontSize: 13 }}
                     >
-                      <Plus size={14} className="transition-transform group-hover:rotate-90" />
+                      <Plus size={13} />
                       New Canvas
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsSearchOpen(true)}
-                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-all"
+                      className="atelier-button"
+                      style={{ padding: "8px 14px", fontSize: 13 }}
                     >
                       Search
                       <kbd className="inline-flex items-center rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-mono text-slate-500">
