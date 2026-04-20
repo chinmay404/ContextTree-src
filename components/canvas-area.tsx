@@ -27,7 +27,9 @@ import {
 import "@xyflow/react/dist/style.css";
 import { getDefaultModel } from "@/lib/models";
 import { toast } from "sonner";
-import { Focus, LayoutGrid } from "lucide-react";
+import { Focus, LayoutGrid, GitBranch, X } from "lucide-react";
+import { ModelSelectionPanel } from "@/components/model-selection-panel";
+import { Button } from "@/components/ui/button";
 
 import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
 import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
@@ -335,6 +337,8 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   const [expandedOverflow, setExpandedOverflow] = useState<Set<string>>(new Set());
   const [collapsedNodes] = useState<Set<string>>(new Set());
   const [pendingConn, setPendingConn] = useState<{ sourceId: string } | null>(null);
+  const [pendingBranchDrop, setPendingBranchDrop] = useState<{ parentId: string; position: { x: number; y: number } } | null>(null);
+  const [branchDropModel, setBranchDropModel] = useState<string>(() => getDefaultModel());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
   const lastViewportRef = useRef<Viewport | null>(null);
@@ -843,7 +847,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   }, [canvas, canvasId]);
 
   // ─── Create branch from parent ────────────────────────────
-  const createBranch = useCallback((parentId: string, position?: { x: number; y: number }) => {
+  const createBranch = useCallback((parentId: string, position?: { x: number; y: number }, model?: string) => {
     if (!canvas) return;
     const parent = canvas.nodes.find((n) => n._id === parentId);
     if (!parent || parent.type === "context" || parent.type === "externalContext") return;
@@ -861,7 +865,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
       _id: nodeId, primary: false, type: "branch", name: label,
       color: parent.color, textColor: cs.text, dotColor: cs.dot,
       chatMessages: [], runningSummary: "", contextContract: "",
-      model: parent.model || canvas.settings?.defaultModel || getDefaultModel(),
+      model: model || parent.model || canvas.settings?.defaultModel || getDefaultModel(),
       metaTags: parent.metaTags || [],
       parentNodeId: parentId, forkedFromMessageId: forkId, createdAt: now, position: pos,
     };
@@ -971,9 +975,11 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     if (typeof clientX !== "number" || typeof clientY !== "number") { setPendingConn(null); return; }
 
     const pos = flow.screenToFlowPosition({ x: clientX - bounds.left, y: clientY - bounds.top });
-    createBranch(pendingConn.sourceId, pos);
+    const parent = canvas.nodes.find((n) => n._id === pendingConn.sourceId);
+    setBranchDropModel(parent?.model || canvas.settings?.defaultModel || getDefaultModel());
+    setPendingBranchDrop({ parentId: pendingConn.sourceId, position: pos });
     setPendingConn(null);
-  }, [pendingConn, canvas, flow, createBranch]);
+  }, [pendingConn, canvas, flow]);
 
   const onNodeDragStop = useCallback((_: React.MouseEvent, node: Node) => {
     scheduleLayoutPatch({ nodes: [{ id: node.id, position: node.position }] });
@@ -1451,6 +1457,50 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
           </div>
         </div>
       )}
+      {/* Model picker — shown when user drops a new branch by dragging an edge */}
+      {pendingBranchDrop && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="mx-4 flex max-h-[86vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div className="border-b border-slate-100 px-6 py-5">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <GitBranch size={18} className="text-indigo-500" /> New Branch
+                </h3>
+                <button
+                  onClick={() => setPendingBranchDrop(null)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <p className="text-sm text-slate-500">Choose a model for the new branch</p>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <ModelSelectionPanel
+                selectedModel={branchDropModel}
+                onSelect={setBranchDropModel}
+                compact
+              />
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
+              <Button variant="outline" onClick={() => setPendingBranchDrop(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  const { parentId, position } = pendingBranchDrop;
+                  setPendingBranchDrop(null);
+                  createBranch(parentId, position, branchDropModel);
+                }}
+                className="bg-slate-900 text-white hover:bg-slate-800"
+              >
+                Create Branch
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ReactFlow
         nodes={nodes}
         edges={edges}

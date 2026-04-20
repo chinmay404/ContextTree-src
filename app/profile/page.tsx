@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useAuth } from "@/hooks/use-auth";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { UserStats } from "@/components/user-stats";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,328 +16,405 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  User,
-  Mail,
-  Calendar,
-  BarChart3,
-  Activity,
-  ArrowLeft,
-  Settings,
-  Shield,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
 import { ApiKeySettingsDialog } from "@/components/api-key-settings-dialog";
+import { FeedbackDialog } from "@/components/feedback-dialog";
+import {
+  ArrowLeft,
+  BarChart3,
+  Calendar,
+  KeyRound,
+  Layers3,
+  LogOut,
+  Mail,
+  MessageSquareQuote,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
+
+type UserStatsState = {
+  canvasCount: number;
+  totalNodes: number;
+  canvasIds: string[];
+};
+
+type FeedbackReport = {
+  id: string;
+  title: string;
+  description: string;
+  status: "open" | "investigating" | "resolved" | "closed";
+  created_at: string;
+};
+
+const formatRelativeDate = (value?: string) => {
+  if (!value) return "Recently";
+
+  const date = new Date(value);
+  const diffMs = Date.now() - date.getTime();
+  const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return date.toLocaleDateString();
+};
+
+const statusStyles: Record<FeedbackReport["status"], string> = {
+  open: "bg-amber-50 text-amber-700 border-amber-200",
+  investigating: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  resolved: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  closed: "bg-slate-100 text-slate-600 border-slate-200",
+};
 
 export default function ProfilePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const [userStats, setUserStats] = useState<{
-    canvasCount: number;
-    totalNodes: number;
-    canvasIds: string[];
-  } | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
   const [isApiKeysOpen, setIsApiKeysOpen] = useState(false);
+  const [userStats, setUserStats] = useState<UserStatsState | null>(null);
+  const [feedbackReports, setFeedbackReports] = useState<FeedbackReport[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
-    const loadUserStats = async () => {
+    const loadProfileData = async () => {
       if (!isAuthenticated || !user?.email) {
-        setIsLoadingStats(false);
+        setIsLoadingData(false);
         return;
       }
 
       try {
-        const response = await fetch("/api/canvases");
-        if (response.ok) {
-          const data = await response.json();
-          setUserStats(data.userStats || null);
+        const [canvasResponse, reportsResponse] = await Promise.all([
+          fetch("/api/canvases"),
+          fetch("/api/reports?userOnly=true"),
+        ]);
+
+        if (canvasResponse.ok) {
+          const canvasData = await canvasResponse.json();
+          setUserStats(canvasData.userStats || null);
+        }
+
+        if (reportsResponse.ok) {
+          const reportsData = await reportsResponse.json();
+          setFeedbackReports(reportsData.reports || []);
         }
       } catch (error) {
-        console.error("Error loading user stats:", error);
+        console.error("Error loading profile data:", error);
       } finally {
-        setIsLoadingStats(false);
+        setIsLoadingData(false);
       }
     };
 
-    if (isAuthenticated) {
-      loadUserStats();
-    }
+    loadProfileData();
   }, [isAuthenticated, user?.email]);
 
-  // Show loading state while authentication is being checked
+  const averageNodesPerCanvas = useMemo(() => {
+    if (!userStats?.canvasCount) return 0;
+    return Math.round(userStats.totalNodes / userStats.canvasCount);
+  }, [userStats]);
+
   if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <LoadingSpinner size="lg" text="Loading profile..." />
       </div>
     );
   }
 
-  // Show sign-in prompt if not authenticated
   if (!isAuthenticated || !user) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-slate-900 mb-2">
-            Profile
-          </h1>
-          <p className="text-slate-600 mb-4">
-            Please sign in to view your profile
-          </p>
-          <Button onClick={() => router.push("/")} variant="default">
-            Go to Home
-          </Button>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
+        <Card className="w-full max-w-lg rounded-3xl border-slate-200 bg-white shadow-sm">
+          <CardContent className="space-y-4 px-8 py-10 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-white">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-950">Profile</h1>
+              <p className="mt-2 text-slate-600">
+                Sign in to see your account, API keys, and feedback history.
+              </p>
+            </div>
+            <Button
+              onClick={() => router.push("/")}
+              className="rounded-xl bg-slate-900 text-white hover:bg-slate-800"
+            >
+              Back to home
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.08),transparent_35%),linear-gradient(to_bottom,#f8fafc,#ffffff)] text-slate-900">
       <ApiKeySettingsDialog
         open={isApiKeysOpen}
         onOpenChange={setIsApiKeysOpen}
       />
 
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/50 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/")}
-                className="text-slate-600 hover:text-slate-900"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to ContextTree
-              </Button>
-              <div className="h-6 w-px bg-slate-300" />
-              <h1 className="text-2xl font-bold text-slate-900">Profile</h1>
-            </div>
-
+      <div className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <div className="flex items-center gap-3">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+              onClick={() => router.push("/")}
+              className="rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             >
-              Sign Out
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to app
             </Button>
+            <div className="hidden h-5 w-px bg-slate-200 sm:block" />
+            <span className="hidden text-sm font-medium text-slate-500 sm:inline">
+              Profile
+            </span>
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign out
+          </Button>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="mx-auto max-w-6xl px-6 py-8 md:py-10">
         <div className="grid gap-6">
-          {/* User Info Card */}
-          <Card className="bg-white/80 backdrop-blur-sm border-slate-200/50 shadow-lg">
-            <CardHeader className="pb-6">
-              <div className="flex items-start gap-6">
-                <Avatar className="w-20 h-20 border-4 border-white shadow-lg">
-                  <AvatarImage src={user.image || ""} alt={user.name || ""} />
-                  <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                    {user.name
-                      ?.split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
+          <Card className="overflow-hidden rounded-[28px] border-slate-200 bg-white shadow-[0_25px_60px_-40px_rgba(15,23,42,0.22)]">
+            <CardContent className="p-0">
+              <div className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.16),transparent_35%),linear-gradient(to_bottom_right,#ffffff,#f8fafc)] px-7 py-7">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="flex items-start gap-5">
+                    <Avatar className="h-20 w-20 border-4 border-white shadow-lg">
+                      <AvatarImage src={user.image || ""} alt={user.name || ""} />
+                      <AvatarFallback className="bg-slate-900 text-xl font-semibold text-white">
+                        {user.name
+                          ?.split(" ")
+                          .map((part) => part[0])
+                          .join("")
+                          .toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
 
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <CardTitle className="text-2xl text-slate-900">
-                      {user.name || "User"}
-                    </CardTitle>
-                    <Badge
-                      variant="secondary"
-                      className="bg-green-100 text-green-700 border-green-200"
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
+                          {user.name || "ContextTree user"}
+                        </h1>
+                        <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-emerald-700">
+                          <ShieldCheck className="mr-1 h-3.5 w-3.5" />
+                          Verified account
+                        </Badge>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-600">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-slate-400" />
+                          <span>{user.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-slate-400" />
+                          <span>Member since {new Date().getFullYear()}</span>
+                        </div>
+                      </div>
+
+                      <p className="max-w-2xl text-sm leading-6 text-slate-600">
+                        Manage your keys, track your workspace usage, and leave product feedback from one place.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsApiKeysOpen(true)}
+                      className="rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                     >
-                      <Shield className="w-3 h-3 mr-1" />
-                      Verified
-                    </Badge>
-                  </div>
+                      <KeyRound className="mr-2 h-4 w-4 text-indigo-500" />
+                      Manage API keys
+                    </Button>
 
-                  <div className="flex items-center gap-2 text-slate-600 mb-3">
-                    <Mail className="w-4 h-4" />
-                    <span>{user.email}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-slate-500 text-sm">
-                    <Calendar className="w-4 h-4" />
-                    <span>Member since {new Date().getFullYear()}</span>
+                    <FeedbackDialog defaultContext="Profile page">
+                      <Button className="rounded-xl bg-slate-900 text-white hover:bg-slate-800">
+                        <MessageSquareQuote className="mr-2 h-4 w-4" />
+                        Send feedback
+                      </Button>
+                    </FeedbackDialog>
                   </div>
                 </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="self-start"
-                  onClick={() => setIsApiKeysOpen(true)}
-                >
-                  <Settings className="w-4 h-4 mr-2" />
-                  API Keys
-                </Button>
               </div>
-            </CardHeader>
+
+              <div className="grid gap-4 px-7 py-6 md:grid-cols-3">
+                {[
+                  {
+                    label: "Canvases",
+                    value: userStats?.canvasCount ?? 0,
+                    icon: Layers3,
+                    accent: "text-indigo-600",
+                  },
+                  {
+                    label: "Total nodes",
+                    value: userStats?.totalNodes ?? 0,
+                    icon: BarChart3,
+                    accent: "text-violet-600",
+                  },
+                  {
+                    label: "Avg. nodes / canvas",
+                    value: averageNodesPerCanvas,
+                    icon: Sparkles,
+                    accent: "text-emerald-600",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5"
+                  >
+                    <div className="mb-4 flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-500">
+                        {item.label}
+                      </span>
+                      <item.icon className={`h-4.5 w-4.5 ${item.accent}`} />
+                    </div>
+                    <div className="text-3xl font-semibold tracking-tight text-slate-950">
+                      {isLoadingData ? "—" : item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
           </Card>
 
-          {/* Statistics Cards */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* ContextTree Statistics */}
-            <Card className="bg-white/80 backdrop-blur-sm border-slate-200/50 shadow-lg">
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+            <Card className="rounded-[24px] border-slate-200 bg-white shadow-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <BarChart3 className="w-5 h-5 text-blue-600" />
-                  ContextTree Statistics
+                <CardTitle className="text-xl text-slate-950">
+                  Account overview
                 </CardTitle>
                 <CardDescription>
-                  Your canvas and node activity overview
+                  The details that matter for day-to-day use.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                {isLoadingStats ? (
-                  <div className="flex items-center justify-center py-8">
-                    <LoadingSpinner size="sm" text="Loading stats..." />
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                  <span className="text-sm text-slate-600">Authentication</span>
+                  <Badge className="rounded-full border-blue-200 bg-blue-50 text-blue-700">
+                    OAuth
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                  <span className="text-sm text-slate-600">Current access</span>
+                  <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-emerald-700">
+                    Active
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                  <span className="text-sm text-slate-600">Feedback submitted</span>
+                  <span className="text-sm font-semibold text-slate-900">
+                    {feedbackReports.length}
+                  </span>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-slate-800">
+                    Quick actions
+                  </p>
+                  <div className="grid gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsApiKeysOpen(true)}
+                      className="justify-start rounded-xl border-slate-200 hover:bg-slate-50"
+                    >
+                      <KeyRound className="mr-2 h-4 w-4 text-indigo-500" />
+                      Update API keys
+                    </Button>
+                    <FeedbackDialog defaultContext="Profile page">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start rounded-xl border-slate-200 hover:bg-slate-50"
+                      >
+                        <MessageSquareQuote className="mr-2 h-4 w-4 text-indigo-500" />
+                        Leave product feedback
+                      </Button>
+                    </FeedbackDialog>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push("/")}
+                      className="justify-start rounded-xl border-slate-200 hover:bg-slate-50"
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4 text-slate-500" />
+                      Return to workspace
+                    </Button>
                   </div>
-                ) : userStats ? (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-blue-600 mb-1">
-                          {userStats.canvasCount}
-                        </div>
-                        <div className="text-sm text-slate-600">
-                          Total Canvases
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-green-600 mb-1">
-                          {userStats.totalNodes}
-                        </div>
-                        <div className="text-sm text-slate-600">
-                          Total Nodes
-                        </div>
-                      </div>
-                    </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                    <Separator />
-
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium text-slate-700">
-                        Quick Stats
-                      </div>
-                      <div className="grid grid-cols-1 gap-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">
-                            Avg. nodes per canvas:
-                          </span>
-                          <span className="font-medium">
-                            {userStats.canvasCount > 0
-                              ? Math.round(
-                                  userStats.totalNodes / userStats.canvasCount
-                                )
-                              : 0}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">
-                            Active workspaces:
-                          </span>
-                          <Badge variant="secondary" className="text-xs">
-                            {userStats.canvasCount > 0
-                              ? "Active"
-                              : "No canvases"}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
+            <Card className="rounded-[24px] border-slate-200 bg-white shadow-sm">
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="text-xl text-slate-950">
+                    Recent feedback
+                  </CardTitle>
+                  <CardDescription>
+                    Everything you've sent us from the product so far.
+                  </CardDescription>
+                </div>
+                <Badge className="rounded-full border-slate-200 bg-slate-50 text-slate-600">
+                  {feedbackReports.length} total
+                </Badge>
+              </CardHeader>
+              <CardContent>
+                {isLoadingData ? (
+                  <div className="flex min-h-[220px] items-center justify-center">
+                    <LoadingSpinner size="sm" text="Loading feedback..." />
+                  </div>
+                ) : feedbackReports.length === 0 ? (
+                  <div className="rounded-[22px] border border-dashed border-slate-200 bg-slate-50/70 px-6 py-10 text-center">
+                    <MessageSquareQuote className="mx-auto mb-4 h-10 w-10 text-slate-300" />
+                    <p className="text-lg font-medium text-slate-900">
+                      No feedback yet
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      If something feels rough, confusing, or promising, send it through here and we’ll keep it attached to your account.
+                    </p>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-slate-500">
-                    <BarChart3 className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                    <p>No statistics available</p>
-                    <p className="text-sm">
-                      Create your first canvas to get started
-                    </p>
+                  <div className="space-y-3">
+                    {feedbackReports.slice(0, 6).map((report) => (
+                      <div
+                        key={report.id}
+                        className="rounded-[20px] border border-slate-200 bg-slate-50/70 px-4 py-4"
+                      >
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {report.title}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Badge className={`rounded-full border ${statusStyles[report.status]}`}>
+                              {report.status}
+                            </Badge>
+                            <span className="text-xs text-slate-500">
+                              {formatRelativeDate(report.created_at)}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-sm leading-6 text-slate-600">
+                          {report.description}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
             </Card>
-
-            {/* Activity Overview */}
-            <Card className="bg-white/80 backdrop-blur-sm border-slate-200/50 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Activity className="w-5 h-5 text-green-600" />
-                  Activity Overview
-                </CardTitle>
-                <CardDescription>
-                  Recent activity and usage patterns
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm text-slate-600">Last Active</span>
-                  <span className="text-sm font-medium text-slate-900">
-                    Today
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm text-slate-600">Account Status</span>
-                  <Badge
-                    variant="secondary"
-                    className="bg-green-100 text-green-700"
-                  >
-                    Active
-                  </Badge>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm text-slate-600">Authentication</span>
-                  <Badge
-                    variant="secondary"
-                    className="bg-blue-100 text-blue-700"
-                  >
-                    OAuth 2.0
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
           </div>
-
-          {/* Account Actions */}
-          <Card className="bg-white/80 backdrop-blur-sm border-slate-200/50 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-lg">Account Actions</CardTitle>
-              <CardDescription>Manage your account and data</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid sm:grid-cols-3 gap-4">
-                <Button variant="outline" className="justify-start h-12">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Account Settings
-                </Button>
-                <Button variant="outline" className="justify-start h-12">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Export Data
-                </Button>
-                <Button
-                  variant="default"
-                  className="justify-start h-12"
-                  onClick={() => router.push("/")}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to App
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

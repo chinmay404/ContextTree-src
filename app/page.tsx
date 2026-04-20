@@ -374,7 +374,6 @@ export default function ContextTreePage() {
 
       <ContextStrip
         canvasName={activeCanvas?.title}
-        isSynced={true}
         onToggleSidebar={() => setLeftSidebarCollapsed((c) => !c)}
         onOpenSearch={() => setIsSearchOpen(true)}
       />

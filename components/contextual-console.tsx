@@ -28,6 +28,11 @@ import {
   MessageSquareDashed,
 } from "lucide-react";
 import { storageService } from "@/lib/storage";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { getDefaultModel } from "@/lib/models";
 import { deriveNodeNameFromPrompt } from "@/lib/utils";
@@ -238,12 +243,19 @@ const MessageItem = memo(function MessageItem({
             </span>
             <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               {!isUser && (
-                <button
-                  onClick={() => onStartFork(message.id)}
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                >
-                  <GitBranch size={10} /> Branch
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => onStartFork(message.id)}
+                      className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                    >
+                      <GitBranch size={10} /> Branch
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px] text-center">
+                    Fork this conversation — the new branch inherits parent context but evolves independently
+                  </TooltipContent>
+                </Tooltip>
               )}
               <button
                 onClick={async () => {
@@ -516,6 +528,7 @@ const ContextualConsole = ({
   const [nodeLineage, setNodeLineage] = useState<{ id: string; name: string }[]>([]);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [showBranchHint, setShowBranchHint] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -701,6 +714,20 @@ const ContextualConsole = ({
     };
     window.addEventListener("canvas-node-renamed", handler);
     return () => window.removeEventListener("canvas-node-renamed", handler);
+  }, []);
+
+  // ─── Branch hint ───────────────────────────────────────
+  const BRANCH_HINT_KEY = "context-tree-branch-hint-seen";
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem(BRANCH_HINT_KEY)) return;
+    const hasAssistantMsg = currentMessages.some((m) => m.role === "assistant");
+    if (hasAssistantMsg) setShowBranchHint(true);
+  }, [currentMessages]);
+
+  const dismissBranchHint = useCallback(() => {
+    setShowBranchHint(false);
+    localStorage.setItem(BRANCH_HINT_KEY, "true");
   }, []);
 
   // ─── Scroll management ─────────────────────────────────
@@ -1127,9 +1154,14 @@ const ContextualConsole = ({
   );
 
   const handleStartFork = useCallback((messageId: string) => {
+    const hasMessages = currentMessages.some((m) => m.role === "assistant");
+    if (!hasMessages) {
+      toast.error("Start a conversation first before branching");
+      return;
+    }
     setPendingForkMsg(normalizeForkId(messageId));
     setShowForkDialog(true);
-  }, []);
+  }, [currentMessages]);
 
   const handleSelectForkedNode = useCallback(
     (nodeId: string, nodeName?: string, nodeType?: string) => {
@@ -1279,6 +1311,22 @@ const ContextualConsole = ({
                     onSelectForkedNode={handleSelectForkedNode}
                   />
                 ))
+              )}
+              {showBranchHint && !isTyping && (
+                <div className="mx-5 mt-2 mb-1 flex items-start gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2.5">
+                  <GitBranch size={13} className="mt-0.5 shrink-0 text-indigo-500" />
+                  <p className="flex-1 text-xs leading-relaxed text-indigo-700">
+                    <span className="font-semibold">Tip:</span> Hover any AI reply to reveal the{" "}
+                    <span className="font-semibold">Branch</span> button — fork the conversation from any point without losing your context.
+                  </p>
+                  <button
+                    onClick={dismissBranchHint}
+                    className="shrink-0 rounded p-0.5 text-indigo-400 hover:bg-indigo-100 hover:text-indigo-600"
+                    aria-label="Dismiss tip"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
               )}
               {isTyping && <TypingIndicator activeModelId={activeModelId} />}
               <div ref={endRef} />

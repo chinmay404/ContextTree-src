@@ -70,19 +70,19 @@ const HERO_MODELS: Array<{
 }> = [
   {
     id: "llama-3.3-70b-versatile",
-    name: "Llama 3.3",
+    name: "Math foundations",
     provider: "Meta",
     accent: "from-blue-500/70 to-indigo-500/40",
     reply:
-      "Use DFS for pathfinding where memory is tight. BFS if you need the shortest path in unweighted graphs.",
+      "Branch into vectors, gradients, and matrix multiplication without polluting the main learning thread.",
   },
   {
     id: "deepseek-r1-distill-llama-70b",
-    name: "DeepSeek R1",
+    name: "Implementation path",
     provider: "DeepSeek",
     accent: "from-violet-500/70 to-fuchsia-500/40",
     reply:
-      "Think of it like a maze. DFS commits to a wall and walks it. BFS expands like ripples — level by level.",
+      "Fork into PyTorch examples and code experiments while the original explanation stays clean and focused.",
   },
 ];
 
@@ -143,7 +143,7 @@ function HeroCanvas() {
           <div className="h-4 w-px bg-slate-200" />
           <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
             <Workflow className="w-3.5 h-3.5" />
-            <span>DFS vs BFS · canvas</span>
+            <span>Neural networks · canvas</span>
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 text-[10px] font-mono text-slate-500">
@@ -234,7 +234,7 @@ function HeroCanvas() {
               <span className="font-mono uppercase tracking-wider">prompt</span>
             </div>
             <div className="text-sm font-medium leading-snug">
-              Explain the difference between DFS and BFS.
+              Help me learn neural networks from scratch without losing the main thread.
             </div>
             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-slate-900 ring-2 ring-white" />
           </div>

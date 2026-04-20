@@ -88,6 +88,7 @@ const fallbackRect = (stepId: string): RectLike | null => {
         height: Math.max(height - 156, 320),
       };
     case "console":
+    case "branch":
       return {
         top: 88,
         left: Math.max(width - 420, width * 0.68),
@@ -156,7 +157,7 @@ const getCardPosition = (
     };
   }
 
-  if (stepId === "console") {
+  if (stepId === "console" || stepId === "branch") {
     const left = clamp(
       targetRect.left - CARD_WIDTH - TOOLTIP_GAP,
       EDGE_GAP,
@@ -224,6 +225,15 @@ export function OnboardingGuide() {
         target: "[data-tour='right-panel']",
         icon: MessageSquare,
         accent: "from-violet-500 to-fuchsia-500",
+      },
+      {
+        id: "branch",
+        title: "Branch to explore alternatives",
+        message:
+          "Hover over any AI reply to reveal the Branch button. Click it to spin off a parallel thread — the new branch inherits your parent context but evolves completely independently.",
+        target: "[data-tour='right-panel']",
+        icon: GitBranch,
+        accent: "from-emerald-500 to-teal-500",
       },
     ],
     []
