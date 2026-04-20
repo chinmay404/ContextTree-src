@@ -342,7 +342,7 @@ export default function ContextTreePage() {
   if (isLoading) {
     return (
       <motion.div
-        className="h-screen flex items-center justify-center bg-slate-50"
+        className="h-screen flex items-center justify-center bg-background"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
@@ -359,7 +359,7 @@ export default function ContextTreePage() {
 
   return (
     <motion.div
-      className="flex flex-col h-screen w-full overflow-hidden bg-slate-50 font-sans"
+      className="flex flex-col h-screen w-full overflow-hidden bg-background font-sans"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
@@ -382,7 +382,7 @@ export default function ContextTreePage() {
       <div className="flex flex-1 overflow-hidden relative pt-14">
         {/* Left sidebar — workspace list */}
         <motion.div
-          className="flex flex-col border-r border-slate-200 bg-white z-30 overflow-hidden"
+          className="flex flex-col border-r border-border bg-card z-30 overflow-hidden"
           animate={{
             width: leftSidebarCollapsed || chatFullscreen ? 0 : 240,
             opacity: leftSidebarCollapsed || chatFullscreen ? 0 : 1,
@@ -448,9 +448,9 @@ export default function ContextTreePage() {
                 transition={{ duration: 0.35, ease: "easeOut" }}
               >
                 {/* Ambient background */}
-                <div className="absolute inset-0 bg-slate-50">
-                  <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.04)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_55%_at_50%_50%,#000_45%,transparent_100%)]" />
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] h-[720px] rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.08),transparent_70%)]" />
+                <div className="absolute inset-0 bg-background">
+                  <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.3)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.3)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_55%_at_50%_50%,#000_45%,transparent_100%)]" />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] h-[720px] rounded-full bg-[radial-gradient(closest-side,hsl(var(--primary)/0.1),transparent_70%)]" />
                 </div>
 
                 <div className="relative text-center space-y-6 max-w-sm px-6">
@@ -459,9 +459,9 @@ export default function ContextTreePage() {
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    className="mx-auto w-20 h-20 rounded-3xl bg-white border border-slate-200 flex items-center justify-center shadow-sm relative"
+                    className="mx-auto w-20 h-20 rounded-3xl bg-card border border-border flex items-center justify-center shadow-sm relative"
                   >
-                    <svg width="40" height="40" viewBox="0 0 40 40" className="text-slate-700">
+                    <svg width="40" height="40" viewBox="0 0 40 40" className="text-foreground">
                       <motion.line
                         x1="20" y1="8" x2="20" y2="20"
                         stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
@@ -490,7 +490,7 @@ export default function ContextTreePage() {
                       <motion.circle cx="30" cy="32" r="2.5" fill="#a855f7"
                         initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 1.05 }} />
                     </svg>
-                    <div className="pointer-events-none absolute -inset-2 rounded-[20px] bg-indigo-400/10 blur-xl" />
+                    <div className="pointer-events-none absolute -inset-2 rounded-[20px] bg-primary/10 blur-xl" />
                   </motion.div>
 
                   <motion.div
@@ -499,10 +499,10 @@ export default function ContextTreePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                   >
-                    <p className="text-slate-900 text-lg font-semibold tracking-tight">
+                    <p className="text-foreground text-lg font-semibold tracking-tight">
                       Start a new canvas
                     </p>
-                    <p className="text-slate-500 text-sm leading-relaxed">
+                    <p className="text-muted-foreground text-sm leading-relaxed">
                       One prompt, many branches. Compare models side-by-side on an
                       infinite, auto-saving canvas.
                     </p>
@@ -517,7 +517,7 @@ export default function ContextTreePage() {
                     <button
                       type="button"
                       onClick={() => openCreateCanvasDialog(canvases.length === 0 ? "My First Project" : generateCanvasTitle())}
-                      className="group inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-slate-900/10 hover:shadow-xl hover:shadow-slate-900/20 transition-all hover:bg-slate-800 active:scale-[0.98]"
+                      className="group inline-flex items-center gap-2 rounded-xl bg-foreground text-background px-4 py-2.5 text-sm font-medium shadow-lg shadow-foreground/10 hover:shadow-xl hover:shadow-foreground/20 transition-all hover:opacity-90 active:scale-[0.98]"
                     >
                       <Plus size={14} className="transition-transform group-hover:rotate-90" />
                       New Canvas
@@ -525,10 +525,10 @@ export default function ContextTreePage() {
                     <button
                       type="button"
                       onClick={() => setIsSearchOpen(true)}
-                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-all"
+                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-all"
                     >
                       Search
-                      <kbd className="inline-flex items-center rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-mono text-slate-500">
+                      <kbd className="inline-flex items-center rounded bg-muted border border-border px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
                         ⌘K
                       </kbd>
                     </button>
