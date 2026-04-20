@@ -41,7 +41,13 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { ModelProviderIcon } from "@/components/model-badge";
+
+const Landing3DScene = dynamic(
+  () => import("@/components/landing-3d-scene").then((mod) => mod.Landing3DScene),
+  { ssr: false }
+);
 
 /* ──────────────────────────────────────────────────────────────────────────
    Constants & Helpers
@@ -1177,21 +1183,28 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary selection:text-primary-foreground">
-      {/* Ambient background */}
+      {/* Ambient background with subtle gradient */}
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute -top-1/3 left-1/2 -translate-x-1/2 w-[1400px] h-[1400px] rounded-full bg-[radial-gradient(closest-side,hsl(var(--primary)/0.08),transparent_70%)]" />
-        <div className="absolute top-[40%] -right-40 w-[800px] h-[800px] rounded-full bg-[radial-gradient(closest-side,rgba(168,85,247,0.06),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_0%,hsl(var(--background))_100%)]" />
+        <div className="absolute -top-1/3 left-1/2 -translate-x-1/2 w-[1400px] h-[1400px] rounded-full bg-[radial-gradient(closest-side,rgba(79,70,229,0.06),transparent_70%)]" />
+        <div className="absolute top-[40%] -right-40 w-[800px] h-[800px] rounded-full bg-[radial-gradient(closest-side,rgba(168,85,247,0.04),transparent_70%)]" />
+        <div className="absolute top-[60%] -left-40 w-[600px] h-[600px] rounded-full bg-[radial-gradient(closest-side,rgba(34,211,238,0.03),transparent_70%)]" />
       </div>
 
       <Navigation onGetStarted={handleGetStarted} />
 
-      {/* Hero */}
-      <section className="relative pt-32 md:pt-40 pb-16 md:pb-24 px-6">
-        <motion.div style={{ y: heroY }} className="max-w-7xl mx-auto">
+      {/* Hero with 3D Scene */}
+      <section className="relative pt-32 md:pt-40 pb-16 md:pb-24 px-6 overflow-hidden">
+        {/* 3D Background Scene */}
+        <div className="absolute inset-0 -z-5 opacity-60">
+          <Landing3DScene className="w-full h-full" />
+        </div>
+        
+        <motion.div style={{ y: heroY }} className="max-w-7xl mx-auto relative z-10">
           <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-12 lg:gap-20 items-center">
             <div className="relative z-10">
               <FadeIn>
-                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 backdrop-blur px-4 py-2 text-xs font-medium text-muted-foreground shadow-sm">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/90 backdrop-blur-xl px-4 py-2 text-xs font-medium text-muted-foreground shadow-lg shadow-black/5">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
@@ -1201,7 +1214,7 @@ export function LandingPage() {
               </FadeIn>
 
               <FadeIn delay={0.1}>
-                <h1 className="mt-8 text-4xl md:text-5xl lg:text-6xl xl:text-7xl leading-[1.05] tracking-[-0.02em] font-semibold text-foreground">
+                <h1 className="mt-8 text-4xl md:text-5xl lg:text-6xl xl:text-7xl leading-[1.05] tracking-[-0.02em] font-semibold text-foreground text-balance">
                   Branch your chats.
                   <br />
                   <span className="bg-gradient-to-r from-primary via-violet-500 to-primary bg-clip-text text-transparent">
@@ -1224,14 +1237,14 @@ export function LandingPage() {
                 <div className="mt-10 flex flex-wrap items-center gap-4">
                   <button
                     onClick={handleGetStarted}
-                    className="group relative inline-flex items-center gap-3 rounded-xl bg-foreground px-7 py-4 text-base font-medium text-background shadow-xl shadow-foreground/10 hover:shadow-2xl hover:shadow-foreground/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="group relative inline-flex items-center gap-3 rounded-xl bg-primary px-7 py-4 text-base font-medium text-primary-foreground shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <span>Start for Free</span>
                     <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                   </button>
                   <a
                     href="#how"
-                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/80 backdrop-blur px-6 py-4 text-base font-medium text-foreground hover:bg-card transition-colors"
+                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/90 backdrop-blur-xl px-6 py-4 text-base font-medium text-foreground hover:bg-card hover:border-primary/30 transition-all shadow-lg shadow-black/5"
                   >
                     <CornerDownRight className="w-5 h-5 text-muted-foreground" />
                     See how it works
