@@ -70,7 +70,7 @@ export const CreateCanvasDialog = ({
               Create Canvas
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500">
-              Pick a starting model. It becomes the default for the base context and new branches.
+              Give your canvas a name, then pick a starting model. It becomes the default for the base context and new branches.
             </DialogDescription>
           </DialogHeader>
 
@@ -79,16 +79,20 @@ export const CreateCanvasDialog = ({
               htmlFor="create-canvas-title"
               className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
             >
-              Canvas Title
+              Canvas Name
             </label>
             <Input
+              autoFocus
               id="create-canvas-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="My First Project"
+              placeholder="Q2 Product Strategy"
               className="h-11 rounded-xl border-slate-200 bg-white/70 backdrop-blur text-sm font-medium text-slate-800 focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-400 transition-colors"
               data-slot="create-canvas-title-input"
             />
+            <p className="text-xs text-slate-500">
+              This name appears in your workspace list, and you can rename it later.
+            </p>
           </div>
         </div>
 

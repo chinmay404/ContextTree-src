@@ -11,6 +11,7 @@ import {
   type SetStateAction,
 } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -60,6 +61,16 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+}
+
+interface ForkedNodeRef {
+  _id: string;
+  name?: string;
+  type?: string;
+  forkedFromMessageId?: string;
+  forkedFromMessageRawId?: string;
+  forkedFromMessageTimestamp?: string;
+  forkedFromMessagePreview?: string;
 }
 
 // ─── Helpers ────────────────────────────────────────────────
@@ -170,6 +181,19 @@ const extractMessages = (node: any): any[] => {
   return [];
 };
 
+const toTimestampMs = (value?: string | number | Date | null) => {
+  if (!value) return Number.NaN;
+  const timestamp =
+    value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : Number.NaN;
+};
+
+const truncatePreview = (content: string, maxLength = 120) => {
+  const singleLine = content.replace(/\s+/g, " ").trim();
+  if (singleLine.length <= maxLength) return singleLine;
+  return `${singleLine.slice(0, maxLength - 1).trimEnd()}…`;
+};
+
 // ─── Thinking block parser ──────────────────────────────────
 const parseThinking = (content: string) => {
   const regex = /<think>([\s\S]*?)<\/think>/g;
@@ -196,7 +220,8 @@ type MessageItemProps = {
   message: Message;
   isUser: boolean;
   activeModelId: string;
-  forkedNodes: Array<{ _id: string; name?: string; type?: string }>;
+  canFork: boolean;
+  forkedNodes: ForkedNodeRef[];
   onStartFork: (messageId: string) => void;
   onSelectForkedNode: (nodeId: string, nodeName?: string, nodeType?: string) => void;
 };
@@ -205,6 +230,7 @@ const MessageItem = memo(function MessageItem({
   message,
   isUser,
   activeModelId,
+  canFork,
   forkedNodes,
   onStartFork,
   onSelectForkedNode,
@@ -242,7 +268,7 @@ const MessageItem = memo(function MessageItem({
               })}
             </span>
             <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {!isUser && (
+              {!isUser && canFork && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -253,7 +279,8 @@ const MessageItem = memo(function MessageItem({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-[220px] text-center">
-                    Fork this conversation — the new branch inherits parent context but evolves independently
+                    Start a new branch from this reply. The child will inherit this
+                    point and everything before it, but nothing after it.
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -404,6 +431,7 @@ const MessageItem = memo(function MessageItem({
   prev.message.id === next.message.id &&
   prev.message.content === next.message.content &&
   prev.activeModelId === next.activeModelId &&
+  prev.canFork === next.canFork &&
   prev.forkedNodes.length === next.forkedNodes.length &&
   prev.forkedNodes.every((n, i) => n._id === next.forkedNodes[i]?._id)
 );
@@ -442,19 +470,26 @@ const TypingIndicator = memo(function TypingIndicator({
 
 type ForkDialogProps = {
   open: boolean;
+  forkPreview: string;
+  sourceName: string;
   onCancel: () => void;
-  onConfirm: (model: string) => void;
+  onConfirm: (model: string, name: string) => void;
 };
 
 const ForkDialog = memo(function ForkDialog({
   open,
+  forkPreview,
+  sourceName,
   onCancel,
   onConfirm,
 }: ForkDialogProps) {
   const [model, setModel] = useState(getDefaultModel());
+  const [name, setName] = useState("");
   useEffect(() => {
-    if (open) setModel(getDefaultModel());
-  }, [open]);
+    if (!open) return;
+    setModel(getDefaultModel());
+    setName(`Branch from ${sourceName.slice(0, 24)}`.trim());
+  }, [open, sourceName]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -467,7 +502,7 @@ const ForkDialog = memo(function ForkDialog({
                 Conversation
               </h3>
               <p className="text-sm text-slate-500 mt-0.5">
-                Choose a model for the new branch
+                Choose a model and confirm the snapshot you want to inherit
               </p>
             </div>
             <button
@@ -480,6 +515,39 @@ const ForkDialog = memo(function ForkDialog({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          <div className="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-600">
+              Fork Preview
+            </div>
+            <div className="mt-2 rounded-xl border border-indigo-100 bg-white/90 px-3 py-2 text-sm text-slate-700 shadow-sm">
+              {forkPreview || "This branch will inherit the selected reply."}
+            </div>
+            <p className="mt-3 text-xs leading-relaxed text-indigo-700">
+              Your new branch will start from <span className="font-semibold">{sourceName}</span>.
+              It will keep this message and everything before it. Anything after
+              this point stays out of the new branch.
+            </p>
+          </div>
+          <div className="mb-5 space-y-2">
+            <label
+              htmlFor="fork-branch-name"
+              className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
+            >
+              Node Name
+            </label>
+            <Input
+              autoFocus
+              id="fork-branch-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Sam-3"
+              className="h-11 rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-800"
+              data-slot="fork-branch-name-input"
+            />
+            <p className="text-xs text-slate-500">
+              This is the label you will see on the canvas. You can rename it later.
+            </p>
+          </div>
           <ModelSelectionPanel
             selectedModel={model}
             onSelect={setModel}
@@ -496,7 +564,7 @@ const ForkDialog = memo(function ForkDialog({
             Cancel
           </Button>
           <Button
-            onClick={() => onConfirm(model)}
+            onClick={() => onConfirm(model, name)}
             className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
           >
             Create Branch
@@ -541,6 +609,11 @@ const ContextualConsole = ({
     () => (selectedNode ? messages[selectedNode] || [] : []),
     [selectedNode, messages]
   );
+
+  const currentNode = useMemo(() => {
+    if (!selectedNode || !canvasData?.nodes) return null;
+    return canvasData.nodes.find((node: any) => node._id === selectedNode) || null;
+  }, [selectedNode, canvasData]);
 
   const resolvedName = useMemo(() => {
     if (!selectedNode || !canvasData?.nodes) return selectedNodeName;
@@ -775,6 +848,32 @@ const ContextualConsole = ({
     () => (selectedNode ? getNodeModel(selectedNode) : getDefaultModel()),
     [getNodeModel, selectedNode]
   );
+
+  const isMessageNativeToSelectedNode = useCallback(
+    (message: Message) => {
+      if (!currentNode?.parentNodeId) return true;
+      const nodeCreatedAt = toTimestampMs(currentNode.createdAt);
+      const messageTimestamp = toTimestampMs(message.timestamp);
+      if (!Number.isFinite(nodeCreatedAt) || !Number.isFinite(messageTimestamp)) {
+        return true;
+      }
+      return messageTimestamp >= nodeCreatedAt;
+    },
+    [currentNode]
+  );
+
+  const pendingForkMessage = useMemo(
+    () =>
+      currentMessages.find(
+        (message) => normalizeForkId(message.id) === normalizeForkId(pendingForkMsg)
+      ) || null,
+    [currentMessages, pendingForkMsg]
+  );
+
+  const pendingForkPreview = useMemo(() => {
+    if (!pendingForkMessage) return "This branch will inherit the selected reply.";
+    return truncatePreview(pendingForkMessage.content, 180);
+  }, [pendingForkMessage]);
 
   // ─── Auto resize textarea ─────────────────────────────
   const autoResize = useCallback((el: HTMLTextAreaElement) => {
@@ -1087,27 +1186,51 @@ const ContextualConsole = ({
 
   // ─── Fork / branch ─────────────────────────────────────
   const getForkedNodes = useCallback(
-    (messageId: string) => {
+    (message: Message) => {
       if (!canvasData?.nodes) return [];
-      const normalized = normalizeForkId(messageId);
-      return canvasData.nodes.filter(
-        (n: any) =>
-          normalizeForkId(n.forkedFromMessageId) === normalized && normalized
-      );
+      const normalized = normalizeForkId(message.id);
+      const rawId = (message.id || "").trim();
+      const timestamp = toTimestampMs(message.timestamp);
+      const preview = truncatePreview(message.content, 160);
+
+      return canvasData.nodes.filter((node: any) => {
+        const storedForkId = normalizeForkId(node.forkedFromMessageId);
+        const storedRawId = (node.forkedFromMessageRawId || "").trim();
+        if (normalized && storedForkId === normalized) return true;
+        if (rawId && storedRawId === rawId) return true;
+
+        const storedTimestamp = toTimestampMs(node.forkedFromMessageTimestamp);
+        if (
+          Number.isFinite(timestamp) &&
+          Number.isFinite(storedTimestamp) &&
+          Math.abs(storedTimestamp - timestamp) <= 1000
+        ) {
+          const storedPreview = (node.forkedFromMessagePreview || "").trim();
+          if (!storedPreview || storedPreview === preview) return true;
+        }
+
+        return false;
+      });
     },
     [canvasData]
   );
 
   const createFork = useCallback(
-    async (model: string, overrideId?: string) => {
+    async (model: string, overrideId?: string, overrideName?: string) => {
       const forkId = normalizeForkId(overrideId || pendingForkMsg);
       if (!selectedCanvas || !selectedNode || !forkId) return;
+      const sourceMessage =
+        currentMessages.find(
+          (message) => normalizeForkId(message.id) === forkId
+        ) || null;
 
       const nodeId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const sourceName = resolvedName || "Parent";
+      const fallbackName = `Branch from ${sourceName.slice(0, 15)}`;
+      const branchName = overrideName?.trim() || fallbackName;
       const newNode = {
         _id: nodeId,
-        name: `Branch from ${sourceName.slice(0, 15)}`,
+        name: branchName,
         primary: false,
         type: "branch",
         chatMessages: [],
@@ -1116,6 +1239,13 @@ const ContextualConsole = ({
         model,
         parentNodeId: selectedNode,
         forkedFromMessageId: forkId,
+        forkedFromMessageRawId: sourceMessage?.id || forkId,
+        forkedFromMessageTimestamp: sourceMessage?.timestamp
+          ? sourceMessage.timestamp.toISOString()
+          : null,
+        forkedFromMessagePreview: sourceMessage
+          ? truncatePreview(sourceMessage.content, 160)
+          : "",
         createdAt: new Date().toISOString(),
         position: { x: 300 + Math.random() * 150, y: 200 + Math.random() * 150 },
       };
@@ -1150,18 +1280,31 @@ const ContextualConsole = ({
         new CustomEvent("canvas-select-node", { detail: { nodeId } })
       );
     },
-    [selectedCanvas, selectedNode, pendingForkMsg, resolvedName, canvasData]
+    [selectedCanvas, selectedNode, pendingForkMsg, resolvedName, canvasData, currentMessages]
   );
 
   const handleStartFork = useCallback((messageId: string) => {
     const hasMessages = currentMessages.some((m) => m.role === "assistant");
     if (!hasMessages) {
-      toast.error("Start a conversation first before branching");
+      toast({
+        title: "Branch unavailable",
+        description: "Start a conversation first before branching",
+        variant: "destructive",
+      });
+      return;
+    }
+    const selectedMessage = currentMessages.find((message) => message.id === messageId);
+    if (selectedMessage && !isMessageNativeToSelectedNode(selectedMessage)) {
+      toast({
+        title: "Branch unavailable",
+        description: "You can only branch from replies created in this node",
+        variant: "destructive",
+      });
       return;
     }
     setPendingForkMsg(normalizeForkId(messageId));
     setShowForkDialog(true);
-  }, [currentMessages]);
+  }, [currentMessages, isMessageNativeToSelectedNode]);
 
   const handleSelectForkedNode = useCallback(
     (nodeId: string, nodeName?: string, nodeType?: string) => {
@@ -1189,12 +1332,14 @@ const ContextualConsole = ({
     <>
       <ForkDialog
         open={showForkDialog}
+        forkPreview={pendingForkPreview}
+        sourceName={resolvedName || "this branch"}
         onCancel={() => {
           setShowForkDialog(false);
           setPendingForkMsg(null);
         }}
-        onConfirm={(model) => {
-          createFork(model);
+        onConfirm={(model, name) => {
+          createFork(model, undefined, name);
           setShowForkDialog(false);
           setPendingForkMsg(null);
         }}
@@ -1306,7 +1451,8 @@ const ContextualConsole = ({
                     message={msg}
                     isUser={msg.role === "user"}
                     activeModelId={activeModelId}
-                    forkedNodes={getForkedNodes(msg.id)}
+                    canFork={msg.role === "assistant" && isMessageNativeToSelectedNode(msg)}
+                    forkedNodes={getForkedNodes(msg)}
                     onStartFork={handleStartFork}
                     onSelectForkedNode={handleSelectForkedNode}
                   />
@@ -1316,8 +1462,9 @@ const ContextualConsole = ({
                 <div className="mx-5 mt-2 mb-1 flex items-start gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2.5">
                   <GitBranch size={13} className="mt-0.5 shrink-0 text-indigo-500" />
                   <p className="flex-1 text-xs leading-relaxed text-indigo-700">
-                    <span className="font-semibold">Tip:</span> Hover any AI reply to reveal the{" "}
-                    <span className="font-semibold">Branch</span> button — fork the conversation from any point without losing your context.
+                    <span className="font-semibold">Tip:</span> Hover a reply created in this
+                    branch to reveal the <span className="font-semibold">Branch</span> button.
+                    New branches inherit that snapshot and everything before it.
                   </p>
                   <button
                     onClick={dismissBranchHint}

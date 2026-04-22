@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, memo, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -58,6 +59,16 @@ interface Message {
   content: string;
   timestamp: Date;
 }
+
+type ForkedNodeRef = {
+  _id: string;
+  name?: string;
+  type?: string;
+  forkedFromMessageId?: string;
+  forkedFromMessageRawId?: string;
+  forkedFromMessageTimestamp?: string;
+  forkedFromMessagePreview?: string;
+};
 
 interface NodeConversation {
   nodeId: string;
@@ -318,16 +329,48 @@ const ChatPanelInternal = ({
     return role === "assistant" ? `${value}_ai` : value;
   };
 
+  const toTimestampMs = (value?: string | number | Date | null) => {
+    if (!value) return Number.NaN;
+    const timestamp =
+      value instanceof Date ? value.getTime() : new Date(value).getTime();
+    return Number.isFinite(timestamp) ? timestamp : Number.NaN;
+  };
+
+  const truncateForkPreview = (content: string, maxLength = 160) => {
+    const singleLine = content.replace(/\s+/g, " ").trim();
+    if (singleLine.length <= maxLength) return singleLine;
+    return `${singleLine.slice(0, maxLength - 1).trimEnd()}…`;
+  };
+
   // Function to get nodes forked from a specific message
   const getForkedNodes = useCallback(
-    (messageId: string) => {
+    (message: Message): ForkedNodeRef[] => {
       if (!canvasData?.nodes) return [];
 
-      const normalizedMessageId = normalizeForkMessageId(messageId);
+      const normalizedMessageId = normalizeForkMessageId(message.id);
+      const rawMessageId = (message.id || "").trim();
+      const messageTimestamp = toTimestampMs(message.timestamp);
+      const messagePreview = truncateForkPreview(message.content);
 
       return canvasData.nodes.filter((node: any) => {
         const forkedFromId = normalizeForkMessageId(node.forkedFromMessageId);
-        return forkedFromId === normalizedMessageId;
+        const forkedFromRawId = (node.forkedFromMessageRawId || "").trim();
+        if (forkedFromId === normalizedMessageId) return true;
+        if (forkedFromRawId && forkedFromRawId === rawMessageId) return true;
+
+        const forkedFromTimestamp = toTimestampMs(node.forkedFromMessageTimestamp);
+        if (
+          Number.isFinite(messageTimestamp) &&
+          Number.isFinite(forkedFromTimestamp) &&
+          Math.abs(forkedFromTimestamp - messageTimestamp) <= 1000
+        ) {
+          const forkedFromPreview = (node.forkedFromMessagePreview || "").trim();
+          if (!forkedFromPreview || forkedFromPreview === messagePreview) {
+            return true;
+          }
+        }
+
+        return false;
       });
     },
     [canvasData]
@@ -336,12 +379,17 @@ const ChatPanelInternal = ({
   // Function to create a fork with the selected model
   const createForkWithModel = async (
     selectedForkModel: string,
-    overrideMessageId?: string
+    overrideMessageId?: string,
+    overrideName?: string
   ) => {
     const forkMessageId = normalizeForkMessageId(
       overrideMessageId || pendingForkMessage
     );
     if (!selectedCanvas || !selectedNode || !forkMessageId) return;
+    const sourceMessage =
+      currentConversation?.messages.find(
+        (message) => normalizeForkMessageId(message.id) === forkMessageId
+      ) || null;
 
     // Create a new branch/context node (default to branch) with lineage metadata
     const newNodeId = `node_${Date.now()}_${Math.random()
@@ -351,12 +399,23 @@ const ChatPanelInternal = ({
       _id: newNodeId,
       primary: false,
       type: "branch",
+      name:
+        overrideName?.trim() ||
+        currentConversation?.nodeName ||
+        `Branch ${newNodeId.slice(-4)}`,
       chatMessages: [],
       runningSummary: "",
       contextContract: "",
       model: selectedForkModel,
       parentNodeId: selectedNode,
       forkedFromMessageId: forkMessageId,
+      forkedFromMessageRawId: sourceMessage?.id || forkMessageId,
+      forkedFromMessageTimestamp: sourceMessage?.timestamp
+        ? sourceMessage.timestamp.toISOString()
+        : null,
+      forkedFromMessagePreview: sourceMessage
+        ? truncateForkPreview(sourceMessage.content)
+        : "",
       createdAt: new Date().toISOString(),
       position: {
         x: 300 + Math.random() * 150,
@@ -1191,11 +1250,11 @@ const ChatPanelInternal = ({
   }, []);
 
   // Fork Indicator Component
-  const ForkIndicator = memo(({ messageId }: { messageId: string }) => {
+  const ForkIndicator = memo(({ message }: { message: Message }) => {
     // Only render on client-side to avoid hydration issues
     if (!isClient) return null;
 
-    const forkedNodes = getForkedNodes(messageId);
+    const forkedNodes = getForkedNodes(message);
 
     if (forkedNodes.length === 0) return null;
 
@@ -1604,7 +1663,7 @@ const ChatPanelInternal = ({
                   )}
 
                   {/* Fork Indicator - Show forked nodes for both user and assistant messages */}
-                  <ForkIndicator messageId={message.id.replace(/-a$/, "")} />
+                  <ForkIndicator message={message} />
 
                 </div>
                 {(() => {
@@ -1683,11 +1742,22 @@ const ChatPanelInternal = ({
     const [selectedModelForFork, setSelectedModelForFork] = useState<string>(
       getDefaultModel()
     );
+    const [forkNodeName, setForkNodeName] = useState("");
+
+    useEffect(() => {
+      if (!showForkModelDialog) return;
+      setSelectedModelForFork(getDefaultModel());
+      setForkNodeName(
+        currentConversation?.nodeName
+          ? `${currentConversation.nodeName} branch`
+          : "New Branch"
+      );
+    }, [showForkModelDialog, currentConversation?.nodeName]);
 
     if (!showForkModelDialog) return null;
 
     const handleSubmit = () => {
-      createForkWithModel(selectedModelForFork);
+      createForkWithModel(selectedModelForFork, undefined, forkNodeName);
       setShowForkModelDialog(false);
       setPendingForkMessage(null);
     };
@@ -1702,7 +1772,7 @@ const ChatPanelInternal = ({
                 Branch Conversation
               </h3>
               <p className="text-sm text-slate-500 leading-relaxed">
-                Create a new divergent path. This model will be locked for the entire branch.
+                Name the node, then choose the model for this divergent branch.
               </p>
             </div>
             <button 
@@ -1712,6 +1782,27 @@ const ChatPanelInternal = ({
               <span className="sr-only">Close</span>
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
+          </div>
+
+          <div className="mb-5 space-y-2">
+            <label
+              htmlFor="chat-panel-branch-name"
+              className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
+            >
+              Node Name
+            </label>
+            <Input
+              autoFocus
+              id="chat-panel-branch-name"
+              value={forkNodeName}
+              onChange={(event) => setForkNodeName(event.target.value)}
+              placeholder="Sam-3"
+              className="h-11 rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-800"
+              data-slot="chat-panel-branch-name-input"
+            />
+            <p className="text-xs text-slate-500">
+              This name will be shown on the canvas for the new branch node.
+            </p>
           </div>
 
           <div className="space-y-3 max-h-[60vh] overflow-y-auto mb-8 pr-1 custom-scrollbar">

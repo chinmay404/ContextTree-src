@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { Focus, LayoutGrid, GitBranch, X } from "lucide-react";
 import { ModelSelectionPanel } from "@/components/model-selection-panel";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
 import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
@@ -123,8 +124,6 @@ const derivePreview = (node: NodeData | null | undefined): string => {
     const contract = (node as any).contextContract;
     if (typeof contract === "string" && contract.trim()) return contract.trim();
   }
-  const summary = (node as any).runningSummary;
-  if (typeof summary === "string" && summary.trim()) return summary.trim();
   const msgs = flattenMessages(node.chatMessages);
   for (let i = msgs.length - 1; i >= 0; i--) {
     const t = textFrom(msgs[i]?.content);
@@ -339,6 +338,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   const [pendingConn, setPendingConn] = useState<{ sourceId: string } | null>(null);
   const [pendingBranchDrop, setPendingBranchDrop] = useState<{ parentId: string; position: { x: number; y: number } } | null>(null);
   const [branchDropModel, setBranchDropModel] = useState<string>(() => getDefaultModel());
+  const [branchDropName, setBranchDropName] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
   const lastViewportRef = useRef<Viewport | null>(null);
@@ -847,7 +847,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   }, [canvas, canvasId]);
 
   // ─── Create branch from parent ────────────────────────────
-  const createBranch = useCallback((parentId: string, position?: { x: number; y: number }, model?: string) => {
+  const createBranch = useCallback((parentId: string, position?: { x: number; y: number }, model?: string, overrideName?: string) => {
     if (!canvas) return;
     const parent = canvas.nodes.find((n) => n._id === parentId);
     if (!parent || parent.type === "context" || parent.type === "externalContext") return;
@@ -859,7 +859,8 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     const now = new Date().toISOString();
     const nodeId = genId("node");
     const cs = colorScheme(parent.color || "#f8fafc");
-    const label = truncate(text, parent.name ? `${parent.name} branch` : "New Branch");
+    const fallbackLabel = truncate(text, parent.name ? `${parent.name} branch` : "New Branch");
+    const label = overrideName?.trim() || fallbackLabel;
 
     const newNode: NodeData = {
       _id: nodeId, primary: false, type: "branch", name: label,
@@ -977,6 +978,11 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     const pos = flow.screenToFlowPosition({ x: clientX - bounds.left, y: clientY - bounds.top });
     const parent = canvas.nodes.find((n) => n._id === pendingConn.sourceId);
     setBranchDropModel(parent?.model || canvas.settings?.defaultModel || getDefaultModel());
+    const suggestedName = truncate(
+      deriveParentMessage(parent).text,
+      parent?.name ? `${parent.name} branch` : "New Branch"
+    );
+    setBranchDropName(suggestedName);
     setPendingBranchDrop({ parentId: pendingConn.sourceId, position: pos });
     setPendingConn(null);
   }, [pendingConn, canvas, flow]);
@@ -1473,9 +1479,29 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
                   <X size={16} />
                 </button>
               </div>
-              <p className="text-sm text-slate-500">Choose a model for the new branch</p>
+              <p className="text-sm text-slate-500">Give the node a name, then choose a model for the new branch</p>
             </div>
             <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="mb-5 space-y-2">
+                <label
+                  htmlFor="branch-drop-name"
+                  className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
+                >
+                  Node Name
+                </label>
+                <Input
+                  autoFocus
+                  id="branch-drop-name"
+                  value={branchDropName}
+                  onChange={(event) => setBranchDropName(event.target.value)}
+                  placeholder="Sam-3"
+                  className="h-11 rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-800"
+                  data-slot="branch-drop-name-input"
+                />
+                <p className="text-xs text-slate-500">
+                  This label appears on the branch card in the canvas.
+                </p>
+              </div>
               <ModelSelectionPanel
                 selectedModel={branchDropModel}
                 onSelect={setBranchDropModel}
@@ -1490,7 +1516,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
                 onClick={() => {
                   const { parentId, position } = pendingBranchDrop;
                   setPendingBranchDrop(null);
-                  createBranch(parentId, position, branchDropModel);
+                  createBranch(parentId, position, branchDropModel, branchDropName);
                 }}
                 className="bg-slate-900 text-white hover:bg-slate-800"
               >

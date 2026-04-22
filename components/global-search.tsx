@@ -175,14 +175,11 @@ export function GlobalSearch({
 
         const nodeLabel = resolveLabel(node);
         const nodeModel = resolveModel(node);
-        const summary = node.runningSummary || "";
         const contract = node.contextContract || "";
 
         const nodeLabelMatch = nodeLabel.toLowerCase().includes(query);
         const nodeModelMatch =
           !!nodeModel && nodeModel.toLowerCase().includes(query);
-        const summaryMatch =
-          !!summary && summary.toLowerCase().includes(query);
         const contractMatch =
           !!contract && contract.toLowerCase().includes(query);
 
@@ -211,7 +208,7 @@ export function GlobalSearch({
             lastModified: canvas.updatedAt || canvas.createdAt,
             messageCount: chatMatches,
           });
-        } else if (summaryMatch || contractMatch) {
+        } else if (contractMatch) {
           results.push({
             canvasId: canvas._id,
             canvasTitle,
@@ -221,7 +218,7 @@ export function GlobalSearch({
             model: nodeModel,
             matchType: "summary",
             preview: buildPreview(
-              summaryMatch ? summary : contract,
+              contract,
               query
             ),
             lastModified: canvas.updatedAt || canvas.createdAt,
@@ -369,7 +366,7 @@ export function GlobalSearch({
             variant="secondary"
             className="text-[10px] bg-sky-50 text-sky-700 border-sky-200"
           >
-            Summary
+            Context
           </Badge>
         );
       case "title":
