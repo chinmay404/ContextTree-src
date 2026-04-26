@@ -772,6 +772,42 @@ const FEATURES = [
   },
 ];
 
+const FAQS = [
+  {
+    question: "What is branching AI chat?",
+    answer:
+      "Branching AI chat lets you fork a conversation from any message, keep each path isolated, and compare different answers without losing the original thread.",
+  },
+  {
+    question: "How does ContextTree avoid context drift?",
+    answer:
+      "ContextTree stores conversations as a tree. Each branch inherits only the selected parent context, so later experiments do not pollute other paths.",
+  },
+  {
+    question: "Is ContextTree a ChatGPT alternative?",
+    answer:
+      "ContextTree is a ChatGPT alternative for people who need branching conversations, multi-model comparison, and visual organization instead of one linear chat history.",
+  },
+  {
+    question: "Can I compare multiple AI models in one workspace?",
+    answer:
+      "Yes. ContextTree is a multi-model AI canvas for testing prompts across supported LLMs and keeping the strongest branch.",
+  },
+];
+
+const FAQ_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answer,
+    },
+  })),
+};
+
 /* ──────────────────────────────────────────────────────────────────────────
    Main landing page
    ──────────────────────────────────────────────────────────────────────── */
@@ -800,6 +836,10 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden selection:bg-slate-900 selection:text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_SCHEMA) }}
+      />
       {/* Ambient gradient wash */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute -top-1/3 left-1/2 -translate-x-1/2 w-[1200px] h-[1200px] rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.10),transparent_70%)]" />
@@ -840,6 +880,9 @@ export function LandingPage() {
             <a href="#features" className="hover:text-slate-900 transition-colors">
               Features
             </a>
+            <a href="/chatgpt-alternative" className="hover:text-slate-900 transition-colors">
+              vs ChatGPT
+            </a>
             <a href="#models" className="hover:text-slate-900 transition-colors">
               Models
             </a>
@@ -871,23 +914,23 @@ export function LandingPage() {
 
               <FadeIn delay={0.05}>
                 <h1 className="mt-6 text-[44px] md:text-[60px] lg:text-[68px] leading-[1.02] tracking-[-0.02em] font-semibold text-slate-900">
-                  Branch your chats.
+                  Branching AI chat.
                   <br />
                   <span className="relative inline-block">
                     <span className="bg-gradient-to-br from-slate-900 via-indigo-700 to-violet-700 bg-clip-text text-transparent">
-                      Compare models,
+                      Multi-model AI canvas,
                     </span>
                   </span>
                   <br />
-                  side by side.
+                  built for context.
                 </h1>
               </FadeIn>
 
               <FadeIn delay={0.12}>
                 <p className="mt-6 max-w-xl text-lg text-slate-600 leading-relaxed">
-                  ContextTree is a visual canvas for LLM conversations. Pick
-                  any message, fork it to a different model, and watch answers
-                  stream in parallel — without ever losing context.
+                  ContextTree is an AI conversation tree for power users. Pick
+                  any message, fork the AI conversation to a different model,
+                  and compare branches side by side without context drift.
                 </p>
               </FadeIn>
 
@@ -957,10 +1000,10 @@ export function LandingPage() {
                 <Zap className="w-3 h-3 text-amber-500" /> Why it exists
               </div>
               <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-900 leading-[1.08]">
-                Chat interfaces force you into a straight line.
+                Linear AI chat loses context.
                 <br />
                 <span className="text-slate-500">
-                  Real thinking branches.
+                  ContextTree keeps every branch organized.
                 </span>
               </h2>
             </div>
@@ -979,7 +1022,7 @@ export function LandingPage() {
                 <Workflow className="w-3 h-3 text-indigo-500" /> How it works
               </div>
               <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-900 leading-[1.08]">
-                Three moves. One canvas. Every path preserved.
+                Fork AI conversations in three moves.
               </h2>
             </div>
           </FadeIn>
@@ -1110,6 +1153,40 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* FAQ */}
+      <section id="faq" className="px-6 py-24 md:py-32 bg-white border-y border-slate-200/60">
+        <div className="max-w-4xl mx-auto">
+          <FadeIn>
+            <div className="mb-10">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600 mb-4">
+                FAQ
+              </div>
+              <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-900 leading-[1.08]">
+                Branching AI chat, explained.
+              </h2>
+              <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600">
+                A quick guide for people looking for a ChatGPT alternative that handles long conversations, branching, and multi-model comparison.
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="grid gap-3">
+            {FAQS.map((item, index) => (
+              <FadeIn key={item.question} delay={0.04 * index}>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <h3 className="text-base font-semibold text-slate-900">
+                    {item.question}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    {item.answer}
+                  </p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="px-6 pb-24">
         <div className="max-w-5xl mx-auto">
@@ -1179,6 +1256,12 @@ export function LandingPage() {
             </a>
             <a href="#features" className="hover:text-slate-900 transition-colors">
               Features
+            </a>
+            <a
+              href="/chatgpt-alternative"
+              className="hover:text-slate-900 transition-colors"
+            >
+              vs ChatGPT
             </a>
             <a
               href="#models"
