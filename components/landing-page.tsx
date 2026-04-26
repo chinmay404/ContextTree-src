@@ -30,6 +30,7 @@ import {
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ModelProviderIcon } from "@/components/model-badge";
+import { ProductDemoAnimation } from "@/components/product-demo-animation";
 
 /* ──────────────────────────────────────────────────────────────────────────
    Atomic helpers
@@ -1006,7 +1007,9 @@ export function LandingPage() {
             </div>
           </FadeIn>
 
-          <ProblemComparison />
+          <FadeIn>
+            <ProductDemoAnimation />
+          </FadeIn>
         </div>
       </section>
 
