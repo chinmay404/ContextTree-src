@@ -1,8 +1,12 @@
 const { MongoClient } = require("mongodb");
 
 async function inspectDatabase() {
-  const uri =
-    "mongodb+srv://chinmaypisal:Sirius17188@contexttree.4g4brxh.mongodb.net/?retryWrites=true&w=majority&appName=ContextTree";
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.error("MONGODB_URI environment variable is required.");
+    process.exit(1);
+  }
+
   const client = new MongoClient(uri);
 
   try {

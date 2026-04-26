@@ -19,15 +19,13 @@
  *     node scripts/migrate-test-collections.js --apply --skip-clean
  *
  * Environment:
- *   MONGODB_URI   (required if not baked in existing code)
+ *   MONGODB_URI   (required)
  *   DB_NAME       (defaults to 'contexttree')
  */
 
 const { MongoClient } = require("mongodb");
 
-const MONGODB_URI =
-  process.env.MONGODB_URI ||
-  "mongodb+srv://chinmaypisal:Sirius17188@contexttree.4g4brxh.mongodb.net/?retryWrites=true&w=majority&appName=ContextTree"; // TODO: remove hardcoded fallback in production
+const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.DB_NAME || "contexttree";
 
 const args = process.argv.slice(2);

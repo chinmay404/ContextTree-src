@@ -2,11 +2,15 @@
 
 const { MongoClient } = require("mongodb");
 
-const MONGODB_URI =
-  "mongodb+srv://chinmaypisal:Sirius17188@contexttree.4g4brxh.mongodb.net/?retryWrites=true&w=majority&appName=ContextTree";
+const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = "contexttree";
 
 async function displayDatabaseState() {
+  if (!MONGODB_URI) {
+    console.error("MONGODB_URI environment variable is required.");
+    process.exit(1);
+  }
+
   const client = new MongoClient(MONGODB_URI);
 
   try {
