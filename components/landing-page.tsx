@@ -880,9 +880,6 @@ export function LandingPage() {
             <a href="#features" className="hover:text-slate-900 transition-colors">
               Features
             </a>
-            <a href="/chatgpt-alternative" className="hover:text-slate-900 transition-colors">
-              vs ChatGPT
-            </a>
             <a href="#models" className="hover:text-slate-900 transition-colors">
               Models
             </a>
@@ -1256,12 +1253,6 @@ export function LandingPage() {
             </a>
             <a href="#features" className="hover:text-slate-900 transition-colors">
               Features
-            </a>
-            <a
-              href="/chatgpt-alternative"
-              className="hover:text-slate-900 transition-colors"
-            >
-              vs ChatGPT
             </a>
             <a
               href="#models"
