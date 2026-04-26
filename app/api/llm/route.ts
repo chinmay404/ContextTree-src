@@ -19,6 +19,10 @@ interface LLMRequest {
   parentNodeId?: string | null;
   forkedFromMessageId?: string | null;
   isPrimary?: boolean;
+  // External-context node IDs currently attached to this chat node.
+  // Sending [] explicitly disables external context for this turn; omitting
+  // the field falls back to the persisted canvas edges on the backend.
+  contextNodeIds?: string[];
 }
 
 // Create an HTTPS agent that bypasses SSL verification for self-signed certs

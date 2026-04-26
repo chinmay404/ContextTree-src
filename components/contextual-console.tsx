@@ -976,6 +976,24 @@ const ContextualConsole = ({
       const currentNode = canvasData?.nodes?.find(
         (n: any) => n._id === nodeId
       );
+
+      // Derive the active set of external-context nodes from the canvas
+      // edges. This is the runtime truth — when the user disconnects an
+      // externalContext node in the UI, the corresponding edge is removed and
+      // it disappears from this set on the next message.
+      const allEdges: any[] = canvasData?.edges || [];
+      const allNodes: any[] = canvasData?.nodes || [];
+      const externalContextIds = new Set(
+        allNodes.filter((n) => n?.type === "externalContext").map((n) => n._id)
+      );
+      const contextNodeIds = allEdges
+        .filter(
+          (e) =>
+            (e.from === nodeId && externalContextIds.has(e.to)) ||
+            (e.to === nodeId && externalContextIds.has(e.from))
+        )
+        .map((e) => (e.from === nodeId ? e.to : e.from));
+
       const res = await fetch("/api/llm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -988,6 +1006,7 @@ const ContextualConsole = ({
           parentNodeId: currentNode?.parentNodeId || null,
           forkedFromMessageId: currentNode?.forkedFromMessageId || null,
           isPrimary: currentNode?.primary || false,
+          contextNodeIds,
         }),
       });
 
