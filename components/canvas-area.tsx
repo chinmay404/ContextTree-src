@@ -1340,10 +1340,10 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   // Listen for node selection from chat panel
   useEffect(() => {
     const handler = (e: any) => {
-      const { nodeId } = e.detail || {};
+      const { nodeId, nodeName, nodeType } = e.detail || {};
       if (!nodeId) return;
       const node = canvas?.nodes.find((n) => n._id === nodeId);
-      if (node) onNodeSelect(nodeId, node.name, node.type);
+      onNodeSelect(nodeId, node?.name || nodeName, node?.type || nodeType || "branch");
     };
     window.addEventListener("canvas-select-node", handler);
     return () => window.removeEventListener("canvas-select-node", handler);
@@ -1465,27 +1465,36 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
       )}
       {/* Model picker — shown when user drops a new branch by dragging an edge */}
       {pendingBranchDrop && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="mx-4 flex max-h-[86vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="border-b border-slate-100 px-6 py-5">
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <GitBranch size={18} className="text-indigo-500" /> New Branch
-                </h3>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
+          <div className="flex max-h-[88vh] w-full max-w-[760px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+            <div className="border-b border-slate-200 px-5 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-950">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600">
+                      <GitBranch size={15} />
+                    </span>
+                    New branch
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Name the branch and choose the model it should use.
+                  </p>
+                </div>
                 <button
+                  type="button"
                   onClick={() => setPendingBranchDrop(null)}
-                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                  aria-label="Close branch dialog"
                 >
-                  <X size={16} />
+                  <X size={18} />
                 </button>
               </div>
-              <p className="text-sm text-slate-500">Give the node a name, then choose a model for the new branch</p>
             </div>
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
               <div className="mb-5 space-y-2">
                 <label
                   htmlFor="branch-drop-name"
-                  className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
+                  className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500"
                 >
                   Node Name
                 </label>
@@ -1494,8 +1503,8 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
                   id="branch-drop-name"
                   value={branchDropName}
                   onChange={(event) => setBranchDropName(event.target.value)}
-                  placeholder="Sam-3"
-                  className="h-11 rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-800"
+                  placeholder="Branch from current node"
+                  className="h-11 rounded-lg border-slate-300 bg-white text-sm font-medium text-slate-900 shadow-none focus-visible:ring-2 focus-visible:ring-slate-900/10"
                   data-slot="branch-drop-name-input"
                 />
                 <p className="text-xs text-slate-500">
@@ -1508,8 +1517,12 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
                 compact
               />
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
-              <Button variant="outline" onClick={() => setPendingBranchDrop(null)}>
+            <div className="flex gap-3 border-t border-slate-200 bg-white px-5 py-4">
+              <Button
+                variant="outline"
+                onClick={() => setPendingBranchDrop(null)}
+                className="h-10 flex-1 rounded-lg border-slate-200 text-sm font-medium"
+              >
                 Cancel
               </Button>
               <Button
@@ -1518,7 +1531,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
                   setPendingBranchDrop(null);
                   createBranch(parentId, position, branchDropModel, branchDropName);
                 }}
-                className="bg-slate-900 text-white hover:bg-slate-800"
+                className="h-10 flex-1 rounded-lg bg-slate-950 text-sm font-medium text-white hover:bg-slate-800"
               >
                 Create Branch
               </Button>
@@ -1526,7 +1539,6 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
           </div>
         </div>
       )}
-
       <ReactFlow
         nodes={nodes}
         edges={edges}

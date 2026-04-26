@@ -68,14 +68,13 @@ const renderModelCard = ({
         onSelect(model.id);
       }}
       className={cn(
-        "group relative flex min-h-[60px] min-w-[172px] flex-1 basis-[196px] items-center gap-3 overflow-hidden rounded-2xl border px-3 py-3 text-left transition-all",
-        "hover:-translate-y-0.5 hover:shadow-sm",
+        "group relative flex min-h-[58px] min-w-[172px] flex-1 basis-[196px] items-center gap-3 overflow-hidden rounded-xl border px-3 py-3 text-left transition-colors",
         isSelected && !isUnavailable
-          ? "border-indigo-500 bg-indigo-50/90 shadow-[0_8px_24px_rgba(79,70,229,0.12)]"
+          ? "border-slate-900 bg-slate-50 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.04)]"
           : "border-slate-200 bg-white",
-        !isUnavailable && "hover:border-slate-300",
+        !isUnavailable && "hover:border-slate-400 hover:bg-slate-50/70",
         isUnavailable && "border-slate-200/90 bg-slate-50/95",
-        requiresByok && !providerStatus?.configured && "hover:border-indigo-200 hover:bg-indigo-50/40"
+        requiresByok && !providerStatus?.configured && "hover:border-slate-300 hover:bg-white"
       )}
       data-slot="model-selection-option"
       aria-pressed={isSelected}
@@ -108,13 +107,13 @@ const renderModelCard = ({
             {statusLabel && (
               <span
                 className={cn(
-                  "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em]",
+                  "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]",
                   isDisabledByCatalog
                     ? "bg-slate-200/80 text-slate-600"
                     : requiresByok && providerStatus?.configured
                       ? "bg-emerald-50 text-emerald-700"
                       : requiresByok
-                        ? "bg-indigo-50 text-indigo-700"
+                        ? "bg-slate-100 text-slate-700"
                     : "bg-emerald-50 text-emerald-700"
                 )}
               >
@@ -131,7 +130,7 @@ const renderModelCard = ({
       {isDisabledByCatalog && (
         <>
           <div className="pointer-events-none absolute inset-0 bg-white/25" />
-          <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 shadow-sm">
+          <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600 shadow-sm">
             <Lock className="h-3 w-3" />
             Locked
           </span>
@@ -171,7 +170,7 @@ export function ModelSelectionPanel({
 
       <div
         className={cn(
-          "rounded-2xl border border-slate-200 bg-white shadow-sm",
+          "rounded-xl border border-slate-200 bg-white shadow-sm",
           compact ? "p-3" : "p-4"
         )}
       >
@@ -184,16 +183,15 @@ export function ModelSelectionPanel({
           )}
         >
           <div className="flex items-start gap-3">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-950 text-white shadow-sm">
               <KeyRound className="h-4 w-4" />
             </span>
             <div>
               <div className="text-sm font-semibold text-slate-900">
-                Bring Your Own Key
+                API keys
               </div>
               <div className="text-xs leading-relaxed text-slate-500">
-                Claude and GPT stay private to your account. We store the key encrypted
-                server-side and unlock those models only after you connect it.
+                Connect private OpenAI or Anthropic keys to unlock those models for this account.
               </div>
             </div>
           </div>
@@ -202,7 +200,7 @@ export function ModelSelectionPanel({
             type="button"
             onClick={() => handleManageKeys()}
             className={cn(
-              "inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-white",
+              "inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-white",
               compact ? "w-full justify-center" : "self-start sm:self-auto"
             )}
           >
@@ -235,15 +233,15 @@ export function ModelSelectionPanel({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-sky-50 p-4">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div className="mb-3 flex items-center gap-2">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm">
             <Sparkles className="h-4 w-4" />
           </span>
           <div>
-            <div className="text-sm font-semibold text-slate-900">Recommended Right Now</div>
+            <div className="text-sm font-semibold text-slate-900">Recommended models</div>
             <div className="text-xs text-slate-500">
-              These are the currently live models we want people reaching for first.
+              Stable defaults for most branch conversations.
             </div>
           </div>
         </div>
@@ -262,7 +260,7 @@ export function ModelSelectionPanel({
       </div>
 
       {selectedModelConfig && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-start gap-3">
             <ModelProviderIcon
               modelId={selectedModelConfig.id}
@@ -276,7 +274,7 @@ export function ModelSelectionPanel({
                   {selectedModelConfig.name}
                 </div>
                 {selectedModelConfig.badge && (
-                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
                     {selectedModelConfig.badge}
                   </span>
                 )}
@@ -295,7 +293,7 @@ export function ModelSelectionPanel({
       <Accordion
         type="multiple"
         defaultValue={defaultOpenSections}
-        className="rounded-2xl border border-slate-200 bg-white"
+        className="rounded-xl border border-slate-200 bg-white"
       >
         {MODEL_SELECTION_SECTIONS.map((section) => {
           const enabledCount = section.models.filter(
@@ -321,7 +319,7 @@ export function ModelSelectionPanel({
                       <span className="text-sm font-semibold text-slate-900">
                         {section.name}
                       </span>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">
                         {enabledCount}/{section.models.length} live
                       </span>
                     </div>

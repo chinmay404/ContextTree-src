@@ -492,37 +492,41 @@ const ForkDialog = memo(function ForkDialog({
   }, [open, sourceName]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="mx-4 flex max-h-[86vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-        <div className="border-b border-slate-100 px-6 py-5">
-          <div className="flex items-center justify-between mb-4">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
+      <div className="flex max-h-[88vh] w-full max-w-[760px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <GitBranch size={18} className="text-indigo-500" /> Branch
-                Conversation
+              <h3 className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-950">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600">
+                  <GitBranch size={15} />
+                </span>
+                Branch conversation
               </h3>
-              <p className="text-sm text-slate-500 mt-0.5">
-                Choose a model and confirm the snapshot you want to inherit
+              <p className="mt-1 text-sm text-slate-500">
+                Name the branch and choose the model it should use.
               </p>
             </div>
             <button
+              type="button"
               onClick={onCancel}
-              className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100"
+              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              aria-label="Close branch dialog"
             >
               <X size={18} />
             </button>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-          <div className="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-600">
-              Fork Preview
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Snapshot
             </div>
-            <div className="mt-2 rounded-xl border border-indigo-100 bg-white/90 px-3 py-2 text-sm text-slate-700 shadow-sm">
+            <div className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-700">
               {forkPreview || "This branch will inherit the selected reply."}
             </div>
-            <p className="mt-3 text-xs leading-relaxed text-indigo-700">
+            <p className="mt-3 text-xs leading-relaxed text-slate-500">
               Your new branch will start from <span className="font-semibold">{sourceName}</span>.
               It will keep this message and everything before it. Anything after
               this point stays out of the new branch.
@@ -540,8 +544,8 @@ const ForkDialog = memo(function ForkDialog({
               id="fork-branch-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Sam-3"
-              className="h-11 rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-800"
+              placeholder="Branch from current reply"
+              className="h-11 rounded-lg border-slate-300 bg-white text-sm font-medium text-slate-900 shadow-none focus-visible:ring-2 focus-visible:ring-slate-900/10"
               data-slot="fork-branch-name-input"
             />
             <p className="text-xs text-slate-500">
@@ -555,17 +559,17 @@ const ForkDialog = memo(function ForkDialog({
           />
         </div>
 
-        <div className="flex gap-2 border-t border-slate-100 px-6 py-4">
+        <div className="flex gap-3 border-t border-slate-200 bg-white px-5 py-4">
           <Button
             variant="outline"
             onClick={onCancel}
-            className="flex-1 rounded-xl"
+            className="h-10 flex-1 rounded-lg border-slate-200 text-sm font-medium"
           >
             Cancel
           </Button>
           <Button
             onClick={() => onConfirm(model, name)}
-            className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="h-10 flex-1 rounded-lg bg-slate-950 text-sm font-medium text-white hover:bg-slate-800"
           >
             Create Branch
           </Button>
@@ -1277,10 +1281,13 @@ const ContextualConsole = ({
         body: JSON.stringify(edge),
       }).catch(() => {});
       window.dispatchEvent(
-        new CustomEvent("canvas-select-node", { detail: { nodeId } })
+        new CustomEvent("canvas-select-node", {
+          detail: { nodeId, nodeName: branchName, nodeType: "branch" },
+        })
       );
+      onNodeSelect?.(nodeId, branchName, "branch");
     },
-    [selectedCanvas, selectedNode, pendingForkMsg, resolvedName, canvasData, currentMessages]
+    [selectedCanvas, selectedNode, pendingForkMsg, resolvedName, canvasData, currentMessages, onNodeSelect]
   );
 
   const handleStartFork = useCallback((messageId: string) => {

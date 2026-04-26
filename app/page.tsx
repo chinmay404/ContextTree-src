@@ -62,15 +62,23 @@ export default function ContextTreePage() {
   // ── Right panel resize ──────────────────────────────────────────────
   useEffect(() => {
     if (!isResizing) return;
+    let frame = 0;
     const onMove = (e: MouseEvent) => {
       if (chatFullscreen || isMobile) return;
       const delta = resizeStartX.current - e.clientX;
-      setRightPanelWidth(Math.min(1100, Math.max(420, resizeStartW.current + delta)));
+      const nextWidth = Math.min(1100, Math.max(420, resizeStartW.current + delta));
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => setRightPanelWidth(nextWidth));
     };
     const onUp = () => setIsResizing(false);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     return () => {
+      if (frame) cancelAnimationFrame(frame);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -542,14 +550,18 @@ export default function ContextTreePage() {
         {showRightPanel && !chatFullscreen && (
           <div
             onMouseDown={beginResize}
-            className="w-1 cursor-col-resize hover:bg-slate-300 active:bg-slate-400 transition-colors z-50 flex-shrink-0"
+            className="z-50 w-2 flex-shrink-0 cursor-col-resize bg-slate-100/70 transition-colors hover:bg-slate-200"
+            role="separator"
+            aria-label="Resize conversation panel"
           />
         )}
 
         {/* Right panel — contextual console */}
         <div
           data-tour="right-panel"
-          className={`bg-white transition-all duration-300 ease-in-out flex flex-col border-l border-slate-200 ${
+          className={`bg-white flex flex-col border-l border-slate-200 shadow-[-8px_0_24px_rgba(15,23,42,0.04)] ${
+            isResizing ? "" : "transition-[width,transform,opacity] duration-200 ease-out"
+          } ${
             showRightPanel
               ? chatFullscreen
                 ? "fixed right-0 top-14 bottom-0 w-[90%] md:w-[85%] lg:w-[80%] shadow-2xl z-50 border-l-0"
@@ -584,9 +596,10 @@ export default function ContextTreePage() {
                   setSelectedNode(null);
                   setChatFullscreen(false);
                 }}
-                onNodeSelect={(nodeId: string, nodeName?: string) => {
+                onNodeSelect={(nodeId: string, nodeName?: string, nodeType?: string) => {
                   setSelectedNode(nodeId);
                   setSelectedNodeName(nodeName);
+                  setSelectedNodeType(nodeType || "branch");
                 }}
               />
             ))}

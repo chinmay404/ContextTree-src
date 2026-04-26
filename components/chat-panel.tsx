@@ -50,7 +50,7 @@ interface ChatPanelProps {
   isCollapsed?: boolean;
   onToggleFullscreen?: () => void;
   onToggleCollapse?: () => void;
-  onNodeSelect?: (nodeId: string, nodeName?: string) => void;
+  onNodeSelect?: (nodeId: string, nodeName?: string, nodeType?: string) => void;
 }
 
 interface Message {
@@ -480,9 +480,10 @@ const ChatPanelInternal = ({
       );
       window.dispatchEvent(
         new CustomEvent("canvas-select-node", {
-          detail: { nodeId: newNodeId },
+          detail: { nodeId: newNodeId, nodeName: newNode.name, nodeType: "branch" },
         })
       );
+      onNodeSelect?.(newNodeId, newNode.name, "branch");
 
       // Toast confirmation
       const modelName =
