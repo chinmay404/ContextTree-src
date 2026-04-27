@@ -19,6 +19,16 @@ import { OnboardingGuide } from "@/components/onboarding-guide";
 import { FilePreviewPanel } from "@/components/file-preview-panel";
 import { CreateCanvasDialog } from "@/components/create-canvas-dialog";
 
+const normalizeCanvas = (canvas: any): CanvasData => ({
+  ...canvas,
+  metaTags: Array.isArray(canvas?.metaTags) ? canvas.metaTags : [],
+  nodes: Array.isArray(canvas?.nodes) ? canvas.nodes : [],
+  edges: Array.isArray(canvas?.edges) ? canvas.edges : [],
+});
+
+const normalizeCanvases = (canvases: any): CanvasData[] =>
+  Array.isArray(canvases) ? canvases.map(normalizeCanvas) : [];
+
 export default function ContextTreePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const isMobile = useIsMobile();
@@ -117,20 +127,21 @@ export default function ContextTreePage() {
             setHasLoadedCanvases(true);
             return;
           }
-          setCanvases(storageService.getAllCanvases());
+          setCanvases(normalizeCanvases(storageService.getAllCanvases()));
           setHasLoadedCanvases(true);
           return;
         }
 
         const data = await response.json();
-        setCanvases(data.canvases || []);
+        const normalizedCanvases = normalizeCanvases(data.canvases);
+        setCanvases(normalizedCanvases);
         setHasLoadedCanvases(true);
 
-        if (data.canvases?.length > 0 && !selectedCanvas) {
-          setSelectedCanvas(data.canvases[0]._id);
+        if (normalizedCanvases.length > 0 && !selectedCanvas) {
+          setSelectedCanvas(normalizedCanvases[0]._id);
         }
       } catch {
-        setCanvases(storageService.getAllCanvases());
+        setCanvases(normalizeCanvases(storageService.getAllCanvases()));
         setHasLoadedCanvases(true);
       }
     };
@@ -221,9 +232,10 @@ export default function ContextTreePage() {
     setIsCreatingCanvas(true);
 
     const focusPrimaryNode = (canvas: CanvasData) => {
+      const nodes = Array.isArray(canvas.nodes) ? canvas.nodes : [];
       const primaryNode =
-        canvas.nodes.find((node) => node._id === canvas.primaryNodeId) ||
-        canvas.nodes[0];
+        nodes.find((node) => node._id === canvas.primaryNodeId) ||
+        nodes[0];
 
       setSelectedCanvas(canvas._id);
       setSelectedNode(primaryNode?._id ?? null);
