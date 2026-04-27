@@ -95,6 +95,9 @@ async function init() {
   alter table if exists nodes add column if not exists forked_from_message_id text;
   alter table if exists nodes add column if not exists is_primary boolean;
   alter table if exists nodes add column if not exists type text;
+  alter table if exists nodes add column if not exists ancestor_ids text[] not null default '{}'::text[];
+  alter table if exists nodes add column if not exists summarized_up_to_position bigint not null default 0;
+  alter table if exists nodes add column if not exists is_initialized boolean not null default true;
   -- Ensure vector extension exists before adding vector column
   create extension if not exists vector;
   alter table if exists nodes add column if not exists summary text;
@@ -102,6 +105,7 @@ async function init() {
     create index if not exists idx_nodes_canvas on nodes(canvas_id);
     create index if not exists idx_nodes_parent on nodes(parent_node_id);
     create index if not exists idx_nodes_forked_from on nodes(forked_from_message_id);
+    create index if not exists nodes_ancestor_ids_gin on nodes using gin (ancestor_ids);
     create table if not exists edges (
       id text primary key,
       canvas_id text not null references canvases(id) on delete cascade,
@@ -669,10 +673,15 @@ export class MongoDBService {
     const nodeData = { ...node } as any;
     const messages = nodeData.chatMessages || [];
     delete nodeData.chatMessages;
+    const isForkedConversationNode =
+      !node.primary &&
+      !!(node as any).parentNodeId &&
+      !!(node as any).forkedFromMessageId &&
+      (node.type === "branch" || node.type === "context");
     await pool.query(
-      `insert into nodes (id, canvas_id, user_email, data, parent_node_id, forked_from_message_id, is_primary, created_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,now(),now())
-       on conflict (id) do update set data=excluded.data, parent_node_id=excluded.parent_node_id, forked_from_message_id=excluded.forked_from_message_id, is_primary=excluded.is_primary, updated_at=now()`,
+      `insert into nodes (id, canvas_id, user_email, data, parent_node_id, forked_from_message_id, is_primary, is_initialized, created_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,now(),now())
+       on conflict (id) do update set data=excluded.data, parent_node_id=excluded.parent_node_id, forked_from_message_id=excluded.forked_from_message_id, is_primary=excluded.is_primary, is_initialized=case when nodes.is_initialized then true else excluded.is_initialized end, updated_at=now()`,
       [
         node._id,
         canvasId,
@@ -681,6 +690,7 @@ export class MongoDBService {
         (node as any).parentNodeId || null,
         (node as any).forkedFromMessageId || null,
         !!node.primary,
+        !isForkedConversationNode,
       ]
     );
     if (messages.length) {
