@@ -4,6 +4,7 @@ import { memo, useCallback, type MouseEvent } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { Trash2 } from "lucide-react";
 import { ModelBadge } from "@/components/model-badge";
+import { getAdvancedBadges, type AdvancedSettings } from "@/lib/advanced-settings";
 import { cn } from "@/lib/utils";
 
 export interface BranchNodeData {
@@ -12,6 +13,7 @@ export interface BranchNodeData {
   isSelected: boolean;
   preview?: string;
   model?: string;
+  advancedSettings?: Partial<AdvancedSettings>;
   timestamp?: string;
   metaForkLabel?: string;
   branchBadge?: string;
@@ -67,6 +69,7 @@ function BranchNodeComponent({ data, selected }: NodeProps<BranchNodeType>) {
 
   const title = (data.label || "Branch").trim();
   const preview = (data.preview || "").trim();
+  const advancedBadges = getAdvancedBadges(data.advancedSettings);
 
   return (
     <div
@@ -105,6 +108,19 @@ function BranchNodeComponent({ data, selected }: NodeProps<BranchNodeType>) {
             <p className="mt-2 text-[12.5px] leading-[1.5] text-slate-500 line-clamp-2">
               {preview}
             </p>
+          )}
+
+          {advancedBadges.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {advancedBadges.slice(0, 3).map((badge) => (
+                <span
+                  key={badge}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9.5px] font-semibold text-slate-500"
+                >
+                  {badge}
+                </span>
+              ))}
+            </div>
           )}
 
           {/* Hairline divider before meta — very subtle */}

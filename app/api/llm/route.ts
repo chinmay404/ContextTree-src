@@ -16,6 +16,10 @@ interface LLMRequest {
   model: string;
   message: string;
   systemPrompt?: string | null;
+  temperature?: number | null;
+  maxOutputTokens?: number | null;
+  lastKMessages?: number | null;
+  externalContextTopK?: number | null;
   message_id?: string;
   parentNodeId?: string | null;
   forkedFromMessageId?: string | null;

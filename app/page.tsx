@@ -14,6 +14,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { LandingPage } from "@/components/landing-page";
 import { generateCanvasTitle } from "@/lib/utils";
+import type { AdvancedSettings } from "@/lib/advanced-settings";
 import { GlobalSearch } from "@/components/global-search";
 import { OnboardingGuide } from "@/components/onboarding-guide";
 import { FilePreviewPanel } from "@/components/file-preview-panel";
@@ -225,10 +226,12 @@ export default function ContextTreePage() {
     title,
     model,
     systemPrompt,
+    advancedSettings,
   }: {
     title: string;
     model: string;
     systemPrompt: string;
+    advancedSettings: AdvancedSettings;
   }) => {
     if (!user?.email || isCreatingCanvas) return;
     setIsCreatingCanvas(true);
@@ -248,7 +251,13 @@ export default function ContextTreePage() {
       setChatFullscreen(false);
     };
 
-    const newCanvas = storageService.createDefaultCanvas(user.email, title, model, systemPrompt);
+    const newCanvas = storageService.createDefaultCanvas(
+      user.email,
+      title,
+      model,
+      systemPrompt,
+      advancedSettings
+    );
     storageService.saveCanvas(newCanvas);
 
     try {

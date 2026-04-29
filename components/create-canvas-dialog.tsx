@@ -16,11 +16,16 @@ import {
 } from "@/components/ui/dialog";
 import { ModelSelectionPanel } from "@/components/model-selection-panel";
 import { ModelBadge } from "@/components/model-badge";
+import { AdvancedSettingsPanel } from "@/components/advanced-settings-panel";
+import {
+  DEFAULT_ADVANCED_SETTINGS,
+  type AdvancedSettings,
+} from "@/lib/advanced-settings";
 
 type CreateCanvasDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (payload: { title: string; model: string; systemPrompt: string }) => Promise<void> | void;
+  onCreate: (payload: { title: string; model: string; systemPrompt: string; advancedSettings: AdvancedSettings }) => Promise<void> | void;
   isCreating?: boolean;
   initialTitle?: string;
 };
@@ -35,12 +40,14 @@ export const CreateCanvasDialog = ({
   const [title, setTitle] = useState(initialTitle || generateCanvasTitle());
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(DEFAULT_ADVANCED_SETTINGS);
 
   useEffect(() => {
     if (!open) return;
     setTitle(initialTitle || generateCanvasTitle());
     setSelectedModel(null);
     setSystemPrompt("");
+    setAdvancedSettings(DEFAULT_ADVANCED_SETTINGS);
   }, [initialTitle, open]);
 
   const handleCreate = async () => {
@@ -51,6 +58,7 @@ export const CreateCanvasDialog = ({
       title: trimmedTitle,
       model: selectedModel,
       systemPrompt,
+      advancedSettings,
     });
   };
 
@@ -96,6 +104,14 @@ export const CreateCanvasDialog = ({
                 This name appears in your workspace list, and you can rename it later.
               </p>
             </div>
+
+            <AdvancedSettingsPanel
+              value={advancedSettings}
+              onChange={setAdvancedSettings}
+              modelId={selectedModel}
+              systemPrompt={systemPrompt}
+              className="mt-5"
+            />
 
             <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
               <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">

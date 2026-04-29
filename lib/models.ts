@@ -14,6 +14,10 @@ export interface ModelConfig {
   disabledReason?: string;
   requiresByok?: boolean;
   byokProvider?: "openai" | "anthropic" | "litellm";
+  supportsTemperature?: boolean;
+  temperatureMin?: number;
+  temperatureMax?: number;
+  temperatureDefault?: number;
 }
 
 export interface ModelSelectionSection {

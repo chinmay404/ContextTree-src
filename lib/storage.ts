@@ -1,6 +1,10 @@
 "use client";
 
 import { getDefaultModel } from "./models";
+import {
+  DEFAULT_ADVANCED_SETTINGS,
+  type AdvancedSettings,
+} from "./advanced-settings";
 
 export interface CanvasData {
   _id: string;
@@ -50,6 +54,7 @@ export interface NodeData {
   runningSummary: string;
   contextContract: string;
   systemPrompt?: string;
+  advancedSettings?: AdvancedSettings;
   model: string;
   memory?: object;
   externalSource?: object;
@@ -237,7 +242,8 @@ class StorageService {
     userId: string,
     title = "New Canvas",
     defaultModel = getDefaultModel(),
-    systemPrompt = ""
+    systemPrompt = "",
+    advancedSettings: AdvancedSettings = DEFAULT_ADVANCED_SETTINGS
   ): CanvasData {
     const canvasId = `canvas_${Date.now()}`;
     const entryNodeId = `node_${Date.now()}`;
@@ -250,6 +256,7 @@ class StorageService {
       runningSummary: "",
       contextContract: "",
       systemPrompt,
+      advancedSettings,
       model: defaultModel,
       parentNodeId: undefined,
       forkedFromMessageId: undefined,

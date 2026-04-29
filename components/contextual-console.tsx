@@ -39,6 +39,13 @@ import { getDefaultModel } from "@/lib/models";
 import { deriveNodeNameFromPrompt } from "@/lib/utils";
 import { ModelBadge, ModelProviderIcon } from "@/components/model-badge";
 import { ModelSelectionPanel } from "@/components/model-selection-panel";
+import { AdvancedSettingsPanel } from "@/components/advanced-settings-panel";
+import {
+  buildAdvancedRequestPayload,
+  DEFAULT_ADVANCED_SETTINGS,
+  normalizeAdvancedSettings,
+  type AdvancedSettings,
+} from "@/lib/advanced-settings";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -472,26 +479,30 @@ type ForkDialogProps = {
   open: boolean;
   sourceName: string;
   inheritedSystemPrompt?: string;
+  inheritedAdvancedSettings?: Partial<AdvancedSettings> | null;
   onCancel: () => void;
-  onConfirm: (model: string, name: string, systemPrompt: string) => void;
+  onConfirm: (model: string, name: string, systemPrompt: string, advancedSettings: AdvancedSettings) => void;
 };
 
 const ForkDialog = memo(function ForkDialog({
   open,
   sourceName,
   inheritedSystemPrompt = "",
+  inheritedAdvancedSettings,
   onCancel,
   onConfirm,
 }: ForkDialogProps) {
   const [model, setModel] = useState(getDefaultModel());
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(DEFAULT_ADVANCED_SETTINGS);
   useEffect(() => {
     if (!open) return;
     setModel(getDefaultModel());
     setName(`Branch from ${sourceName.slice(0, 24)}`.trim());
     setSystemPrompt(inheritedSystemPrompt);
-  }, [open, sourceName, inheritedSystemPrompt]);
+    setAdvancedSettings(normalizeAdvancedSettings(inheritedAdvancedSettings));
+  }, [open, sourceName, inheritedSystemPrompt, inheritedAdvancedSettings]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
@@ -540,6 +551,15 @@ const ForkDialog = memo(function ForkDialog({
               />
             </div>
 
+            <AdvancedSettingsPanel
+              value={advancedSettings}
+              onChange={setAdvancedSettings}
+              modelId={model}
+              systemPrompt={systemPrompt}
+              parentSettings={inheritedAdvancedSettings}
+              className="mt-5"
+            />
+
             <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
               <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                 Custom system prompt
@@ -585,7 +605,7 @@ const ForkDialog = memo(function ForkDialog({
             Cancel
           </Button>
           <Button
-            onClick={() => onConfirm(model, name, systemPrompt)}
+            onClick={() => onConfirm(model, name, systemPrompt, advancedSettings)}
             className="h-10 flex-1 rounded-lg bg-slate-950 text-sm font-medium text-white hover:bg-slate-800"
           >
             Create Branch
@@ -641,6 +661,13 @@ const ContextualConsole = ({
     const node = canvasData.nodes.find((n: any) => n._id === selectedNode);
     return node?.name || selectedNodeName;
   }, [selectedNode, selectedNodeName, canvasData]);
+
+  const parentAdvancedSettings = useMemo(() => {
+    const parentId = currentNode?.parentNodeId;
+    if (!parentId || !canvasData?.nodes) return DEFAULT_ADVANCED_SETTINGS;
+    const parent = canvasData.nodes.find((node: any) => node._id === parentId);
+    return normalizeAdvancedSettings(parent?.advancedSettings);
+  }, [currentNode?.parentNodeId, canvasData]);
 
   // ─── Combined canvas + messages fetch ──────────────────
   // Previously this component fired TWO independent fetches for the same
@@ -789,6 +816,42 @@ const ContextualConsole = ({
       });
     }
   }, [selectedNode, selectedCanvas, nameInput, resolvedName]);
+
+  const saveAdvancedSettings = useCallback(
+    async (nextSettings: AdvancedSettings) => {
+      if (!selectedNode || !selectedCanvas) return;
+      const advancedSettings = normalizeAdvancedSettings(nextSettings);
+      setCanvasData((p: any) =>
+        p
+          ? {
+              ...p,
+              nodes: p.nodes.map((n: any) =>
+                n._id === selectedNode ? { ...n, advancedSettings } : n
+              ),
+            }
+          : p
+      );
+      window.dispatchEvent(
+        new CustomEvent("canvas-update-node", {
+          detail: { nodeId: selectedNode, updates: { advancedSettings } },
+        })
+      );
+      try {
+        await fetch(`/api/canvases/${selectedCanvas}/nodes/${selectedNode}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ advancedSettings }),
+        });
+      } catch {
+        toast({
+          title: "Error",
+          description: "Failed to save advanced settings",
+          variant: "destructive",
+        });
+      }
+    },
+    [selectedNode, selectedCanvas]
+  );
 
   // ─── Listen for renames from canvas ────────────────────
   useEffect(() => {
@@ -1011,6 +1074,7 @@ const ContextualConsole = ({
           forkedFromMessageId: currentNode?.forkedFromMessageId || null,
           isPrimary: currentNode?.primary || false,
           systemPrompt: currentNode?.systemPrompt || "",
+          ...buildAdvancedRequestPayload(currentNode?.advancedSettings),
           contextNodeIds,
         }),
       });
@@ -1244,7 +1308,13 @@ const ContextualConsole = ({
   );
 
   const createFork = useCallback(
-    async (model: string, overrideId?: string, overrideName?: string, overrideSystemPrompt?: string) => {
+    async (
+      model: string,
+      overrideId?: string,
+      overrideName?: string,
+      overrideSystemPrompt?: string,
+      overrideAdvancedSettings?: AdvancedSettings
+    ) => {
       const forkId = normalizeForkId(overrideId || pendingForkMsg);
       if (!selectedCanvas || !selectedNode || !forkId) return;
       const parentNode = canvasData?.nodes?.find((n: any) => n._id === selectedNode);
@@ -1269,6 +1339,10 @@ const ContextualConsole = ({
           overrideSystemPrompt !== undefined
             ? overrideSystemPrompt
             : parentNode?.systemPrompt || "",
+        advancedSettings:
+          overrideAdvancedSettings !== undefined
+            ? normalizeAdvancedSettings(overrideAdvancedSettings)
+            : normalizeAdvancedSettings(parentNode?.advancedSettings),
         model,
         parentNodeId: selectedNode,
         forkedFromMessageId: forkId,
@@ -1370,12 +1444,13 @@ const ContextualConsole = ({
         open={showForkDialog}
         sourceName={resolvedName || "this branch"}
         inheritedSystemPrompt={currentNode?.systemPrompt || ""}
+        inheritedAdvancedSettings={currentNode?.advancedSettings}
         onCancel={() => {
           setShowForkDialog(false);
           setPendingForkMsg(null);
         }}
-        onConfirm={(model, name, systemPrompt) => {
-          createFork(model, undefined, name, systemPrompt);
+        onConfirm={(model, name, systemPrompt, advancedSettings) => {
+          createFork(model, undefined, name, systemPrompt, advancedSettings);
           setShowForkDialog(false);
           setPendingForkMsg(null);
         }}
@@ -1459,6 +1534,19 @@ const ContextualConsole = ({
             </div>
           </div>
         </div>
+
+        {currentNode && (
+          <div className="flex-none border-b border-slate-100 bg-slate-50/60 px-4 py-3">
+            <AdvancedSettingsPanel
+              value={currentNode.advancedSettings}
+              onChange={saveAdvancedSettings}
+              modelId={activeModelId}
+              systemPrompt={currentNode.systemPrompt || ""}
+              parentSettings={parentAdvancedSettings}
+              className="bg-white"
+            />
+          </div>
+        )}
 
         {/* Messages */}
         <div className="flex-1 min-h-0 relative">

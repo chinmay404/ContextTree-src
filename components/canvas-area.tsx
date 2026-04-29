@@ -577,6 +577,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
             label: node.name || (node.type === "entry" ? "Base Context" : node.type === "branch" ? "Branch" : "Context"),
             messageCount: node.chatMessages?.length || 0,
             model: node.model,
+            advancedSettings: node.advancedSettings,
             isSelected: selectedNode === node._id,
             color: nodeColor,
             textColor: cs.text,

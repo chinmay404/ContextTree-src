@@ -3,6 +3,7 @@
 import { memo, useCallback, type MouseEvent } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { Trash2 } from "lucide-react";
+import { getAdvancedBadges, type AdvancedSettings } from "@/lib/advanced-settings";
 import { cn } from "@/lib/utils";
 
 export interface EntryNodeData {
@@ -11,6 +12,7 @@ export interface EntryNodeData {
   isSelected: boolean;
   preview?: string;
   model?: string;
+  advancedSettings?: Partial<AdvancedSettings>;
   timestamp?: string;
   sharedLabel?: string;
   onClick?: () => void;
@@ -40,6 +42,7 @@ function EntryNodeComponent({ data, selected }: NodeProps<EntryNodeType>) {
   const active = selected || data.isSelected;
   const title = (data.label || "Base Context").trim();
   const preview = (data.preview || "").trim();
+  const advancedBadges = getAdvancedBadges(data.advancedSettings);
 
   const handleClassName = cn(
     "!h-2 !w-2 !border-2 !border-slate-800 !bg-white !transition-all !duration-200 !ease-out",
@@ -101,6 +104,19 @@ function EntryNodeComponent({ data, selected }: NodeProps<EntryNodeType>) {
             <p className="mt-1.5 text-[12.5px] leading-[1.5] text-white/55 line-clamp-2">
               {preview}
             </p>
+          )}
+
+          {advancedBadges.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {advancedBadges.slice(0, 3).map((badge) => (
+                <span
+                  key={badge}
+                  className="rounded-full border border-white/10 bg-white/10 px-1.5 py-0.5 text-[9.5px] font-semibold text-white/65"
+                >
+                  {badge}
+                </span>
+              ))}
+            </div>
           )}
         </div>
       </div>
