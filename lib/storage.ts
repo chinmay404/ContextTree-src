@@ -236,7 +236,8 @@ class StorageService {
   createDefaultCanvas(
     userId: string,
     title = "New Canvas",
-    defaultModel = getDefaultModel()
+    defaultModel = getDefaultModel(),
+    systemPrompt = ""
   ): CanvasData {
     const canvasId = `canvas_${Date.now()}`;
     const entryNodeId = `node_${Date.now()}`;
@@ -248,7 +249,7 @@ class StorageService {
       chatMessages: [],
       runningSummary: "",
       contextContract: "",
-      systemPrompt: "",
+      systemPrompt,
       model: defaultModel,
       parentNodeId: undefined,
       forkedFromMessageId: undefined,

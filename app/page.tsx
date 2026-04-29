@@ -224,9 +224,11 @@ export default function ContextTreePage() {
   const handleCreateCanvas = async ({
     title,
     model,
+    systemPrompt,
   }: {
     title: string;
     model: string;
+    systemPrompt: string;
   }) => {
     if (!user?.email || isCreatingCanvas) return;
     setIsCreatingCanvas(true);
@@ -246,7 +248,7 @@ export default function ContextTreePage() {
       setChatFullscreen(false);
     };
 
-    const newCanvas = storageService.createDefaultCanvas(user.email, title, model);
+    const newCanvas = storageService.createDefaultCanvas(user.email, title, model, systemPrompt);
     storageService.saveCanvas(newCanvas);
 
     try {

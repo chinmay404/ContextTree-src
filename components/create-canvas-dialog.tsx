@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { generateCanvasTitle } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,7 @@ import { ModelBadge } from "@/components/model-badge";
 type CreateCanvasDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (payload: { title: string; model: string }) => Promise<void> | void;
+  onCreate: (payload: { title: string; model: string; systemPrompt: string }) => Promise<void> | void;
   isCreating?: boolean;
   initialTitle?: string;
 };
@@ -33,11 +34,13 @@ export const CreateCanvasDialog = ({
 }: CreateCanvasDialogProps) => {
   const [title, setTitle] = useState(initialTitle || generateCanvasTitle());
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setTitle(initialTitle || generateCanvasTitle());
     setSelectedModel(null);
+    setSystemPrompt("");
   }, [initialTitle, open]);
 
   const handleCreate = async () => {
@@ -47,6 +50,7 @@ export const CreateCanvasDialog = ({
     await onCreate({
       title: trimmedTitle,
       model: selectedModel,
+      systemPrompt,
     });
   };
 
@@ -60,7 +64,7 @@ export const CreateCanvasDialog = ({
           <DialogHeader className="space-y-1.5 text-left">
             <DialogTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-950">
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600">
-                <Sparkles className="h-4 w-4" />
+                <img src="/tree-icon.svg" alt="" className="h-4 w-4" />
               </span>
               New canvas
             </DialogTitle>
@@ -90,6 +94,22 @@ export const CreateCanvasDialog = ({
               />
               <p className="text-xs leading-relaxed text-slate-500">
                 This name appears in your workspace list, and you can rename it later.
+              </p>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Custom system prompt
+              </div>
+              <Textarea
+                value={systemPrompt}
+                onChange={(event) => setSystemPrompt(event.target.value)}
+                placeholder="Optional instructions for the base context..."
+                className="mt-3 min-h-[132px] resize-none rounded-lg border-slate-200 bg-slate-50 text-sm leading-relaxed text-slate-800"
+                data-slot="create-canvas-system-prompt-input"
+              />
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                This is saved on the base node. New branches copy it by default unless edited.
               </p>
             </div>
 
