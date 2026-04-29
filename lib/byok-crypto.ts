@@ -63,5 +63,9 @@ export function formatKeyHint(provider: ByokProvider, rawKey: string) {
     return `OpenAI ••••${last4}`;
   }
 
+  if (provider === "litellm") {
+    return `LiteLLM ••••${last4}`;
+  }
+
   return `Anthropic ••••${last4}`;
 }

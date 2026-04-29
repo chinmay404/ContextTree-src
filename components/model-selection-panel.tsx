@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Lock,
   Sparkles,
@@ -20,7 +20,7 @@ import {
 } from "@/lib/models";
 import { useByokStatus } from "@/hooks/use-byok-status";
 import { ApiKeySettingsDialog } from "@/components/api-key-settings-dialog";
-import type { ByokProvider, ProviderKeyStatusMap } from "@/lib/byok";
+import { BYOK_PROVIDERS, type ByokProvider, type ProviderKeyStatusMap } from "@/lib/byok";
 import { ModelProviderIcon } from "@/components/model-badge";
 import { cn } from "@/lib/utils";
 
@@ -140,6 +140,17 @@ const renderModelCard = ({
   );
 };
 
+const getProviderLabel = (provider: ByokProvider) => {
+  if (provider === "openai") return "OpenAI";
+  if (provider === "anthropic") return "Anthropic";
+  return "LiteLLM";
+};
+
+const normalizeLiteLlmSelection = (value: string) => {
+  const trimmed = value.trim().replace(/^litellm\//i, "");
+  return trimmed ? `litellm/${trimmed}` : "";
+};
+
 export function ModelSelectionPanel({
   selectedModel,
   onSelect,
@@ -149,10 +160,28 @@ export function ModelSelectionPanel({
   const { statuses, refresh } = useByokStatus();
   const [isKeyDialogOpen, setIsKeyDialogOpen] = useState(false);
   const [requestedProvider, setRequestedProvider] = useState<ByokProvider | undefined>();
+  const [customLiteLlmModel, setCustomLiteLlmModel] = useState("");
   const defaultOpenSections = MODEL_SELECTION_SECTIONS.filter((section) => section.defaultOpen).map(
     (section) => section.id
   );
   const selectedModelConfig = selectedModel ? getModelById(selectedModel) : undefined;
+  const selectedLiteLlmModel =
+    selectedModel?.startsWith("litellm/") ? selectedModel.replace(/^litellm\//, "") : "";
+  const liteLlmSelection = normalizeLiteLlmSelection(customLiteLlmModel);
+  const liteLlmStatus = statuses.litellm;
+  const customLiteLlmConfig = useMemo<ModelConfig>(
+    () => ({
+      id: liteLlmSelection || "litellm/custom",
+      name: customLiteLlmModel.trim() || "Custom LiteLLM model",
+      description: "Route through LiteLLM with your saved credential and optional private endpoint.",
+      provider: "LiteLLM",
+      availability: "enabled",
+      badge: "Custom",
+      requiresByok: true,
+      byokProvider: "litellm",
+    }),
+    [customLiteLlmModel, liteLlmSelection]
+  );
 
   const handleManageKeys = (provider?: ByokProvider) => {
     setRequestedProvider(provider);
@@ -209,7 +238,7 @@ export function ModelSelectionPanel({
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          {(["openai", "anthropic"] as const).map((provider) => {
+          {BYOK_PROVIDERS.map((provider) => {
             const providerStatus = statuses[provider];
             return (
               <button
@@ -223,7 +252,7 @@ export function ModelSelectionPanel({
                     : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
                 )}
               >
-                <span>{provider === "openai" ? "OpenAI" : "Anthropic"}</span>
+                <span>{getProviderLabel(provider)}</span>
                 <span className="text-[10px] tracking-[0.16em] opacity-80">
                   {providerStatus.configured ? providerStatus.keyHint || "Connected" : "Not connected"}
                 </span>
@@ -259,31 +288,92 @@ export function ModelSelectionPanel({
         </div>
       </div>
 
-      {selectedModelConfig && (
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm">
+              <KeyRound className="h-4 w-4" />
+            </span>
+            <div>
+              <div className="text-sm font-semibold text-slate-900">Custom LiteLLM model</div>
+              <div className="text-xs leading-relaxed text-slate-500">
+                Enter a LiteLLM model string such as openrouter/provider/model or openai/private-model.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleManageKeys("litellm")}
+            className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-white"
+          >
+            LiteLLM keys
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            value={customLiteLlmModel}
+            onChange={(event) => setCustomLiteLlmModel(event.target.value)}
+            placeholder={selectedLiteLlmModel || "openrouter/meta-llama/llama-3.1-70b-instruct"}
+            className="h-10 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-400"
+            data-slot="custom-litellm-model-input"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (!liteLlmStatus.configured) {
+                handleManageKeys("litellm");
+                return;
+              }
+              if (liteLlmSelection) {
+                onSelect(liteLlmSelection);
+              }
+            }}
+            disabled={!liteLlmSelection}
+            className="h-10 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            Use model
+          </button>
+        </div>
+
+        {(liteLlmSelection || selectedLiteLlmModel) && (
+          <div className="mt-3">
+            {renderModelCard({
+              model: customLiteLlmConfig,
+              isSelected: selectedModel === liteLlmSelection || selectedModel === customLiteLlmConfig.id,
+              onSelect,
+              statuses,
+              onManageKeys: handleManageKeys,
+            })}
+          </div>
+        )}
+      </div>
+
+      {(selectedModelConfig || selectedLiteLlmModel) && (
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-start gap-3">
             <ModelProviderIcon
-              modelId={selectedModelConfig.id}
-              provider={selectedModelConfig.provider}
+              modelId={selectedModelConfig?.id || selectedModel}
+              provider={selectedModelConfig?.provider || "LiteLLM"}
               size={20}
               className="mt-0.5"
             />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="text-sm font-semibold text-slate-900">
-                  {selectedModelConfig.name}
+                  {selectedModelConfig?.name || selectedLiteLlmModel}
                 </div>
-                {selectedModelConfig.badge && (
+                {(selectedModelConfig?.badge || selectedLiteLlmModel) && (
                   <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-                    {selectedModelConfig.badge}
+                    {selectedModelConfig?.badge || "LiteLLM"}
                   </span>
                 )}
               </div>
               <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                {selectedModelConfig.provider}
+                {selectedModelConfig?.provider || "LiteLLM"}
               </div>
               <div className="mt-2 text-sm leading-relaxed text-slate-600">
-                {selectedModelConfig.description}
+                {selectedModelConfig?.description || "Custom model routed through your saved LiteLLM credential."}
               </div>
             </div>
           </div>

@@ -13,7 +13,7 @@ export interface ModelConfig {
   badge?: string;
   disabledReason?: string;
   requiresByok?: boolean;
-  byokProvider?: "openai" | "anthropic";
+  byokProvider?: "openai" | "anthropic" | "litellm";
 }
 
 export interface ModelSelectionSection {

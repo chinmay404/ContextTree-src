@@ -17,6 +17,31 @@ function parseProvider(value: unknown): ByokProvider | null {
   return VALID_PROVIDERS.has(provider) ? provider : null;
 }
 
+function normalizeApiBase(value: unknown) {
+  const apiBase = String(value || "").trim();
+  if (!apiBase) return null;
+
+  try {
+    const url = new URL(apiBase);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function formatApiBaseHint(value: unknown) {
+  const apiBase = normalizeApiBase(value);
+  if (!apiBase) return null;
+
+  try {
+    const url = new URL(apiBase);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return null;
+  }
+}
+
 async function getAuthenticatedUserEmail() {
   const user = await getCurrentUser();
   return user?.email || null;
@@ -38,6 +63,7 @@ export async function GET() {
       provider,
       configured: true,
       keyHint: row.key_hint || null,
+      apiBaseHint: formatApiBaseHint(row.metadata?.apiBase),
       updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
     };
   }
@@ -51,7 +77,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { provider?: string; apiKey?: string };
+  let body: { provider?: string; apiKey?: string; apiBase?: string };
 
   try {
     body = await request.json();
@@ -61,21 +87,22 @@ export async function POST(request: NextRequest) {
 
   const provider = parseProvider(body.provider);
   const apiKey = String(body.apiKey || "").trim();
+  const apiBase = normalizeApiBase(body.apiBase);
 
   if (!provider) {
     return NextResponse.json({ error: "Unsupported provider" }, { status: 400 });
   }
 
-  if (apiKey.length < 12) {
+  if (apiKey.length < 12 && !(provider === "litellm" && apiBase)) {
     return NextResponse.json(
       { error: "API key looks incomplete. Please paste the full key." },
       { status: 400 }
     );
   }
 
-  let encryptedKey: string;
+  let encryptedKey: string | null = null;
   try {
-    encryptedKey = encryptApiKey(apiKey);
+    encryptedKey = apiKey ? encryptApiKey(apiKey) : null;
   } catch (error) {
     console.error("BYOK encryption is not configured:", error);
     return NextResponse.json(
@@ -83,12 +110,16 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-  const keyHint = formatKeyHint(provider, apiKey);
+  const keyHint =
+    provider === "litellm" && !apiKey
+      ? "LiteLLM private endpoint"
+      : formatKeyHint(provider, apiKey);
   const saved = await mongoService.upsertUserApiKey(
     userEmail,
     provider,
     encryptedKey,
-    keyHint
+    keyHint,
+    provider === "litellm" ? { apiBase } : {}
   );
 
   if (!saved) {
@@ -102,6 +133,7 @@ export async function POST(request: NextRequest) {
     provider,
     configured: true,
     keyHint: saved.key_hint || keyHint,
+    apiBaseHint: formatApiBaseHint(saved.metadata?.apiBase),
     updatedAt: saved.updated_at ? new Date(saved.updated_at).toISOString() : null,
   });
 }

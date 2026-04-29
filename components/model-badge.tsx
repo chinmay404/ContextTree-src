@@ -18,6 +18,7 @@ type ModelProviderKey =
   | "moonshot"
   | "mistral"
   | "sdaia"
+  | "litellm"
   | "unknown";
 
 type ModelProviderIconProps = Omit<ComponentProps<"span">, "children"> & {
@@ -96,6 +97,10 @@ const PROVIDER_THEME: Record<
     badge: "border-teal-100 bg-teal-50 text-teal-800",
     icon: "border-teal-200/80 bg-white/90",
   },
+  litellm: {
+    badge: "border-slate-200 bg-slate-50 text-slate-800",
+    icon: "border-slate-200 bg-white/90",
+  },
   unknown: {
     badge: "border-slate-200 bg-slate-50 text-slate-700",
     icon: "border-slate-200 bg-white/90",
@@ -115,6 +120,7 @@ const PROVIDER_DISPLAY_NAME: Record<ModelProviderKey, string> = {
   moonshot: "Moonshot AI",
   mistral: "Mistral",
   sdaia: "SDAIA",
+  litellm: "LiteLLM",
   unknown: "Model",
 };
 
@@ -140,6 +146,10 @@ const normalizeProviderKey = (value?: string | null): ModelProviderKey => {
 
   if (normalized.includes("groq") || normalized.includes("compound")) {
     return "groq";
+  }
+
+  if (normalized.includes("litellm")) {
+    return "litellm";
   }
 
   if (normalized.includes("anthropic") || normalized.includes("claude")) {

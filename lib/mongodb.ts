@@ -250,12 +250,15 @@ async function init() {
     create table if not exists user_api_keys (
       user_email text not null references users(email) on delete cascade,
       provider text not null,
-      encrypted_key text not null,
+      encrypted_key text,
       key_hint text,
+      metadata jsonb default '{}'::jsonb,
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now(),
       primary key (user_email, provider)
     );
+    alter table if exists user_api_keys alter column encrypted_key drop not null;
+    alter table if exists user_api_keys add column if not exists metadata jsonb default '{}'::jsonb;
     create index if not exists idx_user_api_keys_provider on user_api_keys(provider);
 
   `);
@@ -1266,7 +1269,7 @@ export class MongoDBService {
 
     try {
       const res = await pool.query(
-        `SELECT provider, key_hint, updated_at
+        `SELECT provider, key_hint, metadata, updated_at
          FROM user_api_keys
          WHERE user_email = $1`,
         [userEmail]
@@ -1284,7 +1287,7 @@ export class MongoDBService {
 
     try {
       const res = await pool.query(
-        `SELECT user_email, provider, encrypted_key, key_hint, updated_at
+        `SELECT user_email, provider, encrypted_key, key_hint, metadata, updated_at
          FROM user_api_keys
          WHERE user_email = $1 AND provider = $2
          LIMIT 1`,
@@ -1300,22 +1303,24 @@ export class MongoDBService {
   async upsertUserApiKey(
     userEmail: string,
     provider: string,
-    encryptedKey: string,
-    keyHint: string
+    encryptedKey: string | null,
+    keyHint: string,
+    metadata: Record<string, unknown> = {}
   ) {
     await ensureInit();
-    if (!userEmail || !provider || !encryptedKey) return null;
+    if (!userEmail || !provider) return null;
 
     try {
       const res = await pool.query(
-        `INSERT INTO user_api_keys (user_email, provider, encrypted_key, key_hint, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, now(), now())
+        `INSERT INTO user_api_keys (user_email, provider, encrypted_key, key_hint, metadata, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5::jsonb, now(), now())
          ON CONFLICT (user_email, provider) DO UPDATE SET
            encrypted_key = EXCLUDED.encrypted_key,
            key_hint = EXCLUDED.key_hint,
+           metadata = EXCLUDED.metadata,
            updated_at = now()
-         RETURNING provider, key_hint, updated_at`,
-        [userEmail, provider, encryptedKey, keyHint]
+         RETURNING provider, key_hint, metadata, updated_at`,
+        [userEmail, provider, encryptedKey, keyHint, JSON.stringify(metadata)]
       );
       return res.rows[0] || null;
     } catch (error) {

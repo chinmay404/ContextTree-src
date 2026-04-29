@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useByokStatus } from "@/hooks/use-byok-status";
-import type { ByokProvider } from "@/lib/byok";
+import { BYOK_PROVIDERS, type ByokProvider } from "@/lib/byok";
 import { cn } from "@/lib/utils";
 import { KeyRound, Loader2, ShieldCheck, Trash2 } from "lucide-react";
 
@@ -27,6 +27,13 @@ type ApiKeySettingsDialogProps = {
 const PROVIDER_LABEL: Record<ByokProvider, string> = {
   openai: "OpenAI",
   anthropic: "Anthropic",
+  litellm: "LiteLLM",
+};
+
+const PROVIDER_DESCRIPTION: Record<ByokProvider, string> = {
+  openai: "Unlock GPT models with your own OpenAI account.",
+  anthropic: "Unlock Claude models with your own Anthropic account.",
+  litellm: "Use any LiteLLM-supported provider or private OpenAI-compatible endpoint.",
 };
 
 export function ApiKeySettingsDialog({
@@ -43,7 +50,9 @@ export function ApiKeySettingsDialog({
   const [draftKeys, setDraftKeys] = useState<Record<ByokProvider, string>>({
     openai: "",
     anthropic: "",
+    litellm: "",
   });
+  const [draftApiBase, setDraftApiBase] = useState("");
   const [busyProvider, setBusyProvider] = useState<ByokProvider | null>(null);
 
   useEffect(() => {
@@ -60,16 +69,20 @@ export function ApiKeySettingsDialog({
 
   const activeStatus = statuses[selectedProvider];
   const providerTabs = useMemo(
-    () => (["openai", "anthropic"] as const).map((provider) => statuses[provider]),
+    () => BYOK_PROVIDERS.map((provider) => statuses[provider]),
     [statuses]
   );
 
   const handleSave = async () => {
     const apiKey = draftKeys[selectedProvider].trim();
-    if (!apiKey) {
+    const apiBase = draftApiBase.trim();
+    if (!apiKey && !(selectedProvider === "litellm" && apiBase)) {
       toast({
-        title: "API key required",
-        description: `Paste your ${PROVIDER_LABEL[selectedProvider]} key to continue.`,
+        title: selectedProvider === "litellm" ? "Credential required" : "API key required",
+        description:
+          selectedProvider === "litellm"
+            ? "Paste an API key or enter a private endpoint URL."
+            : `Paste your ${PROVIDER_LABEL[selectedProvider]} key to continue.`,
         variant: "destructive",
       });
       return;
@@ -85,6 +98,7 @@ export function ApiKeySettingsDialog({
         body: JSON.stringify({
           provider: selectedProvider,
           apiKey,
+          apiBase: selectedProvider === "litellm" ? apiBase : undefined,
         }),
       });
 
@@ -97,6 +111,9 @@ export function ApiKeySettingsDialog({
         ...current,
         [selectedProvider]: "",
       }));
+      if (selectedProvider === "litellm") {
+        setDraftApiBase("");
+      }
       await refresh();
       onKeysChanged?.();
       toast({
@@ -216,9 +233,7 @@ export function ApiKeySettingsDialog({
                   {PROVIDER_LABEL[selectedProvider]} key
                 </div>
                 <div className="mt-1 text-sm leading-relaxed text-slate-500">
-                  {selectedProvider === "openai"
-                    ? "Unlock GPT-5 and GPT-5 Mini with your own OpenAI account."
-                    : "Unlock Claude Sonnet and Claude Opus with your own Anthropic account."}
+                  {PROVIDER_DESCRIPTION[selectedProvider]}
                 </div>
               </div>
 
@@ -247,12 +262,32 @@ export function ApiKeySettingsDialog({
                 placeholder={
                   selectedProvider === "openai"
                     ? "sk-..."
-                    : "sk-ant-..."
+                    : selectedProvider === "anthropic"
+                      ? "sk-ant-..."
+                      : "Provider key or LiteLLM proxy key"
                 }
                 className="h-11 rounded-xl border-slate-200 bg-white"
               />
+              {selectedProvider === "litellm" && (
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="litellm-api-base" className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                    API base URL
+                  </Label>
+                  <Input
+                    id="litellm-api-base"
+                    type="url"
+                    value={draftApiBase}
+                    onChange={(event) => setDraftApiBase(event.target.value)}
+                    placeholder="https://your-private-endpoint.example.com/v1"
+                    className="h-11 rounded-xl border-slate-200 bg-white"
+                  />
+                </div>
+              )}
               <p className="text-xs text-slate-500">
-                Save a new key to replace the existing one. Stored keys are shown only
+                {selectedProvider === "litellm" && activeStatus.apiBaseHint
+                  ? `Current endpoint: ${activeStatus.apiBaseHint}. `
+                  : ""}
+                Save a new credential to replace the existing one. Stored keys are shown only
                 as masked hints like {activeStatus.keyHint || "••••last4"}.
               </p>
             </div>
