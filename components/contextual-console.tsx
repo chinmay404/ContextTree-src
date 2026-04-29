@@ -560,6 +560,7 @@ const ForkDialog = memo(function ForkDialog({
               value={advancedSettings}
               onOpen={() => setRightPaneView("advanced")}
               active={rightPaneView === "advanced"}
+              modelId={model}
               className="mt-5"
             />
 
@@ -1051,7 +1052,7 @@ const ContextualConsole = ({
           forkedFromMessageId: currentNode?.forkedFromMessageId || null,
           isPrimary: currentNode?.primary || false,
           systemPrompt: currentNode?.systemPrompt || "",
-          ...buildAdvancedRequestPayload(currentNode?.advancedSettings),
+          ...buildAdvancedRequestPayload(currentNode?.advancedSettings, model),
           contextNodeIds,
         }),
       });

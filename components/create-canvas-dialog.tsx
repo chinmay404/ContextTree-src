@@ -114,6 +114,7 @@ export const CreateCanvasDialog = ({
               value={advancedSettings}
               onOpen={() => setRightPaneView("advanced")}
               active={rightPaneView === "advanced"}
+              modelId={selectedModel}
               className="mt-5"
             />
 

@@ -14,10 +14,15 @@ export interface ModelConfig {
   disabledReason?: string;
   requiresByok?: boolean;
   byokProvider?: "openai" | "anthropic" | "litellm";
+  /** Defaults to true. Reasoning models (GPT-5, o-series, R1) reject custom temperature. */
   supportsTemperature?: boolean;
   temperatureMin?: number;
   temperatureMax?: number;
   temperatureDefault?: number;
+  /** Defaults to true. Set false for providers that ignore the cap or reject the field. */
+  supportsMaxOutputTokens?: boolean;
+  /** Optional short note rendered in the advanced controls panel. */
+  tuningNote?: string;
 }
 
 export interface ModelSelectionSection {
@@ -131,6 +136,8 @@ const LOCKED_MODELS: ModelConfig[] = [
     badge: "BYOK",
     requiresByok: true,
     byokProvider: "openai",
+    supportsTemperature: false,
+    tuningNote: "GPT-5 is a reasoning model: temperature is fixed by the provider. Max output tokens still applies.",
   },
   {
     id: "openai/gpt-5-mini",
@@ -141,6 +148,8 @@ const LOCKED_MODELS: ModelConfig[] = [
     badge: "BYOK",
     requiresByok: true,
     byokProvider: "openai",
+    supportsTemperature: false,
+    tuningNote: "GPT-5 Mini is a reasoning model: temperature is fixed by the provider. Max output tokens still applies.",
   },
   {
     id: "anthropic/claude-sonnet-4-20250514",
@@ -151,6 +160,9 @@ const LOCKED_MODELS: ModelConfig[] = [
     badge: "BYOK",
     requiresByok: true,
     byokProvider: "anthropic",
+    temperatureMin: 0,
+    temperatureMax: 1,
+    temperatureDefault: 0.7,
   },
   {
     id: "anthropic/claude-opus-4-1-20250805",
@@ -161,6 +173,9 @@ const LOCKED_MODELS: ModelConfig[] = [
     badge: "BYOK",
     requiresByok: true,
     byokProvider: "anthropic",
+    temperatureMin: 0,
+    temperatureMax: 1,
+    temperatureDefault: 0.7,
   },
   {
     id: "gemini/gemini-2.5-pro",
@@ -243,6 +258,8 @@ const LEGACY_MODELS: ModelConfig[] = [
     name: "DeepSeek R1 Distill 70B",
     description: "Legacy DeepSeek model kept for older branches.",
     provider: "DeepSeek",
+    supportsTemperature: false,
+    tuningNote: "R1 is a reasoning model — temperature is fixed by the provider.",
   },
   {
     id: "qwen/qwen3-32b",

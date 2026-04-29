@@ -54,25 +54,52 @@ export const normalizeAdvancedSettings = (
 export const estimateTokens = (text: string) =>
   Math.ceil((text || "").trim().length / 4);
 
+export const isLiteLlmModel = (modelId?: string | null) =>
+  Boolean(modelId?.startsWith("litellm/"));
+
 export const getTemperatureCapability = (modelId?: string | null) => {
-  const isLiteLlm = Boolean(modelId?.startsWith("litellm/"));
+  const bestEffort = isLiteLlmModel(modelId);
   const model = modelId ? getModelById(modelId) : undefined;
   return {
     supportsTemperature: model?.supportsTemperature ?? true,
     min: model?.temperatureMin ?? 0,
     max: model?.temperatureMax ?? 2,
     defaultValue: model?.temperatureDefault ?? 0.8,
-    isBestEffort: isLiteLlm,
+    isBestEffort: bestEffort,
   };
 };
 
+export const getMaxOutputCapability = (modelId?: string | null) => {
+  const bestEffort = isLiteLlmModel(modelId);
+  const model = modelId ? getModelById(modelId) : undefined;
+  return {
+    supportsMaxOutputTokens: model?.supportsMaxOutputTokens ?? true,
+    isBestEffort: bestEffort,
+  };
+};
+
+export const getModelTuningNote = (modelId?: string | null) => {
+  const model = modelId ? getModelById(modelId) : undefined;
+  return model?.tuningNote ?? null;
+};
+
+/**
+ * Build the request payload for a node, dropping fields the active model does not
+ * accept. The backend also hard-strips these per provider, but doing it here keeps
+ * the on-the-wire payload honest.
+ */
 export const buildAdvancedRequestPayload = (
-  settings?: Partial<AdvancedSettings> | null
+  settings?: Partial<AdvancedSettings> | null,
+  modelId?: string | null
 ) => {
   const normalized = normalizeAdvancedSettings(settings);
+  const tempCap = getTemperatureCapability(modelId);
+  const maxCap = getMaxOutputCapability(modelId);
   return {
-    temperature: normalized.temperature,
-    maxOutputTokens: normalized.maxOutputTokens,
+    temperature: tempCap.supportsTemperature ? normalized.temperature : null,
+    maxOutputTokens: maxCap.supportsMaxOutputTokens
+      ? normalized.maxOutputTokens
+      : null,
     lastKMessages:
       normalized.historyMode === "lastK" ? normalized.lastKMessages : null,
     externalContextTopK: normalized.externalContextTopK,

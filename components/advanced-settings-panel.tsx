@@ -6,7 +6,9 @@ import {
   ChevronRight,
   Database,
   Gauge,
+  Info,
   Layers,
+  Lock,
   RotateCcw,
   Sliders,
   Sparkles,
@@ -19,7 +21,10 @@ import {
   DEFAULT_ADVANCED_SETTINGS,
   estimateTokens,
   getAdvancedBadges,
+  getMaxOutputCapability,
+  getModelTuningNote,
   getTemperatureCapability,
+  isLiteLlmModel,
   normalizeAdvancedSettings,
   type AdvancedSettings,
 } from "@/lib/advanced-settings";
@@ -102,6 +107,9 @@ export const AdvancedSettingsPanel = ({
   const settings = normalizeAdvancedSettings(value);
   const parent = normalizeAdvancedSettings(parentSettings);
   const capability = getTemperatureCapability(modelId);
+  const maxOutCap = getMaxOutputCapability(modelId);
+  const tuningNote = getModelTuningNote(modelId);
+  const isLiteLlm = isLiteLlmModel(modelId);
   const badges = getAdvancedBadges(settings);
   const promptTokens = estimateTokens(systemPrompt);
   const budget = settings.contextBudgetTokens;
@@ -176,6 +184,16 @@ export const AdvancedSettingsPanel = ({
         title="Generation"
         description="Sampling and output limits for this node's responses."
       >
+        {tuningNote && (
+          <div
+            className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2.5 text-[11px] leading-relaxed text-amber-800"
+            data-slot="advanced-tuning-note"
+          >
+            <Info size={13} className="mt-0.5 shrink-0 text-amber-600" />
+            <span>{tuningNote}</span>
+          </div>
+        )}
+
         {capability.supportsTemperature ? (
           <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
             <div className="flex items-center justify-between gap-3">
@@ -215,36 +233,79 @@ export const AdvancedSettingsPanel = ({
               <span>Balanced</span>
               <span>Creative</span>
             </div>
-            {capability.isBestEffort && (
+            {capability.isBestEffort && !tuningNote && (
               <p className="mt-2 text-[11px] leading-relaxed text-amber-700">
                 LiteLLM temperature support depends on the selected provider.
+                If a request fails, this value will be dropped automatically.
               </p>
             )}
           </div>
         ) : (
-          <p className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-3 text-xs text-slate-500">
-            This model does not expose temperature controls.
-          </p>
+          <div
+            className="rounded-xl border border-slate-200 bg-slate-50/80 p-4"
+            data-slot="advanced-temperature-locked"
+          >
+            <div className="flex items-start gap-2.5">
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500">
+                <Lock size={13} />
+              </span>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-slate-700">
+                  Temperature is fixed for this model
+                </div>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+                  {modelId
+                    ? "Reasoning models manage sampling internally. Any value sent here will be ignored by the provider."
+                    : "Pick a model to see its temperature range."}
+                </p>
+              </div>
+            </div>
+          </div>
         )}
 
-        <label className="mt-4 block space-y-1.5">
-          <span className="text-xs font-semibold text-slate-700">Max output tokens</span>
+        <label
+          className={cn(
+            "mt-4 block space-y-1.5",
+            !maxOutCap.supportsMaxOutputTokens && "opacity-60"
+          )}
+        >
+          <span className="flex items-center justify-between text-xs font-semibold text-slate-700">
+            Max output tokens
+            {!maxOutCap.supportsMaxOutputTokens && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                <Lock size={10} />
+                Not adjustable
+              </span>
+            )}
+          </span>
           <Input
             type="number"
             min={1}
             max={32000}
             value={settings.maxOutputTokens ?? ""}
+            disabled={!maxOutCap.supportsMaxOutputTokens}
             onChange={(event) =>
               onChange(updateSetting(settings, "maxOutputTokens", event.target.value ? Number(event.target.value) : null))
             }
-            placeholder="Provider default"
+            placeholder={maxOutCap.supportsMaxOutputTokens ? "Provider default" : "Provider-controlled"}
             className="h-10 rounded-lg text-sm"
             data-slot="advanced-max-output-input"
           />
           <span className="text-[11px] leading-relaxed text-slate-500">
-            Hard cap on response length. Leave blank to defer to the provider.
+            {maxOutCap.supportsMaxOutputTokens
+              ? "Hard cap on response length. Leave blank to defer to the provider."
+              : "This model decides its own response length."}
           </span>
         </label>
+
+        {isLiteLlm && (
+          <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+            <Info size={12} className="mt-0.5 shrink-0 text-amber-600" />
+            LiteLLM forwards these values to whichever upstream provider you've
+            configured. Some providers ignore or reject them — the request is
+            automatically retried without these fields if the call fails.
+          </p>
+        )}
       </SectionCard>
 
       {/* Context assembly */}
@@ -430,6 +491,7 @@ type AdvancedSettingsSummaryCardProps = {
   value?: Partial<AdvancedSettings> | null;
   onOpen: () => void;
   active?: boolean;
+  modelId?: string | null;
   className?: string;
 };
 
@@ -437,10 +499,16 @@ export const AdvancedSettingsSummaryCard = ({
   value,
   onOpen,
   active = false,
+  modelId,
   className,
 }: AdvancedSettingsSummaryCardProps) => {
   const settings = normalizeAdvancedSettings(value);
   const badges = getAdvancedBadges(settings);
+  const tempCap = getTemperatureCapability(modelId);
+  const maxOutCap = getMaxOutputCapability(modelId);
+  const hasRestrictions =
+    Boolean(modelId) &&
+    (!tempCap.supportsTemperature || !maxOutCap.supportsMaxOutputTokens);
 
   return (
     <button
@@ -470,11 +538,22 @@ export const AdvancedSettingsSummaryCard = ({
             <Sliders size={14} />
           </span>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
               Advanced controls
+              {hasRestrictions && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-700"
+                  title="Some controls are not adjustable for the selected model"
+                >
+                  <Lock size={9} />
+                  Limited
+                </span>
+              )}
             </div>
             <div className="mt-0.5 text-xs leading-relaxed text-slate-500">
-              Tune temperature, context window, and prompt stack.
+              {hasRestrictions
+                ? "This model fixes some sampling controls. Open to see what applies."
+                : "Tune temperature, context window, and prompt stack."}
             </div>
           </div>
         </div>
