@@ -15,6 +15,7 @@ interface LLMRequest {
   nodeId: string;
   model: string;
   message: string;
+  systemPrompt?: string | null;
   message_id?: string;
   parentNodeId?: string | null;
   forkedFromMessageId?: string | null;

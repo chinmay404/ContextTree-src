@@ -32,6 +32,7 @@ import { ModelSelectionPanel } from "@/components/model-selection-panel";
 import { ModelBadge } from "@/components/model-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
 import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
@@ -340,6 +341,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   const [pendingBranchDrop, setPendingBranchDrop] = useState<{ parentId: string; position: { x: number; y: number } } | null>(null);
   const [branchDropModel, setBranchDropModel] = useState<string>(() => getDefaultModel());
   const [branchDropName, setBranchDropName] = useState("");
+  const [branchDropSystemPrompt, setBranchDropSystemPrompt] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
   const lastViewportRef = useRef<Viewport | null>(null);
@@ -848,7 +850,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   }, [canvas, canvasId]);
 
   // ─── Create branch from parent ────────────────────────────
-  const createBranch = useCallback((parentId: string, position?: { x: number; y: number }, model?: string, overrideName?: string) => {
+  const createBranch = useCallback((parentId: string, position?: { x: number; y: number }, model?: string, overrideName?: string, overrideSystemPrompt?: string) => {
     if (!canvas) return;
     const parent = canvas.nodes.find((n) => n._id === parentId);
     if (!parent || parent.type === "context" || parent.type === "externalContext") return;
@@ -867,6 +869,10 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
       _id: nodeId, primary: false, type: "branch", name: label,
       color: parent.color, textColor: cs.text, dotColor: cs.dot,
       chatMessages: [], runningSummary: "", contextContract: "",
+      systemPrompt:
+        overrideSystemPrompt !== undefined
+          ? overrideSystemPrompt
+          : parent.systemPrompt || "",
       model: model || parent.model || canvas.settings?.defaultModel || getDefaultModel(),
       metaTags: parent.metaTags || [],
       parentNodeId: parentId, forkedFromMessageId: forkId, createdAt: now, position: pos,
@@ -984,6 +990,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
       parent?.name ? `${parent.name} branch` : "New Branch"
     );
     setBranchDropName(suggestedName);
+    setBranchDropSystemPrompt(parent?.systemPrompt || "");
     setPendingBranchDrop({ parentId: pendingConn.sourceId, position: pos });
     setPendingConn(null);
   }, [pendingConn, canvas, flow]);
@@ -1514,6 +1521,22 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
 
                 <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Custom system prompt
+                  </div>
+                  <Textarea
+                    value={branchDropSystemPrompt}
+                    onChange={(event) => setBranchDropSystemPrompt(event.target.value)}
+                    placeholder="Optional instructions for this branch..."
+                    className="mt-3 min-h-[132px] resize-none rounded-lg border-slate-200 bg-slate-50 text-sm leading-relaxed text-slate-800"
+                    data-slot="branch-drop-system-prompt-input"
+                  />
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                    By default this is copied from the parent node. Edit it only when this branch needs different behavior.
+                  </p>
+                </div>
+
+                <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                     Selected model
                   </div>
                   <div className="mt-3">
@@ -1544,7 +1567,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
                 onClick={() => {
                   const { parentId, position } = pendingBranchDrop;
                   setPendingBranchDrop(null);
-                  createBranch(parentId, position, branchDropModel, branchDropName);
+                  createBranch(parentId, position, branchDropModel, branchDropName, branchDropSystemPrompt);
                 }}
                 className="h-10 flex-1 rounded-lg bg-slate-950 text-sm font-medium text-white hover:bg-slate-800"
               >

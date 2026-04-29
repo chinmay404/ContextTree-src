@@ -372,12 +372,14 @@ const ChatPanelInternal = ({
   const createForkWithModel = async (
     selectedForkModel: string,
     overrideMessageId?: string,
-    overrideName?: string
+    overrideName?: string,
+    overrideSystemPrompt?: string
   ) => {
     const forkMessageId = normalizeForkMessageId(
       overrideMessageId || pendingForkMessage
     );
     if (!selectedCanvas || !selectedNode || !forkMessageId) return;
+    const parentNode = canvasData?.nodes?.find((n: any) => n._id === selectedNode);
     const sourceMessage =
       currentConversation?.messages.find(
         (message) => normalizeForkMessageId(message.id) === forkMessageId
@@ -398,6 +400,10 @@ const ChatPanelInternal = ({
       chatMessages: [],
       runningSummary: "",
       contextContract: "",
+      systemPrompt:
+        overrideSystemPrompt !== undefined
+          ? overrideSystemPrompt
+          : parentNode?.systemPrompt || "",
       model: selectedForkModel,
       parentNodeId: selectedNode,
       forkedFromMessageId: forkMessageId,
@@ -1017,6 +1023,7 @@ const ChatPanelInternal = ({
         parentNodeId: currentNode?.parentNodeId || null,
         forkedFromMessageId: currentNode?.forkedFromMessageId || null,
         isPrimary: currentNode?.primary || false,
+        systemPrompt: currentNode?.systemPrompt || "",
       };
 
       // Use internal API proxy instead of direct external call
@@ -1735,6 +1742,7 @@ const ChatPanelInternal = ({
       getDefaultModel()
     );
     const [forkNodeName, setForkNodeName] = useState("");
+    const [forkSystemPrompt, setForkSystemPrompt] = useState("");
 
     useEffect(() => {
       if (!showForkModelDialog) return;
@@ -1744,12 +1752,14 @@ const ChatPanelInternal = ({
           ? `${currentConversation.nodeName} branch`
           : "New Branch"
       );
-    }, [showForkModelDialog, currentConversation?.nodeName]);
+      const parentNode = canvasData?.nodes?.find((n: any) => n._id === selectedNode);
+      setForkSystemPrompt(parentNode?.systemPrompt || "");
+    }, [showForkModelDialog, currentConversation?.nodeName, canvasData, selectedNode]);
 
     if (!showForkModelDialog) return null;
 
     const handleSubmit = () => {
-      createForkWithModel(selectedModelForFork, undefined, forkNodeName);
+      createForkWithModel(selectedModelForFork, undefined, forkNodeName, forkSystemPrompt);
       setShowForkModelDialog(false);
       setPendingForkMessage(null);
     };
@@ -1803,11 +1813,18 @@ const ChatPanelInternal = ({
 
               <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  Starts from
+                  Custom system prompt
                 </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900">
-                  {currentConversation?.nodeName || selectedNodeName || "Current conversation"}
-                </div>
+                <Textarea
+                  value={forkSystemPrompt}
+                  onChange={(event) => setForkSystemPrompt(event.target.value)}
+                  placeholder="Optional instructions for this branch..."
+                  className="mt-3 min-h-[132px] resize-none rounded-lg border-slate-200 bg-slate-50 text-sm leading-relaxed text-slate-800"
+                  data-slot="chat-panel-branch-system-prompt-input"
+                />
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  By default this is copied from the parent node. Edit it only when this branch needs different behavior.
+                </p>
               </div>
 
               <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">

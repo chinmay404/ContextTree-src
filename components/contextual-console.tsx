@@ -470,26 +470,28 @@ const TypingIndicator = memo(function TypingIndicator({
 
 type ForkDialogProps = {
   open: boolean;
-  forkPreview: string;
   sourceName: string;
+  inheritedSystemPrompt?: string;
   onCancel: () => void;
-  onConfirm: (model: string, name: string) => void;
+  onConfirm: (model: string, name: string, systemPrompt: string) => void;
 };
 
 const ForkDialog = memo(function ForkDialog({
   open,
-  forkPreview,
   sourceName,
+  inheritedSystemPrompt = "",
   onCancel,
   onConfirm,
 }: ForkDialogProps) {
   const [model, setModel] = useState(getDefaultModel());
   const [name, setName] = useState("");
+  const [systemPrompt, setSystemPrompt] = useState("");
   useEffect(() => {
     if (!open) return;
     setModel(getDefaultModel());
     setName(`Branch from ${sourceName.slice(0, 24)}`.trim());
-  }, [open, sourceName]);
+    setSystemPrompt(inheritedSystemPrompt);
+  }, [open, sourceName, inheritedSystemPrompt]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
@@ -540,14 +542,18 @@ const ForkDialog = memo(function ForkDialog({
 
             <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
               <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Starts from
+                Custom system prompt
               </div>
-              <div className="mt-2 text-sm font-semibold text-slate-900">
-                {sourceName}
-              </div>
-              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700">
-                {forkPreview || "This branch will inherit the selected reply."}
-              </div>
+              <Textarea
+                value={systemPrompt}
+                onChange={(event) => setSystemPrompt(event.target.value)}
+                placeholder="Optional instructions for this branch..."
+                className="mt-3 min-h-[132px] resize-none rounded-lg border-slate-200 bg-slate-50 text-sm leading-relaxed text-slate-800"
+                data-slot="fork-system-prompt-input"
+              />
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                By default this is copied from the parent node. Edit it only when this branch needs different behavior.
+              </p>
             </div>
 
             <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
@@ -579,7 +585,7 @@ const ForkDialog = memo(function ForkDialog({
             Cancel
           </Button>
           <Button
-            onClick={() => onConfirm(model, name)}
+            onClick={() => onConfirm(model, name, systemPrompt)}
             className="h-10 flex-1 rounded-lg bg-slate-950 text-sm font-medium text-white hover:bg-slate-800"
           >
             Create Branch
@@ -877,19 +883,6 @@ const ContextualConsole = ({
     [currentNode]
   );
 
-  const pendingForkMessage = useMemo(
-    () =>
-      currentMessages.find(
-        (message) => normalizeForkId(message.id) === normalizeForkId(pendingForkMsg)
-      ) || null,
-    [currentMessages, pendingForkMsg]
-  );
-
-  const pendingForkPreview = useMemo(() => {
-    if (!pendingForkMessage) return "This branch will inherit the selected reply.";
-    return truncatePreview(pendingForkMessage.content, 180);
-  }, [pendingForkMessage]);
-
   // ─── Auto resize textarea ─────────────────────────────
   const autoResize = useCallback((el: HTMLTextAreaElement) => {
     el.style.height = "auto";
@@ -1017,6 +1010,7 @@ const ContextualConsole = ({
           parentNodeId: currentNode?.parentNodeId || null,
           forkedFromMessageId: currentNode?.forkedFromMessageId || null,
           isPrimary: currentNode?.primary || false,
+          systemPrompt: currentNode?.systemPrompt || "",
           contextNodeIds,
         }),
       });
@@ -1250,9 +1244,10 @@ const ContextualConsole = ({
   );
 
   const createFork = useCallback(
-    async (model: string, overrideId?: string, overrideName?: string) => {
+    async (model: string, overrideId?: string, overrideName?: string, overrideSystemPrompt?: string) => {
       const forkId = normalizeForkId(overrideId || pendingForkMsg);
       if (!selectedCanvas || !selectedNode || !forkId) return;
+      const parentNode = canvasData?.nodes?.find((n: any) => n._id === selectedNode);
       const sourceMessage =
         currentMessages.find(
           (message) => normalizeForkId(message.id) === forkId
@@ -1270,6 +1265,10 @@ const ContextualConsole = ({
         chatMessages: [],
         runningSummary: "",
         contextContract: "",
+        systemPrompt:
+          overrideSystemPrompt !== undefined
+            ? overrideSystemPrompt
+            : parentNode?.systemPrompt || "",
         model,
         parentNodeId: selectedNode,
         forkedFromMessageId: forkId,
@@ -1369,14 +1368,14 @@ const ContextualConsole = ({
     <>
       <ForkDialog
         open={showForkDialog}
-        forkPreview={pendingForkPreview}
         sourceName={resolvedName || "this branch"}
+        inheritedSystemPrompt={currentNode?.systemPrompt || ""}
         onCancel={() => {
           setShowForkDialog(false);
           setPendingForkMsg(null);
         }}
-        onConfirm={(model, name) => {
-          createFork(model, undefined, name);
+        onConfirm={(model, name, systemPrompt) => {
+          createFork(model, undefined, name, systemPrompt);
           setShowForkDialog(false);
           setPendingForkMsg(null);
         }}

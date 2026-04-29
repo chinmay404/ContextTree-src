@@ -49,6 +49,7 @@ export interface NodeData {
   chatMessages: ChatMessage[];
   runningSummary: string;
   contextContract: string;
+  systemPrompt?: string;
   model: string;
   memory?: object;
   externalSource?: object;
@@ -247,6 +248,7 @@ class StorageService {
       chatMessages: [],
       runningSummary: "",
       contextContract: "",
+      systemPrompt: "",
       model: defaultModel,
       parentNodeId: undefined,
       forkedFromMessageId: undefined,
