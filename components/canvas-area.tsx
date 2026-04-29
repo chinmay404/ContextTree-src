@@ -25,14 +25,10 @@ import {
   type XYPosition,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { getDefaultModel } from "@/lib/models";
 import { toast } from "sonner";
-import { Focus, LayoutGrid, GitBranch, X } from "lucide-react";
-import { ModelSelectionPanel } from "@/components/model-selection-panel";
-import { ModelBadge } from "@/components/model-badge";
+import { Focus, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 
 import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
 import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
@@ -117,9 +113,6 @@ const flattenMessages = (msgs: any[] | undefined) => {
   return out;
 };
 
-const normalizeForkId = (id?: string | null) =>
-  (id || "").replace(/(-assistant|-user|-a|-u|_a|_u)$/i, "");
-
 const derivePreview = (node: NodeData | null | undefined): string => {
   if (!node) return "";
   if (node.type === "entry") {
@@ -154,12 +147,6 @@ const isReadyExternalNode = (node: NodeData | null | undefined) => {
 const lengthTag = (text: string): "short" | "medium" | "long" => {
   const len = text.trim().length;
   return len <= 80 ? "short" : len <= 220 ? "medium" : "long";
-};
-
-const truncate = (s: string, fallback: string, max = 60) => {
-  const t = s.replace(/\s+/g, " ").trim();
-  if (!t) return fallback;
-  return t.length <= max ? t : `${t.slice(0, max - 3).trimEnd()}...`;
 };
 
 const branchBadge = (idx?: number) => {
@@ -271,14 +258,6 @@ const getLineageEdges = (canvas: CanvasData | null, nodeId: string | null) => {
   return ids;
 };
 
-const deriveParentMessage = (node?: NodeData) => {
-  if (!node) return { messageId: undefined as string | undefined, text: "" };
-  const flat = flattenMessages(node.chatMessages);
-  if (!flat.length) return { messageId: undefined, text: "" };
-  const last = [...flat].reverse().find((m) => m.role === "assistant") || flat[flat.length - 1];
-  return { messageId: normalizeForkId(last?.id), text: textFrom(last?.content).trim() };
-};
-
 // ─── Stored layout helpers ───────────────────────────────────
 interface StoredLayout {
   nodes: { id: string; position: { x: number; y: number }; width?: number; height?: number }[];
@@ -338,10 +317,6 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   const [expandedOverflow, setExpandedOverflow] = useState<Set<string>>(new Set());
   const [collapsedNodes] = useState<Set<string>>(new Set());
   const [pendingConn, setPendingConn] = useState<{ sourceId: string } | null>(null);
-  const [pendingBranchDrop, setPendingBranchDrop] = useState<{ parentId: string; position: { x: number; y: number } } | null>(null);
-  const [branchDropModel, setBranchDropModel] = useState<string>(() => getDefaultModel());
-  const [branchDropName, setBranchDropName] = useState("");
-  const [branchDropSystemPrompt, setBranchDropSystemPrompt] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
   const lastViewportRef = useRef<Viewport | null>(null);
@@ -849,53 +824,6 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     } catch {}
   }, [canvas, canvasId]);
 
-  // ─── Create branch from parent ────────────────────────────
-  const createBranch = useCallback((parentId: string, position?: { x: number; y: number }, model?: string, overrideName?: string, overrideSystemPrompt?: string) => {
-    if (!canvas) return;
-    const parent = canvas.nodes.find((n) => n._id === parentId);
-    if (!parent || parent.type === "context" || parent.type === "externalContext") return;
-
-    const { messageId, text } = deriveParentMessage(parent);
-    const forkId = messageId || genId("msgref");
-    const pos = getSmartChildPosition(parentId, "branch", position);
-
-    const now = new Date().toISOString();
-    const nodeId = genId("node");
-    const cs = colorScheme(parent.color || "#f8fafc");
-    const fallbackLabel = truncate(text, parent.name ? `${parent.name} branch` : "New Branch");
-    const label = overrideName?.trim() || fallbackLabel;
-
-    const newNode: NodeData = {
-      _id: nodeId, primary: false, type: "branch", name: label,
-      color: parent.color, textColor: cs.text, dotColor: cs.dot,
-      chatMessages: [], runningSummary: "", contextContract: "",
-      systemPrompt:
-        overrideSystemPrompt !== undefined
-          ? overrideSystemPrompt
-          : parent.systemPrompt || "",
-      model: model || parent.model || canvas.settings?.defaultModel || getDefaultModel(),
-      metaTags: parent.metaTags || [],
-      parentNodeId: parentId, forkedFromMessageId: forkId, createdAt: now, position: pos,
-    };
-    const edgeId = genId("edge");
-    const newEdge: EdgeData = { _id: edgeId, from: parentId, to: nodeId, createdAt: now, meta: {} };
-
-    const updated: CanvasData = {
-      ...canvas,
-      nodes: [...canvas.nodes, newNode],
-      edges: [...canvas.edges, newEdge],
-      updatedAt: now,
-    };
-    storageService.saveCanvas(updated);
-    setCanvas(updated);
-
-    fetch(`/api/canvases/${canvasId}/nodes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...newNode, forkedFromMessageId: forkId }) }).catch(() => {});
-    fetch(`/api/canvases/${canvasId}/edges`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newEdge) }).catch(() => {});
-    scheduleParentUpdate(nodeId, { parentNodeId: parentId, forkedFromMessageId: forkId });
-    onNodeSelect(nodeId, label, "branch");
-    toast.success("Branch created");
-  }, [canvas, canvasId, getSmartChildPosition, onNodeSelect, scheduleParentUpdate]);
-
   // ─── Event handlers ───────────────────────────────────────
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (node.type === "group") return;
@@ -969,31 +897,9 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     return true;
   }, [canvas]);
 
-  const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
-    if (!pendingConn || !canvas) { setPendingConn(null); return; }
-    const target = event.target as HTMLElement;
-    if (!target?.classList?.contains("react-flow__pane") && !target?.closest?.(".react-flow__pane")) {
-      setPendingConn(null); return;
-    }
-    if (!wrapperRef.current) { setPendingConn(null); return; }
-
-    const bounds = wrapperRef.current.getBoundingClientRect();
-    const clientX = event instanceof MouseEvent ? event.clientX : (event as TouchEvent).changedTouches?.[0]?.clientX;
-    const clientY = event instanceof MouseEvent ? event.clientY : (event as TouchEvent).changedTouches?.[0]?.clientY;
-    if (typeof clientX !== "number" || typeof clientY !== "number") { setPendingConn(null); return; }
-
-    const pos = flow.screenToFlowPosition({ x: clientX - bounds.left, y: clientY - bounds.top });
-    const parent = canvas.nodes.find((n) => n._id === pendingConn.sourceId);
-    setBranchDropModel(parent?.model || canvas.settings?.defaultModel || getDefaultModel());
-    const suggestedName = truncate(
-      deriveParentMessage(parent).text,
-      parent?.name ? `${parent.name} branch` : "New Branch"
-    );
-    setBranchDropName(suggestedName);
-    setBranchDropSystemPrompt(parent?.systemPrompt || "");
-    setPendingBranchDrop({ parentId: pendingConn.sourceId, position: pos });
+  const onConnectEnd = useCallback(() => {
     setPendingConn(null);
-  }, [pendingConn, canvas, flow]);
+  }, []);
 
   const onNodeDragStop = useCallback((_: React.MouseEvent, node: Node) => {
     scheduleLayoutPatch({ nodes: [{ id: node.id, position: node.position }] });
@@ -1468,112 +1374,6 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
               </span>
               <span className="text-slate-400">models</span>
             </span>
-          </div>
-        </div>
-      )}
-      {/* Model picker — shown when user drops a new branch by dragging an edge */}
-      {pendingBranchDrop && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
-          <div className="flex max-h-[90vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
-            <div className="border-b border-slate-200 px-6 py-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-950">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600">
-                      <GitBranch size={15} />
-                    </span>
-                    New branch
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Set the branch label and model before it appears on the canvas.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPendingBranchDrop(null)}
-                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-                  aria-label="Close branch dialog"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[340px_minmax(0,1fr)]">
-              <div className="border-b border-slate-200 bg-slate-50/70 px-6 py-5 lg:border-b-0 lg:border-r">
-                <div className="space-y-2">
-                  <label
-                    htmlFor="branch-drop-name"
-                    className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500"
-                  >
-                    Branch name
-                  </label>
-                  <Input
-                    autoFocus
-                    id="branch-drop-name"
-                    value={branchDropName}
-                    onChange={(event) => setBranchDropName(event.target.value)}
-                    placeholder="Branch from current node"
-                    className="h-11 rounded-lg border-slate-300 bg-white text-sm font-medium text-slate-900 shadow-none focus-visible:ring-2 focus-visible:ring-slate-900/10"
-                    data-slot="branch-drop-name-input"
-                  />
-                </div>
-
-                <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Custom system prompt
-                  </div>
-                  <Textarea
-                    value={branchDropSystemPrompt}
-                    onChange={(event) => setBranchDropSystemPrompt(event.target.value)}
-                    placeholder="Optional instructions for this branch..."
-                    className="mt-3 min-h-[132px] resize-none rounded-lg border-slate-200 bg-slate-50 text-sm leading-relaxed text-slate-800"
-                    data-slot="branch-drop-system-prompt-input"
-                  />
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    By default this is copied from the parent node. Edit it only when this branch needs different behavior.
-                  </p>
-                </div>
-
-                <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Selected model
-                  </div>
-                  <div className="mt-3">
-                    <ModelBadge modelId={branchDropModel} size="md" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="min-w-0 px-6 py-5">
-                <ModelSelectionPanel
-                  selectedModel={branchDropModel}
-                  onSelect={setBranchDropModel}
-                  compact
-                  mode="branch"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 border-t border-slate-200 bg-white px-6 py-4">
-              <Button
-                variant="outline"
-                onClick={() => setPendingBranchDrop(null)}
-                className="h-10 flex-1 rounded-lg border-slate-200 text-sm font-medium"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  const { parentId, position } = pendingBranchDrop;
-                  setPendingBranchDrop(null);
-                  createBranch(parentId, position, branchDropModel, branchDropName, branchDropSystemPrompt);
-                }}
-                className="h-10 flex-1 rounded-lg bg-slate-950 text-sm font-medium text-white hover:bg-slate-800"
-              >
-                Create Branch
-              </Button>
-            </div>
           </div>
         </div>
       )}
