@@ -493,18 +493,18 @@ const ForkDialog = memo(function ForkDialog({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
-      <div className="flex max-h-[88vh] w-full max-w-[760px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
-        <div className="border-b border-slate-200 px-5 py-4">
+      <div className="flex max-h-[90vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+        <div className="border-b border-slate-200 px-6 py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-950">
+              <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-950">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600">
                   <GitBranch size={15} />
                 </span>
-                Branch conversation
+                New branch
               </h3>
               <p className="mt-1 text-sm text-slate-500">
-                Name the branch and choose the model it should use.
+                Set the branch label and model before it appears on the canvas.
               </p>
             </div>
             <button
@@ -518,48 +518,59 @@ const ForkDialog = memo(function ForkDialog({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-          <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-              Snapshot
+        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[360px_minmax(0,1fr)]">
+          <div className="border-b border-slate-200 bg-slate-50/70 px-6 py-5 lg:border-b-0 lg:border-r">
+            <div className="space-y-2">
+              <label
+                htmlFor="fork-branch-name"
+                className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500"
+              >
+                Branch name
+              </label>
+              <Input
+                autoFocus
+                id="fork-branch-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Branch from current reply"
+                className="h-11 rounded-lg border-slate-300 bg-white text-sm font-medium text-slate-900 shadow-none focus-visible:ring-2 focus-visible:ring-slate-900/10"
+                data-slot="fork-branch-name-input"
+              />
             </div>
-            <div className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-700">
-              {forkPreview || "This branch will inherit the selected reply."}
+
+            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Starts from
+              </div>
+              <div className="mt-2 text-sm font-semibold text-slate-900">
+                {sourceName}
+              </div>
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700">
+                {forkPreview || "This branch will inherit the selected reply."}
+              </div>
             </div>
-            <p className="mt-3 text-xs leading-relaxed text-slate-500">
-              Your new branch will start from <span className="font-semibold">{sourceName}</span>.
-              It will keep this message and everything before it. Anything after
-              this point stays out of the new branch.
-            </p>
+
+            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Selected model
+              </div>
+              <div className="mt-3">
+                <ModelBadge modelId={model} size="md" />
+              </div>
+            </div>
           </div>
-          <div className="mb-5 space-y-2">
-            <label
-              htmlFor="fork-branch-name"
-              className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
-            >
-              Node Name
-            </label>
-            <Input
-              autoFocus
-              id="fork-branch-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Branch from current reply"
-              className="h-11 rounded-lg border-slate-300 bg-white text-sm font-medium text-slate-900 shadow-none focus-visible:ring-2 focus-visible:ring-slate-900/10"
-              data-slot="fork-branch-name-input"
+
+          <div className="min-w-0 px-6 py-5">
+            <ModelSelectionPanel
+              selectedModel={model}
+              onSelect={setModel}
+              compact
+              mode="branch"
             />
-            <p className="text-xs text-slate-500">
-              This is the label you will see on the canvas. You can rename it later.
-            </p>
           </div>
-          <ModelSelectionPanel
-            selectedModel={model}
-            onSelect={setModel}
-            compact
-          />
         </div>
 
-        <div className="flex gap-3 border-t border-slate-200 bg-white px-5 py-4">
+        <div className="flex gap-3 border-t border-slate-200 bg-white px-6 py-4">
           <Button
             variant="outline"
             onClick={onCancel}

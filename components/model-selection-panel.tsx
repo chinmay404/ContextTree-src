@@ -29,6 +29,7 @@ type ModelSelectionPanelProps = {
   onSelect: (modelId: string) => void;
   className?: string;
   compact?: boolean;
+  mode?: "full" | "branch";
 };
 
 const renderModelCard = ({
@@ -156,14 +157,18 @@ export function ModelSelectionPanel({
   onSelect,
   className,
   compact = false,
+  mode = "full",
 }: ModelSelectionPanelProps) {
   const { statuses, refresh } = useByokStatus();
   const [isKeyDialogOpen, setIsKeyDialogOpen] = useState(false);
   const [requestedProvider, setRequestedProvider] = useState<ByokProvider | undefined>();
   const [customLiteLlmModel, setCustomLiteLlmModel] = useState("");
-  const defaultOpenSections = MODEL_SELECTION_SECTIONS.filter((section) => section.defaultOpen).map(
-    (section) => section.id
-  );
+  const isBranchMode = mode === "branch";
+  const defaultOpenSections = isBranchMode
+    ? []
+    : MODEL_SELECTION_SECTIONS.filter((section) => section.defaultOpen).map(
+        (section) => section.id
+      );
   const selectedModelConfig = selectedModel ? getModelById(selectedModel) : undefined;
   const selectedLiteLlmModel =
     selectedModel?.startsWith("litellm/") ? selectedModel.replace(/^litellm\//, "") : "";
@@ -197,70 +202,88 @@ export function ModelSelectionPanel({
         onKeysChanged={refresh}
       />
 
-      <div
-        className={cn(
-          "rounded-xl border border-slate-200 bg-white shadow-sm",
-          compact ? "p-3" : "p-4"
-        )}
-      >
-        <div
-          className={cn(
-            "gap-3",
-            compact
-              ? "flex flex-col"
-              : "flex flex-col sm:flex-row sm:items-center sm:justify-between"
-          )}
-        >
-          <div className="flex items-start gap-3">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-950 text-white shadow-sm">
-              <KeyRound className="h-4 w-4" />
-            </span>
-            <div>
-              <div className="text-sm font-semibold text-slate-900">
-                API keys
-              </div>
-              <div className="text-xs leading-relaxed text-slate-500">
-                Connect private OpenAI or Anthropic keys to unlock those models for this account.
-              </div>
+      {isBranchMode ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-900">Private models</div>
+            <div className="text-xs leading-relaxed text-slate-500">
+              Saved keys unlock BYOK and custom LiteLLM choices.
             </div>
           </div>
-
           <button
             type="button"
             onClick={() => handleManageKeys()}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-white",
-              compact ? "w-full justify-center" : "self-start sm:self-auto"
-            )}
+            className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-white"
           >
             Manage keys
           </button>
         </div>
+      ) : (
+        <div
+          className={cn(
+            "rounded-xl border border-slate-200 bg-white shadow-sm",
+            compact ? "p-3" : "p-4"
+          )}
+        >
+          <div
+            className={cn(
+              "gap-3",
+              compact
+                ? "flex flex-col"
+                : "flex flex-col sm:flex-row sm:items-center sm:justify-between"
+            )}
+          >
+            <div className="flex items-start gap-3">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-950 text-white shadow-sm">
+                <KeyRound className="h-4 w-4" />
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-slate-900">
+                  API keys
+                </div>
+                <div className="text-xs leading-relaxed text-slate-500">
+                  Connect private OpenAI or Anthropic keys to unlock those models for this account.
+                </div>
+              </div>
+            </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          {BYOK_PROVIDERS.map((provider) => {
-            const providerStatus = statuses[provider];
-            return (
-              <button
-                key={provider}
-                type="button"
-                onClick={() => handleManageKeys(provider)}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors",
-                  providerStatus.configured
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                    : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
-                )}
-              >
-                <span>{getProviderLabel(provider)}</span>
-                <span className="text-[10px] tracking-[0.16em] opacity-80">
-                  {providerStatus.configured ? providerStatus.keyHint || "Connected" : "Not connected"}
-                </span>
-              </button>
-            );
-          })}
+            <button
+              type="button"
+              onClick={() => handleManageKeys()}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-white",
+                compact ? "w-full justify-center" : "self-start sm:self-auto"
+              )}
+            >
+              Manage keys
+            </button>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {BYOK_PROVIDERS.map((provider) => {
+              const providerStatus = statuses[provider];
+              return (
+                <button
+                  key={provider}
+                  type="button"
+                  onClick={() => handleManageKeys(provider)}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors",
+                    providerStatus.configured
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
+                  )}
+                >
+                  <span>{getProviderLabel(provider)}</span>
+                  <span className="text-[10px] tracking-[0.16em] opacity-80">
+                    {providerStatus.configured ? providerStatus.keyHint || "Connected" : "Not connected"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div className="mb-3 flex items-center gap-2">
@@ -269,7 +292,7 @@ export function ModelSelectionPanel({
           </span>
           <div>
             <div className="text-sm font-semibold text-slate-900">Recommended models</div>
-            <div className="text-xs text-slate-500">
+            <div className={cn("text-xs text-slate-500", isBranchMode && "sr-only")}>
               Stable defaults for most branch conversations.
             </div>
           </div>
@@ -288,7 +311,7 @@ export function ModelSelectionPanel({
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className={cn("rounded-xl border border-slate-200 bg-white shadow-sm", isBranchMode ? "p-3" : "p-4")}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-start gap-3">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm">
@@ -296,7 +319,7 @@ export function ModelSelectionPanel({
             </span>
             <div>
               <div className="text-sm font-semibold text-slate-900">Custom LiteLLM model</div>
-              <div className="text-xs leading-relaxed text-slate-500">
+              <div className={cn("text-xs leading-relaxed text-slate-500", isBranchMode && "sr-only")}>
                 Enter a LiteLLM model string such as openrouter/provider/model or openai/private-model.
               </div>
             </div>
@@ -349,7 +372,7 @@ export function ModelSelectionPanel({
         )}
       </div>
 
-      {(selectedModelConfig || selectedLiteLlmModel) && (
+      {!isBranchMode && (selectedModelConfig || selectedLiteLlmModel) && (
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-start gap-3">
             <ModelProviderIcon
@@ -413,7 +436,7 @@ export function ModelSelectionPanel({
                         {enabledCount}/{section.models.length} live
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">
+                    <div className={cn("mt-1 text-xs text-slate-500", isBranchMode && "sr-only")}>
                       {section.description}
                     </div>
                   </div>

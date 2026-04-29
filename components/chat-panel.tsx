@@ -25,21 +25,13 @@ import {
 } from "lucide-react";
 import { storageService, CanvasNote } from "@/lib/storage";
 import { toast } from "@/hooks/use-toast";
-import { ALL_MODELS, getDefaultModel } from "@/lib/models";
+import { getDefaultModel, getModelById } from "@/lib/models";
+import { ModelBadge } from "@/components/model-badge";
+import { ModelSelectionPanel } from "@/components/model-selection-panel";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github.css";
-
-// Available AI models (excluding TTS and Speech-to-text models)
-const AVAILABLE_MODELS = ALL_MODELS.map((model) => ({
-  value: model.id,
-  label: model.name,
-  description: model.description,
-  provider: model.provider,
-}));
-
-// Models loaded successfully
 
 interface ChatPanelProps {
   selectedNode: string | null;
@@ -487,8 +479,7 @@ const ChatPanelInternal = ({
 
       // Toast confirmation
       const modelName =
-        AVAILABLE_MODELS.find((m) => m.value === selectedForkModel)?.label ||
-        selectedForkModel;
+        getModelById(selectedForkModel)?.name || selectedForkModel;
       toast({
         title: "Fork created",
         description: `New node created with ${modelName}`,
@@ -1764,117 +1755,95 @@ const ChatPanelInternal = ({
     };
 
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1000] animate-in fade-in duration-200">
-        <div className="bg-white rounded-[24px] p-6 max-w-lg w-full mx-4 shadow-2xl border border-slate-100 transform scale-100 animate-in zoom-in-95 duration-200">
-          <div className="mb-6 flex items-start justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-slate-900 mb-1.5 flex items-center gap-2">
-                <GitBranch className="w-5 h-5 text-indigo-500" />
-                Branch Conversation
-              </h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Name the node, then choose the model for this divergent branch.
-              </p>
-            </div>
-            <button 
-              onClick={() => setShowForkModelDialog(false)}
-              className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
-            >
-              <span className="sr-only">Close</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
-
-          <div className="mb-5 space-y-2">
-            <label
-              htmlFor="chat-panel-branch-name"
-              className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
-            >
-              Node Name
-            </label>
-            <Input
-              autoFocus
-              id="chat-panel-branch-name"
-              value={forkNodeName}
-              onChange={(event) => setForkNodeName(event.target.value)}
-              placeholder="Sam-3"
-              className="h-11 rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-800"
-              data-slot="chat-panel-branch-name-input"
-            />
-            <p className="text-xs text-slate-500">
-              This name will be shown on the canvas for the new branch node.
-            </p>
-          </div>
-
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto mb-8 pr-1 custom-scrollbar">
-            {AVAILABLE_MODELS.map((model) => (
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px] animate-in fade-in duration-200">
+        <div className="flex max-h-[90vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)] animate-in zoom-in-95 duration-200">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-950">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600">
+                    <GitBranch size={15} />
+                  </span>
+                  New branch
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Set the branch label and model before it appears on the canvas.
+                </p>
+              </div>
               <button
-                key={model.value}
-                onClick={() => setSelectedModelForFork(model.value)}
-                className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 group relative overflow-hidden ${
-                  selectedModelForFork === model.value
-                    ? "border-indigo-600 bg-indigo-50/50 shadow-sm"
-                    : "border-slate-100 hover:border-slate-300 hover:bg-slate-50"
-                }`}
+                type="button"
+                onClick={() => setShowForkModelDialog(false)}
+                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close branch dialog"
               >
-                <div className="flex items-start gap-4 relative z-10">
-                  <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors mt-0.5 ${
-                      selectedModelForFork === model.value
-                        ? "border-indigo-600 bg-indigo-600"
-                        : "border-slate-300 bg-white group-hover:border-slate-400"
-                    }`}
-                  >
-                    {selectedModelForFork === model.value && (
-                      <div className="w-2 h-2 bg-white rounded-full" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span
-                        className={`font-semibold text-base ${
-                          selectedModelForFork === model.value
-                            ? "text-indigo-900"
-                            : "text-slate-900"
-                        }`}
-                      >
-                        {model.label}
-                      </span>
-                      {selectedModelForFork === model.value && (
-                        <span className="text-xs font-bold text-indigo-600 bg-white px-2 py-0.5 rounded-full shadow-sm border border-indigo-100">
-                          Selected
-                        </span>
-                      )}
-                    </div>
-                    <p
-                      className={`text-sm leading-snug ${
-                        selectedModelForFork === model.value
-                          ? "text-indigo-700"
-                          : "text-slate-500 group-hover:text-slate-700"
-                      }`}
-                    >
-                      {model.description}
-                    </p>
-                  </div>
-                </div>
+                <X size={18} />
               </button>
-            ))}
+            </div>
           </div>
 
-          <div className="flex gap-3 pt-2 border-t border-slate-100">
+          <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[340px_minmax(0,1fr)]">
+            <div className="border-b border-slate-200 bg-slate-50/70 px-6 py-5 lg:border-b-0 lg:border-r">
+              <div className="space-y-2">
+                <label
+                  htmlFor="chat-panel-branch-name"
+                  className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500"
+                >
+                  Branch name
+                </label>
+                <Input
+                  autoFocus
+                  id="chat-panel-branch-name"
+                  value={forkNodeName}
+                  onChange={(event) => setForkNodeName(event.target.value)}
+                  placeholder="Branch from current reply"
+                  className="h-11 rounded-lg border-slate-300 bg-white text-sm font-medium text-slate-900 shadow-none focus-visible:ring-2 focus-visible:ring-slate-900/10"
+                  data-slot="chat-panel-branch-name-input"
+                />
+              </div>
+
+              <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Starts from
+                </div>
+                <div className="mt-2 text-sm font-semibold text-slate-900">
+                  {currentConversation?.nodeName || selectedNodeName || "Current conversation"}
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Selected model
+                </div>
+                <div className="mt-3">
+                  <ModelBadge modelId={selectedModelForFork} size="md" />
+                </div>
+              </div>
+            </div>
+
+            <div className="min-w-0 px-6 py-5">
+              <ModelSelectionPanel
+                selectedModel={selectedModelForFork}
+                onSelect={setSelectedModelForFork}
+                compact
+                mode="branch"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 border-t border-slate-200 bg-white px-6 py-4">
             <Button
               variant="outline"
               onClick={() => {
                 setShowForkModelDialog(false);
                 setPendingForkMessage(null);
               }}
-              className="flex-1 h-11 text-base font-medium border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-xl"
+              className="h-10 flex-1 rounded-lg border-slate-200 text-sm font-medium"
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleSubmit} 
-              className="flex-1 h-11 text-base font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all"
+            <Button
+              onClick={handleSubmit}
+              className="h-10 flex-1 rounded-lg bg-slate-950 text-sm font-medium text-white hover:bg-slate-800"
             >
               Create Branch
             </Button>
@@ -2100,9 +2069,8 @@ const ChatPanelInternal = ({
 
                   <p className="text-sm text-slate-500 font-light">
                     {selectedNode
-                      ? AVAILABLE_MODELS.find(
-                          (m) => m.value === getNodeModel(selectedNode)
-                        )?.label || getNodeModel(selectedNode)
+                      ? getModelById(getNodeModel(selectedNode))?.name ||
+                        getNodeModel(selectedNode)
                       : "Select a node to start chatting"}
                   </p>
                 </div>

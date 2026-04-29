@@ -29,6 +29,7 @@ import { getDefaultModel } from "@/lib/models";
 import { toast } from "sonner";
 import { Focus, LayoutGrid, GitBranch, X } from "lucide-react";
 import { ModelSelectionPanel } from "@/components/model-selection-panel";
+import { ModelBadge } from "@/components/model-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -1466,18 +1467,18 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
       {/* Model picker — shown when user drops a new branch by dragging an edge */}
       {pendingBranchDrop && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
-          <div className="flex max-h-[88vh] w-full max-w-[760px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
-            <div className="border-b border-slate-200 px-5 py-4">
+          <div className="flex max-h-[90vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+            <div className="border-b border-slate-200 px-6 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-950">
+                  <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-950">
                     <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600">
                       <GitBranch size={15} />
                     </span>
                     New branch
                   </h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    Name the branch and choose the model it should use.
+                    Set the branch label and model before it appears on the canvas.
                   </p>
                 </div>
                 <button
@@ -1490,34 +1491,48 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
                 </button>
               </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-              <div className="mb-5 space-y-2">
-                <label
-                  htmlFor="branch-drop-name"
-                  className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500"
-                >
-                  Node Name
-                </label>
-                <Input
-                  autoFocus
-                  id="branch-drop-name"
-                  value={branchDropName}
-                  onChange={(event) => setBranchDropName(event.target.value)}
-                  placeholder="Branch from current node"
-                  className="h-11 rounded-lg border-slate-300 bg-white text-sm font-medium text-slate-900 shadow-none focus-visible:ring-2 focus-visible:ring-slate-900/10"
-                  data-slot="branch-drop-name-input"
-                />
-                <p className="text-xs text-slate-500">
-                  This label appears on the branch card in the canvas.
-                </p>
+
+            <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[340px_minmax(0,1fr)]">
+              <div className="border-b border-slate-200 bg-slate-50/70 px-6 py-5 lg:border-b-0 lg:border-r">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="branch-drop-name"
+                    className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500"
+                  >
+                    Branch name
+                  </label>
+                  <Input
+                    autoFocus
+                    id="branch-drop-name"
+                    value={branchDropName}
+                    onChange={(event) => setBranchDropName(event.target.value)}
+                    placeholder="Branch from current node"
+                    className="h-11 rounded-lg border-slate-300 bg-white text-sm font-medium text-slate-900 shadow-none focus-visible:ring-2 focus-visible:ring-slate-900/10"
+                    data-slot="branch-drop-name-input"
+                  />
+                </div>
+
+                <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Selected model
+                  </div>
+                  <div className="mt-3">
+                    <ModelBadge modelId={branchDropModel} size="md" />
+                  </div>
+                </div>
               </div>
-              <ModelSelectionPanel
-                selectedModel={branchDropModel}
-                onSelect={setBranchDropModel}
-                compact
-              />
+
+              <div className="min-w-0 px-6 py-5">
+                <ModelSelectionPanel
+                  selectedModel={branchDropModel}
+                  onSelect={setBranchDropModel}
+                  compact
+                  mode="branch"
+                />
+              </div>
             </div>
-            <div className="flex gap-3 border-t border-slate-200 bg-white px-5 py-4">
+
+            <div className="flex gap-3 border-t border-slate-200 bg-white px-6 py-4">
               <Button
                 variant="outline"
                 onClick={() => setPendingBranchDrop(null)}
