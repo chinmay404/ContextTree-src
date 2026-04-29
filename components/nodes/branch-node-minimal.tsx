@@ -2,7 +2,7 @@
 
 import { memo, useCallback, type MouseEvent } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { Trash2 } from "lucide-react";
+import { Info, Trash2 } from "lucide-react";
 import { ModelBadge } from "@/components/model-badge";
 import { getAdvancedBadges, type AdvancedSettings } from "@/lib/advanced-settings";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ export interface BranchNodeData {
   preview?: string;
   model?: string;
   advancedSettings?: Partial<AdvancedSettings>;
+  systemPrompt?: string;
   timestamp?: string;
   metaForkLabel?: string;
   branchBadge?: string;
@@ -22,6 +23,7 @@ export interface BranchNodeData {
   onFocus?: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
+  onShowDetails?: () => void;
   color?: string;
   textColor?: string;
   dotColor?: string;
@@ -159,15 +161,33 @@ function BranchNodeComponent({ data, selected }: NodeProps<BranchNodeType>) {
         </div>
       </div>
 
-      {/* Floating delete — only on hover */}
-      <button
-        className="absolute -top-2 -right-2 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-md group-hover:flex hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500 transition-colors"
-        onClick={stop(data.onDelete)}
-        aria-label="Delete"
-        data-slot="branch-node-delete"
+      {/* Floating action cluster — only on hover or when active */}
+      <div
+        className={cn(
+          "absolute -top-2 -right-2 flex items-center gap-1",
+          active ? "flex" : "hidden group-hover:flex"
+        )}
       >
-        <Trash2 size={11} />
-      </button>
+        {data.onShowDetails && (
+          <button
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-md transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+            onClick={stop(data.onShowDetails)}
+            aria-label="View node details"
+            data-slot="branch-node-details"
+            title="View node details"
+          >
+            <Info size={11} />
+          </button>
+        )}
+        <button
+          className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-md transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500"
+          onClick={stop(data.onDelete)}
+          aria-label="Delete"
+          data-slot="branch-node-delete"
+        >
+          <Trash2 size={11} />
+        </button>
+      </div>
 
       <Handle type="target" position={Position.Top} className={handleClassName}
         style={{ backgroundColor: accent }} />

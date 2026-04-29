@@ -37,6 +37,7 @@ import { GroupNode } from "./nodes/group-node";
 import { ExternalContextNode } from "./nodes/external-context-node";
 import { CustomEdgeMinimal as CustomEdge } from "./edges/custom-edge-minimal";
 import { FloatingConnectionLine } from "./edges/floating-connection-line";
+import { NodeDetailsDialog } from "./node-details-dialog";
 import {
   storageService,
   type CanvasData,
@@ -319,6 +320,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
   const [pendingConn, setPendingConn] = useState<{ sourceId: string } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
+  const [detailsNodeId, setDetailsNodeId] = useState<string | null>(null);
   const lastViewportRef = useRef<Viewport | null>(null);
   // Keep viewport in a ref so debounced savers don't force callback re-creation
   // on every pan frame (big perf win when the canvas has many nodes).
@@ -578,6 +580,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
             messageCount: node.chatMessages?.length || 0,
             model: node.model,
             advancedSettings: node.advancedSettings,
+            systemPrompt: node.systemPrompt,
             isSelected: selectedNode === node._id,
             color: nodeColor,
             textColor: cs.text,
@@ -593,6 +596,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
             onClick: () => onNodeSelect(node._id, node.name || (node.type === "entry" ? "Base Context" : "Node"), node.type),
             onFocus: () => zoomTo(node._id),
             onDelete: () => deleteNode(node._id),
+            onShowDetails: () => setDetailsNodeId(node._id),
             onRetry: () => retryExternal(node._id, (nodeData as any)?.fileId || (node as any).fileId),
           },
           style: { zIndex: 2 },
@@ -1499,6 +1503,24 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
           )}
         </Controls>
       </ReactFlow>
+
+      {(() => {
+        const detailsNode = detailsNodeId
+          ? canvas?.nodes?.find((n) => n._id === detailsNodeId)
+          : null;
+        const parent = detailsNode?.parentNodeId
+          ? canvas?.nodes?.find((n) => n._id === detailsNode.parentNodeId)
+          : null;
+        const parentName = parent?.name || (parent?.type === "entry" ? "Base Context" : null);
+        return (
+          <NodeDetailsDialog
+            open={Boolean(detailsNode)}
+            onClose={() => setDetailsNodeId(null)}
+            node={detailsNode || null}
+            parentName={parentName}
+          />
+        );
+      })()}
     </div>
   );
 }

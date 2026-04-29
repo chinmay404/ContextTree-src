@@ -2,7 +2,7 @@
 
 import { memo, useCallback, type MouseEvent } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { Trash2 } from "lucide-react";
+import { Info, Trash2 } from "lucide-react";
 import { getAdvancedBadges, type AdvancedSettings } from "@/lib/advanced-settings";
 import { cn } from "@/lib/utils";
 
@@ -13,12 +13,14 @@ export interface EntryNodeData {
   preview?: string;
   model?: string;
   advancedSettings?: Partial<AdvancedSettings>;
+  systemPrompt?: string;
   timestamp?: string;
   sharedLabel?: string;
   onClick?: () => void;
   onFocus?: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
+  onShowDetails?: () => void;
   color?: string;
   textColor?: string;
   dotColor?: string;
@@ -121,16 +123,34 @@ function EntryNodeComponent({ data, selected }: NodeProps<EntryNodeType>) {
         </div>
       </div>
 
-      {!data.primary && (
-        <button
-          className="absolute -top-2 -right-2 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-md group-hover:flex hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500 transition-colors"
-          onClick={stop(data.onDelete)}
-          aria-label="Delete"
-          data-slot="entry-node-delete"
-        >
-          <Trash2 size={11} />
-        </button>
-      )}
+      <div
+        className={cn(
+          "absolute -top-2 -right-2 flex items-center gap-1",
+          active ? "flex" : "hidden group-hover:flex"
+        )}
+      >
+        {data.onShowDetails && (
+          <button
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-md transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+            onClick={stop(data.onShowDetails)}
+            aria-label="View node details"
+            data-slot="entry-node-details"
+            title="View node details"
+          >
+            <Info size={11} />
+          </button>
+        )}
+        {!data.primary && (
+          <button
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-md transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500"
+            onClick={stop(data.onDelete)}
+            aria-label="Delete"
+            data-slot="entry-node-delete"
+          >
+            <Trash2 size={11} />
+          </button>
+        )}
+      </div>
 
       <Handle type="source" position={Position.Bottom} className={handleClassName} />
       <Handle type="source" position={Position.Right} className={handleClassName} />
