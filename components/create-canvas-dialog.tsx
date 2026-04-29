@@ -16,7 +16,10 @@ import {
 } from "@/components/ui/dialog";
 import { ModelSelectionPanel } from "@/components/model-selection-panel";
 import { ModelBadge } from "@/components/model-badge";
-import { AdvancedSettingsPanel } from "@/components/advanced-settings-panel";
+import {
+  AdvancedSettingsPanel,
+  AdvancedSettingsSummaryCard,
+} from "@/components/advanced-settings-panel";
 import {
   DEFAULT_ADVANCED_SETTINGS,
   type AdvancedSettings,
@@ -41,6 +44,7 @@ export const CreateCanvasDialog = ({
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(DEFAULT_ADVANCED_SETTINGS);
+  const [rightPaneView, setRightPaneView] = useState<"models" | "advanced">("models");
 
   useEffect(() => {
     if (!open) return;
@@ -48,6 +52,7 @@ export const CreateCanvasDialog = ({
     setSelectedModel(null);
     setSystemPrompt("");
     setAdvancedSettings(DEFAULT_ADVANCED_SETTINGS);
+    setRightPaneView("models");
   }, [initialTitle, open]);
 
   const handleCreate = async () => {
@@ -105,11 +110,10 @@ export const CreateCanvasDialog = ({
               </p>
             </div>
 
-            <AdvancedSettingsPanel
+            <AdvancedSettingsSummaryCard
               value={advancedSettings}
-              onChange={setAdvancedSettings}
-              modelId={selectedModel}
-              systemPrompt={systemPrompt}
+              onOpen={() => setRightPaneView("advanced")}
+              active={rightPaneView === "advanced"}
               className="mt-5"
             />
 
@@ -149,12 +153,28 @@ export const CreateCanvasDialog = ({
           </div>
 
           <div className="min-w-0 px-6 py-5">
-            <ModelSelectionPanel
-              selectedModel={selectedModel}
-              onSelect={setSelectedModel}
-              compact
-              mode="branch"
-            />
+            {rightPaneView === "advanced" ? (
+              <AdvancedSettingsPanel
+                key="advanced"
+                value={advancedSettings}
+                onChange={setAdvancedSettings}
+                modelId={selectedModel}
+                systemPrompt={systemPrompt}
+                onBack={() => setRightPaneView("models")}
+              />
+            ) : (
+              <div
+                key="models"
+                className="animate-in fade-in-0 slide-in-from-left-2 duration-200"
+              >
+                <ModelSelectionPanel
+                  selectedModel={selectedModel}
+                  onSelect={setSelectedModel}
+                  compact
+                  mode="branch"
+                />
+              </div>
+            )}
           </div>
         </div>
 

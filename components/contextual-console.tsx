@@ -39,7 +39,10 @@ import { getDefaultModel } from "@/lib/models";
 import { deriveNodeNameFromPrompt } from "@/lib/utils";
 import { ModelBadge, ModelProviderIcon } from "@/components/model-badge";
 import { ModelSelectionPanel } from "@/components/model-selection-panel";
-import { AdvancedSettingsPanel } from "@/components/advanced-settings-panel";
+import {
+  AdvancedSettingsPanel,
+  AdvancedSettingsSummaryCard,
+} from "@/components/advanced-settings-panel";
 import {
   buildAdvancedRequestPayload,
   DEFAULT_ADVANCED_SETTINGS,
@@ -496,12 +499,14 @@ const ForkDialog = memo(function ForkDialog({
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(DEFAULT_ADVANCED_SETTINGS);
+  const [rightPaneView, setRightPaneView] = useState<"models" | "advanced">("models");
   useEffect(() => {
     if (!open) return;
     setModel(getDefaultModel());
     setName(`Branch from ${sourceName.slice(0, 24)}`.trim());
     setSystemPrompt(inheritedSystemPrompt);
     setAdvancedSettings(normalizeAdvancedSettings(inheritedAdvancedSettings));
+    setRightPaneView("models");
   }, [open, sourceName, inheritedSystemPrompt, inheritedAdvancedSettings]);
   if (!open) return null;
   return (
@@ -551,12 +556,10 @@ const ForkDialog = memo(function ForkDialog({
               />
             </div>
 
-            <AdvancedSettingsPanel
+            <AdvancedSettingsSummaryCard
               value={advancedSettings}
-              onChange={setAdvancedSettings}
-              modelId={model}
-              systemPrompt={systemPrompt}
-              parentSettings={inheritedAdvancedSettings}
+              onOpen={() => setRightPaneView("advanced")}
+              active={rightPaneView === "advanced"}
               className="mt-5"
             />
 
@@ -587,12 +590,29 @@ const ForkDialog = memo(function ForkDialog({
           </div>
 
           <div className="min-w-0 px-6 py-5">
-            <ModelSelectionPanel
-              selectedModel={model}
-              onSelect={setModel}
-              compact
-              mode="branch"
-            />
+            {rightPaneView === "advanced" ? (
+              <AdvancedSettingsPanel
+                key="advanced"
+                value={advancedSettings}
+                onChange={setAdvancedSettings}
+                modelId={model}
+                systemPrompt={systemPrompt}
+                parentSettings={inheritedAdvancedSettings}
+                onBack={() => setRightPaneView("models")}
+              />
+            ) : (
+              <div
+                key="models"
+                className="animate-in fade-in-0 slide-in-from-left-2 duration-200"
+              >
+                <ModelSelectionPanel
+                  selectedModel={model}
+                  onSelect={setModel}
+                  compact
+                  mode="branch"
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -661,13 +681,6 @@ const ContextualConsole = ({
     const node = canvasData.nodes.find((n: any) => n._id === selectedNode);
     return node?.name || selectedNodeName;
   }, [selectedNode, selectedNodeName, canvasData]);
-
-  const parentAdvancedSettings = useMemo(() => {
-    const parentId = currentNode?.parentNodeId;
-    if (!parentId || !canvasData?.nodes) return DEFAULT_ADVANCED_SETTINGS;
-    const parent = canvasData.nodes.find((node: any) => node._id === parentId);
-    return normalizeAdvancedSettings(parent?.advancedSettings);
-  }, [currentNode?.parentNodeId, canvasData]);
 
   // ─── Combined canvas + messages fetch ──────────────────
   // Previously this component fired TWO independent fetches for the same
@@ -816,42 +829,6 @@ const ContextualConsole = ({
       });
     }
   }, [selectedNode, selectedCanvas, nameInput, resolvedName]);
-
-  const saveAdvancedSettings = useCallback(
-    async (nextSettings: AdvancedSettings) => {
-      if (!selectedNode || !selectedCanvas) return;
-      const advancedSettings = normalizeAdvancedSettings(nextSettings);
-      setCanvasData((p: any) =>
-        p
-          ? {
-              ...p,
-              nodes: p.nodes.map((n: any) =>
-                n._id === selectedNode ? { ...n, advancedSettings } : n
-              ),
-            }
-          : p
-      );
-      window.dispatchEvent(
-        new CustomEvent("canvas-update-node", {
-          detail: { nodeId: selectedNode, updates: { advancedSettings } },
-        })
-      );
-      try {
-        await fetch(`/api/canvases/${selectedCanvas}/nodes/${selectedNode}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ advancedSettings }),
-        });
-      } catch {
-        toast({
-          title: "Error",
-          description: "Failed to save advanced settings",
-          variant: "destructive",
-        });
-      }
-    },
-    [selectedNode, selectedCanvas]
-  );
 
   // ─── Listen for renames from canvas ────────────────────
   useEffect(() => {
@@ -1534,19 +1511,6 @@ const ContextualConsole = ({
             </div>
           </div>
         </div>
-
-        {currentNode && (
-          <div className="flex-none border-b border-slate-100 bg-slate-50/60 px-4 py-3">
-            <AdvancedSettingsPanel
-              value={currentNode.advancedSettings}
-              onChange={saveAdvancedSettings}
-              modelId={activeModelId}
-              systemPrompt={currentNode.systemPrompt || ""}
-              parentSettings={parentAdvancedSettings}
-              className="bg-white"
-            />
-          </div>
-        )}
 
         {/* Messages */}
         <div className="flex-1 min-h-0 relative">
