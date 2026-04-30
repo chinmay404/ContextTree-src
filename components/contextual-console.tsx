@@ -278,7 +278,7 @@ const MessageItem = memo(function MessageItem({
               })}
             </span>
             <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {!isUser && canFork && (
+              {canFork && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -288,9 +288,10 @@ const MessageItem = memo(function MessageItem({
                       <GitBranch size={10} /> Branch
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[220px] text-center">
-                    Start a new branch from this reply. The child will inherit this
-                    point and everything before it, but nothing after it.
+                  <TooltipContent side="top" className="max-w-[240px] text-center">
+                    {isUser
+                      ? "Branch from this question. The new node will start by re-asking it and getting a fresh answer."
+                      : "Start a new branch from this reply. The child will inherit this point and everything before it, but nothing after it."}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -1351,24 +1352,213 @@ const ContextualConsole = ({
         })
       );
 
-      fetch(`/api/canvases/${selectedCanvas}/nodes`, {
+      const nodeCreationPromise = fetch(`/api/canvases/${selectedCanvas}/nodes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newNode),
-      }).catch(() => {});
-      fetch(`/api/canvases/${selectedCanvas}/edges`, {
+      });
+      const edgeCreationPromise = fetch(`/api/canvases/${selectedCanvas}/edges`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(edge),
-      }).catch(() => {});
+      });
+      // Existing fire-and-forget behavior preserved for the AI-message fork.
+      nodeCreationPromise.catch(() => {});
+      edgeCreationPromise.catch(() => {});
+
       window.dispatchEvent(
         new CustomEvent("canvas-select-node", {
           detail: { nodeId, nodeName: branchName, nodeType: "branch" },
         })
       );
       onNodeSelect?.(nodeId, branchName, "branch");
+
+      // ── Auto-invoke when forking from a user message ─────────────────────
+      // The fork-init buffer already ends with the user message. We send the
+      // chat request with `regenerateLastUser: true` so the backend skips
+      // appending a duplicate user message and only persists the assistant's
+      // fresh reply. This produces an alternative answer to the same prompt.
+      const isUserMessageFork = sourceMessage?.role === "user";
+      if (isUserMessageFork && sourceMessage) {
+        // Wait for the node row so the backend's fork_thread doesn't race
+        // the canvas POST.
+        try {
+          await nodeCreationPromise;
+        } catch (_) {
+          /* fork_thread is idempotent and will create the row if needed */
+        }
+
+        const userMsgForUI: Message = {
+          id: sourceMessage.id,
+          role: "user",
+          content: sourceMessage.content,
+          timestamp:
+            sourceMessage.timestamp instanceof Date
+              ? sourceMessage.timestamp
+              : new Date(),
+        };
+        // Optimistically render the user message in the new branch.
+        setMessages((p) => ({ ...p, [nodeId]: [userMsgForUI] }));
+        setIsTyping(true);
+
+        try {
+          const advancedForRequest =
+            overrideAdvancedSettings !== undefined
+              ? normalizeAdvancedSettings(overrideAdvancedSettings)
+              : normalizeAdvancedSettings(parentNode?.advancedSettings);
+          const systemPromptForRequest =
+            overrideSystemPrompt !== undefined
+              ? overrideSystemPrompt
+              : parentNode?.systemPrompt || "";
+
+          const res = await fetch("/api/llm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              canvasId: selectedCanvas,
+              nodeId,
+              model,
+              message_id: sourceMessage.id,
+              message: sourceMessage.content,
+              parentNodeId: selectedNode,
+              forkedFromMessageId: forkId,
+              isPrimary: false,
+              systemPrompt: systemPromptForRequest,
+              ...buildAdvancedRequestPayload(advancedForRequest, model),
+              contextNodeIds: [],
+              regenerateLastUser: true,
+            }),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `Auto-response failed (${res.status})`);
+          }
+
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("text/event-stream") && res.body) {
+            const botMsgId = `${sourceMessage.id}_ai`;
+            const botTimestamp = new Date();
+            let fullContent = "";
+            let firstToken = true;
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            try {
+              while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || "";
+
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (!trimmed.startsWith("data:")) continue;
+                  const data = trimmed.slice(5).trim();
+                  if (!data || data === "[DONE]") continue;
+
+                  try {
+                    const parsed = JSON.parse(data);
+                    if (parsed.error) throw new Error(parsed.error);
+                    const chunk = parsed.message || parsed.delta || "";
+                    if (chunk) {
+                      fullContent += chunk;
+                      if (firstToken) {
+                        firstToken = false;
+                        setIsTyping(false);
+                      }
+                      setMessages((p) => ({
+                        ...p,
+                        [nodeId]: [
+                          userMsgForUI,
+                          {
+                            id: botMsgId,
+                            role: "assistant",
+                            content: fullContent,
+                            timestamp: botTimestamp,
+                          },
+                        ],
+                      }));
+                    }
+                  } catch (parseErr) {
+                    if (
+                      parseErr instanceof Error &&
+                      parseErr.message !== "Unexpected end of JSON input"
+                    ) {
+                      throw parseErr;
+                    }
+                  }
+                }
+              }
+            } finally {
+              reader.releaseLock();
+            }
+
+            if (fullContent) {
+              const allMsgs = [
+                userMsgForUI,
+                {
+                  id: botMsgId,
+                  role: "assistant" as const,
+                  content: fullContent,
+                  timestamp: botTimestamp,
+                },
+              ];
+              setMessages((p) => ({ ...p, [nodeId]: allMsgs }));
+              storageService.saveNodeMessages(
+                selectedCanvas,
+                nodeId,
+                allMsgs.map((m) => ({
+                  id: m.id,
+                  role: m.role,
+                  content: m.content,
+                  timestamp: m.timestamp.toISOString(),
+                }))
+              );
+              // Persist the assistant message so the UI re-renders correctly
+              // on reload. The user message is already in DB (fork buffer).
+              fetch(
+                `/api/canvases/${selectedCanvas}/nodes/${nodeId}/messages`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    id: botMsgId,
+                    role: "assistant",
+                    content: fullContent,
+                    timestamp: botTimestamp.toISOString(),
+                  }),
+                }
+              ).catch(() => {});
+            }
+          }
+        } catch (err) {
+          toast({
+            title: "Auto-response failed",
+            description:
+              err instanceof Error ? err.message : "Could not generate reply in new branch",
+            variant: "destructive",
+          });
+        } finally {
+          setIsTyping(false);
+        }
+      }
     },
-    [selectedCanvas, selectedNode, pendingForkMsg, resolvedName, canvasData, currentMessages, onNodeSelect]
+    [
+      selectedCanvas,
+      selectedNode,
+      pendingForkMsg,
+      resolvedName,
+      canvasData,
+      currentMessages,
+      onNodeSelect,
+      setMessages,
+      setIsTyping,
+      toast,
+    ]
   );
 
   const handleStartFork = useCallback((messageId: string) => {
