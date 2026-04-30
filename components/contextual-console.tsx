@@ -1566,20 +1566,19 @@ const ContextualConsole = ({
   );
 
   const handleStartFork = useCallback((messageId: string) => {
-    const hasMessages = currentMessages.some((m) => m.role === "assistant");
-    if (!hasMessages) {
-      toast({
-        title: "Branch unavailable",
-        description: "Start a conversation first before branching",
-        variant: "destructive",
-      });
-      return;
-    }
+    // The "hasMessages" guard that used to live here was redundant: the
+    // branch button is only rendered when canFork is true (which already
+    // requires the message to be native to this node). It also caused a
+    // false negative under streaming — the MessageItem memoizer doesn't
+    // include onStartFork in its comparison, so this callback could capture
+    // a stale `currentMessages` that didn't yet contain the assistant reply
+    // even after the stream completed. Dropping the guard removes that
+    // failure mode.
     const selectedMessage = currentMessages.find((message) => message.id === messageId);
     if (selectedMessage && !isMessageNativeToSelectedNode(selectedMessage)) {
       toast({
         title: "Branch unavailable",
-        description: "You can only branch from replies created in this node",
+        description: "You can only branch from messages created in this node",
         variant: "destructive",
       });
       return;
