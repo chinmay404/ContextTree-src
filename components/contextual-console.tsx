@@ -1388,6 +1388,10 @@ const ContextualConsole = ({
           /* fork_thread is idempotent and will create the row if needed */
         }
 
+        // Use a fresh request msg id so the assistant response id
+        // (`${requestId}_ai`) doesn't collide with the parent thread's existing
+        // AI message of the same id (the messages table PK is global).
+        const requestMsgId = genId();
         const userMsgForUI: Message = {
           id: sourceMessage.id,
           role: "user",
@@ -1418,7 +1422,7 @@ const ContextualConsole = ({
               canvasId: selectedCanvas,
               nodeId,
               model,
-              message_id: sourceMessage.id,
+              message_id: requestMsgId,
               message: sourceMessage.content,
               parentNodeId: selectedNode,
               forkedFromMessageId: forkId,
@@ -1437,7 +1441,7 @@ const ContextualConsole = ({
 
           const contentType = res.headers.get("content-type") || "";
           if (contentType.includes("text/event-stream") && res.body) {
-            const botMsgId = `${sourceMessage.id}_ai`;
+            const botMsgId = `${requestMsgId}_ai`;
             const botTimestamp = new Date();
             let fullContent = "";
             let firstToken = true;
@@ -1730,7 +1734,7 @@ const ContextualConsole = ({
                     message={msg}
                     isUser={msg.role === "user"}
                     activeModelId={activeModelId}
-                    canFork={msg.role === "assistant" && isMessageNativeToSelectedNode(msg)}
+                    canFork={isMessageNativeToSelectedNode(msg)}
                     forkedNodes={getForkedNodes(msg)}
                     onStartFork={handleStartFork}
                     onSelectForkedNode={handleSelectForkedNode}
