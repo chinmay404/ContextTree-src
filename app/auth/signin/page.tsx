@@ -58,13 +58,13 @@ function SignInContent() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans selection:bg-black selection:text-white flex flex-col">
+    <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <nav className="fixed top-0 w-full z-50 bg-background border-b border-border">
         <div className="max-w-6xl mx-auto px-6 h-16 flex justify-between items-center">
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-black transition-colors"
+            className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back</span>
@@ -84,11 +84,11 @@ function SignInContent() {
           
           <div className="space-y-4 text-center">
             <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
-            <p className="text-gray-500">Sign in to continue your session</p>
+            <p className="text-muted-foreground">Sign in to continue your session</p>
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3 text-sm text-red-600">
+            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-3 text-sm text-destructive">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <div>
                 <span className="font-medium block mb-1">Authentication Error</span>
@@ -104,12 +104,12 @@ function SignInContent() {
                 onClick={() => handleSignIn(provider.id)}
                 disabled={loading}
                 variant="outline"
-                className="w-full h-12 text-base font-medium border-gray-200 hover:bg-gray-50 hover:text-black transition-all relative"
+                className="w-full h-12 text-base font-medium border-border bg-card hover:bg-accent hover:text-foreground transition-all relative"
               >
                 {/* Spinner when specific provider is clicked */}
                 {loading && clickedProvider === provider.id ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80">
-                    <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                  <div className="absolute inset-0 flex items-center justify-center bg-card/80">
+                    <div className="w-5 h-5 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
                   </div>
                 ) : null}
                 
@@ -144,14 +144,16 @@ function SignInContent() {
 
             {!providers && (
                <div className="space-y-3">
-                  <div className="h-12 w-full bg-gray-100 rounded animate-pulse"></div>
-                  <div className="h-12 w-full bg-gray-100 rounded animate-pulse"></div>
+                  <div className="h-12 w-full bg-muted rounded animate-pulse"></div>
+                  <div className="h-12 w-full bg-muted rounded animate-pulse"></div>
                </div>
             )}
           </div>
 
-          <div className="text-center text-sm text-gray-400">
-            By signing in, you agree to our Terms of Service and Privacy Policy.
+          <div className="text-center text-sm text-muted-foreground">
+            By signing in, you agree to our{" "}
+            <a href="/terms" className="underline hover:text-foreground">Terms of Service</a> and{" "}
+            <a href="/privacy" className="underline hover:text-foreground">Privacy Policy</a>.
           </div>
         </div>
       </main>
@@ -162,8 +164,8 @@ function SignInContent() {
 export default function SignInPage() {
   return (
     <Suspense fallback={
-       <div className="min-h-screen bg-white flex items-center justify-center">
-          <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+       <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
        </div>
     }>
       <SignInContent />
