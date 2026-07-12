@@ -277,3 +277,17 @@ JWT trust boundary ✓ · identity from token only ✓ · UUID identity ✓ ·
 store reads user-scoped ✓ · ownership 403 gate ✓ · durable quotas ✓ ·
 frontend node-POST authenticated ✓. The launch-blocker tenancy work is
 complete.
+
+## Checkpoint 008 — 2026-07-12 (deployment readiness)
+
+- Backend repo: `v2/dev` fast-forward-merged into `main` (91638ce) — main
+  now carries ALL security work (JWT boundary, tenancy, quotas, migrations,
+  pruned deps) and `render.yaml` (migrate-on-start, health check, env
+  contract, py3.12, Frankfurt).
+- V2/11-DEPLOYMENT.md: the go-live runbook. Owner does 2 clicks + env var
+  pastes (steps in the doc); then agent reverts shutdown sign-in
+  (858717f), updates lib/llm-backend.ts default URL, verifies end-to-end.
+- Shutdown page on prod is INTENTIONAL until the backend is live — it is
+  currently accurate.
+- Next feature work when deployment lands: F1 named branches + compare +
+  promote (first paying feature).
