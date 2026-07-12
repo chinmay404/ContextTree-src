@@ -1,17 +1,18 @@
 "use client";
 
 /**
- * Context Tree — explorer-first landing (V2, spec: V2/04-REDESIGN-SPEC.md §8).
- * One page, self-contained. Tokens scoped under .ctx3 so nothing leaks.
+ * Context Tree — explorer-first landing, v3 (V2/04-REDESIGN-SPEC.md §8).
+ * Self-contained; tokens scoped under .ctx3.
  *
- * v2 revision (owner feedback): less copy, more picture. Every "move" is
- * shown as a mini node-diagram; text is one line. Real tree icon in the nav.
- *
- * Signature element: the hero lineage tree — hover any node and only its
- * ancestor path stays lit. Scoped context, demonstrated instead of claimed.
+ * v3 (owner: "use the icon, too many words, explain visually"):
+ * - Diagrams rebuilt as a git-graph rail (spine + CSS elbow connectors);
+ *   alignment is structural, works at every width.
+ * - Section grammar is the tree glyph, not caps-mono eyebrows.
+ * - Copy: one line per idea.
+ * - Hover a hero node → only its lineage stays lit (scoped context, felt).
  */
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bricolage_Grotesque } from "next/font/google";
 
@@ -22,206 +23,199 @@ const bricolage = Bricolage_Grotesque({
   display: "swap",
 });
 
-/* ── Tokens + component CSS (scoped) ──────────────────────────────────── */
+/* ── Scoped CSS ───────────────────────────────────────────────────────── */
 
 const CSS = `
 .ctx3 {
   --field: #0B1020;
-  --field-2: #10182E;
-  --field-3: #151F3A;
-  --paper: #E9E4D6;
-  --dim: #8A92A8;
-  --line: #26304A;
-  --amber: #E3A44A;
-  --amber-soft: rgba(227, 164, 74, 0.14);
-  --teal: #52B8AC;
-  --teal-soft: rgba(82, 184, 172, 0.13);
+  --field-2: #111A31;
+  --field-3: #17223F;
+  --ink: #EDEAE0;
+  --dim: #97A0B5;
+  --line: #29334E;
+  --amber: #E5A94F;
+  --amber-dim: rgba(229, 169, 79, 0.16);
+  --teal: #56BDB0;
+  --teal-dim: rgba(86, 189, 176, 0.14);
+  --ok: #7BC98A;
   --display: var(--font-bricolage), 'Bricolage Grotesque', system-ui, sans-serif;
   --body: var(--font-geist-sans), system-ui, sans-serif;
   --mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
   background: var(--field);
-  color: var(--paper);
+  color: var(--ink);
   font-family: var(--body);
   -webkit-font-smoothing: antialiased;
 }
 .ctx3 *, .ctx3 *::before, .ctx3 *::after { box-sizing: border-box; }
 .ctx3 ::selection { background: var(--amber); color: var(--field); }
-
-.ctx3 .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+.ctx3 .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 .ctx3 .mono { font-family: var(--mono); }
-
-.ctx3 .eyebrow {
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--amber);
-}
-.ctx3 h1 {
-  font-family: var(--display); font-weight: 600;
-  font-size: clamp(44px, 6.8vw, 80px); line-height: 1.0;
-  letter-spacing: -0.02em; margin: 18px 0 18px;
-}
-.ctx3 h2 {
-  font-family: var(--display); font-weight: 600;
-  font-size: clamp(26px, 3.6vw, 40px); line-height: 1.08;
-  letter-spacing: -0.015em; margin: 0 0 10px;
-}
-.ctx3 .lede { font-size: 17.5px; line-height: 1.6; color: var(--dim); max-width: 42ch; }
-.ctx3 .lede strong { color: var(--paper); font-weight: 500; }
-
+.ctx3 h1, .ctx3 h2, .ctx3 h3 { font-family: var(--display); text-wrap: balance; }
+.ctx3 h1 { font-weight: 650; font-size: clamp(44px, 6.6vw, 78px); line-height: 1.0; letter-spacing: -0.02em; margin: 0 0 18px; }
+.ctx3 h2 { font-weight: 600; font-size: clamp(26px, 3.4vw, 38px); line-height: 1.1; letter-spacing: -0.015em; margin: 0 0 8px; }
+.ctx3 h3 { font-weight: 600; font-size: clamp(22px, 2.4vw, 27px); line-height: 1.18; letter-spacing: -0.01em; margin: 0 0 8px; }
+.ctx3 .lede { font-size: 17px; line-height: 1.65; color: var(--dim); max-width: 44ch; text-wrap: pretty; }
+.ctx3 .lede strong { color: var(--ink); font-weight: 500; }
 .ctx3 a { color: inherit; text-decoration: none; }
-.ctx3 :is(a, button, summary):focus-visible {
-  outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 4px;
-}
+.ctx3 :is(a, button, summary):focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 4px; }
 
 .ctx3 .btn {
   display: inline-flex; align-items: center; gap: 8px;
-  font-family: var(--body); font-size: 15px; font-weight: 600;
-  padding: 13px 22px; border-radius: 10px; border: 1px solid transparent;
-  cursor: pointer; transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+  font-size: 15px; font-weight: 600; padding: 13px 22px; border-radius: 10px;
+  border: 1px solid transparent; cursor: pointer;
+  transition: transform 150ms cubic-bezier(0.22,1,0.36,1), background 150ms ease, border-color 150ms ease;
 }
 .ctx3 .btn:active { transform: translateY(1px); }
 .ctx3 .btn-primary { background: var(--amber); color: #17110A; }
-.ctx3 .btn-primary:hover { background: #EDB35F; }
-.ctx3 .btn-ghost { border-color: var(--line); color: var(--paper); background: transparent; }
+.ctx3 .btn-primary:hover { background: #EFB963; }
+.ctx3 .btn-ghost { border-color: var(--line); color: var(--ink); background: transparent; }
 .ctx3 .btn-ghost:hover { border-color: var(--dim); }
 
 /* nav */
 .ctx3 .nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
-.ctx3 .brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }
-.ctx3 .brand svg { color: var(--amber); }
-.ctx3 .nav-links { display: flex; align-items: center; gap: 26px; font-size: 14px; color: var(--dim); }
-.ctx3 .nav-links a:hover { color: var(--paper); }
-@media (max-width: 720px) { .ctx3 .nav-links .hide-sm { display: none; } }
+.ctx3 .brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 600; font-size: 17px; white-space: nowrap; }
+.ctx3 .brand svg { color: var(--amber); flex: none; }
+.ctx3 .nav-links { display: flex; align-items: center; gap: 24px; font-size: 14px; color: var(--dim); white-space: nowrap; }
+.ctx3 .nav-links a:hover { color: var(--ink); }
+@media (max-width: 720px) {
+  .ctx3 .nav-links .hide-sm { display: none; }
+  .ctx3 .nav-links { gap: 14px; }
+  .ctx3 .brand { font-size: 15px; }
+}
 
 /* hero */
-.ctx3 .hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 48px; align-items: center; padding: 52px 0 84px; }
-@media (max-width: 960px) { .ctx3 .hero { grid-template-columns: 1fr; padding-top: 28px; } }
-.ctx3 .trustline { margin-top: 20px; font-family: var(--mono); font-size: 12.5px; color: var(--dim); letter-spacing: 0.02em; }
-.ctx3 .trustline b { color: var(--paper); font-weight: 500; }
+.ctx3 .hero { position: relative; display: grid; grid-template-columns: minmax(0, 10fr) minmax(0, 9fr); gap: clamp(28px, 5vw, 64px); align-items: center; padding: clamp(36px, 6vw, 72px) 0 clamp(56px, 7vw, 96px); }
+@media (max-width: 940px) { .ctx3 .hero { grid-template-columns: 1fr; } }
+.ctx3 .hero-mark { position: absolute; right: -40px; top: -30px; color: var(--ink); opacity: 0.035; pointer-events: none; }
+.ctx3 .trust { margin-top: 20px; font-family: var(--mono); font-size: 12.5px; color: var(--dim); }
+.ctx3 .trust b { color: var(--ink); font-weight: 500; }
 
-/* the lineage tree (hero) */
-.ctx3 .tree { position: relative; min-height: 520px; }
-@media (max-width: 960px) { .ctx3 .tree { min-height: 470px; max-width: 560px; } }
-.ctx3 .tree svg.edges { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.ctx3 .edge { fill: none; stroke: var(--line); stroke-width: 1.5; transition: stroke 200ms ease, opacity 200ms ease; }
-.ctx3 .node {
-  position: absolute; width: 46%; min-width: 200px;
+/* ── the rail (git-graph) system — used by hero tree and mini diagrams ── */
+.ctx3 .rail { display: flex; flex-direction: column; }
+.ctx3 .rrow { display: flex; align-items: stretch; min-height: 12px; }
+.ctx3 .spine { flex: none; width: 30px; position: relative; }
+.ctx3 .spine::before { /* the continuous trunk line */
+  content: ""; position: absolute; left: 14px; top: 0; bottom: 0;
+  width: 2px; background: var(--line); transition: background 200ms ease;
+}
+.ctx3 .rrow.first .spine::before { top: 50%; }
+.ctx3 .rrow.last  .spine::before { bottom: 50%; }
+.ctx3 .spine .dot {
+  position: absolute; left: 15px; top: 50%; transform: translate(-50%, -50%);
+  width: 11px; height: 11px; border-radius: 99px;
+  background: var(--field); border: 2px solid var(--dim);
+  transition: border-color 200ms ease, background 200ms ease;
+}
+.ctx3 .rrow .gap { flex: none; width: 12px; }
+/* branch elbow: drops from the trunk, curves right into the card */
+.ctx3 .elbow { flex: none; width: 34px; position: relative; }
+.ctx3 .elbow::before {
+  content: ""; position: absolute; left: -16px; top: -14px; bottom: 50%;
+  width: 26px; border-left: 2px solid var(--line); border-bottom: 2px solid var(--line);
+  border-bottom-left-radius: 14px; transition: border-color 200ms ease;
+}
+.ctx3 .rrow.branch { margin-left: 30px; }
+.ctx3 .rrow.branch.deep { margin-left: 64px; }
+.ctx3 .rrow.branch .spine { display: none; }
+
+/* node cards */
+.ctx3 .ncard {
   background: var(--field-2); border: 1px solid var(--line); border-radius: 12px;
-  padding: 11px 13px; transition: opacity 220ms ease, border-color 220ms ease, transform 220ms ease;
-  cursor: default;
+  padding: 10px 14px; margin: 6px 0; min-width: 0;
+  transition: opacity 200ms ease, border-color 200ms ease, transform 200ms ease;
 }
-.ctx3 .chip {
-  display: inline-block; font-family: var(--mono); font-size: 10.5px;
-  letter-spacing: 0.08em; padding: 2px 8px; border-radius: 99px;
-  border: 1px solid var(--line); color: var(--dim);
-}
-.ctx3 .node .chip { margin-bottom: 7px; }
-.ctx3 .node p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--paper); }
-.ctx3 .node .sub { display: block; margin-top: 5px; font-family: var(--mono); font-size: 10.5px; color: var(--dim); }
-.ctx3 .tone-teal { border-color: rgba(82,184,172,0.45); background: linear-gradient(0deg, var(--teal-soft), var(--teal-soft)), var(--field-2); }
-.ctx3 .tone-teal .chip, .ctx3 .chip.teal { color: var(--teal); border-color: rgba(82,184,172,0.5); }
-.ctx3 .tone-amber { border-color: rgba(227,164,74,0.5); background: linear-gradient(0deg, var(--amber-soft), var(--amber-soft)), var(--field-2); }
-.ctx3 .tone-amber .chip, .ctx3 .chip.amber { color: var(--amber); border-color: rgba(227,164,74,0.55); }
-.ctx3 .tree.focused .node { opacity: 0.28; }
-.ctx3 .tree.focused .node.lit { opacity: 1; transform: translateY(-1px); }
-.ctx3 .tree.focused .edge { opacity: 0.25; }
-.ctx3 .tree.focused .edge.lit { opacity: 1; stroke: var(--amber); }
-.ctx3 .tree.focused .edge.lit-teal { opacity: 1; stroke: var(--teal); }
-.ctx3 .tree-hint { position: absolute; bottom: -6px; left: 0; font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
+.ctx3 .ncard p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink); }
+.ctx3 .chip { display: inline-block; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--dim); }
+.ctx3 .ncard .chip { margin-bottom: 6px; }
+.ctx3 .tag { font-family: var(--mono); font-size: 11px; color: var(--dim); align-self: center; margin-left: 12px; white-space: nowrap; }
+.ctx3 .tag.amber { color: var(--amber); } .ctx3 .tag.teal { color: var(--teal); } .ctx3 .tag.ok { color: var(--ok); }
+.ctx3 .tone-teal.ncard  { border-color: rgba(86,189,176,0.45); background: linear-gradient(0deg, var(--teal-dim), var(--teal-dim)), var(--field-2); }
+.ctx3 .tone-amber.ncard { border-color: rgba(229,169,79,0.5);  background: linear-gradient(0deg, var(--amber-dim), var(--amber-dim)), var(--field-2); }
+.ctx3 .tone-teal .chip  { color: var(--teal); border-color: rgba(86,189,176,0.5); }
+.ctx3 .tone-amber .chip { color: var(--amber); border-color: rgba(229,169,79,0.55); }
+.ctx3 .rrow.branch.tone-t .elbow::before { border-color: rgba(86,189,176,0.55); }
+.ctx3 .rrow.branch.tone-a .elbow::before { border-color: rgba(229,169,79,0.6); }
 
-@keyframes ctx3-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.ctx3 .node { animation: ctx3-rise 500ms ease backwards; }
+/* hero tree interactivity: hovering a node dims everything outside its lineage */
+.ctx3 .rail.focusable .ncard { cursor: default; }
+.ctx3 .rail.focused .rrow:not(.lit) .ncard { opacity: 0.25; }
+.ctx3 .rail.focused .rrow:not(.lit) .spine::before,
+.ctx3 .rail.focused .rrow:not(.lit) .elbow::before { opacity: 0.3; }
+.ctx3 .rail.focused .rrow.lit .ncard { transform: translateX(2px); }
+.ctx3 .rail.focused .rrow.lit .spine .dot { border-color: var(--amber); }
+.ctx3 .rail.focused .rrow.lit.tone-t .elbow::before { border-color: var(--teal); }
+.ctx3 .rail.focused .rrow.lit.tone-a .elbow::before { border-color: var(--amber); }
+.ctx3 .rail.focused .rrow.lit .spine::before { background: var(--amber); }
+.ctx3 .hint { margin-top: 10px; font-family: var(--mono); font-size: 11.5px; color: var(--dim); padding-left: 30px; }
+
+/* transform-only entrance: content stays readable even if animation is
+   throttled (hidden tab, headless, low-power) — never gate visibility on it */
+@keyframes rise { from { transform: translateY(10px); } to { transform: none; } }
+.ctx3 .hero .rrow { animation: rise 480ms cubic-bezier(0.22,1,0.36,1) backwards; }
 @media (prefers-reduced-motion: reduce) {
-  .ctx3 .node { animation: none; }
-  .ctx3 .node, .ctx3 .edge, .ctx3 .btn { transition: none; }
+  .ctx3 .hero .rrow { animation: none; }
+  .ctx3 .ncard, .ctx3 .btn, .ctx3 .spine::before, .ctx3 .elbow::before, .ctx3 .spine .dot { transition: none; }
 }
 
-/* moves — diagram-led */
-.ctx3 .moves { border-top: 1px solid var(--line); padding: 76px 0 30px; }
-.ctx3 .moves-head { max-width: 60ch; margin-bottom: 8px; }
+/* moves */
+.ctx3 .moves { border-top: 1px solid var(--line); padding: clamp(48px, 7vw, 84px) 0 20px; }
 .ctx3 .move {
-  display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  gap: 40px; align-items: center; padding: 40px 0; border-bottom: 1px solid var(--line);
+  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: clamp(24px, 4vw, 56px); align-items: center;
+  padding: clamp(32px, 4vw, 48px) 0; border-bottom: 1px solid var(--line);
 }
-.ctx3 .move:last-child { border-bottom: none; }
-@media (max-width: 860px) { .ctx3 .move { grid-template-columns: 1fr; gap: 20px; } }
-.ctx3 .move h3 { font-family: var(--display); font-weight: 600; font-size: clamp(22px, 2.6vw, 28px); margin: 10px 0 6px; letter-spacing: -0.01em; line-height: 1.15; }
-.ctx3 .move p { color: var(--dim); line-height: 1.6; font-size: 15px; margin: 0; max-width: 40ch; }
-.ctx3 .eyebrow.teal { color: var(--teal); }
-
-/* mini-diagram canvas */
-.ctx3 .mini {
-  position: relative; background:
-    radial-gradient(circle at 1px 1px, rgba(138,146,168,0.14) 1px, transparent 0) 0 0 / 22px 22px,
-    var(--field-2);
-  border: 1px solid var(--line); border-radius: 16px; min-height: 240px;
-}
-.ctx3 .mini svg.edges { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.ctx3 .mini .mnode {
-  position: absolute; background: var(--field-3); border: 1px solid var(--line);
-  border-radius: 10px; padding: 8px 12px; font-family: var(--mono); font-size: 12px;
-  color: var(--paper); white-space: nowrap; display: flex; align-items: center; gap: 8px;
-}
-.ctx3 .mini .mnode .dot { width: 7px; height: 7px; border-radius: 99px; background: var(--dim); }
-.ctx3 .mini .mnode.tone-amber .dot { background: var(--amber); }
-.ctx3 .mini .mnode.tone-teal .dot { background: var(--teal); }
-.ctx3 .mini .tag {
-  position: absolute; font-family: var(--mono); font-size: 10.5px; color: var(--dim);
-  letter-spacing: 0.04em;
-}
-.ctx3 .mini .tag.amber { color: var(--amber); }
-.ctx3 .mini .tag.teal { color: var(--teal); }
-.ctx3 .mini .tag.ok { color: #7BC98A; }
+.ctx3 .move:last-of-type { border-bottom: none; }
+@media (max-width: 860px) { .ctx3 .move { grid-template-columns: 1fr; } }
+.ctx3 .move p { color: var(--dim); font-size: 15.5px; line-height: 1.6; margin: 0; max-width: 42ch; text-wrap: pretty; }
+.ctx3 .glyph { display: inline-flex; width: 44px; height: 44px; border-radius: 12px; align-items: center; justify-content: center; margin-bottom: 14px; border: 1px solid var(--line); background: var(--field-2); }
+.ctx3 .glyph.amber { color: var(--amber); border-color: rgba(229,169,79,0.4); }
+.ctx3 .glyph.teal  { color: var(--teal);  border-color: rgba(86,189,176,0.4); }
+.ctx3 .mini { background: var(--field-2); border: 1px solid var(--line); border-radius: 16px; padding: clamp(14px, 2.5vw, 26px); }
+.ctx3 .mini .ncard { background: var(--field-3); }
+.ctx3 .mini .rail { max-width: 460px; }
 
 /* receipt */
-.ctx3 .receipt-band { padding: 84px 0; border-top: 1px solid var(--line); }
-.ctx3 .receipt-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+.ctx3 .receipt-band { padding: clamp(48px, 7vw, 84px) 0; border-top: 1px solid var(--line); }
+.ctx3 .receipt-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 56px); align-items: center; }
 @media (max-width: 860px) { .ctx3 .receipt-grid { grid-template-columns: 1fr; } }
-.ctx3 .receipt {
-  background: var(--field-2); border: 1px solid var(--line); border-radius: 14px;
-  font-family: var(--mono); font-size: 13px; padding: 24px; color: var(--dim);
-}
-.ctx3 .receipt .line { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
-.ctx3 .receipt .line:last-of-type { border-bottom: none; }
-.ctx3 .receipt .total { color: var(--paper); font-weight: 600; }
+.ctx3 .receipt { background: var(--field-2); border: 1px solid var(--line); border-radius: 16px; font-family: var(--mono); font-size: 13px; padding: 24px; color: var(--dim); }
+.ctx3 .receipt .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; }
+.ctx3 .receipt .ink { color: var(--ink); font-weight: 600; }
 .ctx3 .receipt .save { color: var(--amber); font-weight: 600; }
 .ctx3 .receipt .strike { text-decoration: line-through; opacity: 0.6; }
-.ctx3 .bar { height: 10px; border-radius: 99px; background: var(--field-3); margin: 6px 0 14px; overflow: hidden; }
+.ctx3 .bar { height: 10px; border-radius: 99px; background: var(--field-3); margin: 4px 0 12px; overflow: hidden; }
 .ctx3 .bar > i { display: block; height: 100%; border-radius: 99px; }
+.ctx3 .receipt .foot { border-top: 1px dashed var(--line); margin-top: 10px; padding-top: 10px; font-size: 11px; }
 
 /* pricing */
-.ctx3 .pricing { padding: 84px 0; border-top: 1px solid var(--line); }
-.ctx3 .plans { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 40px; max-width: 820px; }
-@media (max-width: 760px) { .ctx3 .plans { grid-template-columns: 1fr; } }
+.ctx3 .pricing { padding: clamp(48px, 7vw, 84px) 0; border-top: 1px solid var(--line); }
+.ctx3 .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 36px; max-width: 780px; }
 .ctx3 .plan { border: 1px solid var(--line); border-radius: 16px; padding: 28px; background: var(--field-2); display: flex; flex-direction: column; }
-.ctx3 .plan.founding { border-color: rgba(227,164,74,0.6); }
-.ctx3 .plan .name { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+.ctx3 .plan.founding { border-color: rgba(229,169,79,0.6); }
+.ctx3 .plan .name { font-family: var(--display); font-weight: 600; font-size: 15px; color: var(--dim); }
 .ctx3 .plan.founding .name { color: var(--amber); }
-.ctx3 .plan .price { font-family: var(--display); font-size: 44px; font-weight: 600; margin: 12px 0 2px; }
-.ctx3 .plan .per { font-size: 13px; color: var(--dim); margin-bottom: 18px; }
-.ctx3 .plan ul { list-style: none; margin: 0 0 24px; padding: 0; color: var(--dim); font-size: 14.5px; line-height: 2; }
+.ctx3 .plan .price { font-family: var(--display); font-size: 46px; font-weight: 650; margin: 10px 0 2px; }
+.ctx3 .plan .per { font-size: 13px; color: var(--dim); margin-bottom: 16px; }
+.ctx3 .plan ul { list-style: none; margin: 0 0 24px; padding: 0; color: var(--dim); font-size: 14.5px; line-height: 2.05; }
 .ctx3 .plan ul li::before { content: "— "; color: var(--amber); }
 .ctx3 .plan .btn { margin-top: auto; justify-content: center; }
 
 /* faq */
-.ctx3 .faq { padding: 76px 0 96px; border-top: 1px solid var(--line); max-width: 760px; }
+.ctx3 .faq { padding: clamp(48px, 7vw, 80px) 0 96px; border-top: 1px solid var(--line); max-width: 740px; }
 .ctx3 details { border-bottom: 1px solid var(--line); }
-.ctx3 summary {
-  cursor: pointer; list-style: none; display: flex; justify-content: space-between;
-  align-items: center; gap: 16px; padding: 20px 0;
-  font-family: var(--display); font-weight: 500; font-size: 18px;
-}
+.ctx3 summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 19px 0; font-family: var(--display); font-weight: 500; font-size: 17.5px; }
 .ctx3 summary::-webkit-details-marker { display: none; }
-.ctx3 summary::after { content: "+"; font-family: var(--mono); color: var(--amber); font-size: 18px; }
+.ctx3 summary::after { content: "+"; font-family: var(--mono); color: var(--amber); font-size: 18px; flex: none; }
 .ctx3 details[open] summary::after { content: "–"; }
-.ctx3 details p { margin: 0 0 22px; color: var(--dim); line-height: 1.7; font-size: 15px; max-width: 62ch; }
+.ctx3 details p { margin: 0 0 20px; color: var(--dim); line-height: 1.7; font-size: 15px; max-width: 62ch; }
 
 /* footer */
-.ctx3 footer { border-top: 1px solid var(--line); padding: 32px 0 44px; display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; color: var(--dim); font-size: 13.5px; align-items: center; }
+.ctx3 footer { border-top: 1px solid var(--line); padding: 30px 0 44px; display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; color: var(--dim); font-size: 13.5px; align-items: center; }
 .ctx3 footer nav { display: flex; gap: 22px; }
-.ctx3 footer a:hover { color: var(--paper); }
+.ctx3 footer a:hover { color: var(--ink); }
 `;
 
-/* ── Brand icon (public/tree-icon.svg, inlined so currentColor works) ──── */
+/* ── Brand glyph (public/tree-icon.svg inlined; currentColor) ─────────── */
 
 function TreeIcon({ size = 26 }: { size?: number }) {
   return (
@@ -234,140 +228,136 @@ function TreeIcon({ size = 26 }: { size?: number }) {
   );
 }
 
-/* ── Hero tree ────────────────────────────────────────────────────────── */
+/* Move glyphs — same stroke language as the brand icon, one drawing per move */
 
-type TreeNode = {
-  id: string;
-  parent: string | null;
-  x: number;
-  y: number;
-  chip: string;
-  text: string;
-  sub?: string;
-  tone?: "teal" | "amber";
+function GlyphSwitch({ size = 24 }: { size?: number }) {
+  // a node handing off to another node: cross-AI continuation
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="8" y="24" width="30" height="22" rx="5" fill="none" stroke="currentColor" strokeWidth="7" />
+      <rect x="62" y="54" width="30" height="22" rx="5" fill="none" stroke="currentColor" strokeWidth="7" />
+      <path d="M38 35 C 58 35, 58 65, 62 65" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+      <path d="M52 52 L 60 64 L 46 66" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function GlyphSide({ size = 24 }: { size?: number }) {
+  // a straight trunk with one branch curving away and rejoining nothing
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M30 10 L30 90" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+      <path d="M30 38 C 30 58, 58 48, 62 62" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+      <rect x="52" y="62" width="26" height="20" rx="5" fill="none" stroke="currentColor" strokeWidth="7" />
+    </svg>
+  );
+}
+
+function GlyphPromote({ size = 24 }: { size?: number }) {
+  // two siblings, one starred: compare and promote
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="10" y="55" width="28" height="22" rx="5" fill="none" stroke="currentColor" strokeWidth="7" opacity="0.45" />
+      <rect x="60" y="55" width="28" height="22" rx="5" fill="none" stroke="currentColor" strokeWidth="7" />
+      <path d="M24 55 C 24 35, 74 35, 74 55" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+      <path d="M74 14 L78 24 L88 25 L80 32 L82 42 L74 36 L66 42 L68 32 L60 25 L70 24 Z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/* ── Rail primitives ──────────────────────────────────────────────────── */
+
+type RowProps = {
+  children: React.ReactNode;
+  branch?: "amber" | "teal";
+  deep?: boolean;
+  first?: boolean;
+  last?: boolean;
+  lit?: boolean;
+  tag?: { text: string; tone?: "amber" | "teal" | "ok" };
+  onHover?: () => void;
+  delay?: number;
 };
 
-const NODES: TreeNode[] = [
-  { id: "n1", parent: null, x: 2, y: 0, chip: "GPT-5", text: "Why do transformers use attention instead of recurrence?" },
-  { id: "n2", parent: "n1", x: 2, y: 24, chip: "GPT-5", text: "Attention lets every token look at every other token at once…" },
-  { id: "s1", parent: "n2", x: 54, y: 38, chip: "side question", text: "Wait — what exactly is a token?", sub: "main thread: untouched", tone: "teal" },
-  { id: "n3", parent: "n2", x: 2, y: 52, chip: "GPT-5", text: "Now explain multi-head attention like I'm rusty on linear algebra." },
-  { id: "c1", parent: "n3", x: 54, y: 74, chip: "→ continued on Claude", text: "Same thread, second opinion.", sub: "context traveled with it", tone: "amber" },
-];
-
-function ancestors(id: string): Set<string> {
-  const byId = new Map(NODES.map((n) => [n.id, n]));
-  const lit = new Set<string>();
-  let cur: TreeNode | undefined = byId.get(id);
-  while (cur) {
-    lit.add(cur.id);
-    cur = cur.parent ? byId.get(cur.parent) : undefined;
-  }
-  return lit;
+function Row({ children, branch, deep, first, last, lit, tag, onHover, delay }: RowProps) {
+  const cls = [
+    "rrow",
+    branch ? `branch tone-${branch === "teal" ? "t" : "a"}` : "",
+    deep ? "deep" : "",
+    first ? "first" : "",
+    last ? "last" : "",
+    lit ? "lit" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <div className={cls} style={delay !== undefined ? { animationDelay: `${delay}ms` } : undefined}>
+      {branch ? <div className="elbow" /> : (
+        <div className="spine"><span className="dot" /></div>
+      )}
+      <div className="gap" />
+      <div
+        onMouseEnter={onHover}
+        onFocus={onHover}
+        tabIndex={onHover ? 0 : undefined}
+        style={{ minWidth: 0, flex: "0 1 auto" }}
+      >
+        {children}
+      </div>
+      {tag && <span className={`tag ${tag.tone ?? ""}`}>{tag.text}</span>}
+    </div>
+  );
 }
+
+function Card({ chip, text, tone }: { chip?: string; text: string; tone?: "amber" | "teal" }) {
+  return (
+    <div className={`ncard ${tone ? `tone-${tone}` : ""}`}>
+      {chip && <span className="chip">{chip}</span>}
+      <p>{text}</p>
+    </div>
+  );
+}
+
+/* ── Hero tree: lineage lights up on hover ────────────────────────────── */
+
+const LINEAGE: Record<string, string[]> = {
+  n1: ["n1"],
+  n2: ["n1", "n2"],
+  s1: ["n1", "n2", "s1"],
+  n3: ["n1", "n2", "n3"],
+  c1: ["n1", "n2", "n3", "c1"],
+};
 
 function HeroTree() {
   const [focus, setFocus] = useState<string | null>(null);
-  const lit = useMemo(() => (focus ? ancestors(focus) : new Set<string>()), [focus]);
-
-  const edges = NODES.filter((n) => n.parent).map((n) => {
-    const p = NODES.find((m) => m.id === n.parent)!;
-    const sameColumn = Math.abs(p.x - n.x) < 10;
-    const x1 = p.x + (sameColumn ? 12 : 30);
-    const y1 = p.y + 16;
-    const x2 = n.x + (sameColumn ? 12 : 4);
-    const y2 = n.y + 7;
-    const d = sameColumn
-      ? `M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}`
-      : `M ${x1} ${y1} C ${x1 + 14} ${y1 + 6}, ${x2 - 16} ${y2 - 8}, ${x2} ${y2}`;
-    return { id: `${n.parent}-${n.id}`, d, child: n };
-  });
+  const lit = focus ? new Set(LINEAGE[focus]) : null;
+  const is = (id: string) => (lit ? lit.has(id) : false);
 
   return (
-    <div
-      className={`tree ${focus ? "focused" : ""}`}
-      onMouseLeave={() => setFocus(null)}
-      aria-label="Example conversation tree: a main thread, a side question, and a branch continued on another AI"
-      role="img"
-    >
-      <svg className="edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        {edges.map((e) => (
-          <path
-            key={e.id}
-            d={e.d}
-            className={`edge ${focus && lit.has(e.child.id) ? (e.child.tone === "teal" ? "lit-teal" : "lit") : ""}`}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-      </svg>
-      {NODES.map((n, i) => (
-        <div
-          key={n.id}
-          className={`node ${n.tone ? `tone-${n.tone}` : ""} ${focus && lit.has(n.id) ? "lit" : ""}`}
-          style={{ left: `${n.x}%`, top: `${n.y}%`, animationDelay: `${120 + i * 130}ms` }}
-          onMouseEnter={() => setFocus(n.id)}
-          onFocus={() => setFocus(n.id)}
-          tabIndex={0}
-        >
-          <span className="chip">{n.chip}</span>
-          <p>{n.text}</p>
-          {n.sub && <span className="sub">{n.sub}</span>}
-        </div>
-      ))}
-      <span className="tree-hint">hover a node — only its own lineage lights up</span>
-    </div>
-  );
-}
-
-/* ── Mini diagrams (one per move; picture first, words second) ────────── */
-
-function MiniSwitch() {
-  return (
-    <div className="mini" aria-label="Diagram: a GPT conversation branches onto Claude and Gemini, carrying its context" role="img">
-      <svg className="edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path className="edge" d="M 22 22 C 22 45, 22 45, 22 62" vectorEffect="non-scaling-stroke" />
-        <path className="edge lit" style={{ opacity: 1, stroke: "var(--amber)" }} d="M 28 20 C 52 26, 58 30, 62 40" vectorEffect="non-scaling-stroke" />
-        <path className="edge lit-teal" style={{ opacity: 1, stroke: "var(--teal)" }} d="M 28 22 C 52 40, 56 58, 60 72" vectorEffect="non-scaling-stroke" />
-      </svg>
-      <div className="mnode" style={{ left: "8%", top: "10%" }}><span className="dot" />GPT-5 · your thread</div>
-      <div className="mnode" style={{ left: "8%", top: "62%" }}><span className="dot" />…continues</div>
-      <div className="mnode tone-amber" style={{ left: "56%", top: "34%" }}><span className="dot" />Claude&apos;s take</div>
-      <div className="mnode tone-teal" style={{ left: "54%", top: "70%" }}><span className="dot" />Gemini, cheaper</div>
-      <span className="tag amber" style={{ left: "38%", top: "16%" }}>context travels →</span>
-    </div>
-  );
-}
-
-function MiniSide() {
-  return (
-    <div className="mini" aria-label="Diagram: a side question branches off; the main thread stays clean" role="img">
-      <svg className="edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path className="edge" d="M 22 24 C 22 42, 22 42, 22 56" vectorEffect="non-scaling-stroke" />
-        <path className="edge" d="M 22 70 C 22 80, 22 80, 22 88" vectorEffect="non-scaling-stroke" />
-        <path className="edge lit-teal" style={{ opacity: 1, stroke: "var(--teal)" }} d="M 30 60 C 50 62, 54 48, 58 42" vectorEffect="non-scaling-stroke" />
-      </svg>
-      <div className="mnode" style={{ left: "8%", top: "12%" }}><span className="dot" />main thread</div>
-      <div className="mnode" style={{ left: "8%", top: "48%" }}><span className="dot" />deep in the topic…</div>
-      <div className="mnode" style={{ left: "8%", top: "80%" }}><span className="dot" />…continues clean</div>
-      <div className="mnode tone-teal" style={{ left: "56%", top: "30%" }}><span className="dot" />&quot;wait, what&apos;s a token?&quot;</div>
-      <span className="tag ok" style={{ left: "34%", top: "84%" }}>✓ never sees the detour</span>
-    </div>
-  );
-}
-
-function MiniCompare() {
-  return (
-    <div className="mini" aria-label="Diagram: two versions compared, the winner promoted and exported" role="img">
-      <svg className="edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path className="edge" d="M 42 22 C 30 32, 26 38, 24 46" vectorEffect="non-scaling-stroke" />
-        <path className="edge lit" style={{ opacity: 1, stroke: "var(--amber)" }} d="M 58 22 C 68 32, 72 38, 74 46" vectorEffect="non-scaling-stroke" />
-        <path className="edge lit" style={{ opacity: 1, stroke: "var(--amber)" }} d="M 74 62 C 72 72, 68 78, 60 84" vectorEffect="non-scaling-stroke" />
-      </svg>
-      <div className="mnode" style={{ left: "32%", top: "10%" }}><span className="dot" />the decision point</div>
-      <div className="mnode" style={{ left: "6%", top: "44%", opacity: 0.55 }}><span className="dot" />Version A</div>
-      <div className="mnode tone-amber" style={{ left: "58%", top: "44%" }}><span className="dot" />Version B ★</div>
-      <div className="mnode tone-amber" style={{ left: "34%", top: "80%" }}><span className="dot" />export draft.md</div>
-      <span className="tag amber" style={{ left: "60%", top: "66%" }}>promoted</span>
+    <div>
+      <div
+        className={`rail focusable ${focus ? "focused" : ""}`}
+        onMouseLeave={() => setFocus(null)}
+        role="img"
+        aria-label="A conversation tree: a main thread, a side question that stays separate, and a branch continued on Claude"
+      >
+        <Row first lit={is("n1")} onHover={() => setFocus("n1")} delay={100}>
+          <Card chip="GPT-5" text="Why do transformers use attention instead of recurrence?" />
+        </Row>
+        <Row lit={is("n2")} onHover={() => setFocus("n2")} delay={220}>
+          <Card chip="GPT-5" text="Attention lets every token look at every other token at once…" />
+        </Row>
+        <Row branch="teal" lit={is("s1")} onHover={() => setFocus("s1")} delay={340}>
+          <Card tone="teal" chip="side question" text="Wait — what exactly is a token?" />
+        </Row>
+        <Row last lit={is("n3")} onHover={() => setFocus("n3")} delay={460}>
+          <Card chip="GPT-5" text="Now explain multi-head attention simply." />
+        </Row>
+        <Row branch="amber" lit={is("c1")} onHover={() => setFocus("c1")} delay={580}>
+          <Card tone="amber" chip="→ continued on Claude" text="Same thread. Second opinion. Context came along." />
+        </Row>
+      </div>
+      <p className="hint">hover a node — only its own lineage lights up</p>
     </div>
   );
 }
@@ -384,10 +374,7 @@ export function Landing() {
 
       <div className="wrap">
         <header className="nav">
-          <a href="/" className="brand">
-            <TreeIcon />
-            Context Tree
-          </a>
+          <a href="/" className="brand"><TreeIcon />Context Tree</a>
           <nav className="nav-links">
             <a href="#moves" className="hide-sm">How it works</a>
             <a href="#pricing" className="hide-sm">Pricing</a>
@@ -400,84 +387,99 @@ export function Landing() {
         </header>
 
         <section className="hero">
+          <span className="hero-mark"><TreeIcon size={420} /></span>
           <div>
-            <span className="eyebrow">For people who think in branches</span>
             <h1>Explore in every direction.</h1>
             <p className="lede">
-              <strong>Every branch carries only its own history.</strong> Side
-              questions never pollute your thread. Any branch can run on a
-              different AI.
+              An AI studio with one rule: <strong>every branch knows only its
+              own history.</strong> Detours stay detours. Any branch can run
+              on a different AI.
             </p>
             <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
               <button className="btn btn-primary" onClick={start}>Start free — bring your key</button>
               <a className="btn btn-ghost" href="#moves">See the moves</a>
             </div>
-            <p className="trustline">
-              <b>your keys</b> · <b>your data</b> · export anytime · no card required
-            </p>
+            <p className="trust"><b>your keys</b> · <b>your data</b> · export anytime · no card</p>
           </div>
           <HeroTree />
         </section>
       </div>
 
       <div className="wrap moves" id="moves">
-        <div className="moves-head">
-          <span className="eyebrow" style={{ color: "var(--dim)" }}>Three moves no chat app has</span>
-        </div>
-
         <div className="move">
           <div>
-            <span className="eyebrow">Continue on another AI</span>
+            <span className="glyph amber"><GlyphSwitch /></span>
             <h3>Started with GPT.<br />Want Claude&apos;s take? One click.</h3>
-            <p>The branch carries your context to any model — GPT, Claude, Gemini, Groq.</p>
+            <p>The branch carries your context to any model.</p>
           </div>
-          <MiniSwitch />
+          <div className="mini">
+            <div className="rail" role="img" aria-label="A GPT thread branches to Claude and to Gemini; context travels with each branch">
+              <Row first><Card chip="GPT-5" text="your thread" /></Row>
+              <Row branch="amber" tag={{ text: "context travels →", tone: "amber" }}>
+                <Card tone="amber" chip="Claude" text="second opinion" />
+              </Row>
+              <Row last><Card chip="GPT-5" text="…continues" /></Row>
+              <Row branch="teal"><Card tone="teal" chip="Gemini Flash" text="same question, cheaper" /></Row>
+            </div>
+          </div>
         </div>
 
         <div className="move">
           <div>
-            <span className="eyebrow teal">Side question</span>
+            <span className="glyph teal"><GlyphSide /></span>
             <h3>Ask the dumb question.<br />Your thread never sees it.</h3>
             <p>Every detour is its own branch. Ask, understand, come back clean.</p>
           </div>
-          <MiniSide />
+          <div className="mini">
+            <div className="rail" role="img" aria-label="A side question branches off the main thread; the main thread continues untouched">
+              <Row first><Card text="deep in the topic…" /></Row>
+              <Row branch="teal"><Card tone="teal" chip="side question" text="wait — what's a token?" /></Row>
+              <Row last tag={{ text: "✓ never saw the detour", tone: "ok" }}>
+                <Card text="…continues clean" />
+              </Row>
+            </div>
+          </div>
         </div>
 
         <div className="move">
           <div>
-            <span className="eyebrow">Compare &amp; keep the best</span>
+            <span className="glyph amber"><GlyphPromote /></span>
             <h3>Fork the decision.<br />Promote the winner.</h3>
             <p>Run versions side by side, then compile the winning path to Markdown.</p>
           </div>
-          <MiniCompare />
+          <div className="mini">
+            <div className="rail" role="img" aria-label="Two versions branch from a decision; version B is promoted and exported as Markdown">
+              <Row first last><Card text="the decision point" /></Row>
+              <Row branch="amber" tag={{ text: "promoted ★", tone: "amber" }}>
+                <Card tone="amber" chip="version B" text="the one that works" />
+              </Row>
+              <Row branch="amber" deep><Card chip="export" text="draft.md — the winning path, compiled" /></Row>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="wrap receipt-band">
         <div className="receipt-grid">
           <div>
-            <span className="eyebrow">Scoped context is cheaper context</span>
             <h2>Stop re-paying for history your question doesn&apos;t need.</h2>
             <p className="lede">
-              A linear chat re-sends everything, every turn. A branch sends only
-              its own lineage. Your key — so the difference is your money.
+              Linear chats re-send everything, every turn. A branch sends only
+              its lineage. Your key — so the difference is your money.
             </p>
           </div>
-          <div className="receipt" aria-label="Token cost comparison">
-            <div className="line" style={{ borderBottom: "none" }}><span>one long linear chat</span><span className="strike">48,210 tok/turn</span></div>
+          <div className="receipt" aria-label="Token cost comparison: linear chat versus branched">
+            <div className="row"><span>one long linear chat</span><span className="strike">48,210 tok/turn</span></div>
             <div className="bar"><i style={{ width: "100%", background: "var(--line)" }} /></div>
-            <div className="line" style={{ borderBottom: "none" }}><span>same work, branched</span><span className="total">19,830 tok/turn</span></div>
+            <div className="row"><span>same work, branched</span><span className="ink">19,830 tok/turn</span></div>
             <div className="bar"><i style={{ width: "41%", background: "var(--amber)" }} /></div>
-            <div className="line"><span>context you stopped re-sending</span><span className="save">−59%</span></div>
-            <div className="line" style={{ paddingTop: 10 }}>
-              <span style={{ fontSize: 11 }}>research: ~58% context reduction from branching (arXiv:2512.13914)</span>
-            </div>
+            <div className="row"><span>context you stopped re-sending</span><span className="save">−59%</span></div>
+            <div className="foot">research: ~58% context reduction from branching · arXiv:2512.13914</div>
           </div>
         </div>
       </div>
 
       <div className="wrap pricing" id="pricing">
-        <span className="eyebrow">Pricing</span>
         <h2>Pay once. Bring your key.</h2>
         <div className="plans">
           <div className="plan">
@@ -507,9 +509,8 @@ export function Landing() {
       </div>
 
       <div className="wrap faq" id="faq">
-        <span className="eyebrow">FAQ</span>
         <h2>Fair questions.</h2>
-        <div style={{ marginTop: 20 }}>
+        <div style={{ marginTop: 18 }}>
           <details>
             <summary>Doesn&apos;t ChatGPT already have branching?</summary>
             <p>
@@ -557,10 +558,7 @@ export function Landing() {
 
       <div className="wrap">
         <footer>
-          <span className="brand" style={{ fontSize: 14 }}>
-            <TreeIcon size={20} />
-            Context Tree
-          </span>
+          <span className="brand" style={{ fontSize: 14 }}><TreeIcon size={20} />Context Tree</span>
           <nav>
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>

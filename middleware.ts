@@ -17,6 +17,7 @@ export default withAuth(
           pathname.startsWith("/api/") || // Allow all API routes to handle their own auth
           pathname.startsWith("/.well-known/") ||
           pathname === "/" ||
+          pathname === "/landing" || // Direct marketing URL, no auth check
           pathname === "/waitlist" || // Allow waitlist page
           pathname === "/profile" || // Allow profile page (it handles auth internally)
           pathname.startsWith("/_next/") ||
