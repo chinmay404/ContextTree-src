@@ -207,3 +207,35 @@ currently key on thread_id/message_id WITHOUT an ownership predicate, so
 JWT auth alone does not stop user A from reading user B's thread by id.
 Add user scoping to every store read + the tenancy test matrix
 (arch §7 row 1). This is Day 5-6 and is the real gate before any beta user.
+
+## Checkpoint 006 — 2026-07-12 (prod migrated; tenancy done; context doc)
+
+- **Migrations 001 + 002 APPLIED TO PROD** (Supabase ContextTree_prod,
+  eu-west-1) with the new password. Verified: users.id uuid, every
+  conversation table has user_id uuid FKs, vector(768), ledger clean,
+  re-run idempotent. New password is in both env files.
+- **Tenancy isolation done and tested (Day 5, the launch blocker).**
+  All PostgresStore thread reads now carry a user_email predicate;
+  update_thread_summary writes only owned rows; new get_thread_owner +
+  resolve_user_email; chat/ + /stream call _assert_thread_access on
+  conversation_id and parent_thread_id → 403 on cross-tenant. 14/14
+  tests green (7 tenancy + 7 auth boundary) against local Docker PG.
+  Backend commit d18967f (v2/dev).
+- **Context-engineering design written** →
+  V2/10-CONTEXT-PIPELINE.md (Mermaid diagrams): the one rule, four memory
+  layers, per-turn sequence, exact prompt block, scoped retrieval fence,
+  watermark summarization, fork inheritance, and V2 deltas. Named to match
+  the vault reference. Linked from V2/README.
+- Local Docker PG "ctx-pg" (55432) has tenancy + guardtest DBs from
+  validation; harmless, `docker rm -f ctx-pg` to clean.
+
+### Blocked on owner
+- Delete DB.txt (plaintext creds still in workspace root).
+- On deploy: set BACKEND_JWT_SECRET (same value) + new DATABASE_URL in
+  Vercel and the backend host.
+
+### Next when we resume
+Day 6 single-writer: retire the Next.js CRUD/`lib/mongodb.ts` writer so
+FastAPI owns all conversation writes; then switch store predicates from
+user_email to user_id directly (drop user_email columns, migration 003).
+Then Day 5 remainder: Postgres quota buckets replacing SlowAPI.

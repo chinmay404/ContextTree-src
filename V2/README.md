@@ -31,6 +31,9 @@ architecture do not.
 | [05-ARCHITECTURE-V2.md](05-ARCHITECTURE-V2.md) | Trust boundary (JWT), single-writer, schema v2, migrations, tests, ops |
 | [06-CUT-LIST.md](06-CUT-LIST.md) | Every deletion with its reason |
 | [07-30-DAY-PLAN.md](07-30-DAY-PLAN.md) | Day-by-day execution, budget, pre-decided risk responses |
+| [08-CHECKPOINT.md](08-CHECKPOINT.md) | Resume log — read first; what's done, blocked, and next |
+| [09-FEATURES.md](09-FEATURES.md) | Plain-language give / remove / update feature list |
+| [10-CONTEXT-PIPELINE.md](10-CONTEXT-PIPELINE.md) | How each branch's prompt is built — the four memory layers, scoped retrieval, diagrams |
 
 ## The eight features V2 ships
 
