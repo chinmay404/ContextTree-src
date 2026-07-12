@@ -239,3 +239,41 @@ Day 6 single-writer: retire the Next.js CRUD/`lib/mongodb.ts` writer so
 FastAPI owns all conversation writes; then switch store predicates from
 user_email to user_id directly (drop user_email columns, migration 003).
 Then Day 5 remainder: Postgres quota buckets replacing SlowAPI.
+
+## Checkpoint 007 — 2026-07-12 (quotas; frontend tenancy hole; single-writer deferred)
+
+- **Day 5b quotas DONE:** durable per-user daily buckets (migration 003,
+  APPLIED TO PROD), atomic upsert-increment in the store, chat endpoints
+  enforce DAILY_MESSAGE_LIMIT (429) after auth+ownership; accounting
+  failure never blocks chat. 15/15 backend tests. Commit b2fec25 (v2/dev).
+- **Frontend tenancy hole CLOSED:** POST /api/canvases/[id]/nodes was
+  completely unauthenticated — anyone could add nodes to any canvas by
+  guessing the id. Now requires session + canvas-ownership check.
+  Commit 8ba9e2f (main).
+- Deleted dead hooks/use-auto-save.ts (imported server pg layer into a
+  client hook; would crash if mounted; used nowhere).
+- **Full single-writer (Day 6) DEFERRED — deliberate call.** The CRUD
+  contract (see agent report in session) shows 18 endpoints with heavy
+  dual-write semantics (canvases.data blob + normalized tables kept in
+  sync per-method, shallow merges, deterministic message ids). Rewriting
+  all of it byte-compatibly in FastAPI while the app is live is high-risk
+  churn for no user-visible gain right now. Dual-write is a data-integrity
+  risk, NOT a security hole (both writers already enforce user_email
+  isolation). Revisit as a dedicated effort after launch features (F1–F3)
+  land, or if divergence bugs actually appear.
+  Contract to reimplement against, if/when: it's in the session transcript
+  (agent "Map Next CRUD API contract"). Key gotchas captured there:
+  response envelope keys differ per endpoint, GET /canvases writes user
+  stats, node GET returns bare object, messages use turn shape, edges
+  delete+reinsert on every full write.
+
+### Still blocked on owner
+- Delete DB.txt (plaintext creds in workspace root).
+- On deploy: BACKEND_JWT_SECRET (same both sides) + new DATABASE_URL in
+  Vercel + backend host.
+
+### Security posture now (all tested/shipped)
+JWT trust boundary ✓ · identity from token only ✓ · UUID identity ✓ ·
+store reads user-scoped ✓ · ownership 403 gate ✓ · durable quotas ✓ ·
+frontend node-POST authenticated ✓. The launch-blocker tenancy work is
+complete.
