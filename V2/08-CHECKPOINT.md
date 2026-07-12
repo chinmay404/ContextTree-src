@@ -377,3 +377,21 @@ Owner tested prod end-to-end; every finding root-caused and shipped:
 Verified live: deploy READY, contexttree.tech 200, Railway 200.
 Open: fork buffer verification after healthy chats, Stripe, legal
 review, demo assets, rotate DB.txt keys.
+
+---
+
+## Checkpoint 011 (2026-07-13) — Context inheritance + admin + marketing kit
+
+- CORE FIX: fork context inheritance. Model-404-era chats never persisted
+  (stream returned before save), so forks inherited nothing and were
+  stamped is_initialized=true forever. Now: empty inheritance never
+  stamps; summary-less branches self-heal on next message (summary-only
+  seeding, full-scope resummarize forced). Deployed to Railway, healthy.
+- Admin: chinmaypisal1718@gmail.com hardcoded; more via
+  NEXT_PUBLIC_ADMIN_EMAILS (comma-separated Vercel env). /admin login
+  loop fixed: middleware checked JWT token but sessions are strategy
+  database -> token always null -> infinite bounce. Middleware now
+  accepts the session cookie; /privacy + /terms made public.
+- Canvas: back to auto-align only (owner decision), Tidy removed.
+- Marketing kit committed (V2/marketing/): Show HN, PH listing, X
+  thread, blog postmortem, video scripts + demo canvas recipe.
