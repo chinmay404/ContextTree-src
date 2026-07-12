@@ -19,7 +19,7 @@ three money features (F1/F2/F3).
 | Day | Work | Done-when |
 |-----|------|-----------|
 | **0** | **(DONE 2026-07-12) Landing page redesign, explorer-first** — new single landing component with F0a/F0b-led copy (spec §8), wired into `page.tsx`, pushed | New landing live in the repo before any other work |
-| 1 | Repo hygiene: monorepo-ize (one git root, `apps/web` + `apps/api`), delete cut-list root debris, tighten .gitignore, **rotate every secret** (.env, .pem, Supabase, Stripe, provider keys) | Old keys revoked; clean `git log` going forward |
+| 1 | Repo hygiene **in the existing two repos** (owner decision 2026-07-12: no monorepo — development stays in `ContextTree/` + `ContextTree-src/`): delete cut-list debris, tighten .gitignore, **rotate every secret** (.env, .pem, Supabase, Stripe, provider keys) then remove those files | Old keys revoked; clean `git log` going forward |
 | 2 | Migration runner (`scripts/migrate.py`) + migration 001 baseline; remove runtime DDL (NextAuth adapter + PostgresStore setup) | Fresh DB from migrations == prod schema |
 | 3 | Migration 002: UUID identity, backfill, `user_email` → `user_id` FKs | App runs on UUIDs end-to-end; emails out of LangSmith |
 | 4 | **JWT trust boundary**: Next proxy mints HS256 token; FastAPI middleware verifies; delete `ChatMessage.user_id`; store call sites use verified id | Forged/absent-token requests rejected in tests |
