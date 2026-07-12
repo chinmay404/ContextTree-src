@@ -337,14 +337,14 @@ export function GlobalSearch({
   const getNodeIcon = (type: string) => {
     switch (type) {
       case "entry":
-        return <Sparkles size={14} className="text-blue-500" />;
+        return <Sparkles size={14} strokeWidth={1.75} className="text-blue-500" />;
       case "branch":
-        return <GitBranch size={14} className="text-emerald-500" />;
+        return <GitBranch size={14} strokeWidth={1.75} className="text-emerald-500" />;
       case "context":
       case "externalContext":
-        return <FileText size={14} className="text-violet-500" />;
+        return <FileText size={14} strokeWidth={1.75} className="text-violet-500" />;
       default:
-        return <MapPin size={14} className="text-muted-foreground" />;
+        return <MapPin size={14} strokeWidth={1.75} className="text-muted-foreground" />;
     }
   };
 
@@ -356,7 +356,7 @@ export function GlobalSearch({
             variant="secondary"
             className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/25 font-medium flex items-center gap-1"
           >
-            <MessageSquare size={10} />
+            <MessageSquare size={10} strokeWidth={1.75} />
             {count && count > 1 ? `${count} matches` : "Chat"}
           </Badge>
         );
@@ -406,19 +406,19 @@ export function GlobalSearch({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 gap-0 bg-popover border-border shadow-2xl rounded-2xl overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border bg-popover">
-          <DialogTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+          <DialogTitle className="text-[15px] font-semibold tracking-[-0.01em] text-foreground flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
-              <Search size={14} />
+              <Search size={16} strokeWidth={1.75} />
             </div>
             Search
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             Canvases, nodes, models, summaries and chat messages —{" "}
-            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-foreground bg-accent border border-border rounded">
+            <kbd className="inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 type-mono text-muted-foreground">
               ↑↓
             </kbd>{" "}
             to navigate,{" "}
-            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-foreground bg-accent border border-border rounded">
+            <kbd className="inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 type-mono text-muted-foreground">
               Enter
             </kbd>{" "}
             to open.
@@ -429,6 +429,7 @@ export function GlobalSearch({
           <div className="relative">
             <Search
               size={16}
+              strokeWidth={1.75}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
             />
             <Input
@@ -446,19 +447,19 @@ export function GlobalSearch({
             {searchQuery.trim() === "" ? (
               <div className="px-6 py-12 text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent mb-3">
-                  <Search size={20} className="text-muted-foreground" />
+                  <Search size={18} strokeWidth={1.75} className="text-muted-foreground" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground mb-1">
+                <h3 className="type-ui font-semibold mb-1">
                   Start typing to search
                 </h3>
                 <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                   Find across canvases, nodes, chat messages, running summaries
                   and models.
                 </p>
-                <div className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-                  <Command size={11} />
+                <div className="mt-5 flex items-center justify-center gap-1.5 type-meta">
+                  <Command size={12} strokeWidth={1.75} />
                   <span>+</span>
-                  <kbd className="px-1.5 py-0.5 bg-accent border border-border rounded font-mono">
+                  <kbd className="inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 type-mono text-muted-foreground">
                     K
                   </kbd>
                   <span>opens search</span>
@@ -467,9 +468,9 @@ export function GlobalSearch({
             ) : searchResults.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent mb-3">
-                  <Search size={20} className="text-muted-foreground" />
+                  <Search size={18} strokeWidth={1.75} className="text-muted-foreground" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground mb-1">
+                <h3 className="type-ui font-semibold mb-1">
                   No results
                 </h3>
                 <p className="text-xs text-muted-foreground">
@@ -481,8 +482,8 @@ export function GlobalSearch({
               <div className="py-2">
                 {groupedResults.map((group) => (
                   <div key={group.id} className="mb-2">
-                    <div className="px-5 py-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                      <Layers size={10} />
+                    <div className="px-5 py-1.5 flex items-center gap-2 type-meta uppercase tracking-[0.08em]">
+                      <Layers size={12} strokeWidth={1.75} />
                       <span className="truncate">{group.title}</span>
                       <span className="tabular-nums opacity-60">
                         {group.items.length}
@@ -512,7 +513,7 @@ export function GlobalSearch({
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-sm font-semibold text-foreground truncate">
+                              <span className="type-ui truncate">
                                 <Highlighted
                                   text={result.nodeLabel}
                                   query={searchQuery}
@@ -533,7 +534,7 @@ export function GlobalSearch({
                               </div>
                             )}
                             {result.preview && (
-                              <p className="text-[12px] leading-snug text-muted-foreground line-clamp-2">
+                              <p className="text-xs leading-snug text-muted-foreground line-clamp-2">
                                 <Highlighted
                                   text={result.preview}
                                   query={searchQuery}
@@ -544,6 +545,7 @@ export function GlobalSearch({
 
                           <ChevronRight
                             size={14}
+                            strokeWidth={1.75}
                             className={`flex-shrink-0 mt-1 transition-transform ${
                               active
                                 ? "text-foreground translate-x-0.5"
@@ -561,14 +563,14 @@ export function GlobalSearch({
         </ScrollArea>
 
         {searchResults.length > 0 && (
-          <div className="px-5 py-2.5 border-t border-border bg-muted flex items-center justify-between text-[11px] text-muted-foreground">
-            <span className="font-medium">
+          <div className="px-5 py-2.5 border-t border-border bg-muted flex items-center justify-between type-meta">
+            <span>
               {searchResults.length} result
               {searchResults.length !== 1 ? "s" : ""}
               {searchResults.length === 100 ? " (showing first 100)" : ""}
             </span>
             <span className="flex items-center gap-1">
-              <Clock size={10} />
+              <Clock size={12} strokeWidth={1.75} />
               Ranked by relevance
             </span>
           </div>

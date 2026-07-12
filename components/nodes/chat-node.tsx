@@ -4,13 +4,23 @@ import { memo, useCallback, type MouseEvent } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { Focus, Info, Trash2 } from "lucide-react";
 import { ModelBadge } from "@/components/model-badge";
-import type { BranchNodeData } from "@/components/nodes/branch-node-minimal";
 import { cn } from "@/lib/utils";
 
-export interface ChatNodeData extends BranchNodeData {
+export interface ChatNodeData {
+  label?: string;
+  preview?: string;
+  model?: string;
+  messageCount?: number;
+  timestamp?: string;
+  isSelected?: boolean;
   lineageColor?: string;
   streaming?: boolean;
   kind?: string;
+  onClick?: () => void;
+  onFocus?: () => void;
+  onShowDetails?: () => void;
+  onDelete?: () => void;
+  [key: string]: unknown;
 }
 
 type ChatNodeType = Node<ChatNodeData>;

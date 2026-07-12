@@ -77,7 +77,7 @@ const MessageItem = memo(function MessageItem({
         <div className="flex-shrink-0 pt-0.5">
           {isUser ? (
             <div className="h-7 w-7 rounded-full flex items-center justify-center bg-accent">
-              <User size={14} className="text-muted-foreground" />
+              <User size={14} strokeWidth={1.75} className="text-muted-foreground" />
             </div>
           ) : (
             <ModelProviderIcon
@@ -90,10 +90,10 @@ const MessageItem = memo(function MessageItem({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-foreground">
+            <span className="type-ui font-semibold">
               {isUser ? "You" : "Assistant"}
             </span>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="type-meta">
               {new Date(message.timestamp).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -105,9 +105,9 @@ const MessageItem = memo(function MessageItem({
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => onStartFork(message.id)}
-                      className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:border-border hover:text-foreground"
+                      className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 type-meta hover:text-foreground"
                     >
-                      <GitBranch size={10} /> Branch
+                      <GitBranch size={12} strokeWidth={1.75} /> Branch
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-[240px] text-center">
@@ -125,12 +125,16 @@ const MessageItem = memo(function MessageItem({
                 }}
                 className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground"
               >
-                {copied ? <Check size={10} /> : <Copy size={10} />}
+                {copied ? (
+                  <Check size={12} strokeWidth={1.75} />
+                ) : (
+                  <Copy size={12} strokeWidth={1.75} />
+                )}
               </button>
             </div>
           </div>
 
-          <div className="text-[15px] leading-relaxed text-foreground">
+          <div className="type-body">
             {isUser ? (
               <div className="whitespace-pre-wrap">{message.content}</div>
             ) : (
@@ -243,13 +247,13 @@ const MessageItem = memo(function MessageItem({
           </div>
 
           {forkedNodes.length > 0 && (
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <GitBranch size={10} />
+            <div className="mt-2 flex items-center gap-1.5 type-meta">
+              <GitBranch size={12} strokeWidth={1.75} />
               {forkedNodes.map((n) => (
                 <button
                   key={n._id}
                   onClick={() => onSelectForkedNode(n._id, n.name, n.type)}
-                  className="rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-foreground hover:bg-accent/70 transition-colors"
+                  className="rounded bg-accent px-1.5 py-0.5 type-meta text-foreground hover:bg-accent/70 transition-colors"
                 >
                   {n.name || "Branch"}
                 </button>
@@ -356,16 +360,16 @@ export function ChatTab({
             {isLoadingMessages && currentMessages.length === 0 ? (
               <div className="px-5 py-20 flex flex-col items-center gap-3">
                 <div className="h-6 w-6 rounded-full border-2 border-border border-t-primary animate-spin" />
-                <p className="text-xs font-medium text-muted-foreground">
+                <p className="type-meta">
                   Loading conversation…
                 </p>
               </div>
             ) : currentMessages.length === 0 ? (
               <div className="px-5 py-20 text-center">
                 <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-muted-foreground">
-                  <MessageSquareDashed size={18} strokeWidth={1.5} />
+                  <MessageSquareDashed size={18} strokeWidth={1.75} />
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="type-ui text-muted-foreground">
                   Start a conversation
                 </p>
               </div>
@@ -385,7 +389,7 @@ export function ChatTab({
             )}
             {showBranchHint && !isTyping && (
               <div className="mx-5 mt-2 mb-1 flex items-start gap-2 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2.5">
-                <GitBranch size={13} className="mt-0.5 shrink-0 text-primary" />
+                <GitBranch size={14} strokeWidth={1.75} className="mt-0.5 shrink-0 text-primary" />
                 <p className="flex-1 text-xs leading-relaxed text-foreground">
                   <span className="font-semibold">Tip:</span> Hover a reply created in this
                   branch to reveal the <span className="font-semibold">Branch</span> button.
@@ -396,7 +400,7 @@ export function ChatTab({
                   className="shrink-0 rounded p-0.5 text-primary/70 hover:bg-primary/15 hover:text-primary"
                   aria-label="Dismiss tip"
                 >
-                  <X size={12} />
+                  <X size={12} strokeWidth={1.75} />
                 </button>
               </div>
             )}
@@ -410,7 +414,7 @@ export function ChatTab({
             onClick={() => onScrollToBottom("smooth")}
             className="absolute bottom-36 left-1/2 -translate-x-1/2 z-10 h-8 w-8 rounded-full border border-border bg-card shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:shadow-lg transition-all"
           >
-            <ArrowDown size={14} />
+            <ArrowDown size={16} strokeWidth={1.75} />
           </button>
         )}
       </div>
@@ -439,7 +443,7 @@ export function ChatTab({
                 }
               }}
               disabled={isTyping || !selectedNode}
-              className="min-h-[40px] max-h-[180px] flex-1 resize-none border-0 bg-transparent px-3 py-2.5 text-[15px] focus-visible:ring-0 placeholder:text-muted-foreground text-foreground"
+              className="min-h-[40px] max-h-[180px] flex-1 resize-none border-0 bg-transparent px-3 py-2.5 text-sm leading-relaxed focus-visible:ring-0 placeholder:text-muted-foreground text-foreground"
             />
             <div className="pb-1 pr-1 self-end">
               <Button
@@ -452,7 +456,7 @@ export function ChatTab({
                     : "bg-muted text-muted-foreground"
                 }`}
               >
-                <ArrowRight size={15} strokeWidth={2.5} />
+                <ArrowRight size={16} strokeWidth={1.75} />
               </Button>
             </div>
           </div>

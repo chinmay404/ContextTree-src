@@ -75,13 +75,13 @@ export const CreateCanvasDialog = ({
       >
         <div className="border-b border-border px-6 py-4">
           <DialogHeader className="space-y-1.5 text-left">
-            <DialogTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+            <DialogTitle className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
                 <img src="/tree-icon.svg" alt="" className="h-4 w-4" />
               </span>
               New canvas
             </DialogTitle>
-            <DialogDescription className="max-w-2xl text-sm text-muted-foreground">
+            <DialogDescription className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
               Name the canvas and choose the model it should use by default.
             </DialogDescription>
           </DialogHeader>
@@ -92,7 +92,7 @@ export const CreateCanvasDialog = ({
             <div className="space-y-2">
               <label
                 htmlFor="create-canvas-title"
-                className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+                className="type-meta uppercase tracking-[0.08em]"
               >
                 Canvas name
               </label>
@@ -102,7 +102,7 @@ export const CreateCanvasDialog = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Q2 Product Strategy"
-                className="h-11 rounded-lg border-border bg-background text-sm font-medium text-foreground shadow-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-11 rounded-lg border-border bg-background text-[13px] md:text-[13px] font-medium text-foreground shadow-none focus-visible:ring-2 focus-visible:ring-ring"
                 data-slot="create-canvas-title-input"
               />
               <p className="text-xs leading-relaxed text-muted-foreground">
@@ -119,7 +119,7 @@ export const CreateCanvasDialog = ({
             />
 
             <div className="mt-5 rounded-xl border border-border bg-card p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <div className="type-meta uppercase tracking-[0.08em]">
                 Custom system prompt
               </div>
               <Textarea
@@ -135,7 +135,7 @@ export const CreateCanvasDialog = ({
             </div>
 
             <div className="mt-5 rounded-xl border border-border bg-card p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <div className="type-meta uppercase tracking-[0.08em]">
                 Starting model
               </div>
               <div className="mt-3">
@@ -183,7 +183,7 @@ export const CreateCanvasDialog = ({
           <Button
             type="button"
             variant="outline"
-            className="h-10 flex-1 rounded-lg border-border text-sm font-medium"
+            className="h-10 flex-1 rounded-lg border-border text-[13px] font-medium"
             onClick={() => onOpenChange(false)}
             disabled={isCreating}
           >
@@ -191,14 +191,14 @@ export const CreateCanvasDialog = ({
           </Button>
           <Button
             type="button"
-            className="h-10 flex-1 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="h-10 flex-1 rounded-lg bg-primary text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
             onClick={handleCreate}
             disabled={isCreating || !title.trim() || !selectedModel}
           >
             {isCreating ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" strokeWidth={1.75} />
             ) : (
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" strokeWidth={1.75} />
             )}
             {isCreating ? "Creating..." : "Create Canvas"}
           </Button>

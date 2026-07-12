@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, LayoutGrid } from "lucide-react";
-import { CanvasArea } from "@/components/canvas-area";
-import { ReactFlowProvider } from "@xyflow/react";
+import { CanvasView } from "@/components/canvas/canvas";
 import { ContextStrip } from "@/components/context-strip";
 import { ContextualConsoleComponent } from "@/components/contextual-console";
 import { CanvasList } from "@/components/canvas-list";
@@ -461,13 +460,11 @@ export default function ContextTreePage() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <ReactFlowProvider>
-                  <CanvasArea
-                    canvasId={selectedCanvas}
-                    selectedNode={selectedNode}
-                    onNodeSelect={handleNodeSelect}
-                  />
-                </ReactFlowProvider>
+                <CanvasView
+                  canvasId={selectedCanvas}
+                  selectedNode={selectedNode}
+                  onNodeSelect={handleNodeSelect}
+                />
               </motion.div>
             ) : (
               <motion.div

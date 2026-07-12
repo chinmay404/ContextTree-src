@@ -76,12 +76,12 @@ export function ConsoleHeader({
     <div className="flex-none h-12 border-b border-border bg-card z-10 px-4 flex items-center justify-between text-sm">
       <div className="flex-1 min-w-0 flex items-center gap-2">
         {ancestors.length > 0 && (
-          <div className="flex items-center gap-0.5 text-[11px] text-muted-foreground mr-1 min-w-0 shrink">
+          <div className="flex items-center gap-0.5 type-meta mr-1 min-w-0 shrink">
             {visibleAncestors.map((entry, idx) =>
               entry === "ellipsis" ? (
                 <span key={`ellipsis-${idx}`} className="flex items-center gap-0.5">
                   <span className="px-0.5 select-none">…</span>
-                  <ChevronRight size={10} className="shrink-0" />
+                  <ChevronRight size={12} strokeWidth={1.75} className="shrink-0" />
                 </span>
               ) : (
                 <span key={entry.id} className="flex items-center gap-0.5 min-w-0">
@@ -92,7 +92,7 @@ export function ConsoleHeader({
                   >
                     {entry.name}
                   </button>
-                  <ChevronRight size={10} className="shrink-0" />
+                  <ChevronRight size={12} strokeWidth={1.75} className="shrink-0" />
                 </span>
               )
             )}
@@ -102,7 +102,7 @@ export function ConsoleHeader({
         {isEditingName ? (
           <input
             autoFocus
-            className="text-sm font-semibold text-foreground bg-transparent border-b-2 border-primary px-0 py-0 focus:outline-none flex-1 min-w-0"
+            className="type-ui font-semibold bg-transparent border-b-2 border-primary px-0 py-0 focus:outline-none flex-1 min-w-0"
             value={nameInput}
             onChange={(e) => onNameInputChange(e.target.value)}
             onBlur={() => {
@@ -127,12 +127,13 @@ export function ConsoleHeader({
         ) : (
           <button
             onClick={onStartRename}
-            className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors flex items-center gap-1 group min-w-0"
+            className="type-ui font-semibold truncate hover:text-primary transition-colors flex items-center gap-1 group min-w-0"
             title="Rename branch"
           >
             <span className="truncate">{resolvedName || "Untitled"}</span>
             <Edit2
-              size={10}
+              size={12}
+              strokeWidth={1.75}
               className="shrink-0 text-muted-foreground group-hover:text-foreground"
             />
           </button>
@@ -178,10 +179,10 @@ export function ConsoleHeader({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
               aria-label="More actions"
             >
-              <MoreHorizontal size={14} />
+              <MoreHorizontal size={16} strokeWidth={1.75} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -217,20 +218,24 @@ export function ConsoleHeader({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
             onClick={onToggleFullscreen}
           >
-            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            {isFullscreen ? (
+              <Minimize2 size={16} strokeWidth={1.75} />
+            ) : (
+              <Maximize2 size={16} strokeWidth={1.75} />
+            )}
           </Button>
         )}
         {onClose && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
             onClick={onClose}
           >
-            <X size={14} />
+            <X size={16} strokeWidth={1.75} />
           </Button>
         )}
       </div>

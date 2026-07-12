@@ -225,6 +225,41 @@
   }
 }
 
+/* ── Studio type system ──────────────────────────────────────
+   One scale for all chrome. Hierarchy comes from weight, size and
+   spacing — never decoration.
+
+   .type-heading  15px semibold  panel titles, dialog titles
+   .type-ui       13px medium    buttons, list items, tabs
+   .type-body     14px relaxed   message bodies, descriptions
+   .type-meta     11px medium    timestamps, counts, labels
+                  (section labels add: uppercase tracking-[0.08em])
+   .type-mono     11px mono      kbd hints, token counts, model ids
+
+   Apply the class on plain elements. On shadcn primitives (which
+   merge their own text-* via twMerge) pass the equivalent raw
+   utilities instead so conflicts resolve correctly.
+
+   kbd chip recipe: inline-flex items-center gap-0.5 rounded border
+   border-border bg-muted px-1.5 py-0.5 type-mono text-muted-foreground */
+@layer components {
+  .type-heading {
+    @apply text-[15px] font-semibold tracking-[-0.01em] text-foreground;
+  }
+  .type-ui {
+    @apply text-[13px] font-medium text-foreground;
+  }
+  .type-body {
+    @apply text-sm leading-relaxed text-foreground;
+  }
+  .type-meta {
+    @apply text-[11px] font-medium tracking-wide text-muted-foreground;
+  }
+  .type-mono {
+    @apply font-mono text-[11px];
+  }
+}
+
 /* ReactFlow Customizations - Production Quality */
 .react-flow {
   background: var(--background);

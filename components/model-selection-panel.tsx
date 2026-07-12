@@ -71,11 +71,11 @@ const renderModelCard = ({
       className={cn(
         "group relative flex min-h-[58px] min-w-[172px] flex-1 basis-[196px] items-center gap-3 overflow-hidden rounded-xl border px-3 py-3 text-left transition-colors",
         isSelected && !isUnavailable
-          ? "border-slate-900 bg-slate-50 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.04)]"
-          : "border-slate-200 bg-white",
-        !isUnavailable && "hover:border-slate-400 hover:bg-slate-50/70",
-        isUnavailable && "border-slate-200/90 bg-slate-50/95",
-        requiresByok && !providerStatus?.configured && "hover:border-slate-300 hover:bg-white"
+          ? "border-primary/50 bg-primary/10"
+          : "border-border bg-card",
+        !isUnavailable && "hover:border-input hover:bg-accent",
+        isUnavailable && "border-border bg-muted/50",
+        requiresByok && !providerStatus?.configured && "hover:border-input hover:bg-accent"
       )}
       data-slot="model-selection-option"
       aria-pressed={isSelected}
@@ -91,38 +91,38 @@ const renderModelCard = ({
       <div
         className={cn(
           "flex min-w-0 flex-1 items-center gap-3",
-          isUnavailable && "opacity-90"
+          isUnavailable && "opacity-80"
         )}
       >
         <ModelProviderIcon
           modelId={model.id}
           provider={model.provider}
-          size={18}
+          size={16}
           className="shrink-0"
         />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
-            <div className="truncate text-sm font-semibold text-slate-900">
+            <div className="truncate type-ui">
               {model.name}
             </div>
             {statusLabel && (
               <span
                 className={cn(
-                  "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]",
+                  "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em]",
                   isDisabledByCatalog
-                    ? "bg-slate-200/80 text-slate-600"
+                    ? "bg-muted text-muted-foreground"
                     : requiresByok && providerStatus?.configured
-                      ? "bg-emerald-50 text-emerald-700"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                       : requiresByok
-                        ? "bg-slate-100 text-slate-700"
-                    : "bg-emerald-50 text-emerald-700"
+                        ? "bg-muted text-muted-foreground"
+                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                 )}
               >
                 {statusLabel}
               </span>
             )}
           </div>
-          <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <div className="mt-0.5 truncate type-meta uppercase tracking-[0.08em]">
             {model.provider}
           </div>
         </div>
@@ -130,9 +130,9 @@ const renderModelCard = ({
 
       {isDisabledByCatalog && (
         <>
-          <div className="pointer-events-none absolute inset-0 bg-white/25" />
-          <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600 shadow-sm">
-            <Lock className="h-3 w-3" />
+          <div className="pointer-events-none absolute inset-0 bg-background/40" />
+          <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            <Lock className="h-3 w-3" strokeWidth={1.75} />
             Locked
           </span>
         </>
@@ -203,17 +203,17 @@ export function ModelSelectionPanel({
       />
 
       {isBranchMode ? (
-        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-card px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-slate-900">Private models</div>
-            <div className="text-xs leading-relaxed text-slate-500">
+            <div className="type-ui">Private models</div>
+            <div className="text-xs leading-relaxed text-muted-foreground">
               Saved keys unlock BYOK and custom LiteLLM choices.
             </div>
           </div>
           <button
             type="button"
             onClick={() => handleManageKeys()}
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-white"
+            className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted px-3 type-ui transition-colors hover:bg-accent"
           >
             Manage keys
           </button>
@@ -221,7 +221,7 @@ export function ModelSelectionPanel({
       ) : (
         <div
           className={cn(
-            "rounded-xl border border-slate-200 bg-white shadow-sm",
+            "rounded-xl border border-border bg-card",
             compact ? "p-3" : "p-4"
           )}
         >
@@ -234,14 +234,14 @@ export function ModelSelectionPanel({
             )}
           >
             <div className="flex items-start gap-3">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-950 text-white shadow-sm">
-                <KeyRound className="h-4 w-4" />
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+                <KeyRound className="h-4 w-4" strokeWidth={1.75} />
               </span>
               <div>
-                <div className="text-sm font-semibold text-slate-900">
+                <div className="type-ui">
                   API keys
                 </div>
-                <div className="text-xs leading-relaxed text-slate-500">
+                <div className="text-xs leading-relaxed text-muted-foreground">
                   Connect private OpenAI or Anthropic keys to unlock those models for this account.
                 </div>
               </div>
@@ -251,7 +251,7 @@ export function ModelSelectionPanel({
               type="button"
               onClick={() => handleManageKeys()}
               className={cn(
-                "inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-white",
+                "inline-flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 type-ui transition-colors hover:bg-accent",
                 compact ? "w-full justify-center" : "self-start sm:self-auto"
               )}
             >
@@ -268,14 +268,14 @@ export function ModelSelectionPanel({
                   type="button"
                   onClick={() => handleManageKeys(provider)}
                   className={cn(
-                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors",
+                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] transition-colors",
                     providerStatus.configured
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
+                      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "border-border bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
                   )}
                 >
                   <span>{getProviderLabel(provider)}</span>
-                  <span className="text-[10px] tracking-[0.16em] opacity-80">
+                  <span className="font-mono text-[10px] tracking-normal opacity-80">
                     {providerStatus.configured ? providerStatus.keyHint || "Connected" : "Not connected"}
                   </span>
                 </button>
@@ -285,14 +285,14 @@ export function ModelSelectionPanel({
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="rounded-xl border border-border bg-muted p-4">
         <div className="mb-3 flex items-center gap-2">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm">
-            <Sparkles className="h-4 w-4" />
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">
+            <Sparkles className="h-4 w-4" strokeWidth={1.75} />
           </span>
           <div>
-            <div className="text-sm font-semibold text-slate-900">Recommended models</div>
-            <div className={cn("text-xs text-slate-500", isBranchMode && "sr-only")}>
+            <div className="type-ui">Recommended models</div>
+            <div className={cn("text-xs text-muted-foreground", isBranchMode && "sr-only")}>
               Stable defaults for most branch conversations.
             </div>
           </div>
@@ -311,15 +311,15 @@ export function ModelSelectionPanel({
         </div>
       </div>
 
-      <div className={cn("rounded-xl border border-slate-200 bg-white shadow-sm", isBranchMode ? "p-3" : "p-4")}>
+      <div className={cn("rounded-xl border border-border bg-card", isBranchMode ? "p-3" : "p-4")}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm">
-              <KeyRound className="h-4 w-4" />
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
+              <KeyRound className="h-4 w-4" strokeWidth={1.75} />
             </span>
             <div>
-              <div className="text-sm font-semibold text-slate-900">Custom LiteLLM model</div>
-              <div className={cn("text-xs leading-relaxed text-slate-500", isBranchMode && "sr-only")}>
+              <div className="type-ui">Custom LiteLLM model</div>
+              <div className={cn("text-xs leading-relaxed text-muted-foreground", isBranchMode && "sr-only")}>
                 Enter a LiteLLM model string such as openrouter/provider/model or openai/private-model.
               </div>
             </div>
@@ -327,7 +327,7 @@ export function ModelSelectionPanel({
           <button
             type="button"
             onClick={() => handleManageKeys("litellm")}
-            className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-white"
+            className="shrink-0 rounded-lg border border-border bg-muted px-3 py-2 type-ui transition-colors hover:bg-accent"
           >
             LiteLLM keys
           </button>
@@ -338,7 +338,7 @@ export function ModelSelectionPanel({
             value={customLiteLlmModel}
             onChange={(event) => setCustomLiteLlmModel(event.target.value)}
             placeholder={selectedLiteLlmModel || "openrouter/meta-llama/llama-3.1-70b-instruct"}
-            className="h-10 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-400"
+            className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 font-mono text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring"
             data-slot="custom-litellm-model-input"
           />
           <button
@@ -353,7 +353,7 @@ export function ModelSelectionPanel({
               }
             }}
             disabled={!liteLlmSelection}
-            className="h-10 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="h-10 rounded-lg bg-primary px-4 type-ui text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
           >
             Use model
           </button>
@@ -373,29 +373,29 @@ export function ModelSelectionPanel({
       </div>
 
       {!isBranchMode && (selectedModelConfig || selectedLiteLlmModel) && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-start gap-3">
             <ModelProviderIcon
               modelId={selectedModelConfig?.id || selectedModel}
               provider={selectedModelConfig?.provider || "LiteLLM"}
-              size={20}
+              size={18}
               className="mt-0.5"
             />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="text-sm font-semibold text-slate-900">
+                <div className="type-ui">
                   {selectedModelConfig?.name || selectedLiteLlmModel}
                 </div>
                 {(selectedModelConfig?.badge || selectedLiteLlmModel) && (
-                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-emerald-600 dark:text-emerald-400">
                     {selectedModelConfig?.badge || "LiteLLM"}
                   </span>
                 )}
               </div>
-              <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              <div className="mt-1 type-meta uppercase tracking-[0.08em]">
                 {selectedModelConfig?.provider || "LiteLLM"}
               </div>
-              <div className="mt-2 text-sm leading-relaxed text-slate-600">
+              <div className="mt-2 type-body text-muted-foreground">
                 {selectedModelConfig?.description || "Custom model routed through your saved LiteLLM credential."}
               </div>
             </div>
@@ -406,7 +406,7 @@ export function ModelSelectionPanel({
       <Accordion
         type="multiple"
         defaultValue={defaultOpenSections}
-        className="rounded-xl border border-slate-200 bg-white"
+        className="rounded-xl border border-border bg-card"
       >
         {MODEL_SELECTION_SECTIONS.map((section) => {
           const enabledCount = section.models.filter(
@@ -417,26 +417,26 @@ export function ModelSelectionPanel({
             <AccordionItem
               key={section.id}
               value={section.id}
-              className="border-slate-100 px-4"
+              className="border-border px-4"
             >
               <AccordionTrigger className="py-4 hover:no-underline">
                 <div className="flex min-w-0 items-start gap-3 text-left">
                   <ModelProviderIcon
                     provider={section.provider}
                     modelName={section.name}
-                    size={20}
+                    size={18}
                     className="mt-0.5"
                   />
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-900">
+                      <span className="type-ui">
                         {section.name}
                       </span>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                         {enabledCount}/{section.models.length} live
                       </span>
                     </div>
-                    <div className={cn("mt-1 text-xs text-slate-500", isBranchMode && "sr-only")}>
+                    <div className={cn("mt-1 text-xs text-muted-foreground", isBranchMode && "sr-only")}>
                       {section.description}
                     </div>
                   </div>

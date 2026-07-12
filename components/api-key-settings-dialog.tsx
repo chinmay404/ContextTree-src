@@ -175,17 +175,17 @@ export function ApiKeySettingsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="z-[1400] max-w-2xl rounded-2xl border-slate-200 bg-white shadow-2xl"
-        overlayClassName="z-[1390] bg-slate-950/60 backdrop-blur-sm"
+        className="z-[1400] max-w-2xl rounded-2xl border-border bg-card shadow-2xl"
+        overlayClassName="z-[1390] bg-black/60"
       >
         <DialogHeader className="space-y-2 text-left">
-          <DialogTitle className="flex items-center gap-2 text-xl text-slate-900">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
-              <KeyRound className="h-4 w-4" />
+          <DialogTitle className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+              <KeyRound className="h-4 w-4" strokeWidth={1.75} />
             </span>
             Bring Your Own API Keys
           </DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed text-slate-500">
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
             Claude and GPT stay behind your own provider account. Keys are stored
             encrypted server-side and never sent to the browser after save.
           </DialogDescription>
@@ -199,23 +199,23 @@ export function ApiKeySettingsDialog({
                 type="button"
                 onClick={() => setSelectedProvider(providerStatus.provider)}
                 className={cn(
-                  "rounded-xl border px-4 py-2 text-left transition-all",
+                  "rounded-lg border px-4 py-2 text-left transition-colors",
                   selectedProvider === providerStatus.provider
-                    ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                    : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-muted text-foreground hover:bg-accent"
                 )}
               >
-                <div className="text-sm font-semibold">
+                <div className="text-[13px] font-medium">
                   {PROVIDER_LABEL[providerStatus.provider]}
                 </div>
                 <div
                   className={cn(
-                    "mt-1 text-[11px] uppercase tracking-[0.16em]",
+                    "mt-1 text-[10px] font-medium uppercase tracking-[0.08em]",
                     selectedProvider === providerStatus.provider
-                      ? "text-white/70"
+                      ? "text-primary-foreground/70"
                       : providerStatus.configured
-                        ? "text-emerald-600"
-                        : "text-slate-400"
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-muted-foreground"
                   )}
                 >
                   {providerStatus.configured
@@ -226,27 +226,27 @@ export function ApiKeySettingsDialog({
             ))}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+          <div className="rounded-xl border border-border bg-muted/50 p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-slate-900">
+                <div className="type-ui">
                   {PROVIDER_LABEL[selectedProvider]} key
                 </div>
-                <div className="mt-1 text-sm leading-relaxed text-slate-500">
+                <div className="mt-1 type-body text-muted-foreground">
                   {PROVIDER_DESCRIPTION[selectedProvider]}
                 </div>
               </div>
 
               {activeStatus.configured && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                  <ShieldCheck className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.08em] text-emerald-600 dark:text-emerald-400">
+                  <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
                   Connected
                 </span>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`api-key-${selectedProvider}`} className="text-xs uppercase tracking-[0.14em] text-slate-500">
+              <Label htmlFor={`api-key-${selectedProvider}`} className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                 Paste new key
               </Label>
               <Input
@@ -266,11 +266,11 @@ export function ApiKeySettingsDialog({
                       ? "sk-ant-..."
                       : "Provider key or LiteLLM proxy key"
                 }
-                className="h-11 rounded-xl border-slate-200 bg-white"
+                className="h-11 rounded-lg border-border bg-background font-mono text-[13px] md:text-[13px]"
               />
               {selectedProvider === "litellm" && (
                 <div className="space-y-2 pt-2">
-                  <Label htmlFor="litellm-api-base" className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                  <Label htmlFor="litellm-api-base" className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                     API base URL
                   </Label>
                   <Input
@@ -279,21 +279,22 @@ export function ApiKeySettingsDialog({
                     value={draftApiBase}
                     onChange={(event) => setDraftApiBase(event.target.value)}
                     placeholder="https://your-private-endpoint.example.com/v1"
-                    className="h-11 rounded-xl border-slate-200 bg-white"
+                    className="h-11 rounded-lg border-border bg-background font-mono text-[13px] md:text-[13px]"
                   />
                 </div>
               )}
-              <p className="text-xs text-slate-500">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 {selectedProvider === "litellm" && activeStatus.apiBaseHint
                   ? `Current endpoint: ${activeStatus.apiBaseHint}. `
                   : ""}
                 Save a new credential to replace the existing one. Stored keys are shown only
-                as masked hints like {activeStatus.keyHint || "••••last4"}.
+                as masked hints like{" "}
+                <span className="type-mono">{activeStatus.keyHint || "••••last4"}</span>.
               </p>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-muted-foreground">
                 {activeStatus.configured && activeStatus.updatedAt
                   ? `Last updated ${new Date(activeStatus.updatedAt).toLocaleString()}`
                   : "No key stored yet for this provider."}
@@ -306,12 +307,12 @@ export function ApiKeySettingsDialog({
                     variant="outline"
                     onClick={handleDelete}
                     disabled={busyProvider === selectedProvider}
-                    className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    className="rounded-lg border-destructive/30 text-[13px] font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
                   >
                     {busyProvider === selectedProvider ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} />
                     ) : (
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                     )}
                     Remove key
                   </Button>
@@ -320,10 +321,10 @@ export function ApiKeySettingsDialog({
                   type="button"
                   onClick={handleSave}
                   disabled={busyProvider === selectedProvider || isLoading}
-                  className="rounded-xl bg-slate-900 text-white hover:bg-slate-800"
+                  className="rounded-lg bg-primary text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
                 >
                   {busyProvider === selectedProvider ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} />
                   ) : null}
                   Save key
                 </Button>

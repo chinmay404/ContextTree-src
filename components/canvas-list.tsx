@@ -31,6 +31,7 @@ import {
   LayoutGrid,
   GitBranch,
   CircleDot,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -149,8 +150,8 @@ export function CanvasList({
       <div className="min-w-0 flex-1 pl-1">
         <div className="flex items-center justify-between">
             <p className={cn(
-                "truncate text-sm text-foreground",
-                selectedCanvas === canvas._id ? "font-semibold text-primary" : "font-medium"
+                "truncate type-ui",
+                selectedCanvas === canvas._id && "font-semibold text-primary"
             )}>
             {canvas.title}
             </p>
@@ -170,10 +171,10 @@ export function CanvasList({
                         selectedCanvas === canvas._id && "opacity-100"
                     )}
                 >
-                    <MoreVertical size={14} />
+                    <MoreVertical size={14} strokeWidth={1.75} />
                 </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40 font-medium">
+                <DropdownMenuContent align="end" className="w-40">
                 {onRenameCanvas && (
                     <DropdownMenuItem
                     onClick={(e) => {
@@ -183,9 +184,9 @@ export function CanvasList({
                         onRenameCanvas(canvas._id, newTitle.trim());
                         }
                     }}
-                    className="gap-2 text-xs"
+                    className="gap-2 text-[13px] font-medium"
                     >
-                    <Edit2 size={13} />
+                    <Edit2 className="size-3.5" strokeWidth={1.75} />
                     Rename
                     </DropdownMenuItem>
                 )}
@@ -195,9 +196,9 @@ export function CanvasList({
                         e.stopPropagation();
                         onDuplicateCanvas(canvas._id);
                     }}
-                    className="gap-2 text-xs"
+                    className="gap-2 text-[13px] font-medium"
                     >
-                    <Copy size={13} />
+                    <Copy className="size-3.5" strokeWidth={1.75} />
                     Duplicate
                     </DropdownMenuItem>
                 )}
@@ -208,9 +209,9 @@ export function CanvasList({
                         e.stopPropagation();
                         setDeleteCanvasId(canvas._id);
                     }}
-                    className="gap-2 text-xs text-destructive focus:text-destructive"
+                    className="gap-2 text-[13px] font-medium text-destructive focus:text-destructive"
                     >
-                    <Trash2 size={13} />
+                    <Trash2 className="size-3.5" strokeWidth={1.75} />
                     Delete
                     </DropdownMenuItem>
                 )}
@@ -219,13 +220,13 @@ export function CanvasList({
         </div>
 
         {/* Metadata Line */}
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
-          <span className="inline-flex items-center gap-0.5">
-            <CircleDot size={9} className="text-muted-foreground" />
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 type-meta">
+          <span className="inline-flex items-center gap-1">
+            <CircleDot size={11} strokeWidth={1.75} className="text-muted-foreground" />
             {canvas.nodeCount}
           </span>
-          <span className="inline-flex items-center gap-0.5">
-            <GitBranch size={9} className="text-muted-foreground" />
+          <span className="inline-flex items-center gap-1">
+            <GitBranch size={11} strokeWidth={1.75} className="text-muted-foreground" />
             {canvas.branchCount || 0}
           </span>
           <span className="text-muted-foreground">·</span>
@@ -241,10 +242,10 @@ export function CanvasList({
       <div className="flex flex-col gap-2.5 border-b border-border bg-card px-3 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            <span className="type-meta uppercase tracking-[0.08em]">
               Workspace
             </span>
-            <span className="rounded-full bg-accent text-muted-foreground text-[9px] font-semibold px-1.5 py-0.5 tabular-nums">
+            <span className="rounded-full bg-accent px-1.5 py-0.5 type-mono text-muted-foreground tabular-nums">
               {canvases.length}
             </span>
           </div>
@@ -252,19 +253,22 @@ export function CanvasList({
             onClick={onCreateCanvas}
             title="New Canvas (⌘N)"
             data-tour="create-canvas"
-            className="group relative flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:text-primary-foreground hover:bg-primary transition-all active:scale-95"
+            className="flex items-center justify-center h-7 w-7 rounded-lg text-muted-foreground hover:text-primary-foreground hover:bg-primary transition-colors active:scale-95"
           >
-            <Plus size={14} className="transition-transform group-hover:rotate-90" />
+            <Plus size={14} strokeWidth={1.75} />
           </button>
         </div>
 
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search
+            strokeWidth={1.75}
+            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+          />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search canvases..."
-            className="h-8 rounded-lg border-border bg-muted pl-8 pr-7 text-xs font-medium placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:bg-card transition-colors"
+            className="h-8 rounded-lg border-border bg-muted pl-8 pr-7 text-[13px] md:text-[13px] font-medium placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:bg-card transition-colors"
           />
           {searchQuery && (
             <button
@@ -272,7 +276,7 @@ export function CanvasList({
               className="absolute right-1.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center"
               aria-label="Clear search"
             >
-              ×
+              <X size={12} strokeWidth={1.75} />
             </button>
           )}
         </div>
@@ -288,17 +292,17 @@ export function CanvasList({
                 className="flex flex-col items-center justify-center py-12 text-center"
              >
                 <div className="relative mb-3 w-12 h-12 rounded-xl bg-accent flex items-center justify-center">
-                    <LayoutGrid className="h-5 w-5 text-muted-foreground" />
+                    <LayoutGrid size={18} strokeWidth={1.75} className="text-muted-foreground" />
                 </div>
-                <p className="text-xs font-medium text-muted-foreground">No canvases yet</p>
-                <p className="mt-1 text-[10px] text-muted-foreground max-w-[180px] leading-relaxed">
+                <p className="type-ui text-muted-foreground">No canvases yet</p>
+                <p className="mt-1 text-xs text-muted-foreground max-w-[180px] leading-relaxed">
                     Create your first canvas to start branching conversations.
                 </p>
                 <button
                     onClick={onCreateCanvas}
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground text-[10px] font-medium px-2.5 py-1.5 hover:bg-primary/90 transition-colors active:scale-95"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary type-ui text-primary-foreground px-2.5 py-1.5 hover:bg-primary/90 transition-colors active:scale-95"
                 >
-                    <Plus size={11} /> New Canvas
+                    <Plus size={14} strokeWidth={1.75} /> New Canvas
                 </button>
              </motion.div>
          ) : searchQuery ? (
@@ -308,7 +312,7 @@ export function CanvasList({
                    <CanvasItem key={canvas._id} canvas={canvas} index={i} />
                ))}
                {groupedCanvases.today.length + groupedCanvases.week.length + groupedCanvases.older.length === 0 && (
-                 <p className="py-4 text-center text-xs text-muted-foreground">No matches found</p>
+                 <p className="py-4 text-center type-meta">No matches found</p>
                )}
             </div>
          ) : (
@@ -316,21 +320,21 @@ export function CanvasList({
             <div className="space-y-4">
                {groupedCanvases.today.length > 0 && (
                  <div className="space-y-0.5">
-                    <h3 className="mb-1 px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Today</h3>
+                    <h3 className="mb-1 px-2 type-meta uppercase tracking-[0.08em]">Today</h3>
                     {groupedCanvases.today.map((canvas, i) => <CanvasItem key={canvas._id} canvas={canvas} index={i} />)}
                  </div>
                )}
 
                {groupedCanvases.week.length > 0 && (
                  <div className="space-y-0.5">
-                    <h3 className="mb-1 px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">This Week</h3>
+                    <h3 className="mb-1 px-2 type-meta uppercase tracking-[0.08em]">This Week</h3>
                     {groupedCanvases.week.map((canvas, i) => <CanvasItem key={canvas._id} canvas={canvas} index={i} />)}
                  </div>
                )}
 
                {groupedCanvases.older.length > 0 && (
                  <div className="space-y-0.5">
-                    <h3 className="mb-1 px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Older</h3>
+                    <h3 className="mb-1 px-2 type-meta uppercase tracking-[0.08em]">Older</h3>
                     {groupedCanvases.older.map((canvas, i) => <CanvasItem key={canvas._id} canvas={canvas} index={i} />)}
                  </div>
                )}
@@ -345,17 +349,17 @@ export function CanvasList({
       >
         <AlertDialogContent className="max-w-xs">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-semibold text-foreground">
+            <AlertDialogTitle className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
               Delete workspace?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground">
-              This action cannot be undone. Area you sure?
+            <AlertDialogDescription className="text-[13px] text-muted-foreground">
+              This action cannot be undone. Are you sure?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-8 text-[13px] font-medium">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="h-8 bg-destructive text-destructive-foreground text-xs hover:bg-destructive/90"
+              className="h-8 bg-destructive text-destructive-foreground text-[13px] font-medium hover:bg-destructive/90"
               onClick={() => {
                 if (deleteCanvasId && onDeleteCanvas) {
                   onDeleteCanvas(deleteCanvasId);

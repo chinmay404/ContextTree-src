@@ -72,23 +72,23 @@ export const ForkDialog = memo(function ForkDialog({
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+              <h3 className="flex items-center gap-2 type-heading">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
-                  <GitBranch size={15} />
+                  <GitBranch size={16} strokeWidth={1.75} />
                 </span>
                 New branch
               </h3>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 type-body text-muted-foreground">
                 Set the branch label and model before it appears on the canvas.
               </p>
             </div>
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               aria-label="Close branch dialog"
             >
-              <X size={18} />
+              <X size={16} strokeWidth={1.75} />
             </button>
           </div>
         </div>
@@ -98,7 +98,7 @@ export const ForkDialog = memo(function ForkDialog({
             <div className="space-y-2">
               <label
                 htmlFor="fork-branch-name"
-                className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+                className="type-meta uppercase tracking-[0.08em]"
               >
                 Branch name
               </label>
@@ -108,7 +108,7 @@ export const ForkDialog = memo(function ForkDialog({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Branch from current reply"
-                className="h-11 rounded-lg border-border bg-background text-sm font-medium text-foreground shadow-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-11 rounded-lg border-border bg-background text-[13px] md:text-[13px] font-medium text-foreground shadow-none focus-visible:ring-2 focus-visible:ring-ring"
                 data-slot="fork-branch-name-input"
               />
             </div>
@@ -122,7 +122,7 @@ export const ForkDialog = memo(function ForkDialog({
             />
 
             <div className="mt-5 rounded-xl border border-border bg-card p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <div className="type-meta uppercase tracking-[0.08em]">
                 Custom system prompt
               </div>
               <Textarea
@@ -138,7 +138,7 @@ export const ForkDialog = memo(function ForkDialog({
             </div>
 
             <div className="mt-5 rounded-xl border border-border bg-card p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <div className="type-meta uppercase tracking-[0.08em]">
                 Selected model
               </div>
               <div className="mt-3">
@@ -178,13 +178,13 @@ export const ForkDialog = memo(function ForkDialog({
           <Button
             variant="outline"
             onClick={onCancel}
-            className="h-10 flex-1 rounded-lg border-border text-sm font-medium"
+            className="h-10 flex-1 rounded-lg border-border text-[13px] font-medium"
           >
             Cancel
           </Button>
           <Button
             onClick={() => onConfirm(model, name, systemPrompt, advancedSettings)}
-            className="h-10 flex-1 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="h-10 flex-1 rounded-lg bg-primary text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
           >
             Create Branch
           </Button>
