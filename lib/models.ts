@@ -77,41 +77,25 @@ const LIVE_MODELS: ModelConfig[] = [
     badge: "Live",
   },
   {
-    id: "moonshotai/kimi-k2-instruct",
-    name: "Kimi K2",
-    description: "Moonshot’s large reasoning model exposed through NVIDIA’s free endpoint.",
-    provider: "Moonshot AI",
-    availability: "enabled",
-    badge: "Free",
-  },
-  {
-    id: "moonshotai/kimi-k2-instruct-0905",
-    name: "Kimi K2 0905",
-    description: "The stronger Kimi K2 follow-on with longer context and better coding depth.",
-    provider: "Moonshot AI",
-    availability: "enabled",
-    badge: "Free",
-  },
-  {
-    id: "z-ai/glm-4.7",
-    name: "GLM 4.7",
-    description: "Z.ai’s latest GLM model via NVIDIA’s free catalog.",
+    id: "z-ai/glm-5.2",
+    name: "GLM 5.2",
+    description: "Z.ai’s latest GLM — fast, capable default on NVIDIA’s free catalog.",
     provider: "Z AI",
     availability: "enabled",
     badge: "Free",
   },
   {
-    id: "deepseek-ai/deepseek-v3.1",
-    name: "DeepSeek V3.1",
-    description: "Large general-purpose DeepSeek model routed through NVIDIA.",
+    id: "deepseek-ai/deepseek-v4-flash",
+    name: "DeepSeek V4 Flash",
+    description: "DeepSeek’s fast V4 lane on NVIDIA’s free endpoint.",
     provider: "DeepSeek",
     availability: "enabled",
     badge: "Free",
   },
   {
-    id: "deepseek-ai/deepseek-v3.2",
-    name: "DeepSeek V3.2",
-    description: "Updated DeepSeek release with stronger reasoning on NVIDIA’s free endpoint.",
+    id: "deepseek-ai/deepseek-v4-pro",
+    name: "DeepSeek V4 Pro",
+    description: "DeepSeek’s strongest V4 reasoning model via NVIDIA.",
     provider: "DeepSeek",
     availability: "enabled",
     badge: "Free",
@@ -285,10 +269,10 @@ const resolveModels = (ids: string[]): ModelConfig[] =>
     .filter((model): model is ModelConfig => Boolean(model));
 
 const RECOMMENDED_MODEL_IDS = [
-  "openai/gpt-oss-120b",
+  "z-ai/glm-5.2",
   "gemini/gemini-3-flash-preview",
-  "moonshotai/kimi-k2-instruct-0905",
-  "deepseek-ai/deepseek-v3.2",
+  "openai/gpt-oss-120b",
+  "mistralai/mistral-large-3-675b-instruct-2512",
 ];
 
 export const MODEL_SELECTION_SECTIONS: ModelSelectionSection[] = [
@@ -347,11 +331,9 @@ export const MODEL_SELECTION_SECTIONS: ModelSelectionSection[] = [
     description: "Free NVIDIA NIM catalog picks exposed as live choices in the selector.",
     defaultOpen: true,
     models: resolveModels([
-      "moonshotai/kimi-k2-instruct",
-      "moonshotai/kimi-k2-instruct-0905",
-      "z-ai/glm-4.7",
-      "deepseek-ai/deepseek-v3.1",
-      "deepseek-ai/deepseek-v3.2",
+      "z-ai/glm-5.2",
+      "deepseek-ai/deepseek-v4-flash",
+      "deepseek-ai/deepseek-v4-pro",
       "mistralai/mistral-large-3-675b-instruct-2512",
     ]),
   },
@@ -366,11 +348,11 @@ export const ENABLED_MODELS: ModelConfig[] = ALL_MODELS.filter(
 );
 
 export const MODEL_RECOMMENDATIONS = {
-  general_chat: "moonshotai/kimi-k2-instruct-0905",
+  general_chat: "z-ai/glm-5.2",
   fast_responses: "gemini/gemini-3-flash-preview",
-  complex_reasoning: "deepseek-ai/deepseek-v3.2",
-  coding: "moonshotai/kimi-k2-instruct-0905",
-  multilingual: "z-ai/glm-4.7",
+  complex_reasoning: "deepseek-ai/deepseek-v4-pro",
+  coding: "mistralai/mistral-large-3-675b-instruct-2512",
+  multilingual: "z-ai/glm-5.2",
   safety: "meta-llama/llama-guard-4-12b",
 } as const;
 
