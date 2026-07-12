@@ -9,11 +9,13 @@ import {
   X,
   GitBranch,
   ArrowDown,
+  ChevronRight,
   Copy,
   Check,
   ArrowRight,
   MessageSquareDashed,
 } from "lucide-react";
+import { BrandLoader } from "@/components/brand-loader";
 import {
   Tooltip,
   TooltipContent,
@@ -27,9 +29,22 @@ import "highlight.js/styles/github.css";
 import type { Message, ForkedNodeRef } from "./shared";
 
 // ─── Thinking block parser ──────────────────────────────────
-const parseThinking = (content: string) => {
+// Splits assistant content into text and <think>…</think> segments. A
+// trailing UNCLOSED <think> (i.e. the model is mid-thought while the stream
+// is still arriving) becomes a "thinking-live" part so the UI can render an
+// expanded, streaming Thinking section; the moment </think> lands the same
+// span parses as a regular "thinking" part, which renders collapsed — that
+// transition is the auto-collapse.
+type ThinkingPart = {
+  type: "text" | "thinking" | "thinking-live";
+  content: string;
+};
+
+const OPEN_TAG = "<think>";
+
+const parseThinking = (content: string): ThinkingPart[] => {
   const regex = /<think>([\s\S]*?)<\/think>/g;
-  const parts: { type: "text" | "thinking"; content: string }[] = [];
+  const parts: ThinkingPart[] = [];
   let last = 0;
   let match;
   while ((match = regex.exec(content)) !== null) {
@@ -38,10 +53,57 @@ const parseThinking = (content: string) => {
     parts.push({ type: "thinking", content: match[1].trim() });
     last = match.index + match[0].length;
   }
-  if (last < content.length)
-    parts.push({ type: "text", content: content.slice(last) });
+  if (last < content.length) {
+    const rest = content.slice(last);
+    const openIdx = rest.indexOf(OPEN_TAG);
+    if (openIdx === -1) {
+      parts.push({ type: "text", content: rest });
+    } else {
+      if (openIdx > 0)
+        parts.push({ type: "text", content: rest.slice(0, openIdx) });
+      parts.push({
+        type: "thinking-live",
+        content: rest.slice(openIdx + OPEN_TAG.length).replace(/^\s+/, ""),
+      });
+    }
+  }
   return parts.length ? parts : [{ type: "text" as const, content }];
 };
+
+// ─── Thinking block (one presentation for live + completed) ─
+// Muted panel with a primary left border. `live` renders it expanded with
+// the brand dots loader while tokens stream in; completed blocks render as
+// a collapsed <details> with a chevron to expand.
+function ThinkingBlock({
+  content,
+  live = false,
+}: {
+  content: string;
+  live?: boolean;
+}) {
+  return (
+    <details
+      open={live || undefined}
+      className="group/think mb-3 rounded border-l-2 border-primary/40 bg-muted/40 px-3 py-2"
+    >
+      <summary className="flex cursor-pointer select-none list-none items-center gap-2 type-meta [&::-webkit-details-marker]:hidden">
+        {live ? (
+          <BrandLoader variant="dots" size={16} label="Thinking" />
+        ) : (
+          <ChevronRight
+            size={12}
+            strokeWidth={1.75}
+            className="shrink-0 transition-transform group-open/think:rotate-90"
+          />
+        )}
+        Thinking
+      </summary>
+      <div className="mt-2 whitespace-pre-wrap type-meta italic text-muted-foreground">
+        {content}
+      </div>
+    </details>
+  );
+}
 
 // ─── Hoisted subcomponents (DO NOT inline back into render) ─
 // Defining these at module scope keeps their component identity stable across
@@ -152,16 +214,15 @@ const MessageItem = memo(function MessageItem({
             ) : (
               <div className="prose prose-slate dark:prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:rounded-lg prose-pre:border prose-pre:border-border prose-code:before:content-none prose-code:after:content-none">
                 {parseThinking(message.content).map((part, i) => (
-                  <div key={i}>
-                    {part.type === "thinking" ? (
-                      <details className="mb-3 rounded-lg border border-purple-500/20 bg-purple-500/5 px-3 py-2 text-sm">
-                        <summary className="cursor-pointer text-xs font-medium text-purple-600 dark:text-purple-400">
-                          Thinking
-                        </summary>
-                        <div className="mt-2 border-l-2 border-purple-500/30 pl-3 italic text-purple-700 dark:text-purple-300 whitespace-pre-wrap text-xs">
-                          {part.content}
-                        </div>
-                      </details>
+                  // Key by type too: when a live block closes (</think>
+                  // arrives) the part type flips and the <details> remounts
+                  // in its default collapsed state — the auto-collapse.
+                  <div key={`${part.type}-${i}`}>
+                    {part.type === "thinking" || part.type === "thinking-live" ? (
+                      <ThinkingBlock
+                        content={part.content}
+                        live={part.type === "thinking-live"}
+                      />
                     ) : (
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
@@ -298,19 +359,12 @@ const TypingIndicator = memo(function TypingIndicator({
           size={28}
           className="rounded-full flex-shrink-0"
         />
-        <div className="pt-2 flex items-center gap-1">
-          <div
-            className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
-            style={{ animationDelay: "0ms" }}
-          />
-          <div
-            className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
-            style={{ animationDelay: "200ms" }}
-          />
-          <div
-            className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
-            style={{ animationDelay: "400ms" }}
-          />
+        {/* Same "Thinking" presentation as the streaming ThinkingBlock —
+            this shows pre-first-token, the block takes over once <think>
+            content starts streaming. */}
+        <div className="flex items-center gap-2 pt-1 type-meta">
+          <BrandLoader variant="dots" size={20} label="Thinking" />
+          Thinking
         </div>
       </div>
     </div>

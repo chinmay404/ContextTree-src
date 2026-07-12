@@ -77,19 +77,18 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
   const preview = (data.preview || "").trim();
   const time = timeAgo(data.timestamp);
 
-  // Handles are hover-only: hidden at rest so the dots never sit mid-edge.
-  const handleClassName = cn(
-    "!h-1.5 !w-1.5 !min-h-0 !min-w-0 !border !transition-all !duration-200 !ease-out",
-    "!scale-75 !opacity-0 group-hover:!scale-100 group-hover:!opacity-100"
-  );
-  const handleStyle = { backgroundColor: lineageColor, borderColor: "var(--card)" };
+  // Handles stay mounted (edges need anchors) but are never visible or
+  // interactive — edges are system-drawn, so no connection dots, ever.
+  const handleClassName =
+    "!h-px !w-px !min-h-0 !min-w-0 !border-0 !bg-transparent !opacity-0 !pointer-events-none";
 
   return (
     <div
       className={cn(
         "group relative w-[280px] cursor-pointer rounded-2xl border border-border bg-card",
         "transition-all duration-200 ease-out hover:border-white/15 hover:shadow-md",
-        active && "ring-2 ring-primary ring-offset-1 ring-offset-background",
+        active &&
+          "ring-2 ring-primary ring-offset-1 ring-offset-background shadow-[0_0_24px_rgba(124,102,220,0.25)] hover:shadow-[0_0_24px_rgba(124,102,220,0.25)]",
         data.compareSelected &&
           "outline-dashed outline-2 outline-offset-2 outline-primary/50"
       )}
@@ -206,18 +205,8 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
         )}
       </div>
 
-      <Handle
-        type="target"
-        position={Position.Top}
-        className={handleClassName}
-        style={handleStyle}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className={handleClassName}
-        style={handleStyle}
-      />
+      <Handle type="target" position={Position.Top} className={handleClassName} />
+      <Handle type="source" position={Position.Bottom} className={handleClassName} />
     </div>
   );
 }

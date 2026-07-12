@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, ChevronRight, ChevronDown, Loader2, Lock } from "lucide-react";
+import { X, ChevronRight, ChevronDown, Lock } from "lucide-react";
+import { BrandLoader } from "@/components/brand-loader";
 import { toast } from "sonner";
 import { cn, generateCanvasTitle } from "@/lib/utils";
 import { isPremiumUser, PREMIUM_TOOLTIP } from "@/lib/premium";
@@ -290,7 +291,12 @@ export const CreateCanvasDialog = ({
             disabled={isCreating || !title.trim() || !selectedModel}
           >
             {isCreating && (
-              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} />
+              <BrandLoader
+                variant="ring"
+                size={16}
+                label="Creating canvas"
+                className="mr-1.5 text-primary-foreground"
+              />
             )}
             {isCreating ? "Creating..." : "Create canvas"}
           </Button>

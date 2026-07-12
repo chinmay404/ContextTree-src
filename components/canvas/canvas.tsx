@@ -36,6 +36,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 
+import { BrandLoader } from "@/components/brand-loader";
 import { ChatNode } from "@/components/nodes/chat-node";
 import { CompareModal } from "@/components/compare/compare-modal";
 import { NodeDetailsDialog } from "@/components/node-details-dialog";
@@ -402,22 +403,22 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
   }, [canvasId, applyCanvas]);
 
   // Rename / model change / arbitrary node updates from the console.
+  // Every field in the event detail (name, model, …) is merged onto the
+  // matching node via applyCanvas — state AND the localStorage cache — so
+  // the card badge updates instantly and the change survives the next
+  // cache-seeded load instead of reverting to the stale cached copy.
   useEffect(() => {
     const handler = (e: any) => {
       const { nodeId, updates } = e.detail || {};
       if (!nodeId || !updates) return;
-      setCanvas((prev) =>
-        prev
-          ? {
-              ...prev,
-              nodes: prev.nodes.map((n) => (n._id === nodeId ? { ...n, ...updates } : n)),
-            }
-          : prev
-      );
+      applyCanvas((prev) => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => (n._id === nodeId ? { ...n, ...updates } : n)),
+      }));
     };
     window.addEventListener("canvas-update-node", handler);
     return () => window.removeEventListener("canvas-update-node", handler);
-  }, []);
+  }, [applyCanvas]);
 
   // Selection requests from the console (e.g. after forking).
   useEffect(() => {
@@ -859,6 +860,22 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
     };
     const lineageColorOf = (id: string) => lineageVarFor(rootOf(id));
 
+    // Active-node presence: the open node's ancestor chain lights up. Walk
+    // parentNodeId from the selected node to its root once (O(depth)) and
+    // collect the parent→child edge pairs; each edge below then checks the
+    // set in O(1). The whole derivation is already memoized on
+    // (canvas, selectedNode), so this costs nothing on unrelated renders.
+    const activePathEdges = new Set<string>();
+    if (selectedNode) {
+      let cur = byId.get(selectedNode);
+      const walked = new Set<string>();
+      while (cur?.parentNodeId && !walked.has(cur._id)) {
+        walked.add(cur._id);
+        activePathEdges.add(`${cur.parentNodeId}→${cur._id}`);
+        cur = byId.get(cur.parentNodeId);
+      }
+    }
+
     // Manual layout wins: live drag override → stored position (when present
     // and non-(0,0)) → dagre auto-layout.
     const resolvePosition = (node: NodeData) => {
@@ -963,19 +980,26 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
 
     const edges: Edge[] = canvas.edges
       .filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to))
-      .map((e) => ({
-        id: e._id,
-        source: e.from,
-        target: e.to,
-        type: "default", // bezier
-        selectable: false,
-        focusable: false,
-        interactionWidth: 0, // edges never capture pointer events
-        style: {
-          stroke: `color-mix(in srgb, ${lineageColorOf(e.from)} 45%, transparent)`,
-          strokeWidth: 1.5,
-        },
-      }));
+      .map((e) => {
+        // Edges on the selected node's ancestor path render at full lineage
+        // color and heavier stroke; everything else stays faded.
+        const onActivePath = activePathEdges.has(`${e.from}→${e.to}`);
+        return {
+          id: e._id,
+          source: e.from,
+          target: e.to,
+          type: "default", // bezier
+          selectable: false,
+          focusable: false,
+          interactionWidth: 0, // edges never capture pointer events
+          style: onActivePath
+            ? { stroke: lineageColorOf(e.from), strokeWidth: 2 }
+            : {
+                stroke: `color-mix(in srgb, ${lineageColorOf(e.from)} 45%, transparent)`,
+                strokeWidth: 1.5,
+              },
+        };
+      });
 
     const chatNodes = visible.filter((n) => n.type === "entry" || n.type === "branch");
     const branchCount = chatNodes.filter((n) => n.type === "branch").length;
@@ -1062,7 +1086,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
       {isLoading && !canvas && !loadError && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/60 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary" />
+            <BrandLoader variant="pulse" size={48} label="Loading canvas" />
             <p className="text-xs font-medium text-muted-foreground">Loading canvas…</p>
           </div>
         </div>

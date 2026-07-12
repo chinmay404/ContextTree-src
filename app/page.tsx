@@ -11,7 +11,7 @@ import { CanvasList } from "@/components/canvas-list";
 import { storageService, type CanvasData } from "@/lib/storage";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { BrandLoader } from "@/components/brand-loader";
 import { Landing } from "@/components/landing";
 import { generateCanvasTitle } from "@/lib/utils";
 import type { AdvancedSettings } from "@/lib/advanced-settings";
@@ -477,7 +477,12 @@ export default function ContextTreePage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <LoadingSpinner size="lg" text="Loading ContextTree..." />
+        <div className="flex flex-col items-center gap-4">
+          <BrandLoader variant="draw" size={64} label="Loading ContextTree" />
+          <p className="text-sm font-medium text-muted-foreground tracking-tight">
+            Loading ContextTree...
+          </p>
+        </div>
       </motion.div>
     );
   }

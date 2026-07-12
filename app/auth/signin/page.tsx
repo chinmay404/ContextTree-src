@@ -5,6 +5,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Network, AlertCircle } from "lucide-react";
+import { BrandLoader } from "@/components/brand-loader";
 
 interface Provider {
   id: string;
@@ -109,7 +110,7 @@ function SignInContent() {
                 {/* Spinner when specific provider is clicked */}
                 {loading && clickedProvider === provider.id ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-card/80">
-                    <div className="w-5 h-5 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
+                    <BrandLoader variant="ring" size={24} label="Signing in" />
                   </div>
                 ) : null}
                 
@@ -165,7 +166,7 @@ export default function SignInPage() {
   return (
     <Suspense fallback={
        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="w-6 h-6 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
+          <BrandLoader variant="ring" size={24} />
        </div>
     }>
       <SignInContent />
