@@ -366,7 +366,7 @@ export const ENABLED_MODELS: ModelConfig[] = ALL_MODELS.filter(
 );
 
 export const MODEL_RECOMMENDATIONS = {
-  general_chat: "openai/gpt-oss-120b",
+  general_chat: "moonshotai/kimi-k2-instruct-0905",
   fast_responses: "gemini/gemini-3-flash-preview",
   complex_reasoning: "deepseek-ai/deepseek-v3.2",
   coding: "moonshotai/kimi-k2-instruct-0905",
