@@ -129,3 +129,18 @@ Postgres even before the new Supabase project exists.
 ---
 
 *(Append Checkpoint 003 here at the next stopping point.)*
+
+## Checkpoint 003 — 2026-07-12 (Landing v3, screenshot-verified)
+
+- Landing rebuilt visual-first after owner round-2 feedback and verified
+  with real Playwright screenshots at 1440px/390px (desktop + mobile).
+  Rail/elbow diagram system, distinct move glyphs, no eyebrow scaffolding.
+- Real bug caught by screenshots: opacity-gated entrance animation left
+  hero rows invisible under throttled rendering. Now transform-only.
+  Lesson: never gate content visibility on an animation.
+- New public route /landing (no auth check) — use it for marketing links
+  and visual iteration; / still runs the session check.
+- PRODUCT.md added (design context for future UI work). Playwright is a
+  devDependency now. Dev-server note: Turbopack crashed once on Windows
+  (junction point to node_modules/pg); restart recovers it.
+- Pushed: main c0bf727 (+ playwright dep commit) → Vercel deploys.
