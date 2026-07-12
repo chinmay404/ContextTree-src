@@ -107,6 +107,11 @@ export default function AdminPage() {
             <p className="mt-2 type-meta">
               This page is restricted to administrators.
             </p>
+            <p className="mt-3 type-meta text-muted-foreground">
+              {status === "unauthenticated"
+                ? "You are not signed in."
+                : `Signed in as ${session?.user?.email ?? "(no email in session)"} — not an admin account.`}
+            </p>
           </div>
         </main>
       </div>

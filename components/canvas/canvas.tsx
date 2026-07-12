@@ -876,22 +876,10 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
       }
     }
 
-    // Manual layout wins: live drag override → stored position (when present
-    // and non-(0,0)) → dagre auto-layout.
-    const resolvePosition = (node: NodeData) => {
-      const dragged = dragOverrides.get(node._id);
-      if (dragged) return dragged;
-      const stored = node.position;
-      if (
-        stored &&
-        typeof stored.x === "number" &&
-        typeof stored.y === "number" &&
-        !(stored.x === 0 && stored.y === 0)
-      ) {
-        return stored;
-      }
-      return autoPositions.get(node._id) || { x: 0, y: 0 };
-    };
+    // Always auto-align (owner decision): dagre positions only — stored
+    // positions and drag overrides are ignored; the tree tidies itself.
+    const resolvePosition = (node: NodeData) =>
+      autoPositions.get(node._id) || { x: 0, y: 0 };
 
     const nodes: Node[] = visible.map((node) => {
       const isChat = node.type === "entry" || node.type === "branch";
@@ -906,7 +894,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
             id: node._id,
             type: "demotedChat",
             position,
-            draggable: true,
+            draggable: false,
             connectable: false,
             data: {
               label,
@@ -922,7 +910,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
           id: node._id,
           type: "chat",
           position,
-          draggable: true,
+          draggable: false,
           connectable: false,
           data: {
             label,
@@ -964,7 +952,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         id: node._id,
         type: "contextCard",
         position,
-        draggable: true,
+        draggable: false,
         connectable: false,
         data: {
           label,
@@ -1145,11 +1133,9 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         nodeTypes={nodeTypes}
         onPaneClick={() => onNodeSelect(null)}
         onNodeDoubleClick={(_, node) => zoomToNode(node.id)}
-        onNodesChange={handleNodesChange}
-        onNodeDragStop={handleNodeDragStop}
         fitView
         fitViewOptions={FIT_VIEW_OPTIONS}
-        nodesDraggable
+        nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={true}
         edgesFocusable={false}
@@ -1241,15 +1227,6 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
               title="Fit view"
             >
               <Maximize2 size={14} />
-            </button>
-            <button
-              type="button"
-              className={controlButtonClass}
-              onClick={tidyLayout}
-              aria-label="Tidy layout"
-              title="Tidy layout"
-            >
-              <LayoutGrid size={16} strokeWidth={1.75} />
             </button>
           </div>
         </Panel>
