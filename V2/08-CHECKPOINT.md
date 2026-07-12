@@ -346,3 +346,34 @@ Railway backend healthy):
 Remaining before charging money: Stripe checkout (billing dirs are
 empty scaffolds), legal review of trust pages, demo canvas + video
 assets per marketing plan, rotate ALL keys in DB.txt and delete it.
+
+---
+
+## Checkpoint 010 (2026-07-13, early) — Bug-bash from live user testing
+
+Owner tested prod end-to-end; every finding root-caused and shipped:
+
+- CRITICAL data loss: child-node delete wiped parent conversation
+  (full-canvas PUT -> syncNodesToTables delete+reinsert of messages
+  from hollow client copies). Server now refuses empty message
+  replacement on any save path; node delete is per-node DELETE.
+  NOTE: conversations wiped before the fix are unrecoverable unless
+  Supabase PITR is enabled.
+- NIM catalog rotation (July 2026): kimi ids 404 despite listing;
+  default now z-ai/glm-5.2 (verified), old ids aliased. Chat verified
+  replying on prod.
+- Token streaming: async checkpoint pool was never opened -> silent
+  sync fallback. ensure_async_pool_open() awaited before streams.
+- UX batch: dragging restored (+Tidy, positions persist via layout
+  PATCH), stripe/handle polish (handles now fully invisible), active
+  node glow + lit ancestor path, live Claude-style thinking block
+  (auto-collapses), model chip on messages + console/canvas model
+  sync, from-parent meta, premium Founding lock on advanced controls,
+  sidebar flicker fix, canvas deletion wins over autosave, empty-state
+  as bottom hint, light theme unified (same violet accent), slim
+  scrollbars, BrandLoader (6 tree-mark animations) placed across all
+  loading states.
+
+Verified live: deploy READY, contexttree.tech 200, Railway 200.
+Open: fork buffer verification after healthy chats, Stripe, legal
+review, demo assets, rotate DB.txt keys.
