@@ -249,13 +249,13 @@ const MessageItem = memo(function MessageItem({
 
   return (
     <div
-      className={`group px-5 py-5 ${isUser ? "" : "bg-slate-50/50"} border-b border-slate-100/60 last:border-0`}
+      className={`group px-5 py-5 ${isUser ? "" : "bg-muted/50"} border-b border-border last:border-0`}
     >
       <div className="flex gap-3 max-w-3xl mx-auto">
         <div className="flex-shrink-0 pt-0.5">
           {isUser ? (
-            <div className="h-7 w-7 rounded-full flex items-center justify-center bg-slate-200">
-              <User size={14} className="text-slate-600" />
+            <div className="h-7 w-7 rounded-full flex items-center justify-center bg-accent">
+              <User size={14} className="text-muted-foreground" />
             </div>
           ) : (
             <ModelProviderIcon
@@ -268,10 +268,10 @@ const MessageItem = memo(function MessageItem({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-slate-800">
+            <span className="text-sm font-semibold text-foreground">
               {isUser ? "You" : "Assistant"}
             </span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[10px] text-muted-foreground">
               {new Date(message.timestamp).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -283,7 +283,7 @@ const MessageItem = memo(function MessageItem({
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => onStartFork(message.id)}
-                      className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                      className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:border-border hover:text-foreground"
                     >
                       <GitBranch size={10} /> Branch
                     </button>
@@ -301,26 +301,26 @@ const MessageItem = memo(function MessageItem({
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
                 }}
-                className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 hover:text-slate-600"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground"
               >
                 {copied ? <Check size={10} /> : <Copy size={10} />}
               </button>
             </div>
           </div>
 
-          <div className="text-[15px] leading-relaxed text-slate-800">
+          <div className="text-[15px] leading-relaxed text-foreground">
             {isUser ? (
               <div className="whitespace-pre-wrap">{message.content}</div>
             ) : (
-              <div className="prose prose-slate prose-sm max-w-none prose-p:leading-relaxed prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-200 prose-code:before:content-none prose-code:after:content-none">
+              <div className="prose prose-slate dark:prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:rounded-lg prose-pre:border prose-pre:border-border prose-code:before:content-none prose-code:after:content-none">
                 {parseThinking(message.content).map((part, i) => (
                   <div key={i}>
                     {part.type === "thinking" ? (
-                      <details className="mb-3 rounded-lg border border-purple-100 bg-purple-50/30 px-3 py-2 text-sm">
-                        <summary className="cursor-pointer text-xs font-medium text-purple-600">
+                      <details className="mb-3 rounded-lg border border-purple-500/20 bg-purple-500/5 px-3 py-2 text-sm">
+                        <summary className="cursor-pointer text-xs font-medium text-purple-600 dark:text-purple-400">
                           Thinking
                         </summary>
-                        <div className="mt-2 border-l-2 border-purple-200 pl-3 italic text-purple-700 whitespace-pre-wrap text-xs">
+                        <div className="mt-2 border-l-2 border-purple-500/30 pl-3 italic text-purple-700 dark:text-purple-300 whitespace-pre-wrap text-xs">
                           {part.content}
                         </div>
                       </details>
@@ -358,14 +358,14 @@ const MessageItem = memo(function MessageItem({
                             </h3>
                           ),
                           blockquote: ({ children }) => (
-                            <blockquote className="border-l-3 border-slate-200 pl-3 italic text-slate-600 my-3">
+                            <blockquote className="border-l-3 border-border pl-3 italic text-muted-foreground my-3">
                               {children}
                             </blockquote>
                           ),
                           code: ({ children, className }) => {
                             if (!className)
                               return (
-                                <code className="bg-slate-100 px-1 py-0.5 rounded text-[13px] font-mono text-pink-600">
+                                <code className="bg-accent px-1 py-0.5 rounded text-[13px] font-mono text-pink-600 dark:text-pink-400">
                                   {children}
                                 </code>
                               );
@@ -383,19 +383,19 @@ const MessageItem = memo(function MessageItem({
                             </div>
                           ),
                           table: ({ children }) => (
-                            <div className="overflow-x-auto my-4 border border-slate-200 rounded-lg">
-                              <table className="w-full divide-y divide-slate-200 text-sm">
+                            <div className="overflow-x-auto my-4 border border-border rounded-lg">
+                              <table className="w-full divide-y divide-border text-sm">
                                 {children}
                               </table>
                             </div>
                           ),
                           th: ({ children }) => (
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 bg-slate-50">
+                            <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground bg-muted">
                               {children}
                             </th>
                           ),
                           td: ({ children }) => (
-                            <td className="px-3 py-2 text-slate-600 border-b border-slate-100">
+                            <td className="px-3 py-2 text-foreground border-b border-border">
                               {children}
                             </td>
                           ),
@@ -421,13 +421,13 @@ const MessageItem = memo(function MessageItem({
           </div>
 
           {forkedNodes.length > 0 && (
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
               <GitBranch size={10} />
               {forkedNodes.map((n) => (
                 <button
                   key={n._id}
                   onClick={() => onSelectForkedNode(n._id, n.name, n.type)}
-                  className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-200 transition-colors"
+                  className="rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-foreground hover:bg-accent/70 transition-colors"
                 >
                   {n.name || "Branch"}
                 </button>
@@ -453,7 +453,7 @@ const TypingIndicator = memo(function TypingIndicator({
   activeModelId: string;
 }) {
   return (
-    <div className="px-5 py-5 bg-slate-50/50">
+    <div className="px-5 py-5 bg-muted/50">
       <div className="flex gap-3 max-w-3xl mx-auto">
         <ModelProviderIcon
           modelId={activeModelId}
@@ -462,15 +462,15 @@ const TypingIndicator = memo(function TypingIndicator({
         />
         <div className="pt-2 flex items-center gap-1">
           <div
-            className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse"
+            className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
             style={{ animationDelay: "0ms" }}
           />
           <div
-            className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse"
+            className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
             style={{ animationDelay: "200ms" }}
           />
           <div
-            className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse"
+            className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
             style={{ animationDelay: "400ms" }}
           />
         </div>
@@ -511,25 +511,25 @@ const ForkDialog = memo(function ForkDialog({
   }, [open, sourceName, inheritedSystemPrompt, inheritedAdvancedSettings]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
-      <div className="flex max-h-[90vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
-        <div className="border-b border-slate-200 px-6 py-4">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+        <div className="border-b border-border px-6 py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-950">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600">
+              <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
                   <GitBranch size={15} />
                 </span>
                 New branch
               </h3>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Set the branch label and model before it appears on the canvas.
               </p>
             </div>
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               aria-label="Close branch dialog"
             >
               <X size={18} />
@@ -538,11 +538,11 @@ const ForkDialog = memo(function ForkDialog({
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[360px_minmax(0,1fr)]">
-          <div className="border-b border-slate-200 bg-slate-50/70 px-6 py-5 lg:border-b-0 lg:border-r">
+          <div className="border-b border-border bg-muted px-6 py-5 lg:border-b-0 lg:border-r">
             <div className="space-y-2">
               <label
                 htmlFor="fork-branch-name"
-                className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500"
+                className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
               >
                 Branch name
               </label>
@@ -552,7 +552,7 @@ const ForkDialog = memo(function ForkDialog({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Branch from current reply"
-                className="h-11 rounded-lg border-slate-300 bg-white text-sm font-medium text-slate-900 shadow-none focus-visible:ring-2 focus-visible:ring-slate-900/10"
+                className="h-11 rounded-lg border-border bg-background text-sm font-medium text-foreground shadow-none focus-visible:ring-2 focus-visible:ring-ring"
                 data-slot="fork-branch-name-input"
               />
             </div>
@@ -565,24 +565,24 @@ const ForkDialog = memo(function ForkDialog({
               className="mt-5"
             />
 
-            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            <div className="mt-5 rounded-xl border border-border bg-card p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 Custom system prompt
               </div>
               <Textarea
                 value={systemPrompt}
                 onChange={(event) => setSystemPrompt(event.target.value)}
                 placeholder="Optional instructions for this branch..."
-                className="mt-3 min-h-[132px] resize-none rounded-lg border-slate-200 bg-slate-50 text-sm leading-relaxed text-slate-800"
+                className="mt-3 min-h-[132px] resize-none rounded-lg border-border bg-background text-sm leading-relaxed text-foreground"
                 data-slot="fork-system-prompt-input"
               />
-              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 By default this is copied from the parent node. Edit it only when this branch needs different behavior.
               </p>
             </div>
 
-            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            <div className="mt-5 rounded-xl border border-border bg-card p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 Selected model
               </div>
               <div className="mt-3">
@@ -618,17 +618,17 @@ const ForkDialog = memo(function ForkDialog({
           </div>
         </div>
 
-        <div className="flex gap-3 border-t border-slate-200 bg-white px-6 py-4">
+        <div className="flex gap-3 border-t border-border bg-card px-6 py-4">
           <Button
             variant="outline"
             onClick={onCancel}
-            className="h-10 flex-1 rounded-lg border-slate-200 text-sm font-medium"
+            className="h-10 flex-1 rounded-lg border-border text-sm font-medium"
           >
             Cancel
           </Button>
           <Button
             onClick={() => onConfirm(model, name, systemPrompt, advancedSettings)}
-            className="h-10 flex-1 rounded-lg bg-slate-950 text-sm font-medium text-white hover:bg-slate-800"
+            className="h-10 flex-1 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Create Branch
           </Button>
@@ -1626,18 +1626,18 @@ const ContextualConsole = ({
           setPendingForkMsg(null);
         }}
       />
-      <div className="flex flex-col h-full bg-white w-full relative">
+      <div className="flex flex-col h-full bg-card w-full relative">
         {/* Header */}
-        <div className="flex-none border-b border-slate-100 bg-white z-10">
+        <div className="flex-none border-b border-border bg-card z-10">
           <div className="px-4 py-2.5 flex items-center justify-between">
             <div className="flex-1 min-w-0 flex items-center gap-2">
               {nodeLineage.length > 1 && (
-                <div className="flex items-center gap-0.5 text-[11px] text-slate-400 mr-2">
+                <div className="flex items-center gap-0.5 text-[11px] text-muted-foreground mr-2">
                   {nodeLineage.slice(0, -1).map((n) => (
                     <span key={n.id} className="flex items-center gap-0.5">
                       <button
                         onClick={() => onNodeSelect?.(n.id, n.name)}
-                        className="hover:text-slate-600 truncate max-w-[60px]"
+                        className="hover:text-foreground truncate max-w-[60px]"
                         title={n.name}
                       >
                         {n.name}
@@ -1651,7 +1651,7 @@ const ContextualConsole = ({
               {isEditingName ? (
                 <input
                   autoFocus
-                  className="text-sm font-semibold text-slate-900 bg-transparent border-b-2 border-indigo-500 px-0 py-0 focus:outline-none flex-1"
+                  className="text-sm font-semibold text-foreground bg-transparent border-b-2 border-primary px-0 py-0 focus:outline-none flex-1"
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   onBlur={saveName}
@@ -1660,12 +1660,12 @@ const ContextualConsole = ({
               ) : (
                 <button
                   onClick={() => setIsEditingName(true)}
-                  className="text-sm font-semibold text-slate-900 truncate hover:text-indigo-700 transition-colors flex items-center gap-1 group"
+                  className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors flex items-center gap-1 group"
                 >
                   {resolvedName || "Untitled"}
                   <Edit2
                     size={10}
-                    className="text-slate-300 group-hover:text-slate-500"
+                    className="text-muted-foreground group-hover:text-foreground"
                   />
                 </button>
               )}
@@ -1682,7 +1682,7 @@ const ContextualConsole = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-slate-400 hover:text-slate-600"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
                   onClick={onToggleFullscreen}
                 >
                   {isFullscreen ? (
@@ -1696,7 +1696,7 @@ const ContextualConsole = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-slate-400 hover:text-slate-600"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
                   onClick={onClose}
                 >
                   <X size={14} />
@@ -1712,17 +1712,17 @@ const ContextualConsole = ({
             <div className="pb-36">
               {isLoadingMessages && currentMessages.length === 0 ? (
                 <div className="px-5 py-20 flex flex-col items-center gap-3">
-                  <div className="h-6 w-6 rounded-full border-2 border-slate-200 border-t-slate-900 animate-spin" />
-                  <p className="text-xs font-medium text-slate-400">
+                  <div className="h-6 w-6 rounded-full border-2 border-border border-t-primary animate-spin" />
+                  <p className="text-xs font-medium text-muted-foreground">
                     Loading conversation…
                   </p>
                 </div>
               ) : currentMessages.length === 0 ? (
                 <div className="px-5 py-20 text-center">
-                  <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-300">
+                  <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-muted-foreground">
                     <MessageSquareDashed size={18} strokeWidth={1.5} />
                   </div>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-muted-foreground">
                     Start a conversation
                   </p>
                 </div>
@@ -1741,16 +1741,16 @@ const ContextualConsole = ({
                 ))
               )}
               {showBranchHint && !isTyping && (
-                <div className="mx-5 mt-2 mb-1 flex items-start gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2.5">
-                  <GitBranch size={13} className="mt-0.5 shrink-0 text-indigo-500" />
-                  <p className="flex-1 text-xs leading-relaxed text-indigo-700">
+                <div className="mx-5 mt-2 mb-1 flex items-start gap-2 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2.5">
+                  <GitBranch size={13} className="mt-0.5 shrink-0 text-primary" />
+                  <p className="flex-1 text-xs leading-relaxed text-foreground">
                     <span className="font-semibold">Tip:</span> Hover a reply created in this
                     branch to reveal the <span className="font-semibold">Branch</span> button.
                     New branches inherit that snapshot and everything before it.
                   </p>
                   <button
                     onClick={dismissBranchHint}
-                    className="shrink-0 rounded p-0.5 text-indigo-400 hover:bg-indigo-100 hover:text-indigo-600"
+                    className="shrink-0 rounded p-0.5 text-primary/70 hover:bg-primary/15 hover:text-primary"
                     aria-label="Dismiss tip"
                   >
                     <X size={12} />
@@ -1765,7 +1765,7 @@ const ContextualConsole = ({
           {showScrollBtn && (
             <button
               onClick={() => scrollToBottom("smooth")}
-              className="absolute bottom-36 left-1/2 -translate-x-1/2 z-10 h-8 w-8 rounded-full border border-slate-200 bg-white shadow-md flex items-center justify-center text-slate-500 hover:text-slate-700 hover:shadow-lg transition-all"
+              className="absolute bottom-36 left-1/2 -translate-x-1/2 z-10 h-8 w-8 rounded-full border border-border bg-card shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:shadow-lg transition-all"
             >
               <ArrowDown size={14} />
             </button>
@@ -1773,9 +1773,9 @@ const ContextualConsole = ({
         </div>
 
         {/* Composer */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-8 z-20 bg-gradient-to-t from-white via-white/95 to-transparent pointer-events-none">
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-8 z-20 bg-gradient-to-t from-card via-card/95 to-transparent pointer-events-none">
           <div className="max-w-3xl mx-auto pointer-events-auto">
-            <div className="rounded-2xl bg-slate-100 focus-within:bg-white focus-within:ring-1 focus-within:ring-slate-300 focus-within:shadow-md transition-all flex items-end p-1.5">
+            <div className="rounded-2xl bg-muted focus-within:bg-card focus-within:ring-1 focus-within:ring-ring focus-within:shadow-md transition-all flex items-end p-1.5">
               <Textarea
                 ref={textareaRef}
                 placeholder="Message..."
@@ -1791,7 +1791,7 @@ const ContextualConsole = ({
                   }
                 }}
                 disabled={isTyping || !selectedNode}
-                className="min-h-[40px] max-h-[180px] flex-1 resize-none border-0 bg-transparent px-3 py-2.5 text-[15px] focus-visible:ring-0 placeholder:text-slate-400 text-slate-900"
+                className="min-h-[40px] max-h-[180px] flex-1 resize-none border-0 bg-transparent px-3 py-2.5 text-[15px] focus-visible:ring-0 placeholder:text-muted-foreground text-foreground"
               />
               <div className="pb-1 pr-1 self-end">
                 <Button
@@ -1800,8 +1800,8 @@ const ContextualConsole = ({
                   size="icon"
                   className={`h-8 w-8 rounded-full transition-all ${
                     inputValue.trim()
-                      ? "bg-slate-900 text-white hover:bg-black"
-                      : "bg-slate-200 text-slate-400"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-muted text-muted-foreground"
                   }`}
                 >
                   <ArrowRight size={15} strokeWidth={2.5} />

@@ -68,7 +68,7 @@ function Highlighted({
   return (
     <span className={className}>
       {before}
-      <mark className="bg-amber-200/70 text-slate-900 rounded px-0.5">
+      <mark className="bg-primary/30 text-foreground rounded px-0.5">
         {match}
       </mark>
       {after}
@@ -344,7 +344,7 @@ export function GlobalSearch({
       case "externalContext":
         return <FileText size={14} className="text-violet-500" />;
       default:
-        return <MapPin size={14} className="text-slate-500" />;
+        return <MapPin size={14} className="text-muted-foreground" />;
     }
   };
 
@@ -354,7 +354,7 @@ export function GlobalSearch({
         return (
           <Badge
             variant="secondary"
-            className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 font-medium flex items-center gap-1"
+            className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/25 font-medium flex items-center gap-1"
           >
             <MessageSquare size={10} />
             {count && count > 1 ? `${count} matches` : "Chat"}
@@ -364,7 +364,7 @@ export function GlobalSearch({
         return (
           <Badge
             variant="secondary"
-            className="text-[10px] bg-sky-50 text-sky-700 border-sky-200"
+            className="text-[10px] bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/25"
           >
             Context
           </Badge>
@@ -373,7 +373,7 @@ export function GlobalSearch({
         return (
           <Badge
             variant="secondary"
-            className="text-[10px] bg-blue-50 text-blue-700 border-blue-200"
+            className="text-[10px] bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/25"
           >
             Canvas
           </Badge>
@@ -382,7 +382,7 @@ export function GlobalSearch({
         return (
           <Badge
             variant="secondary"
-            className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200"
+            className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25"
           >
             Node
           </Badge>
@@ -391,7 +391,7 @@ export function GlobalSearch({
         return (
           <Badge
             variant="secondary"
-            className="text-[10px] bg-violet-50 text-violet-700 border-violet-200"
+            className="text-[10px] bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/25"
           >
             Model
           </Badge>
@@ -404,38 +404,38 @@ export function GlobalSearch({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 gap-0 bg-white border-slate-200 shadow-2xl rounded-2xl overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-3 border-b border-slate-200 bg-gradient-to-br from-white to-slate-50/60">
-          <DialogTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center text-white">
+      <DialogContent className="max-w-2xl p-0 gap-0 bg-popover border-border shadow-2xl rounded-2xl overflow-hidden">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border bg-popover">
+          <DialogTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
               <Search size={14} />
             </div>
             Search
           </DialogTitle>
-          <DialogDescription className="text-xs text-slate-500">
+          <DialogDescription className="text-xs text-muted-foreground">
             Canvases, nodes, models, summaries and chat messages —{" "}
-            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 rounded">
+            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-foreground bg-accent border border-border rounded">
               ↑↓
             </kbd>{" "}
             to navigate,{" "}
-            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 rounded">
+            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-foreground bg-accent border border-border rounded">
               Enter
             </kbd>{" "}
             to open.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-5 py-3 border-b border-slate-200 bg-white">
+        <div className="px-5 py-3 border-b border-border bg-popover">
           <div className="relative">
             <Search
               size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
             />
             <Input
               placeholder="Type to search everywhere…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 h-10 text-sm border-slate-200 focus-visible:border-slate-400"
+              className="pl-9 pr-4 h-10 text-sm border-border focus-visible:ring-ring"
               autoFocus
             />
           </div>
@@ -445,20 +445,20 @@ export function GlobalSearch({
           <div ref={listRef}>
             {searchQuery.trim() === "" ? (
               <div className="px-6 py-12 text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-slate-100 mb-3">
-                  <Search size={20} className="text-slate-400" />
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent mb-3">
+                  <Search size={20} className="text-muted-foreground" />
                 </div>
-                <h3 className="text-sm font-semibold text-slate-900 mb-1">
+                <h3 className="text-sm font-semibold text-foreground mb-1">
                   Start typing to search
                 </h3>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                   Find across canvases, nodes, chat messages, running summaries
                   and models.
                 </p>
-                <div className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
+                <div className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
                   <Command size={11} />
                   <span>+</span>
-                  <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded font-mono">
+                  <kbd className="px-1.5 py-0.5 bg-accent border border-border rounded font-mono">
                     K
                   </kbd>
                   <span>opens search</span>
@@ -466,13 +466,13 @@ export function GlobalSearch({
               </div>
             ) : searchResults.length === 0 ? (
               <div className="px-6 py-12 text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-slate-100 mb-3">
-                  <Search size={20} className="text-slate-400" />
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent mb-3">
+                  <Search size={20} className="text-muted-foreground" />
                 </div>
-                <h3 className="text-sm font-semibold text-slate-900 mb-1">
+                <h3 className="text-sm font-semibold text-foreground mb-1">
                   No results
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Try different keywords — search looks in canvases, nodes, and
                   chat history.
                 </p>
@@ -481,7 +481,7 @@ export function GlobalSearch({
               <div className="py-2">
                 {groupedResults.map((group) => (
                   <div key={group.id} className="mb-2">
-                    <div className="px-5 py-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                    <div className="px-5 py-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                       <Layers size={10} />
                       <span className="truncate">{group.title}</span>
                       <span className="tabular-nums opacity-60">
@@ -502,17 +502,17 @@ export function GlobalSearch({
                           onMouseEnter={() => setSelectedIndex(idx)}
                           className={`w-full px-5 py-2.5 flex items-start gap-3 transition-colors text-left border-l-2 ${
                             active
-                              ? "bg-slate-50 border-l-slate-900"
-                              : "border-l-transparent hover:bg-slate-50/60"
+                              ? "bg-accent border-l-primary"
+                              : "border-l-transparent hover:bg-accent/60"
                           }`}
                         >
-                          <div className="flex-shrink-0 mt-0.5 h-6 w-6 rounded-md bg-white border border-slate-200 flex items-center justify-center">
+                          <div className="flex-shrink-0 mt-0.5 h-6 w-6 rounded-md bg-card border border-border flex items-center justify-center">
                             {getNodeIcon(result.nodeType)}
                           </div>
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-sm font-semibold text-slate-900 truncate">
+                              <span className="text-sm font-semibold text-foreground truncate">
                                 <Highlighted
                                   text={result.nodeLabel}
                                   query={searchQuery}
@@ -533,7 +533,7 @@ export function GlobalSearch({
                               </div>
                             )}
                             {result.preview && (
-                              <p className="text-[12px] leading-snug text-slate-500 line-clamp-2">
+                              <p className="text-[12px] leading-snug text-muted-foreground line-clamp-2">
                                 <Highlighted
                                   text={result.preview}
                                   query={searchQuery}
@@ -546,8 +546,8 @@ export function GlobalSearch({
                             size={14}
                             className={`flex-shrink-0 mt-1 transition-transform ${
                               active
-                                ? "text-slate-900 translate-x-0.5"
-                                : "text-slate-300"
+                                ? "text-foreground translate-x-0.5"
+                                : "text-muted-foreground"
                             }`}
                           />
                         </motion.button>
@@ -561,7 +561,7 @@ export function GlobalSearch({
         </ScrollArea>
 
         {searchResults.length > 0 && (
-          <div className="px-5 py-2.5 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between text-[11px] text-slate-500">
+          <div className="px-5 py-2.5 border-t border-border bg-muted flex items-center justify-between text-[11px] text-muted-foreground">
             <span className="font-medium">
               {searchResults.length} result
               {searchResults.length !== 1 ? "s" : ""}

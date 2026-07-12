@@ -134,40 +134,41 @@
   }
 
   .dark {
-    /* Base - Deep & Rich */
-    --background: #09090b; /* Zinc 950 */
-    --foreground: #fafafa; /* Zinc 50 */
+    /* Studio dark — flat near-black surfaces, hairline borders (no blur).
+       Three surface tiers: base canvas < raised card < overlay. */
+    --background: #0a0a0b;
+    --foreground: #ededef;
 
-    /* Surface */
-    --card: #09090b;
-    --card-foreground: #fafafa;
-    --popover: #09090b;
-    --popover-foreground: #fafafa;
+    /* Surface tiers */
+    --card: #121214;
+    --card-foreground: #ededef;
+    --popover: #1a1a1d;
+    --popover-foreground: #ededef;
 
-    /* Primary */
-    --primary: #fafafa;
-    --primary-foreground: #18181b;
+    /* Primary = the one accent (indigo-violet), actions/focus/selection only */
+    --primary: #7c66dc;
+    --primary-foreground: #ffffff;
 
     /* Secondary */
-    --secondary: #27272a; /* Zinc 800 */
-    --secondary-foreground: #fafafa;
+    --secondary: #1a1a1d;
+    --secondary-foreground: #ededef;
 
-    /* Muted */
-    --muted: #27272a;
-    --muted-foreground: #a1a1aa; /* Zinc 400 */
+    /* Muted - mid + low text tiers */
+    --muted: #1a1a1d;
+    --muted-foreground: #a0a0a8;
 
-    /* Accent */
-    --accent: #27272a;
-    --accent-foreground: #fafafa;
+    /* Accent (hover surfaces, NOT the brand accent) */
+    --accent: #1e1e22;
+    --accent-foreground: #ededef;
 
     /* Destructive */
-    --destructive: #7f1d1d;
-    --destructive-foreground: #fafafa;
+    --destructive: #e5484d;
+    --destructive-foreground: #ffffff;
 
-    /* Borders */
-    --border: #27272a;
-    --input: #27272a;
-    --ring: #d4d4d8; /* Zinc 300 */
+    /* Borders - hairline at white/8% */
+    --border: rgba(255, 255, 255, 0.08);
+    --input: rgba(255, 255, 255, 0.1);
+    --ring: #7c66dc;
 
     /* Charts */
     --chart-1: #2a9d8f;
@@ -175,19 +176,43 @@
     --chart-3: #264653;
     --chart-4: #e9c46a;
     --chart-5: #f4a261;
-    
+
     /* Sidebar */
-    --sidebar: #020617; /* Slate 950 */
-    --sidebar-foreground: #f8fafc;
-    --sidebar-primary: #3b82f6;
+    --sidebar: #0e0e10;
+    --sidebar-foreground: #ededef;
+    --sidebar-primary: #7c66dc;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #1e293b;
-    --sidebar-accent-foreground: #f8fafc;
-    --sidebar-border: #1e293b;
-    --sidebar-ring: #3b82f6;
-    
-    --node-color-start: #1e293b;
-    --node-color-end: #0f172a;
+    --sidebar-accent: #1a1a1d;
+    --sidebar-accent-foreground: #ededef;
+    --sidebar-border: rgba(255, 255, 255, 0.08);
+    --sidebar-ring: #7c66dc;
+
+    --semantic-neutral: #121214;
+    --semantic-primary: #7c66dc;
+    --semantic-branch: #9d8cff;
+    --semantic-success: #30a46c;
+    --semantic-error: #e5484d;
+    --glow-color: 124, 102, 220;
+    --accent-color: 124, 102, 220;
+    --node-color-start: #121214;
+    --node-color-end: #0e0e10;
+  }
+
+  /* Lineage hues — each root tree claims one; descendants inherit a tint.
+     Muted (~55% sat) so color reads as wayfinding, not decoration.
+     Same hues both themes; dark values slightly desaturated. */
+  :root {
+    --lineage-0: #5b8def; /* blue */
+    --lineage-1: #3fb47f; /* green */
+    --lineage-2: #d9873a; /* amber */
+    --lineage-3: #c96f9b; /* rose */
+    --lineage-4: #8f7ae0; /* violet */
+    --lineage-5: #3aa6b9; /* teal */
+    --lineage-6: #b3a13c; /* olive */
+    --lineage-7: #a06fd6; /* purple */
+    /* Cost states (kept from V1 semantics) */
+    --cost-over: #e5484d;
+    --cost-saved: #30a46c;
   }
 
   * {

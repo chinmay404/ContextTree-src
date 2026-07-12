@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@aws-sdk/credential-providers": "latest",
+    "@dagrejs/dagre": "^3.0.0",
     "@hookform/resolvers": "^3.10.0",
     "@lobehub/icons": "^5.4.0",
     "@mongodb-js/zstd": "latest",

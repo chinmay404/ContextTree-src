@@ -30,8 +30,7 @@ import { Focus, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { EntryNodeMinimal as EntryNode } from "./nodes/entry-node-minimal";
-import { BranchNodeMinimal as BranchNode } from "./nodes/branch-node-minimal";
+import { ChatNode } from "./nodes/chat-node";
 import { ContextNodeMinimal as ContextNode } from "./nodes/context-node-minimal";
 import { GroupNode } from "./nodes/group-node";
 import { ExternalContextNode } from "./nodes/external-context-node";
@@ -44,6 +43,7 @@ import {
   type NodeData,
   type EdgeData,
 } from "@/lib/storage";
+import { layoutTree } from "@/lib/canvas-layout";
 
 // ─── Constants ───────────────────────────────────────────────
 const HORIZONTAL_GAP = 260;
@@ -67,10 +67,11 @@ const CHILD_POSITION_VECTORS = [
 
 // ─── Node & Edge type registries (defined outside component) ─
 const nodeTypes: NodeTypes = {
-  entry: EntryNode,
-  branch: BranchNode,
+  entry: ChatNode,
+  branch: ChatNode,
   context: ContextNode,
-  group: GroupNode,
+  // GroupNode predates the Node<Data> generic pattern; cast keeps the registry typed.
+  group: GroupNode as unknown as NodeTypes[string],
   externalContext: ExternalContextNode,
 };
 const edgeTypes = { custom: CustomEdge };
@@ -510,6 +511,31 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     const { depthMap, branchMap, badgeMap, overflowByParent, hidden } = layout;
     const animatedEdges = getLineageEdges(data, selectedNode);
 
+    // Lineage hues: every node inherits the hue of its tree ROOT so a whole
+    // conversation lineage shares one color. Hue = stable hash of root id.
+    const nodeById = new Map(data.nodes.map((n) => [n._id, n]));
+    const rootCache = new Map<string, string>();
+    const rootOf = (id: string): string => {
+      const cached = rootCache.get(id);
+      if (cached) return cached;
+      let cur = id;
+      const visited = new Set<string>();
+      while (!visited.has(cur)) {
+        visited.add(cur);
+        const pid = (nodeById.get(cur) as any)?.parentNodeId as string | undefined;
+        if (!pid || !nodeById.has(pid)) break;
+        cur = pid;
+      }
+      rootCache.set(id, cur);
+      return cur;
+    };
+    const lineageColorOf = (id: string): string => {
+      const root = rootOf(id);
+      let sum = 0;
+      for (let i = 0; i < root.length; i++) sum += root.charCodeAt(i);
+      return `var(--lineage-${sum % 8})`;
+    };
+
     const flowNodes: Node[] = data.nodes
       .filter((n) => !hidden.has(n._id))
       .map((node) => {
@@ -591,6 +617,11 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
             metaForkLabel: node.type === "branch" ? `Branched from ${parentName || "Base Context"}` : undefined,
             branchBadge: node.type === "branch" ? branchBadge(badgeMap.get(node._id)) : undefined,
             sharedLabel: node.type === "entry" ? "Shared by all branches" : undefined,
+            lineageColor:
+              node.type === "entry" || node.type === "branch"
+                ? lineageColorOf(node._id)
+                : undefined,
+            kind: node.type,
             primary: node.primary,
             highlightTier: undefined,
             onClick: () => onNodeSelect(node._id, node.name || (node.type === "entry" ? "Base Context" : "Node"), node.type),
@@ -610,11 +641,11 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
       .filter((e) => !hidden.has(e.from) && !hidden.has(e.to))
       .map((edge) => {
         const isAnimated = animatedEdges.has(edge._id);
-        const src = data.nodes.find((n) => n._id === edge.from);
-        const tgt = data.nodes.find((n) => n._id === edge.to);
-        const isExternal = src?.type === "externalContext" || tgt?.type === "externalContext";
-        const ec = isExternal ? "#f59e0b" : colorScheme(src?.color || "#f8fafc").edge || "#cbd5e1";
-        const stroke = isAnimated ? EDGE_HIGHLIGHT_COLOR : ec;
+        // Source node's lineage hue at 45% opacity; highlight color wins while animated.
+        const lineage = lineageColorOf(edge.from);
+        const stroke = isAnimated
+          ? EDGE_HIGHLIGHT_COLOR
+          : `color-mix(in srgb, ${lineage} 45%, transparent)`;
         return {
           id: edge._id,
           source: edge.from,
@@ -667,17 +698,17 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     const layoutSource = sourceCanvas || canvas;
     if (!layoutSource) return;
 
-    const layout = computeLayout(layoutSource.nodes, expandedOverflow);
-    const updatedNodes = layoutSource.nodes.map((node) => {
-      if (node.type === "group") return node;
+    // Dagre "Re-tidy": tidy top-to-bottom tree layout for ALL non-group nodes.
+    const positions = layoutTree(
+      layoutSource.nodes
+        .filter((node) => node.type !== "group")
+        .map((node) => ({ id: node._id })),
+      layoutSource.edges.map((edge) => ({ source: edge.from, target: edge.to }))
+    );
 
-      return {
-        ...node,
-        position: snapPoint({
-          x: (layout.branchMap.get(node._id) ?? 0) * HORIZONTAL_GAP,
-          y: (layout.depthMap.get(node._id) ?? 0) * VERTICAL_GAP,
-        }),
-      };
+    const updatedNodes = layoutSource.nodes.map((node) => {
+      const position = node.type !== "group" ? positions.get(node._id) : undefined;
+      return position ? { ...node, position } : node;
     });
 
     const updatedCanvas: CanvasData = {
@@ -690,7 +721,14 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     setCanvas(updatedCanvas);
 
     const built = buildFlow(updatedCanvas);
-    setNodes(built.nodes);
+    // buildFlow re-anchors entry nodes and merges any stale stored layout,
+    // so override with the dagre positions to apply the tidy layout exactly.
+    setNodes(
+      built.nodes.map((n) => {
+        const position = positions.get(n.id);
+        return position ? { ...n, position } : n;
+      })
+    );
     setEdges(built.edges);
 
     scheduleLayoutPatch({
@@ -700,8 +738,8 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     });
 
     scheduleCanvasSave(updatedCanvas);
-    toast.success("Canvas auto-arranged");
-  }, [buildFlow, canvas, expandedOverflow, scheduleCanvasSave, scheduleLayoutPatch, setEdges, setNodes]);
+    toast.success("Canvas re-tidied");
+  }, [buildFlow, canvas, scheduleCanvasSave, scheduleLayoutPatch, setEdges, setNodes]);
 
   // ─── CRUD operations ──────────────────────────────────────
   const deleteNode = useCallback((nodeId: string) => {
@@ -892,7 +930,7 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
     setPendingConn({ sourceId: params.nodeId });
   }, [canvas]);
 
-  const isValidConnection = useCallback((connection: Connection) => {
+  const isValidConnection = useCallback((connection: Connection | Edge) => {
     if (!canvas || !connection.source || !connection.target) return false;
     const sourceNode = canvas.nodes.find((node) => node._id === connection.source);
     const targetNode = canvas.nodes.find((node) => node._id === connection.target);
@@ -1455,24 +1493,19 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
           position="bottom-right"
           nodeBorderRadius={8}
           nodeStrokeWidth={1.2}
-          bgColor="rgba(255,255,255,0.96)"
-          maskColor="rgba(15,23,42,0.04)"
-          maskStrokeColor="#e2e8f0"
+          bgColor="var(--card)"
+          maskColor="rgba(0,0,0,0.45)"
+          maskStrokeColor="rgba(255,255,255,0.12)"
           maskStrokeWidth={1}
           style={{ height: 100, width: 150 }}
-          nodeColor={(node) => {
-            if (node.id === selectedNode) return "#4f46e5";
-            if (node.type === "entry") return "#0f172a";
-            if (node.type === "branch") return "#a78bfa";
-            if (node.type === "externalContext") return "#f59e0b";
-            return ((node.data as any)?.color as string | undefined) || "#cbd5e1";
-          }}
+          nodeColor={(node) =>
+            ((node.data as any)?.lineageColor as string | undefined) || "#333"
+          }
           nodeStrokeColor={(node) => {
-            if (node.id === selectedNode) return "#4f46e5";
-            if (node.type === "entry") return "#0f172a";
-            return "#e2e8f0";
+            if (node.id === selectedNode) return "var(--primary)";
+            return "rgba(255,255,255,0.12)";
           }}
-          className="!rounded-xl !border !border-slate-200/80 !bg-white/95 !shadow-lg backdrop-blur-md"
+          className="!rounded-xl !border !border-border !bg-card !shadow-lg"
           onNodeClick={(_, node) =>
             onNodeSelect(
               node.id,
@@ -1487,8 +1520,8 @@ export function CanvasArea({ canvasId, selectedNode, onNodeSelect }: CanvasAreaP
         >
           <ControlButton
             onClick={() => applyAutoLayout()}
-            title="Auto arrange"
-            aria-label="Auto arrange nodes"
+            title="Re-tidy layout"
+            aria-label="Re-tidy layout"
           >
             <LayoutGrid className="h-4 w-4" />
           </ControlButton>
