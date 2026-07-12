@@ -37,8 +37,9 @@ async function initializeDatabase() {
     // Get a client from the pool with extended timeout
     client = await pool.connect();
 
-    // Set a longer statement timeout for initialization
-    await client.query("SET statement_timeout = 60000"); // 60 seconds
+    // No session-level SET here: statement_timeout is already configured on
+    // the Pool, and session-scoped SETs leak backends under the transaction
+    // pooler (port 6543) that production uses.
     console.log("Database connection established");
 
     // Check if users table already exists with different structure

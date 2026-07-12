@@ -11,8 +11,18 @@ if (!DATABASE_URL) {
   );
 }
 
-// Single shared pool
-const pool = new Pool({ connectionString: DATABASE_URL });
+// Single shared pool. Serverless: keep per-instance connections minimal —
+// pg's default max of 10 per warm lambda exhausts the Supabase session
+// pooler (EMAXCON seen in prod); production DATABASE_URL should use the
+// transaction pooler (port 6543), which multiplexes clients.
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 3,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 20000,
+  allowExitOnIdle: true,
+});
 
 const ASSISTANT_ID_SUFFIXES = ["_assistant", "-assistant", "_ai", "_a", "-a"];
 const USER_ID_SUFFIXES = ["_user", "-user", "_u", "-u"];
