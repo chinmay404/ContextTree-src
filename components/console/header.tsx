@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ChevronRight,
@@ -20,10 +20,56 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ModelBadge } from "@/components/model-badge";
 import { ModelSelectionPanel } from "@/components/model-selection-panel";
+import { storageService } from "@/lib/storage";
 import type { LineageEntry } from "./shared";
 
 // When the lineage chain is longer than this, collapse the middle with "…".
 const MAX_VISIBLE_CHAIN = 4;
+
+// ─── Compare siblings menu item ─────────────────────────────
+// Rendered inside DropdownMenuContent, which Radix only mounts while the
+// menu is open — so the localStorage canvas cache (mirrored by the canvas
+// on every load/update) is read at most once per menu open. Dispatching
+// canvas-open-compare keeps this file decoupled from the canvas, which
+// owns the compare modal.
+function CompareSiblingsItem({ currentNodeId }: { currentNodeId?: string }) {
+  const nodeIds = useMemo(() => {
+    if (!currentNodeId || typeof window === "undefined") return null;
+    try {
+      for (const canvas of storageService.getAllCanvases()) {
+        const node = canvas.nodes.find((n) => n._id === currentNodeId);
+        if (!node) continue;
+        if (!node.parentNodeId) return null; // roots have no siblings
+        const siblings = canvas.nodes.filter(
+          (s) =>
+            s._id !== currentNodeId &&
+            s.parentNodeId === node.parentNodeId &&
+            (s.type === "entry" || s.type === "branch")
+        );
+        if (siblings.length === 0) return null;
+        // Current node + up to 2 siblings (compare caps at 3 columns).
+        return [currentNodeId, ...siblings.slice(0, 2).map((s) => s._id)];
+      }
+    } catch {
+      // Cache unavailable — treat as no siblings.
+    }
+    return null;
+  }, [currentNodeId]);
+
+  return (
+    <DropdownMenuItem
+      disabled={!nodeIds}
+      onSelect={() => {
+        if (!nodeIds) return;
+        window.dispatchEvent(
+          new CustomEvent("canvas-open-compare", { detail: { nodeIds } })
+        );
+      }}
+    >
+      Compare siblings…
+    </DropdownMenuItem>
+  );
+}
 
 type ConsoleHeaderProps = {
   lineage: LineageEntry[];
@@ -200,6 +246,9 @@ export function ConsoleHeader({
             >
               Export from here
             </DropdownMenuItem>
+            <CompareSiblingsItem
+              currentNodeId={lineage[lineage.length - 1]?.id}
+            />
             {onDeleteBranch && (
               <>
                 <DropdownMenuSeparator />

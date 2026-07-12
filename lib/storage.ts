@@ -63,6 +63,9 @@ export interface NodeData {
   // New relationship / lineage metadata
   parentNodeId?: string; // The originating (parent) node when this node is forked
   forkedFromMessageId?: string; // The assistant message id that triggered this fork
+  // Compare & promote: losers of a sibling comparison collapse on the canvas.
+  // Never deletes anything — un-demote restores the full card.
+  demoted?: boolean;
   createdAt: string;
   // React Flow properties for positioning
   position?: { x: number; y: number };

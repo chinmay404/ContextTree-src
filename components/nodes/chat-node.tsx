@@ -16,7 +16,11 @@ export interface ChatNodeData {
   lineageColor?: string;
   streaming?: boolean;
   kind?: string;
+  /** In the shift-click compare selection (dashed outline). */
+  compareSelected?: boolean;
   onClick?: () => void;
+  /** Shift-click: toggle this node in/out of the compare selection. */
+  onToggleCompare?: () => void;
   onFocus?: () => void;
   onShowDetails?: () => void;
   onDelete?: () => void;
@@ -44,7 +48,18 @@ function timeAgo(iso?: string): string {
 }
 
 function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
-  const handleClick = useCallback(() => data.onClick?.(), [data]);
+  const handleClick = useCallback(
+    (e: MouseEvent) => {
+      // Shift-click toggles compare selection instead of opening the console.
+      if (e.shiftKey && data.onToggleCompare) {
+        e.stopPropagation(); // keep xyflow from treating it as a selection click
+        data.onToggleCompare();
+        return;
+      }
+      data.onClick?.();
+    },
+    [data]
+  );
   const stop = useCallback(
     (action?: () => void) => (e: MouseEvent) => {
       e.stopPropagation();
@@ -73,7 +88,9 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
       className={cn(
         "group relative w-[280px] cursor-pointer rounded-2xl border border-border bg-card",
         "transition-all duration-200 ease-out hover:border-white/15 hover:shadow-md",
-        active && "ring-2 ring-primary"
+        active && "ring-2 ring-primary",
+        data.compareSelected &&
+          "outline-dashed outline-2 outline-offset-2 outline-primary/50"
       )}
       onClick={handleClick}
       data-slot="chat-node"

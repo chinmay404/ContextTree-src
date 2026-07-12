@@ -25,9 +25,10 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { FileText, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
+import { FileText, Maximize2, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
 
 import { ChatNode } from "@/components/nodes/chat-node";
+import { CompareModal } from "@/components/compare/compare-modal";
 import { NodeDetailsDialog } from "@/components/node-details-dialog";
 import {
   storageService,
@@ -184,9 +185,67 @@ function ContextCardComponent({ data, selected }: NodeProps<ContextCardNode>) {
 
 const ContextCard = memo(ContextCardComponent);
 
+// ─── DemotedChip node (collapsed pill for demoted branches) ──
+// Losers of a compare-and-promote collapse to this pill. Clicking still
+// opens the console; the RotateCcw button un-demotes — never hidden,
+// never deleted.
+
+interface DemotedChipData {
+  label: string;
+  lineageColor?: string;
+  isSelected?: boolean;
+  onClick?: () => void;
+  onRestore?: () => void;
+  [key: string]: unknown;
+}
+
+type DemotedChipNode = Node<DemotedChipData>;
+
+function DemotedChipComponent({ data, selected }: NodeProps<DemotedChipNode>) {
+  const active = selected || data.isSelected;
+  return (
+    <div
+      className={cn(
+        "flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-3",
+        "transition-all duration-200 ease-out hover:border-white/15 hover:shadow-md",
+        active && "ring-2 ring-primary"
+      )}
+      onClick={() => data.onClick?.()}
+      title={`${data.label} — demoted branch`}
+      data-slot="demoted-chip"
+    >
+      <span
+        aria-hidden
+        className="h-2 w-2 shrink-0 rounded-full"
+        style={{ backgroundColor: data.lineageColor || "rgba(255,255,255,0.3)" }}
+      />
+      <span className="type-meta max-w-[140px] truncate text-muted-foreground">
+        {data.label}
+      </span>
+      <button
+        type="button"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        onClick={(e) => {
+          e.stopPropagation();
+          data.onRestore?.();
+        }}
+        aria-label="Restore branch"
+        title="Restore branch"
+      >
+        <RotateCcw size={12} strokeWidth={1.75} />
+      </button>
+      <Handle type="target" position={Position.Top} isConnectable={false} className={hiddenHandleClass} />
+      <Handle type="source" position={Position.Bottom} isConnectable={false} className={hiddenHandleClass} />
+    </div>
+  );
+}
+
+const DemotedChip = memo(DemotedChipComponent);
+
 const nodeTypes: NodeTypes = {
   chat: ChatNode,
   contextCard: ContextCard,
+  demotedChat: DemotedChip,
 };
 
 const FIT_VIEW_OPTIONS = { padding: 0.2, maxZoom: 1 } as const;
@@ -207,6 +266,11 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
   const [loadError, setLoadError] = useState<string | null>(null);
   const [detailsNodeId, setDetailsNodeId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Compare & promote (F1): shift-click builds a selection of 2-3 chat
+  // nodes; compareNodeIds non-null mounts the side-by-side modal.
+  const [compareSelection, setCompareSelection] = useState<string[]>([]);
+  const [compareNodeIds, setCompareNodeIds] = useState<string[] | null>(null);
 
   // Only the latest in-flight load may commit (guards canvas switches).
   const loadTokenRef = useRef(0);
@@ -387,6 +451,81 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
     },
     [canvas, canvasId, selectedNode, onNodeSelect]
   );
+
+  // ─── Compare & promote helpers ────────────────────────────
+
+  /** Un-demote: same PATCH channel as rename; optimistic + persisted. */
+  const restoreNode = useCallback(
+    (nodeId: string) => {
+      applyCanvas((prev) => ({
+        ...prev,
+        nodes: prev.nodes.map((n) =>
+          n._id === nodeId ? { ...n, demoted: false } : n
+        ),
+      }));
+      fetch(`/api/canvases/${canvasId}/nodes/${nodeId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ demoted: false }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error(`Failed to restore (${res.status})`);
+        })
+        .catch(() => toast.error("Failed to restore branch"));
+    },
+    [applyCanvas, canvasId]
+  );
+
+  /** Shift-click toggle; capped at 3 branches. */
+  const toggleCompareSelect = useCallback((nodeId: string) => {
+    setCompareSelection((prev) => {
+      if (prev.includes(nodeId)) return prev.filter((id) => id !== nodeId);
+      if (prev.length >= 3) {
+        toast.error("Compare up to 3 branches at a time");
+        return prev;
+      }
+      return [...prev, nodeId];
+    });
+  }, []);
+
+  const closeCompare = useCallback(() => {
+    setCompareNodeIds(null);
+    setCompareSelection([]);
+  }, []);
+
+  // Open requests from outside the canvas (console header's
+  // "Compare siblings…" dispatches canvas-open-compare with nodeIds).
+  // A single id expands to its siblings (same parentNodeId, up to 3 total).
+  useEffect(() => {
+    const handler = (e: any) => {
+      const requested: string[] = e.detail?.nodeIds || [];
+      if (!canvas || requested.length === 0) return;
+      const isChat = (n: NodeData) => n.type === "entry" || n.type === "branch";
+      let ids = requested.filter((id) =>
+        canvas.nodes.some((n) => n._id === id && isChat(n))
+      );
+      if (ids.length === 1) {
+        const node = canvas.nodes.find((n) => n._id === ids[0]);
+        if (node?.parentNodeId) {
+          const siblings = canvas.nodes.filter(
+            (s) =>
+              s._id !== node._id &&
+              s.parentNodeId === node.parentNodeId &&
+              isChat(s)
+          );
+          ids = [node._id, ...siblings.map((s) => s._id)];
+        }
+      }
+      ids = ids.slice(0, 3);
+      if (ids.length < 2) {
+        toast.error("No sibling branches to compare");
+        return;
+      }
+      setCompareNodeIds(ids);
+    };
+    window.addEventListener("canvas-open-compare", handler);
+    return () => window.removeEventListener("canvas-open-compare", handler);
+  }, [canvas]);
 
   // ─── File drop → externalContext node (kept from old canvas) ─
   const pollForExternalContent = useCallback(
@@ -601,6 +740,24 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
       const position = positions.get(node._id) || { x: 0, y: 0 };
 
       if (isChat) {
+        // Demoted (compare losers) collapse to a recoverable pill.
+        if (node.demoted) {
+          return {
+            id: node._id,
+            type: "demotedChat",
+            position,
+            draggable: false,
+            connectable: false,
+            data: {
+              label,
+              lineageColor: lineageColorOf(node._id),
+              isSelected: selectedNode === node._id,
+              onClick: () => onNodeSelect(node._id, label, node.type),
+              onRestore: () => restoreNode(node._id),
+            },
+          } as Node;
+        }
+
         return {
           id: node._id,
           type: "chat",
@@ -616,7 +773,9 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
             lineageColor: lineageColorOf(node._id),
             kind: node.type,
             isSelected: selectedNode === node._id,
+            compareSelected: compareSelection.includes(node._id),
             onClick: () => onNodeSelect(node._id, label, node.type),
+            onToggleCompare: () => toggleCompareSelect(node._id),
             onFocus: () => zoomToNode(node._id),
             onShowDetails: () => setDetailsNodeId(node._id),
             onDelete: () => deleteNode(node._id),
@@ -687,7 +846,16 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
       entryNode: entry,
       isEmpty: chatNodes.length === 0 || (branchCount === 0 && messageTotal === 0),
     };
-  }, [canvas, selectedNode, onNodeSelect, zoomToNode, deleteNode]);
+  }, [
+    canvas,
+    selectedNode,
+    compareSelection,
+    onNodeSelect,
+    zoomToNode,
+    deleteNode,
+    restoreNode,
+    toggleCompareSelect,
+  ]);
 
   // ─── Viewport reactions ───────────────────────────────────
 
@@ -844,6 +1012,30 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
           />
         )}
 
+        {/* Compare action bar — appears once 2+ branches are shift-selected */}
+        {compareSelection.length >= 2 && (
+          <Panel position="bottom-center">
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-popover px-3 py-2 shadow-lg">
+              <button
+                type="button"
+                onClick={() => setCompareNodeIds(compareSelection.slice(0, 3))}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Compare {compareSelection.length} branches
+              </button>
+              <button
+                type="button"
+                onClick={() => setCompareSelection([])}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                aria-label="Clear compare selection"
+                title="Clear selection"
+              >
+                <X size={14} strokeWidth={1.75} />
+              </button>
+            </div>
+          </Panel>
+        )}
+
         {/* Dark controls cluster — zoom in / zoom out / fit */}
         <Panel position="bottom-left">
           <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-lg">
@@ -887,6 +1079,19 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
           (detailsParent?.type === "entry" ? "Base Context" : null)
         }
       />
+
+      {compareNodeIds && canvas && (
+        <CompareModal
+          canvasId={canvasId}
+          canvas={canvas}
+          nodeIds={compareNodeIds}
+          onClose={closeCompare}
+          onSelectNode={(node) => {
+            closeCompare();
+            onNodeSelect(node._id, defaultNodeName(node), node.type);
+          }}
+        />
+      )}
     </div>
   );
 }
