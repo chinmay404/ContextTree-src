@@ -1,5 +1,5 @@
 const DEFAULT_PRODUCTION_LLM_API_URL =
-  "http://contexttreeapi.duckdns.org/api/v1/chat";
+  "https://api-production-310d.up.railway.app/api/v1/chat";
 
 const getConfiguredLlmApiUrl = () =>
   process.env.LLM_API_URL || process.env.NEXT_PUBLIC_LLM_API_URL;
