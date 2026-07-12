@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-utils";
+import { mintBackendToken } from "@/lib/backend-jwt";
 import {
   buildChatBaseUrl,
   isKnownUntrustedSSL,
@@ -54,7 +55,8 @@ export async function POST(request: NextRequest) {
     }
 
     const payload: LLMRequest = await request.json();
-    (payload as any).user_id = user.email;
+    // Identity travels ONLY in the signed service token below — the backend
+    // ignores any user field in the body by schema.
 
     if (!payload.canvasId || !payload.nodeId || !payload.message) {
       return NextResponse.json(
@@ -63,6 +65,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const serviceToken = await mintBackendToken(user.email);
     const isUntrustedSSL = isKnownUntrustedSSL(llmApiUrl);
 
     const fetchOptions: RequestInit = {
@@ -70,6 +73,7 @@ export async function POST(request: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         "User-Agent": "ContextTree/1.0",
+        Authorization: `Bearer ${serviceToken}`,
       },
       body: JSON.stringify(payload),
     };

@@ -141,7 +141,6 @@ export const POST = withAuth(async (request: NextRequest) => {
 
     const ingestPayload = {
       file_id: fileId,
-      user_email: user.email,
       node_id: nodeId,
       canvas_id: canvasId,
     };
@@ -150,9 +149,13 @@ export const POST = withAuth(async (request: NextRequest) => {
     const timeout = setTimeout(() => controller.abort(), 15000);
 
     try {
+      const { mintBackendToken } = await import("@/lib/backend-jwt");
       const ingestResponse = await fetch(backendUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await mintBackendToken(user.email)}`,
+        },
         body: JSON.stringify(ingestPayload),
         signal: controller.signal,
       });

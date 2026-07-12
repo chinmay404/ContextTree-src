@@ -144,3 +144,30 @@ Postgres even before the new Supabase project exists.
   devDependency now. Dev-server note: Turbopack crashed once on Windows
   (junction point to node_modules/pg); restart recovers it.
 - Pushed: main c0bf727 (+ playwright dep commit) → Vercel deploys.
+
+## Checkpoint 004 — 2026-07-12 (Days 3–4: trust boundary closed)
+
+- **The fake-user_id hole is closed and TESTED.** Backend identity comes
+  only from a 60s HS256 service JWT minted per request by the Next proxy
+  (lib/backend-jwt.ts) and verified in app/api/auth.py (fail-closed).
+  ChatMessage.user_id / IngestRequest.user_email deleted; fork summary
+  path no longer contains user_id. 7 boundary tests green
+  (ContextTree tests/test_auth_boundary.py). Backend commit 85b5521
+  (v2/dev), frontend in this commit.
+- BACKEND_JWT_SECRET generated into both local env files (96 hex chars).
+  Must also be set in Vercel + backend host on deploy — same value.
+- Windows venv works now: ContextTree/.venv (py3.13). Dead deps pruned
+  from requirements (pymongo, redis checkpointer, pyppeteer, IPython);
+  langchain-litellm → requirements-extras.txt (needs Rust on py3.13,
+  imported lazily anyway).
+- Migration 002 written (guarded users.id text→uuid + additive user_id
+  columns + email backfill). NOT yet run.
+- **New Supabase project ContextTree_prod (eu-west-1) — password from
+  DB.txt is REJECTED by the pooler** ("password authentication failed").
+  Owner: reset/recheck the DB password in the Supabase dashboard, update
+  DATABASE_URL in ContextTree/.env + ContextTree-src/.env.local, then:
+  `.venv\Scripts\python.exe scripts\migrate.py --dry-run` → apply.
+  Delete DB.txt afterwards (plaintext credentials in the workspace).
+- Next: run migrations 001+002 on the new DB, then the user_email→user_id
+  store sweep (PostgresStore + interim Next data layer), then Day 5
+  quota buckets + Day 6 single-writer.
