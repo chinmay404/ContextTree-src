@@ -11,7 +11,6 @@ import {
 import UserAuth from "@/components/user-auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { FeedbackDialog } from "@/components/feedback-dialog";
 
 interface ContextStripProps {
   canvasName?: string;
@@ -121,16 +120,6 @@ export function ContextStrip({
               <Search className="h-4 w-4" />
             </Button>
           ) : null}
-
-          <FeedbackDialog defaultContext={canvasName}>
-            <Button
-              type="button"
-              variant="outline"
-              className="hidden h-9 rounded-xl border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 sm:inline-flex"
-            >
-              Feedback
-            </Button>
-          </FeedbackDialog>
 
           <div className="origin-right scale-90">
             <UserAuth />

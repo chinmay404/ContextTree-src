@@ -3,10 +3,9 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import AuthProvider from "@/components/auth-provider";
-import { AOSProvider } from "@/components/aos-provider";
 import { Toaster } from "@/components/ui/toaster";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://contexttree.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://contexttree.tech";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -77,12 +76,10 @@ html {
         `}</style>
       </head>
       <body className="bg-slate-50 text-slate-900 antialiased">
-        <AOSProvider>
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
-        </AOSProvider>
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

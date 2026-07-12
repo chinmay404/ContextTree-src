@@ -342,16 +342,16 @@ function HeroTree() {
         aria-label="A conversation tree: a main thread, a side question that stays separate, and a branch continued on Claude"
       >
         <Row first lit={is("n1")} onHover={() => setFocus("n1")} delay={100}>
-          <Card chip="GPT-5" text="Why do transformers use attention instead of recurrence?" />
+          <Card chip="GPT-5" text="Plan a 10-day Japan trip in April — two of us, mid budget." />
         </Row>
         <Row lit={is("n2")} onHover={() => setFocus("n2")} delay={220}>
-          <Card chip="GPT-5" text="Attention lets every token look at every other token at once…" />
+          <Card chip="GPT-5" text="Tokyo days 1–4, Kyoto 5–7, Osaka 8–10. Here's the route…" />
         </Row>
         <Row branch="teal" lit={is("s1")} onHover={() => setFocus("s1")} delay={340}>
-          <Card tone="teal" chip="side question" text="Wait — what exactly is a token?" />
+          <Card tone="teal" chip="side question" text="Wait — do we even need a visa?" />
         </Row>
         <Row last lit={is("n3")} onHover={() => setFocus("n3")} delay={460}>
-          <Card chip="GPT-5" text="Now explain multi-head attention simply." />
+          <Card chip="GPT-5" text="Now make Kyoto more food-focused." />
         </Row>
         <Row branch="amber" lit={is("c1")} onHover={() => setFocus("c1")} delay={580}>
           <Card tone="amber" chip="→ continued on Claude" text="Same thread. Second opinion. Context came along." />
@@ -432,8 +432,8 @@ export function Landing() {
           </div>
           <div className="mini">
             <div className="rail" role="img" aria-label="A side question branches off the main thread; the main thread continues untouched">
-              <Row first><Card text="deep in the topic…" /></Row>
-              <Row branch="teal"><Card tone="teal" chip="side question" text="wait — what's a token?" /></Row>
+              <Row first><Card text="deep in the mortgage numbers…" /></Row>
+              <Row branch="teal"><Card tone="teal" chip="side question" text="wait — what's a down payment again?" /></Row>
               <Row last tag={{ text: "✓ never saw the detour", tone: "ok" }}>
                 <Card text="…continues clean" />
               </Row>
