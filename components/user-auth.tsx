@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, LogOut, Settings, UserCircle } from "lucide-react";
+import { User, LogOut, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ApiKeySettingsDialog } from "@/components/api-key-settings-dialog";
 
@@ -53,14 +53,14 @@ export default function UserAuth() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="relative h-9 w-9 rounded-full hover:bg-slate-100 transition-all ring-2 ring-slate-200 hover:ring-slate-300"
+              className="relative h-9 w-9 rounded-full hover:bg-accent transition-all ring-2 ring-border hover:ring-input"
             >
               <Avatar className="h-8 w-8">
                 <AvatarImage
                   src={session.user.image || ""}
                   alt={session.user.name || "User"}
                 />
-                <AvatarFallback className="bg-slate-100 text-slate-700 font-semibold">
+                <AvatarFallback className="bg-muted text-foreground font-semibold">
                   {session.user.name?.charAt(0).toUpperCase() || (
                     <User className="h-4 w-4" />
                   )}
@@ -69,39 +69,32 @@ export default function UserAuth() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-56 bg-white border-slate-200 shadow-xl rounded-xl"
+            className="w-56 bg-popover border-border shadow-xl rounded-xl"
             align="end"
             forceMount
           >
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-semibold leading-none text-slate-900">
+                <p className="text-sm font-semibold leading-none text-foreground">
                   {session.user.name}
                 </p>
-                <p className="text-xs leading-none text-slate-500">
+                <p className="text-xs leading-none text-muted-foreground">
                   {session.user.email}
                 </p>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-slate-200" />
-            <DropdownMenuItem
-              onClick={() => router.push("/profile")}
-              className="cursor-pointer hover:bg-slate-50 transition-colors"
-            >
-              <UserCircle className="mr-2 h-4 w-4 text-slate-600" />
-              <span>Profile</span>
-            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem
               onClick={() => setIsApiKeysOpen(true)}
-              className="cursor-pointer hover:bg-slate-50 transition-colors"
+              className="cursor-pointer hover:bg-accent transition-colors"
             >
-              <Settings className="mr-2 h-4 w-4 text-slate-600" />
+              <Settings className="mr-2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
               <span>API Keys</span>
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-slate-200" />
+            <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem
               onClick={() => signOut()}
-              className="cursor-pointer hover:bg-red-50 text-red-600 transition-colors"
+              className="cursor-pointer hover:bg-destructive/10 text-destructive transition-colors"
             >
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>

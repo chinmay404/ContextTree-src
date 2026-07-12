@@ -793,6 +793,10 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         </div>
       )}
 
+      {/* elementsSelectable must stay true: with draggable+connectable+
+          selectable all false, xyflow marks nodes pointer-events:none and
+          clicks fall through to the pane (deselect). Edges opt out
+          individually via selectable: false. */}
       <ReactFlow
         nodes={flowNodes}
         edges={flowEdges}
@@ -803,7 +807,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         fitViewOptions={FIT_VIEW_OPTIONS}
         nodesDraggable={false}
         nodesConnectable={false}
-        elementsSelectable={false}
+        elementsSelectable={true}
         edgesFocusable={false}
         zoomOnDoubleClick={false}
         panOnDrag
