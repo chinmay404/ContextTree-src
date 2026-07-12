@@ -52,8 +52,20 @@ point — never rewrite old entries.
       LangSmith key, Stripe keys, `BYOK_ENCRYPTION_SECRET`, the EC2 key
       pair. Rotate in each dashboard, THEN we remove the files from the
       repos.
-- [ ] If a push is ever blocked by tool permissions: run
-      `git push -u origin v2/explorer-landing` manually.
+
+### Shipped live (update, same day)
+
+- Rebased onto origin/main (which had the June 7 "shutdown message"
+  sign-in page, PR #3), fast-forwarded `main`, build verified, and
+  **pushed `main` + `v2/explorer-landing` to GitHub** — the new landing
+  deploys with the next Vercel build.
+- **Sign-in still shows the shutdown message** (commit `858717f`). This
+  is deliberate for now: the marketing page is live while the app stays
+  closed until week-1 security lands. To reopen sign-ups later:
+  `git revert 858717f`.
+- April WIP (layout.tsx/globals.css edits, landing-page-v2.tsx, deleted
+  placeholders) is parked in `git stash` ("april-wip: …"). It is
+  cut-list material; recover with `git stash list` if ever needed.
 
 ### Next task when we resume
 
