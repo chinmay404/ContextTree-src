@@ -19,7 +19,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ModelProviderIcon } from "@/components/model-badge";
+import { ModelBadge, ModelProviderIcon } from "@/components/model-badge";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -93,6 +93,15 @@ const MessageItem = memo(function MessageItem({
             <span className="type-ui font-semibold">
               {isUser ? "You" : "Assistant"}
             </span>
+            {/* Messages don't persist a per-message model yet, so this shows
+                the node's current model (activeModelId). */}
+            {!isUser && (
+              <ModelBadge
+                modelId={activeModelId}
+                size="sm"
+                className="max-w-[140px] shrink-0 !shadow-none"
+              />
+            )}
             <span className="type-meta">
               {new Date(message.timestamp).toLocaleTimeString([], {
                 hour: "2-digit",

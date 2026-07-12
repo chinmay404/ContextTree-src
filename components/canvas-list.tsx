@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -56,6 +56,167 @@ interface CanvasListProps {
   onCollapse?: () => void;
 }
 
+// Format relative time (e.g. "2h ago")
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return "just now";
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
+// ─── Row ─────────────────────────────────────────────────────
+// Hoisted to module scope and memoized on the row's stable props: defining
+// this inline inside CanvasList gave it a fresh component identity on every
+// render, remounting all rows (and replaying their enter animations) on any
+// state change. Enter animations are removed entirely — only the selection
+// indicator keeps a layout animation.
+
+type CanvasItemProps = {
+  canvas: Canvas;
+  isSelected: boolean;
+  onSelect: (canvasId: string) => void;
+  onRename?: (canvasId: string, newTitle: string) => void;
+  onDuplicate?: (canvasId: string) => void;
+  onRequestDelete?: (canvasId: string) => void;
+};
+
+const CanvasItem = memo(
+  function CanvasItem({
+    canvas,
+    isSelected,
+    onSelect,
+    onRename,
+    onDuplicate,
+    onRequestDelete,
+  }: CanvasItemProps) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect(canvas._id)}
+        className={cn(
+          "group relative flex w-full items-start gap-2 rounded-lg py-1.5 px-2 text-left transition-colors hover:bg-accent",
+          isSelected ? "bg-primary/10 ring-1 ring-primary/30" : "transparent"
+        )}
+      >
+        {/* Active Indicator Bar */}
+        {isSelected && (
+          <motion.div
+            layoutId="canvas-active-indicator"
+            className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r bg-primary"
+            transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          />
+        )}
+
+        <div className="min-w-0 flex-1 pl-1">
+          <div className="flex items-center justify-between">
+            <p
+              className={cn(
+                "truncate type-ui",
+                isSelected && "font-semibold text-primary"
+              )}
+            >
+              {canvas.title}
+            </p>
+
+            {/* 3-Dot Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }}
+                  className={cn(
+                    "ml-1 h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground",
+                    "opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity",
+                    isSelected && "opacity-100"
+                  )}
+                >
+                  <MoreVertical size={14} strokeWidth={1.75} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {onRename && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newTitle = prompt("Rename canvas:", canvas.title);
+                      if (newTitle && newTitle.trim()) {
+                        onRename(canvas._id, newTitle.trim());
+                      }
+                    }}
+                    className="gap-2 text-[13px] font-medium"
+                  >
+                    <Edit2 className="size-3.5" strokeWidth={1.75} />
+                    Rename
+                  </DropdownMenuItem>
+                )}
+                {onDuplicate && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDuplicate(canvas._id);
+                    }}
+                    className="gap-2 text-[13px] font-medium"
+                  >
+                    <Copy className="size-3.5" strokeWidth={1.75} />
+                    Duplicate
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                {onRequestDelete && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRequestDelete(canvas._id);
+                    }}
+                    className="gap-2 text-[13px] font-medium text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" strokeWidth={1.75} />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Metadata Line */}
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 type-meta">
+            <span className="inline-flex items-center gap-1">
+              <CircleDot size={11} strokeWidth={1.75} className="text-muted-foreground" />
+              {canvas.nodeCount}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <GitBranch size={11} strokeWidth={1.75} className="text-muted-foreground" />
+              {canvas.branchCount || 0}
+            </span>
+            <span className="text-muted-foreground">·</span>
+            <span>{formatTimeAgo(canvas.updatedAt || canvas.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  },
+  // Compare the canvas by value: page.tsx maps canvases to fresh objects on
+  // every render, so identity checks alone would defeat the memo. Handler
+  // props are stable ref-backed wrappers and are deliberately skipped.
+  (prev, next) =>
+    prev.isSelected === next.isSelected &&
+    prev.canvas._id === next.canvas._id &&
+    prev.canvas.title === next.canvas.title &&
+    prev.canvas.createdAt === next.canvas.createdAt &&
+    prev.canvas.updatedAt === next.canvas.updatedAt &&
+    prev.canvas.nodeCount === next.canvas.nodeCount &&
+    prev.canvas.branchCount === next.canvas.branchCount
+);
+
 export function CanvasList({
   canvases,
   selectedCanvas,
@@ -67,6 +228,40 @@ export function CanvasList({
 }: CanvasListProps) {
   const [deleteCanvasId, setDeleteCanvasId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Stable, ref-backed handler wrappers so memoized rows never re-render (or
+  // hold stale closures) when the parent recreates its callbacks.
+  const handlersRef = useRef({ onSelectCanvas, onRenameCanvas, onDuplicateCanvas });
+  handlersRef.current = { onSelectCanvas, onRenameCanvas, onDuplicateCanvas };
+  const handleSelect = useCallback(
+    (canvasId: string) => handlersRef.current.onSelectCanvas(canvasId),
+    []
+  );
+  const handleRename = useCallback(
+    (canvasId: string, newTitle: string) =>
+      handlersRef.current.onRenameCanvas?.(canvasId, newTitle),
+    []
+  );
+  const handleDuplicate = useCallback(
+    (canvasId: string) => handlersRef.current.onDuplicateCanvas?.(canvasId),
+    []
+  );
+  const handleRequestDelete = useCallback(
+    (canvasId: string) => setDeleteCanvasId(canvasId),
+    []
+  );
+
+  const renderItem = (canvas: Canvas) => (
+    <CanvasItem
+      key={canvas._id}
+      canvas={canvas}
+      isSelected={selectedCanvas === canvas._id}
+      onSelect={handleSelect}
+      onRename={onRenameCanvas ? handleRename : undefined}
+      onDuplicate={onDuplicateCanvas ? handleDuplicate : undefined}
+      onRequestDelete={onDeleteCanvas ? handleRequestDelete : undefined}
+    />
+  );
 
   // Temporal grouping logic
   const groupedCanvases = useMemo(() => {
@@ -109,132 +304,6 @@ export function CanvasList({
 
     return groups;
   }, [canvases, searchQuery]);
-
-  // Format relative time (e.g. "2h ago")
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) return "just now";
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
-  const CanvasItem = ({ canvas, index = 0 }: { canvas: Canvas; index?: number }) => (
-    <motion.div
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelectCanvas(canvas._id)}
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.2, delay: index * 0.03, ease: "easeOut" }}
-      className={cn(
-        "group relative flex w-full items-start gap-2 rounded-lg py-1.5 px-2 text-left transition-colors hover:bg-accent",
-        selectedCanvas === canvas._id
-          ? "bg-primary/10 ring-1 ring-primary/30"
-          : "transparent"
-      )}
-    >
-      {/* Active Indicator Bar */}
-      {selectedCanvas === canvas._id && (
-        <motion.div
-          layoutId="canvas-active-indicator"
-          className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r bg-primary"
-          transition={{ type: "spring", stiffness: 350, damping: 30 }}
-        />
-      )}
-
-      <div className="min-w-0 flex-1 pl-1">
-        <div className="flex items-center justify-between">
-            <p className={cn(
-                "truncate type-ui",
-                selectedCanvas === canvas._id && "font-semibold text-primary"
-            )}>
-            {canvas.title}
-            </p>
-
-             {/* 3-Dot Menu */}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                <button
-                    type="button"
-                    onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    }}
-                    className={cn(
-                        "ml-1 h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground",
-                        "opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity",
-                        selectedCanvas === canvas._id && "opacity-100"
-                    )}
-                >
-                    <MoreVertical size={14} strokeWidth={1.75} />
-                </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                {onRenameCanvas && (
-                    <DropdownMenuItem
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        const newTitle = prompt("Rename canvas:", canvas.title);
-                        if (newTitle && newTitle.trim()) {
-                        onRenameCanvas(canvas._id, newTitle.trim());
-                        }
-                    }}
-                    className="gap-2 text-[13px] font-medium"
-                    >
-                    <Edit2 className="size-3.5" strokeWidth={1.75} />
-                    Rename
-                    </DropdownMenuItem>
-                )}
-                {onDuplicateCanvas && (
-                    <DropdownMenuItem
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onDuplicateCanvas(canvas._id);
-                    }}
-                    className="gap-2 text-[13px] font-medium"
-                    >
-                    <Copy className="size-3.5" strokeWidth={1.75} />
-                    Duplicate
-                    </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                {onDeleteCanvas && (
-                    <DropdownMenuItem
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteCanvasId(canvas._id);
-                    }}
-                    className="gap-2 text-[13px] font-medium text-destructive focus:text-destructive"
-                    >
-                    <Trash2 className="size-3.5" strokeWidth={1.75} />
-                    Delete
-                    </DropdownMenuItem>
-                )}
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-
-        {/* Metadata Line */}
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 type-meta">
-          <span className="inline-flex items-center gap-1">
-            <CircleDot size={11} strokeWidth={1.75} className="text-muted-foreground" />
-            {canvas.nodeCount}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <GitBranch size={11} strokeWidth={1.75} className="text-muted-foreground" />
-            {canvas.branchCount || 0}
-          </span>
-          <span className="text-muted-foreground">·</span>
-          <span>{formatTimeAgo(canvas.updatedAt || canvas.createdAt)}</span>
-        </div>
-      </div>
-    </motion.div>
-  );
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -308,9 +377,9 @@ export function CanvasList({
          ) : searchQuery ? (
             /* Search Results (Flat List) */
             <div className="space-y-0.5">
-               {groupedCanvases.today.concat(groupedCanvases.week, groupedCanvases.older).map((canvas, i) => (
-                   <CanvasItem key={canvas._id} canvas={canvas} index={i} />
-               ))}
+               {groupedCanvases.today
+                 .concat(groupedCanvases.week, groupedCanvases.older)
+                 .map(renderItem)}
                {groupedCanvases.today.length + groupedCanvases.week.length + groupedCanvases.older.length === 0 && (
                  <p className="py-4 text-center type-meta">No matches found</p>
                )}
@@ -321,21 +390,21 @@ export function CanvasList({
                {groupedCanvases.today.length > 0 && (
                  <div className="space-y-0.5">
                     <h3 className="mb-1 px-2 type-meta uppercase tracking-[0.08em]">Today</h3>
-                    {groupedCanvases.today.map((canvas, i) => <CanvasItem key={canvas._id} canvas={canvas} index={i} />)}
+                    {groupedCanvases.today.map(renderItem)}
                  </div>
                )}
 
                {groupedCanvases.week.length > 0 && (
                  <div className="space-y-0.5">
                     <h3 className="mb-1 px-2 type-meta uppercase tracking-[0.08em]">This Week</h3>
-                    {groupedCanvases.week.map((canvas, i) => <CanvasItem key={canvas._id} canvas={canvas} index={i} />)}
+                    {groupedCanvases.week.map(renderItem)}
                  </div>
                )}
 
                {groupedCanvases.older.length > 0 && (
                  <div className="space-y-0.5">
                     <h3 className="mb-1 px-2 type-meta uppercase tracking-[0.08em]">Older</h3>
-                    {groupedCanvases.older.map((canvas, i) => <CanvasItem key={canvas._id} canvas={canvas} index={i} />)}
+                    {groupedCanvases.older.map(renderItem)}
                  </div>
                )}
             </div>

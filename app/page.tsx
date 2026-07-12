@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { Plus, LayoutGrid, Network } from "lucide-react";
 import { CanvasView } from "@/components/canvas/canvas";
 import { ContextStrip } from "@/components/context-strip";
@@ -381,22 +382,32 @@ export default function ContextTreePage() {
   const handleDeleteCanvas = async (canvasId: string) => {
     if (!user?.email) return;
 
-    const remove = () => {
-      storageService.deleteCanvas(canvasId);
-      const updated = canvases.filter((c) => c._id !== canvasId);
-      setCanvases(updated);
-      if (selectedCanvas === canvasId) {
-        setSelectedCanvas(updated[0]?._id ?? null);
-        setSelectedNode(null);
-        setSelectedNodeName(undefined);
-      }
-    };
+    // Select away from the canvas BEFORE deleting so CanvasView unmounts and
+    // its pending saves can't fire mid-delete.
+    if (selectedCanvas === canvasId) {
+      const fallback = canvases.find((c) => c._id !== canvasId);
+      setSelectedCanvas(fallback?._id ?? null);
+      setSelectedNode(null);
+      setSelectedNodeName(undefined);
+    }
+
+    // Drop the local cache up front: canvas save paths guard on this cache,
+    // so removing it first guarantees deletion wins over any in-flight save.
+    storageService.deleteCanvas(canvasId);
+
+    const removeFromList = () =>
+      setCanvases((prev) => prev.filter((c) => c._id !== canvasId));
 
     try {
       const res = await fetch(`/api/canvases/${canvasId}`, { method: "DELETE" });
-      if (res.ok) remove();
+      if (res.ok) {
+        removeFromList();
+      } else {
+        toast.error("Couldn't delete canvas");
+      }
     } catch {
-      remove();
+      // Offline: remove locally, server copy is reconciled on next load.
+      removeFromList();
     }
   };
 

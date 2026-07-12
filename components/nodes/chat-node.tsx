@@ -16,6 +16,8 @@ export interface ChatNodeData {
   lineageColor?: string;
   streaming?: boolean;
   kind?: string;
+  /** Name of the parent node this branch was forked from. */
+  parentName?: string;
   /** In the shift-click compare selection (dashed outline). */
   compareSelected?: boolean;
   onClick?: () => void;
@@ -75,11 +77,10 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
   const preview = (data.preview || "").trim();
   const time = timeAgo(data.timestamp);
 
+  // Handles are hover-only: hidden at rest so the dots never sit mid-edge.
   const handleClassName = cn(
-    "!h-2 !w-2 !border-2 !transition-all !duration-200 !ease-out",
-    active
-      ? "!scale-100 !opacity-100"
-      : "!scale-75 !opacity-0 group-hover:!scale-100 group-hover:!opacity-100"
+    "!h-1.5 !w-1.5 !min-h-0 !min-w-0 !border !transition-all !duration-200 !ease-out",
+    "!scale-75 !opacity-0 group-hover:!scale-100 group-hover:!opacity-100"
   );
   const handleStyle = { backgroundColor: lineageColor, borderColor: "var(--card)" };
 
@@ -88,19 +89,26 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
       className={cn(
         "group relative w-[280px] cursor-pointer rounded-2xl border border-border bg-card",
         "transition-all duration-200 ease-out hover:border-white/15 hover:shadow-md",
-        active && "ring-2 ring-primary",
+        active && "ring-2 ring-primary ring-offset-1 ring-offset-background",
         data.compareSelected &&
           "outline-dashed outline-2 outline-offset-2 outline-primary/50"
       )}
       onClick={handleClick}
       data-slot="chat-node"
     >
-      {/* Full-height lineage stripe */}
+      {/* Full-height lineage stripe. Wrapped in a rounded clipping layer so
+          the stripe stays inside the rounded corner without putting
+          overflow-hidden on the card itself (which would clip the hover
+          action bar and the connection handles). */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 w-[3px] rounded-l-2xl"
-        style={{ backgroundColor: lineageColor }}
-      />
+        className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
+      >
+        <span
+          className="absolute bottom-[1px] left-[1px] top-[1px] w-[3px]"
+          style={{ backgroundColor: lineageColor }}
+        />
+      </span>
 
       {/* Hover action popup. The wrapper spans the card and pads the gap
           below the bar so the cursor never crosses a dead zone on its way
@@ -189,6 +197,13 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
             />
           )}
         </div>
+
+        {/* Branched-from meta */}
+        {data.parentName && (
+          <p className="type-meta mt-1 truncate text-muted-foreground">
+            from {data.parentName}
+          </p>
+        )}
       </div>
 
       <Handle

@@ -20,12 +20,21 @@ import {
   useReactFlow,
   type Edge,
   type Node,
+  type NodeChange,
   type NodeProps,
   type NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { FileText, Maximize2, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  FileText,
+  LayoutGrid,
+  Maximize2,
+  RotateCcw,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 
 import { ChatNode } from "@/components/nodes/chat-node";
 import { CompareModal } from "@/components/compare/compare-modal";
@@ -272,18 +281,47 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
   const [compareSelection, setCompareSelection] = useState<string[]>([]);
   const [compareNodeIds, setCompareNodeIds] = useState<string[] | null>(null);
 
+  // Live positions while a node is being dragged (id → position). Committed
+  // to the canvas (and the layout PATCH) on drag stop.
+  const [dragOverrides, setDragOverrides] = useState<
+    Map<string, { x: number; y: number }>
+  >(() => new Map());
+
   // Only the latest in-flight load may commit (guards canvas switches).
   const loadTokenRef = useRef(0);
 
-  /** Update canvas state and mirror it into the localStorage cache. */
-  const applyCanvas = useCallback((updater: (prev: CanvasData) => CanvasData) => {
-    setCanvas((prev) => {
-      if (!prev) return prev;
-      const next = updater(prev);
-      storageService.saveCanvas(next);
-      return next;
-    });
+  // Set on unmount so long-lived async work (polling, saves) stops dead.
+  const disposedRef = useRef(false);
+  useEffect(() => {
+    disposedRef.current = false;
+    return () => {
+      disposedRef.current = true;
+    };
   }, []);
+
+  /** Deletion wins: once a canvas is removed from the local cache, no save
+   *  path may write it back (locally or server-side). */
+  const canvasStillExists = useCallback(
+    () => storageService.getCanvas(canvasId) != null,
+    [canvasId]
+  );
+
+  /** Update canvas state and mirror it into the localStorage cache. */
+  const applyCanvas = useCallback(
+    (updater: (prev: CanvasData) => CanvasData) => {
+      setCanvas((prev) => {
+        if (!prev) return prev;
+        const next = updater(prev);
+        // Skip the cache write if the canvas was deleted — saving here would
+        // resurrect it in localStorage (saveCanvas re-inserts missing ids).
+        if (storageService.getCanvas(next._id) != null) {
+          storageService.saveCanvas(next);
+        }
+        return next;
+      });
+    },
+    []
+  );
 
   // ─── Load canvas (server, merged with local cache) ────────
   useEffect(() => {
@@ -293,6 +331,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
 
     // Optimistic: seed from localStorage so switching feels instant.
     setCanvas(storageService.getCanvas(canvasId));
+    setDragOverrides(new Map());
     setLoadError(null);
     setIsLoading(true);
 
@@ -435,21 +474,22 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         edges: canvas.edges.filter((e) => e.from !== nodeId && e.to !== nodeId),
         updatedAt: new Date().toISOString(),
       };
-      storageService.saveCanvas(updated);
+      // Guard: never save a canvas that was deleted (would resurrect it).
+      if (canvasStillExists()) storageService.saveCanvas(updated);
       setCanvas(updated);
       if (selectedNode === nodeId) onNodeSelect(null);
 
-      fetch(`/api/canvases/${canvasId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated),
-      })
+      if (!canvasStillExists()) return;
+      // Per-node DELETE, never a full-canvas PUT: the PUT path replaces
+      // every node's messages from the client's (hollow) copy and wiped
+      // parent conversations when deleting a child.
+      fetch(`/api/canvases/${canvasId}/nodes/${nodeId}`, { method: "DELETE" })
         .then((res) => {
-          if (!res.ok) throw new Error(`Failed to persist canvas (${res.status})`);
+          if (!res.ok) throw new Error(`Failed to delete node (${res.status})`);
         })
         .catch(() => toast.error("Failed to sync node deletion"));
     },
-    [canvas, canvasId, selectedNode, onNodeSelect]
+    [canvas, canvasId, selectedNode, onNodeSelect, canvasStillExists]
   );
 
   // ─── Compare & promote helpers ────────────────────────────
@@ -532,6 +572,9 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
     async (nodeId: string, label: string) => {
       for (let attempt = 0; attempt < 18; attempt++) {
         await new Promise((r) => setTimeout(r, attempt < 6 ? 1500 : 3000));
+        // Stop polling once unmounted or the canvas was deleted — otherwise
+        // the saveCanvas below would resurrect a deleted canvas in the cache.
+        if (disposedRef.current || !canvasStillExists()) return;
         try {
           const res = await fetch(`/api/canvases/${canvasId}`, { cache: "no-cache" });
           if (!res.ok) continue;
@@ -542,6 +585,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
           const next = mergeCanvasData(refreshed, storageService.getCanvas(canvasId));
           const node = next.nodes.find((n) => n._id === nodeId);
           if (!node) continue;
+          if (disposedRef.current || !canvasStillExists()) return;
           const data = (node.data && typeof node.data === "object" ? node.data : {}) as Record<
             string,
             any
@@ -565,7 +609,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         }
       }
     },
-    [canvasId]
+    [canvasId, canvasStillExists]
   );
 
   const uploadFile = useCallback(
@@ -689,6 +733,98 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
     e.dataTransfer.dropEffect = "copy";
   }, []);
 
+  // ─── Manual layout: drag + persist + Tidy ─────────────────
+
+  /** Persist node positions via the existing V1 layout endpoint. */
+  const persistLayout = useCallback(
+    (positions: { id: string; position: { x: number; y: number } }[]) => {
+      if (!positions.length) return;
+      // Deletion wins: never write layout for a canvas removed from the cache.
+      if (disposedRef.current || !canvasStillExists()) return;
+      fetch(`/api/canvases/${canvasId}/layout`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nodes: positions }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error(`Failed to save layout (${res.status})`);
+        })
+        .catch(() => toast.error("Failed to save layout"));
+    },
+    [canvasId, canvasStillExists]
+  );
+
+  // Apply live drag movement (we only consume position changes — selection
+  // stays driven by data.isSelected exactly as before).
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    setDragOverrides((prev) => {
+      let next: Map<string, { x: number; y: number }> | null = null;
+      for (const change of changes) {
+        if (change.type === "position" && change.position) {
+          if (!next) next = new Map(prev);
+          next.set(change.id, change.position);
+        }
+      }
+      return next ?? prev;
+    });
+  }, []);
+
+  // Drag stop: commit the moved node(s) into canvas state + local cache and
+  // persist through PATCH /api/canvases/{canvasId}/layout.
+  const handleNodeDragStop = useCallback(
+    (_event: React.MouseEvent, node: Node, draggedNodes: Node[]) => {
+      const moved = draggedNodes?.length ? draggedNodes : [node];
+      const payload = moved
+        .filter((n): n is Node => Boolean(n))
+        .map((n) => ({
+          id: n.id,
+          position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
+        }));
+      if (!payload.length) return;
+      applyCanvas((prev) => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          const match = payload.find((p) => p.id === n._id);
+          return match ? { ...n, position: match.position } : n;
+        }),
+      }));
+      persistLayout(payload);
+    },
+    [applyCanvas, persistLayout]
+  );
+
+  // Dagre auto-layout for every visible node — the fallback for nodes with
+  // no stored position, and the target layout for the Tidy button.
+  const autoPositions = useMemo(() => {
+    if (!canvas) return new Map<string, { x: number; y: number }>();
+    const visible = canvas.nodes.filter((n) => n.type !== "group");
+    const visibleIds = new Set(visible.map((n) => n._id));
+    return layoutTree(
+      visible.map((n) => ({ id: n._id })),
+      canvas.edges
+        .filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to))
+        .map((e) => ({ source: e.from, target: e.to }))
+    );
+  }, [canvas]);
+
+  /** Tidy: recompute dagre for ALL nodes, apply, and persist — replacing any
+   *  manual positions with the tidy ones. */
+  const tidyLayout = useCallback(() => {
+    if (!canvas || !autoPositions.size) return;
+    setDragOverrides(new Map());
+    applyCanvas((prev) => ({
+      ...prev,
+      nodes: prev.nodes.map((n) => {
+        const pos = autoPositions.get(n._id);
+        return pos ? { ...n, position: pos } : n;
+      }),
+    }));
+    persistLayout(
+      Array.from(autoPositions, ([id, position]) => ({ id, position }))
+    );
+    requestAnimationFrame(() => flow.fitView({ ...FIT_VIEW_OPTIONS, duration: 400 }));
+  }, [canvas, autoPositions, applyCanvas, persistLayout, flow]);
+
   // ─── Server data → flow graph (single pure derivation) ────
   const { flowNodes, flowEdges, entryNode, isEmpty } = useMemo(() => {
     if (!canvas) {
@@ -723,21 +859,28 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
     };
     const lineageColorOf = (id: string) => lineageVarFor(rootOf(id));
 
-    const layoutEdges = canvas.edges
-      .filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to))
-      .map((e) => ({ source: e.from, target: e.to }));
-
-    // Auto-layout ALWAYS: stored positions are ignored, multiple roots are
-    // laid out as side-by-side trees.
-    const positions = layoutTree(
-      visible.map((n) => ({ id: n._id })),
-      layoutEdges
-    );
+    // Manual layout wins: live drag override → stored position (when present
+    // and non-(0,0)) → dagre auto-layout.
+    const resolvePosition = (node: NodeData) => {
+      const dragged = dragOverrides.get(node._id);
+      if (dragged) return dragged;
+      const stored = node.position;
+      if (
+        stored &&
+        typeof stored.x === "number" &&
+        typeof stored.y === "number" &&
+        !(stored.x === 0 && stored.y === 0)
+      ) {
+        return stored;
+      }
+      return autoPositions.get(node._id) || { x: 0, y: 0 };
+    };
 
     const nodes: Node[] = visible.map((node) => {
       const isChat = node.type === "entry" || node.type === "branch";
       const label = defaultNodeName(node);
-      const position = positions.get(node._id) || { x: 0, y: 0 };
+      const position = resolvePosition(node);
+      const parent = node.parentNodeId ? byId.get(node.parentNodeId) : undefined;
 
       if (isChat) {
         // Demoted (compare losers) collapse to a recoverable pill.
@@ -746,7 +889,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
             id: node._id,
             type: "demotedChat",
             position,
-            draggable: false,
+            draggable: true,
             connectable: false,
             data: {
               label,
@@ -762,7 +905,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
           id: node._id,
           type: "chat",
           position,
-          draggable: false,
+          draggable: true,
           connectable: false,
           data: {
             label,
@@ -772,6 +915,8 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
             timestamp: node.chatMessages?.slice(-1)[0]?.timestamp || node.createdAt,
             lineageColor: lineageColorOf(node._id),
             kind: node.type,
+            parentName:
+              node.type === "branch" && parent ? defaultNodeName(parent) : undefined,
             isSelected: selectedNode === node._id,
             compareSelected: compareSelection.includes(node._id),
             onClick: () => onNodeSelect(node._id, label, node.type),
@@ -802,7 +947,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         id: node._id,
         type: "contextCard",
         position,
-        draggable: false,
+        draggable: true,
         connectable: false,
         data: {
           label,
@@ -825,6 +970,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         type: "default", // bezier
         selectable: false,
         focusable: false,
+        interactionWidth: 0, // edges never capture pointer events
         style: {
           stroke: `color-mix(in srgb, ${lineageColorOf(e.from)} 45%, transparent)`,
           strokeWidth: 1.5,
@@ -850,6 +996,8 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
     canvas,
     selectedNode,
     compareSelection,
+    dragOverrides,
+    autoPositions,
     onNodeSelect,
     zoomToNode,
     deleteNode,
@@ -936,14 +1084,16 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         </div>
       )}
 
-      {/* Empty state — entry exists but no conversation has started */}
+      {/* Empty state — entry exists but no conversation has started.
+          Compact hint card pinned to the lower third so it can never sit on
+          top of the entry node card. */}
       {isEmpty && !isLoading && !loadError && !selectedNode && (
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-          <div className="pointer-events-auto flex max-w-sm flex-col items-center gap-1.5 rounded-2xl border border-border bg-card/90 px-8 py-7 text-center shadow-xl backdrop-blur">
-            <p className="text-lg font-semibold text-foreground">
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex justify-center px-4">
+          <div className="pointer-events-auto flex max-w-xs flex-col items-center gap-1 rounded-xl border border-border bg-card/90 px-5 py-4 text-center shadow-lg backdrop-blur">
+            <p className="text-sm font-semibold text-foreground">
               Start your first conversation
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Chat first — branch when a side-question appears.
             </p>
             {entryNode && (
@@ -952,7 +1102,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
                 onClick={() =>
                   onNodeSelect(entryNode._id, defaultNodeName(entryNode), entryNode.type)
                 }
-                className="mt-3 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 active:scale-[0.98]"
+                className="mt-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 active:scale-[0.98]"
               >
                 Start chatting
               </button>
@@ -971,9 +1121,11 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         nodeTypes={nodeTypes}
         onPaneClick={() => onNodeSelect(null)}
         onNodeDoubleClick={(_, node) => zoomToNode(node.id)}
+        onNodesChange={handleNodesChange}
+        onNodeDragStop={handleNodeDragStop}
         fitView
         fitViewOptions={FIT_VIEW_OPTIONS}
-        nodesDraggable={false}
+        nodesDraggable
         nodesConnectable={false}
         elementsSelectable={true}
         edgesFocusable={false}
@@ -1065,6 +1217,15 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
               title="Fit view"
             >
               <Maximize2 size={14} />
+            </button>
+            <button
+              type="button"
+              className={controlButtonClass}
+              onClick={tidyLayout}
+              aria-label="Tidy layout"
+              title="Tidy layout"
+            >
+              <LayoutGrid size={16} strokeWidth={1.75} />
             </button>
           </div>
         </Panel>

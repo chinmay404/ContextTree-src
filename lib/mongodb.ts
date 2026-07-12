@@ -928,11 +928,17 @@ export class MongoDBService {
               !!node.primary,
             ]
           );
-          // Replace messages for node
+          // Replace messages ONLY when the payload actually carries them.
+          // Clients routinely hold hollow node copies (messages live in the
+          // messages table, written by the backend) — an unconditional
+          // delete+reinsert here wiped whole conversations on any
+          // full-canvas save (e.g. deleting a sibling node).
+          const incomingMessages = this.flattenMessages(node.chatMessages || []);
+          if (incomingMessages.length === 0) continue;
           await client.query("delete from messages where node_id=$1", [
             node._id,
           ]);
-          for (const msg of this.flattenMessages(node.chatMessages || [])) {
+          for (const msg of incomingMessages) {
             await client.query(
               `insert into messages (id, node_id, canvas_id, user_email, role, content, timestamp)
                values ($1,$2,$3,$4,$5,$6,$7)

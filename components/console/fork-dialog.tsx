@@ -4,8 +4,10 @@ import { memo, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { X, ChevronRight, ChevronDown } from "lucide-react";
+import { X, ChevronRight, ChevronDown, Lock } from "lucide-react";
+import { toast } from "sonner";
 import { getDefaultModel, getModelById, RECOMMENDED_MODELS } from "@/lib/models";
+import { isPremiumUser, PREMIUM_TOOLTIP } from "@/lib/premium";
 import { ModelProviderIcon } from "@/components/model-badge";
 import { ModelSelectionPanel } from "@/components/model-selection-panel";
 import { AdvancedSettingsPanel } from "@/components/advanced-settings-panel";
@@ -141,6 +143,7 @@ export const ForkDialog = memo(function ForkDialog({
   }, [open, sourceName, sourceMessageContent, inheritedSystemPrompt, inheritedAdvancedSettings]);
   if (!open) return null;
 
+  const premium = isPremiumUser();
   const canCreate = name.trim().length > 0;
   const handleConfirm = () => {
     if (!canCreate) return;
@@ -213,19 +216,34 @@ export const ForkDialog = memo(function ForkDialog({
           <div className="border-t border-border pt-4">
             <button
               type="button"
-              onClick={() => setAdvancedOpen((value) => !value)}
-              aria-expanded={advancedOpen}
+              onClick={() => {
+                if (!premium) {
+                  toast(PREMIUM_TOOLTIP);
+                  return;
+                }
+                setAdvancedOpen((value) => !value);
+              }}
+              aria-expanded={premium ? advancedOpen : false}
               className="flex items-center gap-1.5 type-meta uppercase tracking-[0.08em] transition-colors hover:text-foreground"
               data-slot="fork-advanced-disclosure"
             >
-              <ChevronRight
-                size={14}
-                strokeWidth={1.75}
-                className={cn("transition-transform", advancedOpen && "rotate-90")}
-              />
+              {premium ? (
+                <ChevronRight
+                  size={14}
+                  strokeWidth={1.75}
+                  className={cn("transition-transform", advancedOpen && "rotate-90")}
+                />
+              ) : (
+                <Lock size={14} strokeWidth={1.75} />
+              )}
               Advanced
+              {!premium && (
+                <span className="type-meta rounded-full bg-primary/15 px-2 py-0.5 text-primary">
+                  Founding
+                </span>
+              )}
             </button>
-            {advancedOpen && (
+            {premium && advancedOpen && (
               <div className="mt-4 space-y-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
                 <div className="space-y-2">
                   <div className="type-meta uppercase tracking-[0.08em]">

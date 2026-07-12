@@ -64,40 +64,42 @@
 
 @layer base {
   :root {
-    /* Base - Clean White */
-    --background: #ffffff;
-    --foreground: #09090b; /* Zinc 950 - Sharp contrast */
-    
-    /* Surface - Subtle depth */
-    --card: #ffffff;
-    --card-foreground: #09090b;
-    --popover: #ffffff;
-    --popover-foreground: #09090b;
+    /* Light studio — same calm system as dark, re-valued. The ONE accent
+       (indigo-violet) is identical in both themes so buttons/selection
+       never change personality when the theme flips. */
+    --background: #fafafa;
+    --foreground: #1a1a1d;
 
-    /* Primary - Sophisticated dark */
-    --primary: #18181b; /* Zinc 900 */
-    --primary-foreground: #fafafa; /* Zinc 50 */
+    /* Surface tiers: base < raised card < overlay */
+    --card: #ffffff;
+    --card-foreground: #1a1a1d;
+    --popover: #ffffff;
+    --popover-foreground: #1a1a1d;
+
+    /* Primary = the one accent, both themes */
+    --primary: #6e56cf;
+    --primary-foreground: #ffffff;
 
     /* Secondary - Gentle support */
-    --secondary: #f4f4f5; /* Zinc 100 */
-    --secondary-foreground: #18181b;
+    --secondary: #f1f1f3;
+    --secondary-foreground: #1a1a1d;
 
     /* Muted - For de-emphasized text */
-    --muted: #f4f4f5;
-    --muted-foreground: #71717a; /* Zinc 500 */
+    --muted: #f1f1f3;
+    --muted-foreground: #6f6f78;
 
-    /* Accent - Interactive elements */
-    --accent: #f4f4f5;
-    --accent-foreground: #18181b;
+    /* Accent - hover surfaces (NOT the brand accent) */
+    --accent: #ececef;
+    --accent-foreground: #1a1a1d;
 
     /* Destructive */
-    --destructive: #ef4444;
-    --destructive-foreground: #fafafa;
+    --destructive: #dc3d43;
+    --destructive-foreground: #ffffff;
 
-    /* Borders & Inputs - Crisp */
-    --border: #e4e4e7; /* Zinc 200 */
-    --input: #e4e4e7;
-    --ring: #18181b;
+    /* Borders & Inputs - hairline at black/8% */
+    --border: rgba(0, 0, 0, 0.08);
+    --input: rgba(0, 0, 0, 0.12);
+    --ring: #6e56cf;
 
     /* Radius - Modern geometry */
     --radius: 0.5rem;
@@ -110,27 +112,27 @@
     --chart-5: #e9c46a;
     
     /* Sidebar */
-    --sidebar: #f8fafc; /* Slate 50 */
-    --sidebar-foreground: #0f172a;
-    --sidebar-primary: #18181b;
-    --sidebar-primary-foreground: #fafafa;
-    --sidebar-accent: #f1f5f9;
-    --sidebar-accent-foreground: #0f172a;
-    --sidebar-border: #e2e8f0;
-    --sidebar-ring: #0f172a;
+    --sidebar: #f4f4f6;
+    --sidebar-foreground: #1a1a1d;
+    --sidebar-primary: #6e56cf;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #ececef;
+    --sidebar-accent-foreground: #1a1a1d;
+    --sidebar-border: rgba(0, 0, 0, 0.08);
+    --sidebar-ring: #6e56cf;
 
     /* Semantic - Functional colors (retained but refined) */
-    --semantic-neutral: #f8fafc;
-    --semantic-primary: #4f46e5;      /* Indigo 600 - More vibrant */
-    --semantic-branch: #9333ea;       /* Purple 600 */
+    --semantic-neutral: #f4f4f6;
+    --semantic-primary: #6e56cf;
+    --semantic-branch: #8e78d9;
     --semantic-success: #10b981;
-    --semantic-error: #ef4444;
-    
+    --semantic-error: #dc3d43;
+
     /* Shadow glow colors variables */
-    --glow-color: 79, 70, 229;  /* Indigo glow */
-    --accent-color: 79, 70, 229;
+    --glow-color: 110, 86, 207;
+    --accent-color: 110, 86, 207;
     --node-color-start: #ffffff;
-    --node-color-end: #f8fafc;
+    --node-color-end: #f4f4f6;
   }
 
   .dark {
@@ -259,6 +261,38 @@
     @apply font-mono text-[11px];
   }
 }
+
+/* Slim, theme-aware scrollbars everywhere (fat platform defaults read
+   as unpolished, especially inside dropdowns/panels). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Brand loader keyframes (components/brand-loader.tsx) — the tree mark
+   drawing, pulsing, flowing, popping, and spinning. */
+@keyframes brand-draw-top { 0% { stroke-dashoffset: 1; opacity: 1; } 20% { stroke-dashoffset: 0; } 86% { stroke-dashoffset: 0; opacity: 1; } 94%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes brand-draw-line { 0%, 20% { stroke-dashoffset: 1; opacity: 1; } 45% { stroke-dashoffset: 0; } 86% { stroke-dashoffset: 0; opacity: 1; } 94%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes brand-draw-kids { 0%, 45% { stroke-dashoffset: 1; opacity: 1; } 70% { stroke-dashoffset: 0; } 86% { stroke-dashoffset: 0; opacity: 1; } 94%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes brand-node-pulse { 0%, 100% { opacity: .2; } 30% { opacity: 1; } }
+@keyframes brand-dash-flow { to { stroke-dashoffset: -24; } }
+@keyframes brand-breathe { 0%, 100% { opacity: .85; } 50% { opacity: 1; } }
+@keyframes brand-pop-top { 0% { transform: scale(0); opacity: 0; } 14% { transform: scale(1); opacity: 1; } 84% { transform: scale(1); opacity: 1; } 92%, 100% { transform: scale(1); opacity: 0; } }
+@keyframes brand-pop-line { 0%, 18% { opacity: 0; } 32% { opacity: 1; } 84% { opacity: 1; } 92%, 100% { opacity: 0; } }
+@keyframes brand-pop-kid-l { 0%, 38% { transform: scale(0); opacity: 0; } 52% { transform: scale(1); opacity: 1; } 84% { transform: scale(1); opacity: 1; } 92%, 100% { transform: scale(1); opacity: 0; } }
+@keyframes brand-pop-kid-r { 0%, 46% { transform: scale(0); opacity: 0; } 60% { transform: scale(1); opacity: 1; } 84% { transform: scale(1); opacity: 1; } 92%, 100% { transform: scale(1); opacity: 0; } }
+@keyframes brand-ring-spin { to { transform: rotate(360deg); } }
 
 /* ReactFlow Customizations - Production Quality */
 .react-flow {

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, ChevronRight, ChevronDown, Loader2 } from "lucide-react";
+import { X, ChevronRight, ChevronDown, Loader2, Lock } from "lucide-react";
+import { toast } from "sonner";
 import { cn, generateCanvasTitle } from "@/lib/utils";
+import { isPremiumUser, PREMIUM_TOOLTIP } from "@/lib/premium";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -128,6 +130,8 @@ export const CreateCanvasDialog = ({
     setAdvancedOpen(false);
   }, [initialTitle, open]);
 
+  const premium = isPremiumUser();
+
   const handleCreate = async () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle || !selectedModel || isCreating) return;
@@ -214,19 +218,34 @@ export const CreateCanvasDialog = ({
           <div className="border-t border-border pt-4">
             <button
               type="button"
-              onClick={() => setAdvancedOpen((value) => !value)}
-              aria-expanded={advancedOpen}
+              onClick={() => {
+                if (!premium) {
+                  toast(PREMIUM_TOOLTIP);
+                  return;
+                }
+                setAdvancedOpen((value) => !value);
+              }}
+              aria-expanded={premium ? advancedOpen : false}
               className="flex items-center gap-1.5 type-meta uppercase tracking-[0.08em] transition-colors hover:text-foreground"
               data-slot="create-canvas-advanced-disclosure"
             >
-              <ChevronRight
-                size={14}
-                strokeWidth={1.75}
-                className={cn("transition-transform", advancedOpen && "rotate-90")}
-              />
+              {premium ? (
+                <ChevronRight
+                  size={14}
+                  strokeWidth={1.75}
+                  className={cn("transition-transform", advancedOpen && "rotate-90")}
+                />
+              ) : (
+                <Lock size={14} strokeWidth={1.75} />
+              )}
               Advanced
+              {!premium && (
+                <span className="type-meta rounded-full bg-primary/15 px-2 py-0.5 text-primary">
+                  Founding
+                </span>
+              )}
             </button>
-            {advancedOpen && (
+            {premium && advancedOpen && (
               <div className="mt-4 space-y-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
                 <div className="space-y-2">
                   <div className="type-meta uppercase tracking-[0.08em]">
