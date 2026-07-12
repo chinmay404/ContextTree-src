@@ -85,15 +85,19 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
         style={{ backgroundColor: lineageColor }}
       />
 
-      {/* Hover action popup */}
+      {/* Hover action popup. The wrapper spans the card and pads the gap
+          below the bar so the cursor never crosses a dead zone on its way
+          up (hover would drop and the buttons would vanish mid-travel). */}
       <div
         className={cn(
-          "absolute -top-9 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5",
-          "rounded-lg border border-border bg-popover p-0.5 shadow-lg",
+          "absolute bottom-full left-0 right-0 z-10 flex justify-center pb-1.5",
           "pointer-events-none opacity-0 transition-opacity duration-150",
           "group-hover:pointer-events-auto group-hover:opacity-100"
         )}
         data-slot="chat-node-actions"
+      >
+      <div
+        className="flex items-center gap-0.5 rounded-lg border border-border bg-popover p-0.5 shadow-lg"
       >
         <button
           type="button"
@@ -124,6 +128,7 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
             <Trash2 size={12} />
           </button>
         )}
+      </div>
       </div>
 
       <div className="px-4 py-3">
