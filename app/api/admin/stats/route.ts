@@ -76,7 +76,10 @@ export const GET = withAuth(async (_request: NextRequest) => {
   } catch (error) {
     console.error("Error fetching admin stats:", error);
     return NextResponse.json(
-      { error: "Failed to fetch admin stats" },
+      {
+        error: "Failed to fetch admin stats",
+        detail: String((error as Error)?.message || error).slice(0, 300),
+      },
       { status: 500 }
     );
   }

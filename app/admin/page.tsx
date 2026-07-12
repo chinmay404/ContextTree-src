@@ -62,7 +62,7 @@ function TopBar() {
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [statsError, setStatsError] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   const isAdmin =
     status === "authenticated" && isAdminEmail(session?.user?.email);
@@ -71,15 +71,18 @@ export default function AdminPage() {
     if (!isAdmin) return;
     let cancelled = false;
     fetch("/api/admin/stats")
-      .then((res) => {
-        if (!res.ok) throw new Error(`Stats request failed: ${res.status}`);
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status}${body ? ` — ${body.slice(0, 200)}` : ""}`);
+        }
         return res.json();
       })
       .then((data) => {
         if (!cancelled) setStats(data.stats);
       })
-      .catch(() => {
-        if (!cancelled) setStatsError(true);
+      .catch((err) => {
+        if (!cancelled) setStatsError(String(err?.message || err));
       });
     return () => {
       cancelled = true;
@@ -125,8 +128,13 @@ export default function AdminPage() {
       <main className="mx-auto max-w-4xl px-6 py-12 pb-24">
         <h1 className="type-heading">Admin</h1>
         <p className="mt-1 type-meta">
-          Platform overview{statsError ? " — stats unavailable" : ""}
+          Platform overview
         </p>
+        {statsError && (
+          <p className="mt-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 type-meta text-destructive">
+            Stats failed: {statsError}
+          </p>
+        )}
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {STAT_CARDS.map(({ key, label }) => {
