@@ -171,3 +171,39 @@ Postgres even before the new Supabase project exists.
 - Next: run migrations 001+002 on the new DB, then the user_email→user_id
   store sweep (PostgresStore + interim Next data layer), then Day 5
   quota buckets + Day 6 single-writer.
+
+## Checkpoint 005 — 2026-07-12 (migrations validated; prod cred rotated)
+
+- **Migrations 001 + 002 fully validated against a local pgvector Postgres
+  (Docker):** apply clean, re-run is idempotent ("Up to date"), resulting
+  schema verified — users.id is uuid, every conversation table has
+  user_id uuid, all vectors vector(768), schema_migrations ledger correct.
+- **Migration 002 guard proven:** with a non-UUID users.id present, it
+  raises a clear exception, the whole file rolls back (id stays text), and
+  it is NOT recorded as applied. Safe to run against prod regardless of
+  legacy data.
+- migrate.py reads DATABASE_URL from env if already set, else .env — works
+  for local (Docker), CI, and prod without edits.
+- **PROD APPLY IS BLOCKED ON CREDENTIALS.** The password in DB.txt
+  (C85iYzGiKOwkrq) connected successfully once early in the session, then
+  began failing with "password authentication failed for user postgres"
+  (Supabase pooler's signature for a wrong password). Conclusion: the DB
+  password was rotated mid-session. The .env DATABASE_URL is otherwise
+  perfect (correct pooler user postgres.mdfuvyyjcprigqmjvzum, host,
+  port 5432).
+  → Owner: paste the CURRENT database password (Supabase dashboard →
+    Project Settings → Database → reset/copy). Then, in ContextTree/:
+      (update password in .env DATABASE_URL)
+      .venv\Scripts\python.exe scripts\migrate.py --dry-run
+      .venv\Scripts\python.exe scripts\migrate.py
+    Applies in seconds. Delete DB.txt afterward (plaintext creds).
+- Local Docker Postgres "ctx-pg" (port 55432, pgvector pg17) is stopped
+  but kept for future migration validation: `docker start ctx-pg`.
+
+### Next when we resume (after migrations land)
+Tenancy isolation — the launch blocker. The store's read paths
+(get_thread_messages, get_thread_fork_metadata, get_message_by_id, …)
+currently key on thread_id/message_id WITHOUT an ownership predicate, so
+JWT auth alone does not stop user A from reading user B's thread by id.
+Add user scoping to every store read + the tenancy test matrix
+(arch §7 row 1). This is Day 5-6 and is the real gate before any beta user.
