@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { mongoService, pool } from "@/lib/mongodb";
+import { pool } from "@/lib/mongodb";
 import { withAuth, getCurrentUser } from "@/lib/auth-utils";
 import { isAdminEmail } from "@/lib/admin";
 
@@ -35,8 +35,9 @@ export const GET = withAuth(async (_request: NextRequest) => {
       );
     }
 
-    await mongoService.connect();
-
+    // No mongoService.connect() here: its init DDL trips over legacy table
+    // shapes (e.g. bug_reports without a status column -> 500) and the
+    // tables we count already exist. countOrNull degrades per-stat instead.
     const [
       totalUsers,
       usersLast7Days,

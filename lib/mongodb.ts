@@ -914,10 +914,14 @@ export class MongoDBService {
         for (const node of canvas.nodes) {
           const nodeData = { ...node } as any;
           delete nodeData.chatMessages;
+          // Lineage columns are STICKY (coalesce): canvas JSON copies often
+          // lack parentNodeId/forkedFromMessageId, and overwriting them with
+          // NULL erased fork ancestry — the backend then skipped context
+          // inheritance entirely (branches forgot their parents).
           await client.query(
             `insert into nodes (id, canvas_id, user_email, data, parent_node_id, forked_from_message_id, is_primary, created_at, updated_at)
              values ($1,$2,$3,$4,$5,$6,$7,now(),now())
-             on conflict (id) do update set data=excluded.data, parent_node_id=excluded.parent_node_id, forked_from_message_id=excluded.forked_from_message_id, is_primary=excluded.is_primary, updated_at=now()`,
+             on conflict (id) do update set data=excluded.data, parent_node_id=coalesce(excluded.parent_node_id, nodes.parent_node_id), forked_from_message_id=coalesce(excluded.forked_from_message_id, nodes.forked_from_message_id), is_primary=excluded.is_primary, updated_at=now()`,
             [
               node._id,
               canvas._id,
