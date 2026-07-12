@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/mongodb";
 import { withAuth, getCurrentUser } from "@/lib/auth-utils";
-import { isAdminEmail } from "@/lib/admin";
+import { isAdminUser } from "@/lib/roles";
 
 // pg requires the Node.js runtime
 export const runtime = "nodejs";
@@ -28,7 +28,9 @@ export const GET = withAuth(async (_request: NextRequest) => {
       );
     }
 
-    if (!isAdminEmail(user.email)) {
+    // DB-role admins (users.role = 'admin') get access alongside the
+    // static ADMIN_EMAILS list.
+    if (!(await isAdminUser(user.email))) {
       return NextResponse.json(
         { error: "Access denied. Admin privileges required." },
         { status: 403 }
