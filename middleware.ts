@@ -18,16 +18,24 @@ export default withAuth(
           pathname.startsWith("/.well-known/") ||
           pathname === "/" ||
           pathname === "/landing" || // Direct marketing URL, no auth check
-          pathname === "/waitlist" || // Allow waitlist page
-          pathname === "/profile" || // Allow profile page (it handles auth internally)
+          pathname === "/privacy" || // Legal pages must be public
+          pathname === "/terms" ||
           pathname.startsWith("/_next/") ||
           pathname.startsWith("/favicon.ico")
         ) {
           return true;
         }
 
-        // Require authentication for all other routes
-        return !!token;
+        // Sessions use strategy "database" (pg adapter), so next-auth's
+        // middleware `token` (JWT-only) is ALWAYS null — checking it alone
+        // bounced signed-in users straight back to the login screen in a
+        // loop (e.g. /admin). Treat the presence of the session cookie as
+        // signed-in; pages and APIs still validate the session server-side.
+        const hasDbSession = Boolean(
+          req.cookies.get("__Secure-next-auth.session-token")?.value ||
+            req.cookies.get("next-auth.session-token")?.value
+        );
+        return !!token || hasDbSession;
       },
     },
   }
