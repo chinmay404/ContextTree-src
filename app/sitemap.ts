@@ -4,8 +4,9 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://contexttree.tech";
 
 const routes = [
   "",
-  "/chatgpt-alternative",
-  "/waitlist",
+  "/landing",
+  "/privacy",
+  "/terms",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
