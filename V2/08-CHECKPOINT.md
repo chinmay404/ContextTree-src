@@ -317,3 +317,32 @@ Studio redesign shipped same day (082342b..87ab8fa):
 Next: Step 5 ease-of-use (linear-first entry, Cmd+B fork, Cmd+K
 actions), then F1 compare/promote. DB.txt still in workspace - rotate
 all keys + delete after development.
+
+---
+
+## Checkpoint 009 (2026-07-12, late night) — Customer-ready build
+
+Everything below verified live on contexttree.tech (all routes 200,
+Railway backend healthy):
+
+- Linear-first entry: branch-less canvases render as a centered chat;
+  tree materializes at first fork (console never remounts, stream
+  survives). View tree override per canvas. Cmd+B forks from the last
+  message (IME/composer-safe).
+- F1 shipped: shift-click 2-3 nodes -> Compare bar -> side-by-side
+  modal (fork-scoped messages, scroll sync) -> Promote winner; losers
+  collapse to recoverable pills (demoted:true via node PATCH, never
+  deleted). Console header: Compare siblings entry.
+- Dialogs redesigned: fork + create-canvas single-column (name ->
+  recommended chips -> More models -> Advanced disclosure); the last
+  white surface (advanced-settings-panel) dark-tokened.
+- Trust surface: /privacy + /terms live (plain-language, marked for
+  legal review pre-paid-launch), sitemap fixed, sign-in dark + linked.
+- Fixes this session: node clicks (xyflow pointer-events with all
+  interactivity flags false), hover-popup dead zone, dead Profile item.
+- Marketing plan: V2/13-MARKETING-PLAN.md (3 messages, hero video shot
+  list, 5 silent loops, image specs, HN->PH launch sequence, 5 metrics).
+
+Remaining before charging money: Stripe checkout (billing dirs are
+empty scaffolds), legal review of trust pages, demo canvas + video
+assets per marketing plan, rotate ALL keys in DB.txt and delete it.
