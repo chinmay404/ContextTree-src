@@ -12,7 +12,7 @@ import { storageService, type CanvasData } from "@/lib/storage";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { LandingPage } from "@/components/landing-page";
+import { Landing } from "@/components/landing";
 import { generateCanvasTitle } from "@/lib/utils";
 import type { AdvancedSettings } from "@/lib/advanced-settings";
 import { GlobalSearch } from "@/components/global-search";
@@ -383,7 +383,7 @@ export default function ContextTreePage() {
     );
   }
 
-  if (!isAuthenticated) return <LandingPage />;
+  if (!isAuthenticated) return <Landing />;
 
   const activeCanvas = canvases.find((c) => c._id === selectedCanvas);
   const showRightPanel = !!selectedNode;
