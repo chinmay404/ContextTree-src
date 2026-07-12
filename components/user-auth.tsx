@@ -12,9 +12,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, LogOut, Settings } from "lucide-react";
+import { User, LogOut, Settings, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ApiKeySettingsDialog } from "@/components/api-key-settings-dialog";
+import { isAdminEmail } from "@/lib/admin";
 
 export default function UserAuth() {
   const { data: session, status } = useSession();
@@ -84,6 +85,15 @@ export default function UserAuth() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border" />
+            {isAdminEmail(session.user.email) && (
+              <DropdownMenuItem
+                onClick={() => router.push("/admin")}
+                className="cursor-pointer hover:bg-accent transition-colors"
+              >
+                <Shield className="mr-2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+                <span>Admin</span>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               onClick={() => setIsApiKeysOpen(true)}
               className="cursor-pointer hover:bg-accent transition-colors"

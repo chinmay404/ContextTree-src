@@ -60,13 +60,18 @@ export function ContextStrip({
 
           <div className="flex min-w-0 items-center gap-3">
             <a href="/" className="group flex items-center gap-2 select-none">
-              <div className="relative">
-                <img
-                  src="/tree-icon.svg"
-                  alt="ContextTree"
-                  className="h-7 w-7 transition-transform duration-300 group-hover:scale-105"
-                />
-              </div>
+              {/* Inline (not <img>) so currentColor follows the theme —
+                  the file's dark strokes were invisible on dark mode. */}
+              <svg
+                viewBox="0 0 100 100"
+                aria-label="ContextTree"
+                className="h-7 w-7 text-foreground transition-transform duration-300 group-hover:scale-105"
+              >
+                <rect x="35" y="10" width="30" height="20" rx="4" fill="none" stroke="currentColor" strokeWidth="3" />
+                <path d="M50 30 L50 45 M35 55 L50 45 L65 55" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                <rect x="15" y="65" width="25" height="20" rx="4" fill="none" stroke="currentColor" strokeWidth="3" />
+                <rect x="60" y="65" width="25" height="20" rx="4" fill="none" stroke="currentColor" strokeWidth="3" />
+              </svg>
               <span className="type-heading">
                 ContextTree
               </span>

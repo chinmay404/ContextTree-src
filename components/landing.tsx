@@ -27,17 +27,20 @@ const bricolage = Bricolage_Grotesque({
 
 const CSS = `
 .ctx3 {
-  --field: #0B1020;
-  --field-2: #111A31;
-  --field-3: #17223F;
-  --ink: #EDEAE0;
-  --dim: #97A0B5;
-  --line: #29334E;
-  --amber: #E5A94F;
-  --amber-dim: rgba(229, 169, 79, 0.16);
-  --teal: #56BDB0;
-  --teal-dim: rgba(86, 189, 176, 0.14);
-  --ok: #7BC98A;
+  /* Studio palette (app/globals.css .dark) — marketing must match the app */
+  --field: #0a0a0b;                      /* --background */
+  --field-2: #121214;                    /* --card */
+  --field-3: #1a1a1d;                    /* --popover */
+  --ink: #ededef;                        /* --foreground */
+  --dim: #a0a0a8;                        /* --muted-foreground */
+  --line: rgba(255, 255, 255, 0.08);     /* --border hairline */
+  --rail: rgba(255, 255, 255, 0.16);     /* diagram strokes: hairline is too faint at 2px */
+  --accent: #7c66dc;                     /* --primary */
+  --amber: #d9873a;                      /* --lineage-2 (amber branch hue) */
+  --amber-dim: rgba(217, 135, 58, 0.16);
+  --teal: #3aa6b9;                       /* --lineage-5 (teal branch hue) */
+  --teal-dim: rgba(58, 166, 185, 0.14);
+  --ok: #30a46c;                         /* --semantic-success */
   --display: var(--font-bricolage), 'Bricolage Grotesque', system-ui, sans-serif;
   --body: var(--font-geist-sans), system-ui, sans-serif;
   --mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
@@ -47,7 +50,7 @@ const CSS = `
   -webkit-font-smoothing: antialiased;
 }
 .ctx3 *, .ctx3 *::before, .ctx3 *::after { box-sizing: border-box; }
-.ctx3 ::selection { background: var(--amber); color: var(--field); }
+.ctx3 ::selection { background: var(--accent); color: #ffffff; }
 .ctx3 .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 .ctx3 .mono { font-family: var(--mono); }
 .ctx3 h1, .ctx3 h2, .ctx3 h3 { font-family: var(--display); text-wrap: balance; }
@@ -57,7 +60,7 @@ const CSS = `
 .ctx3 .lede { font-size: 17px; line-height: 1.65; color: var(--dim); max-width: 44ch; text-wrap: pretty; }
 .ctx3 .lede strong { color: var(--ink); font-weight: 500; }
 .ctx3 a { color: inherit; text-decoration: none; }
-.ctx3 :is(a, button, summary):focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 4px; }
+.ctx3 :is(a, button, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 
 .ctx3 .btn {
   display: inline-flex; align-items: center; gap: 8px;
@@ -66,15 +69,15 @@ const CSS = `
   transition: transform 150ms cubic-bezier(0.22,1,0.36,1), background 150ms ease, border-color 150ms ease;
 }
 .ctx3 .btn:active { transform: translateY(1px); }
-.ctx3 .btn-primary { background: var(--amber); color: #17110A; }
-.ctx3 .btn-primary:hover { background: #EFB963; }
-.ctx3 .btn-ghost { border-color: var(--line); color: var(--ink); background: transparent; }
+.ctx3 .btn-primary { background: var(--accent); color: #ffffff; }
+.ctx3 .btn-primary:hover { background: #8b77e0; }
+.ctx3 .btn-ghost { border-color: var(--line); color: var(--ink); background: var(--field-2); }
 .ctx3 .btn-ghost:hover { border-color: var(--dim); }
 
 /* nav */
 .ctx3 .nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
 .ctx3 .brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 600; font-size: 17px; white-space: nowrap; }
-.ctx3 .brand svg { color: var(--amber); flex: none; }
+.ctx3 .brand svg { color: var(--accent); flex: none; }
 .ctx3 .nav-links { display: flex; align-items: center; gap: 24px; font-size: 14px; color: var(--dim); white-space: nowrap; }
 .ctx3 .nav-links a:hover { color: var(--ink); }
 @media (max-width: 720px) {
@@ -96,7 +99,7 @@ const CSS = `
 .ctx3 .spine { flex: none; width: 30px; position: relative; }
 .ctx3 .spine::before { /* the continuous trunk line */
   content: ""; position: absolute; left: 14px; top: 0; bottom: 0;
-  width: 2px; background: var(--line); transition: background 200ms ease;
+  width: 2px; background: var(--rail); transition: background 200ms ease;
 }
 .ctx3 .rrow.first .spine::before { top: 50%; }
 .ctx3 .rrow.last  .spine::before { bottom: 50%; }
@@ -111,7 +114,7 @@ const CSS = `
 .ctx3 .elbow { flex: none; width: 34px; position: relative; }
 .ctx3 .elbow::before {
   content: ""; position: absolute; left: -16px; top: -14px; bottom: 50%;
-  width: 26px; border-left: 2px solid var(--line); border-bottom: 2px solid var(--line);
+  width: 26px; border-left: 2px solid var(--rail); border-bottom: 2px solid var(--rail);
   border-bottom-left-radius: 14px; transition: border-color 200ms ease;
 }
 .ctx3 .rrow.branch { margin-left: 30px; }
@@ -129,12 +132,12 @@ const CSS = `
 .ctx3 .ncard .chip { margin-bottom: 6px; }
 .ctx3 .tag { font-family: var(--mono); font-size: 11px; color: var(--dim); align-self: center; margin-left: 12px; white-space: nowrap; }
 .ctx3 .tag.amber { color: var(--amber); } .ctx3 .tag.teal { color: var(--teal); } .ctx3 .tag.ok { color: var(--ok); }
-.ctx3 .tone-teal.ncard  { border-color: rgba(86,189,176,0.45); background: linear-gradient(0deg, var(--teal-dim), var(--teal-dim)), var(--field-2); }
-.ctx3 .tone-amber.ncard { border-color: rgba(229,169,79,0.5);  background: linear-gradient(0deg, var(--amber-dim), var(--amber-dim)), var(--field-2); }
-.ctx3 .tone-teal .chip  { color: var(--teal); border-color: rgba(86,189,176,0.5); }
-.ctx3 .tone-amber .chip { color: var(--amber); border-color: rgba(229,169,79,0.55); }
-.ctx3 .rrow.branch.tone-t .elbow::before { border-color: rgba(86,189,176,0.55); }
-.ctx3 .rrow.branch.tone-a .elbow::before { border-color: rgba(229,169,79,0.6); }
+.ctx3 .tone-teal.ncard  { border-color: rgba(58,166,185,0.45); background: linear-gradient(0deg, var(--teal-dim), var(--teal-dim)), var(--field-2); }
+.ctx3 .tone-amber.ncard { border-color: rgba(217,135,58,0.5);  background: linear-gradient(0deg, var(--amber-dim), var(--amber-dim)), var(--field-2); }
+.ctx3 .tone-teal .chip  { color: var(--teal); border-color: rgba(58,166,185,0.5); }
+.ctx3 .tone-amber .chip { color: var(--amber); border-color: rgba(217,135,58,0.55); }
+.ctx3 .rrow.branch.tone-t .elbow::before { border-color: rgba(58,166,185,0.55); }
+.ctx3 .rrow.branch.tone-a .elbow::before { border-color: rgba(217,135,58,0.6); }
 
 /* hero tree interactivity: hovering a node dims everything outside its lineage */
 .ctx3 .rail.focusable .ncard { cursor: default; }
@@ -142,10 +145,10 @@ const CSS = `
 .ctx3 .rail.focused .rrow:not(.lit) .spine::before,
 .ctx3 .rail.focused .rrow:not(.lit) .elbow::before { opacity: 0.3; }
 .ctx3 .rail.focused .rrow.lit .ncard { transform: translateX(2px); }
-.ctx3 .rail.focused .rrow.lit .spine .dot { border-color: var(--amber); }
+.ctx3 .rail.focused .rrow.lit .spine .dot { border-color: var(--accent); }
 .ctx3 .rail.focused .rrow.lit.tone-t .elbow::before { border-color: var(--teal); }
 .ctx3 .rail.focused .rrow.lit.tone-a .elbow::before { border-color: var(--amber); }
-.ctx3 .rail.focused .rrow.lit .spine::before { background: var(--amber); }
+.ctx3 .rail.focused .rrow.lit .spine::before { background: var(--accent); }
 .ctx3 .hint { margin-top: 10px; font-family: var(--mono); font-size: 11.5px; color: var(--dim); padding-left: 30px; }
 
 /* transform-only entrance: content stays readable even if animation is
@@ -168,8 +171,8 @@ const CSS = `
 @media (max-width: 860px) { .ctx3 .move { grid-template-columns: 1fr; } }
 .ctx3 .move p { color: var(--dim); font-size: 15.5px; line-height: 1.6; margin: 0; max-width: 42ch; text-wrap: pretty; }
 .ctx3 .glyph { display: inline-flex; width: 44px; height: 44px; border-radius: 12px; align-items: center; justify-content: center; margin-bottom: 14px; border: 1px solid var(--line); background: var(--field-2); }
-.ctx3 .glyph.amber { color: var(--amber); border-color: rgba(229,169,79,0.4); }
-.ctx3 .glyph.teal  { color: var(--teal);  border-color: rgba(86,189,176,0.4); }
+.ctx3 .glyph.amber { color: var(--amber); border-color: rgba(217,135,58,0.4); }
+.ctx3 .glyph.teal  { color: var(--teal);  border-color: rgba(58,166,185,0.4); }
 .ctx3 .mini { background: var(--field-2); border: 1px solid var(--line); border-radius: 16px; padding: clamp(14px, 2.5vw, 26px); }
 .ctx3 .mini .ncard { background: var(--field-3); }
 .ctx3 .mini .rail { max-width: 460px; }
@@ -181,7 +184,7 @@ const CSS = `
 .ctx3 .receipt { background: var(--field-2); border: 1px solid var(--line); border-radius: 16px; font-family: var(--mono); font-size: 13px; padding: 24px; color: var(--dim); }
 .ctx3 .receipt .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; }
 .ctx3 .receipt .ink { color: var(--ink); font-weight: 600; }
-.ctx3 .receipt .save { color: var(--amber); font-weight: 600; }
+.ctx3 .receipt .save { color: var(--accent); font-weight: 600; }
 .ctx3 .receipt .strike { text-decoration: line-through; opacity: 0.6; }
 .ctx3 .bar { height: 10px; border-radius: 99px; background: var(--field-3); margin: 4px 0 12px; overflow: hidden; }
 .ctx3 .bar > i { display: block; height: 100%; border-radius: 99px; }
@@ -191,13 +194,13 @@ const CSS = `
 .ctx3 .pricing { padding: clamp(48px, 7vw, 84px) 0; border-top: 1px solid var(--line); }
 .ctx3 .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 36px; max-width: 780px; }
 .ctx3 .plan { border: 1px solid var(--line); border-radius: 16px; padding: 28px; background: var(--field-2); display: flex; flex-direction: column; }
-.ctx3 .plan.founding { border-color: rgba(229,169,79,0.6); }
+.ctx3 .plan.founding { border-color: rgba(124,102,220,0.6); }
 .ctx3 .plan .name { font-family: var(--display); font-weight: 600; font-size: 15px; color: var(--dim); }
-.ctx3 .plan.founding .name { color: var(--amber); }
+.ctx3 .plan.founding .name { color: var(--accent); }
 .ctx3 .plan .price { font-family: var(--display); font-size: 46px; font-weight: 650; margin: 10px 0 2px; }
 .ctx3 .plan .per { font-size: 13px; color: var(--dim); margin-bottom: 16px; }
 .ctx3 .plan ul { list-style: none; margin: 0 0 24px; padding: 0; color: var(--dim); font-size: 14.5px; line-height: 2.05; }
-.ctx3 .plan ul li::before { content: "— "; color: var(--amber); }
+.ctx3 .plan ul li::before { content: "— "; color: var(--accent); }
 .ctx3 .plan .btn { margin-top: auto; justify-content: center; }
 
 /* faq */
@@ -205,7 +208,7 @@ const CSS = `
 .ctx3 details { border-bottom: 1px solid var(--line); }
 .ctx3 summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 19px 0; font-family: var(--display); font-weight: 500; font-size: 17.5px; }
 .ctx3 summary::-webkit-details-marker { display: none; }
-.ctx3 summary::after { content: "+"; font-family: var(--mono); color: var(--amber); font-size: 18px; flex: none; }
+.ctx3 summary::after { content: "+"; font-family: var(--mono); color: var(--accent); font-size: 18px; flex: none; }
 .ctx3 details[open] summary::after { content: "–"; }
 .ctx3 details p { margin: 0 0 20px; color: var(--dim); line-height: 1.7; font-size: 15px; max-width: 62ch; }
 
@@ -470,9 +473,9 @@ export function Landing() {
           </div>
           <div className="receipt" aria-label="Token cost comparison: linear chat versus branched">
             <div className="row"><span>one long linear chat</span><span className="strike">48,210 tok/turn</span></div>
-            <div className="bar"><i style={{ width: "100%", background: "var(--line)" }} /></div>
+            <div className="bar"><i style={{ width: "100%", background: "var(--rail)" }} /></div>
             <div className="row"><span>same work, branched</span><span className="ink">19,830 tok/turn</span></div>
-            <div className="bar"><i style={{ width: "41%", background: "var(--amber)" }} /></div>
+            <div className="bar"><i style={{ width: "41%", background: "var(--accent)" }} /></div>
             <div className="row"><span>context you stopped re-sending</span><span className="save">−59%</span></div>
             <div className="foot">research: ~58% context reduction from branching · arXiv:2512.13914</div>
           </div>
