@@ -77,4 +77,55 @@ this file as new checkpoint entries.
 
 ---
 
-*(Append Checkpoint 002 here at the next stopping point.)*
+## Checkpoint 002 — 2026-07-12 (Days 1–2 + landing v2.1)
+
+### Done
+
+- [x] **Landing v2.1 live** (owner feedback: too wordy, explain visually):
+      copy cut ~60%, each move now a mini node-diagram, real tree icon
+      inlined in nav/footer, token receipt got comparison bars. Pushed to
+      `main` (`2685898`) — deploys via Vercel.
+- [x] **Day 1 (backend)**: dead stores (MongoStore, quadrant_store),
+      scratch files, obsolete doc stubs removed; .gitignore tightened
+      (*.pem, *.log). Branch **`ContextTree` repo: `v2/dev`** (`d1353e6`).
+- [x] **Day 1 (workspace)**: root debris (check_*.py, LangSmith dataset
+      export, temp_env_file) moved to `_archive_v1_debris/` (reversible).
+- [x] **Day 2**: `scripts/migrate.py` (forward-only runner: advisory
+      lock, schema_migrations ledger, one transaction per file, --dry-run)
+      + `db/migrations/001_baseline.sql` (V1 as-built schema consolidated
+      from all scattered DDL; idempotent; vector(768) throughout) +
+      `scripts/dump_schema.py` (read-only drift checker). Pushed on
+      `v2/dev` (`7ed559b`).
+
+### Discovered
+
+- **The old Supabase project is unreachable** ("tenant/user not found" on
+  the pooler) — either mid-rotation or paused/deleted. Consequence: the
+  baseline is code-derived, and there may be NO production data to
+  preserve, which would let migrations 002+ (UUID identity) run clean.
+- The backend venv (`ContextTree/env/`) is a **Linux venv** (WSL-era) —
+  useless on this Windows machine. A fresh Windows venv (or WSL) is
+  needed to run the backend locally.
+- Runtime DDL exists in the FRONTEND too: `lib/mongodb.ts` runs
+  `ALTER TABLE` on boot (line ~99). Dies with the Next CRUD routes (Day 6).
+
+### Blocked on owner (unchanged + new)
+
+- [ ] Rotate all leaked secrets (list in Checkpoint 001).
+- [ ] **Provide the new/working `DATABASE_URL`** (new Supabase project or
+      restored one) so migrations can actually run — then:
+      `python scripts/migrate.py --dry-run` → `python scripts/migrate.py`.
+- [ ] Confirm whether old production data still exists anywhere. If not,
+      migration 002 (UUID identity) becomes a clean-slate rewrite instead
+      of a backfill — simpler; say the word.
+
+### Next when we resume
+
+Day 3–4: UUID identity migration (002) + the **JWT trust boundary**
+(delete `ChatMessage.user_id`, FastAPI middleware verifies a token minted
+by the Next proxy). These can be written and tested against a fresh local
+Postgres even before the new Supabase project exists.
+
+---
+
+*(Append Checkpoint 003 here at the next stopping point.)*
