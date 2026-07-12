@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, LayoutGrid } from "lucide-react";
+import { Plus, LayoutGrid, Network } from "lucide-react";
 import { CanvasView } from "@/components/canvas/canvas";
 import { ContextStrip } from "@/components/context-strip";
 import { ContextualConsoleComponent } from "@/components/contextual-console";
@@ -29,6 +29,10 @@ const normalizeCanvas = (canvas: any): CanvasData => ({
 const normalizeCanvases = (canvases: any): CanvasData[] =>
   Array.isArray(canvases) ? canvases.map(normalizeCanvas) : [];
 
+// Per-canvas "View tree" overrides for linear-first mode, persisted for the
+// session so a canvas the user force-exited stays in tree view on revisit.
+const LINEAR_EXIT_STORAGE_KEY = "context-tree-linear-exited";
+
 export default function ContextTreePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const isMobile = useIsMobile();
@@ -51,6 +55,25 @@ export default function ContextTreePage() {
   const [createCanvasTitle, setCreateCanvasTitle] = useState(generateCanvasTitle());
   const [hasLoadedCanvases, setHasLoadedCanvases] = useState(false);
   const hasPromptedEmptyCanvasRef = useRef(false);
+  const [treeViewOverrides, setTreeViewOverrides] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(window.sessionStorage.getItem(LINEAR_EXIT_STORAGE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  // ── Linear-first mode ───────────────────────────────────────────────
+  // A canvas with zero "branch" nodes reads as a plain chat: the canvas
+  // pane is hidden and the console becomes the centered main surface.
+  // The tree chrome appears the moment branching actually happens.
+  const activeCanvas = canvases.find((c) => c._id === selectedCanvas);
+  const branchCount = activeCanvas
+    ? activeCanvas.nodes.filter((n: any) => n.type === "branch").length
+    : 0;
+  const isLinear =
+    !!activeCanvas && branchCount === 0 && !treeViewOverrides[activeCanvas._id];
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────
   useEffect(() => {
@@ -214,6 +237,72 @@ export default function ContextTreePage() {
     window.addEventListener("canvas-node-renamed", handler);
     return () => window.removeEventListener("canvas-node-renamed", handler);
   }, [selectedNode]);
+
+  // Keep the canvases list in sync with forks and whole-canvas refreshes so
+  // isLinear flips the moment a branch is created — no refetch needed.
+  useEffect(() => {
+    const onFork = (e: any) => {
+      const { canvasId, node, edge } = e.detail || {};
+      if (!canvasId || !node) return;
+      setCanvases((prev) =>
+        prev.map((c) => {
+          if (c._id !== canvasId) return c;
+          const hasNode = c.nodes.some((n) => n._id === node._id);
+          const edges = Array.isArray(c.edges) ? c.edges : [];
+          const hasEdge = edge ? edges.some((x) => x._id === edge._id) : true;
+          if (hasNode && hasEdge) return c;
+          return {
+            ...c,
+            nodes: hasNode ? c.nodes : [...c.nodes, node],
+            edges: edge && !hasEdge ? [...edges, edge] : edges,
+          };
+        })
+      );
+    };
+    const onDataUpdated = (e: any) => {
+      const updated = e.detail;
+      if (!updated?._id) return;
+      setCanvases((prev) =>
+        prev.map((c) => (c._id === updated._id ? normalizeCanvas(updated) : c))
+      );
+    };
+    window.addEventListener("canvas-fork-node", onFork);
+    window.addEventListener("canvas-data-updated", onDataUpdated);
+    return () => {
+      window.removeEventListener("canvas-fork-node", onFork);
+      window.removeEventListener("canvas-data-updated", onDataUpdated);
+    };
+  }, []);
+
+  // Linear mode: auto-select the entry node so the composer is immediately
+  // usable — a brand-new canvas opens straight into a working chat.
+  useEffect(() => {
+    if (!isLinear || selectedNode || !activeCanvas) return;
+    const entry =
+      activeCanvas.nodes.find((n) => n._id === activeCanvas.primaryNodeId) ||
+      activeCanvas.nodes.find((n) => n.type === "entry") ||
+      activeCanvas.nodes[0];
+    if (!entry) return;
+    handleNodeSelect(
+      entry._id,
+      entry.name || (entry.type === "entry" ? "Base Context" : undefined),
+      entry.type
+    );
+  }, [isLinear, selectedNode, activeCanvas]);
+
+  // "View tree" — force-exit linear mode for this canvas (session-persisted).
+  const exitLinearMode = () => {
+    if (!selectedCanvas) return;
+    setTreeViewOverrides((prev) => {
+      const next = { ...prev, [selectedCanvas]: true };
+      try {
+        window.sessionStorage.setItem(LINEAR_EXIT_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* storage unavailable — override still applies for this render */
+      }
+      return next;
+    });
+  };
 
   // ── Canvas CRUD ─────────────────────────────────────────────────────
   const openCreateCanvasDialog = (title = generateCanvasTitle()) => {
@@ -384,7 +473,6 @@ export default function ContextTreePage() {
 
   if (!isAuthenticated) return <Landing />;
 
-  const activeCanvas = canvases.find((c) => c._id === selectedCanvas);
   const showRightPanel = !!selectedNode;
 
   return (
@@ -438,10 +526,12 @@ export default function ContextTreePage() {
           />
         </motion.div>
 
-        {/* Canvas — primary surface */}
+        {/* Canvas — primary surface (hidden entirely in linear-first mode) */}
+        {!isLinear && (
         <motion.div
           className="flex-1 relative"
           data-tour="canvas-surface"
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{
             opacity: chatFullscreen ? 0.1 : 1,
             scale: chatFullscreen ? 0.98 : 1,
@@ -564,9 +654,10 @@ export default function ContextTreePage() {
             )}
           </AnimatePresence>
         </motion.div>
+        )}
 
         {/* Resize handle */}
-        {showRightPanel && !chatFullscreen && (
+        {!isLinear && showRightPanel && !chatFullscreen && (
           <div
             onMouseDown={beginResize}
             className="z-50 w-2 flex-shrink-0 cursor-col-resize bg-muted transition-colors hover:bg-accent"
@@ -575,53 +666,89 @@ export default function ContextTreePage() {
           />
         )}
 
-        {/* Right panel — contextual console */}
+        {/* Right panel — contextual console.
+            In linear-first mode this same element (and the console inside it —
+            same JSX slot, so the console never remounts and in-flight streams
+            survive the transition) becomes THE main surface, centered like a
+            plain chat app. */}
         <div
           data-tour="right-panel"
-          className={`bg-card flex flex-col border-l border-border shadow-[-8px_0_24px_rgba(15,23,42,0.04)] ${
-            isResizing ? "" : "transition-[width,transform,opacity] duration-200 ease-out"
-          } ${
-            showRightPanel
-              ? chatFullscreen
-                ? "fixed right-0 top-14 bottom-0 w-[90%] md:w-[85%] lg:w-[80%] shadow-2xl z-50 border-l-0"
-                : "relative"
-              : "w-0 overflow-hidden border-l-0"
-          }`}
+          className={
+            isLinear
+              ? "relative flex flex-1 min-w-0 flex-col bg-background"
+              : `bg-card flex flex-col border-l border-border shadow-[-8px_0_24px_rgba(15,23,42,0.04)] ${
+                  isResizing ? "" : "transition-[width,transform,opacity] duration-200 ease-out"
+                } ${
+                  showRightPanel
+                    ? chatFullscreen
+                      ? "fixed right-0 top-14 bottom-0 w-[90%] md:w-[85%] lg:w-[80%] shadow-2xl z-50 border-l-0"
+                      : "relative"
+                    : "w-0 overflow-hidden border-l-0"
+                }`
+          }
           style={
-            showRightPanel && !chatFullscreen
+            !isLinear && showRightPanel && !chatFullscreen
               ? { width: rightPanelWidth, minWidth: 420, maxWidth: 1100 }
               : undefined
           }
         >
-          {selectedNode &&
-            (selectedNodeType === "externalContext" ? (
-              <FilePreviewPanel
-                selectedNode={selectedNode}
-                selectedNodeName={selectedNodeName}
-                canvasId={selectedCanvas || ""}
-                onClose={() => {
-                  setSelectedNode(null);
-                  setChatFullscreen(false);
-                }}
-              />
-            ) : (
-              <ContextualConsoleComponent
-                selectedNode={selectedNode}
-                selectedNodeName={selectedNodeName}
-                selectedCanvas={selectedCanvas}
-                isFullscreen={chatFullscreen}
-                onToggleFullscreen={() => setChatFullscreen((f) => !f)}
-                onClose={() => {
-                  setSelectedNode(null);
-                  setChatFullscreen(false);
-                }}
-                onNodeSelect={(nodeId: string, nodeName?: string, nodeType?: string) => {
-                  setSelectedNode(nodeId);
-                  setSelectedNodeName(nodeName);
-                  setSelectedNodeType(nodeType || "branch");
-                }}
-              />
-            ))}
+          {isLinear && activeCanvas ? (
+            <div className="flex h-10 flex-none items-center justify-between border-b border-border bg-card px-4">
+              <span className="type-ui truncate">{activeCanvas.title}</span>
+              <button
+                type="button"
+                onClick={exitLinearMode}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 type-ui text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                title="Show the canvas tree view"
+              >
+                <Network size={16} strokeWidth={1.75} />
+                View tree
+              </button>
+            </div>
+          ) : null}
+          <div
+            className={
+              isLinear
+                ? "container mx-auto w-full max-w-3xl flex-1 min-h-0"
+                : "contents"
+            }
+          >
+            {selectedNode &&
+              (selectedNodeType === "externalContext" ? (
+                <FilePreviewPanel
+                  selectedNode={selectedNode}
+                  selectedNodeName={selectedNodeName}
+                  canvasId={selectedCanvas || ""}
+                  onClose={() => {
+                    setSelectedNode(null);
+                    setChatFullscreen(false);
+                  }}
+                />
+              ) : (
+                <ContextualConsoleComponent
+                  selectedNode={selectedNode}
+                  selectedNodeName={selectedNodeName}
+                  selectedCanvas={selectedCanvas}
+                  isFullscreen={isLinear ? false : chatFullscreen}
+                  onToggleFullscreen={
+                    isLinear ? undefined : () => setChatFullscreen((f) => !f)
+                  }
+                  onClose={
+                    isLinear
+                      ? undefined
+                      : () => {
+                          setSelectedNode(null);
+                          setChatFullscreen(false);
+                        }
+                  }
+                  onNodeSelect={(nodeId: string, nodeName?: string, nodeType?: string) => {
+                    setSelectedNode(nodeId);
+                    setSelectedNodeName(nodeName);
+                    setSelectedNodeType(nodeType || "branch");
+                  }}
+                />
+              ))}
+          </div>
         </div>
       </div>
 
@@ -631,7 +758,7 @@ export default function ContextTreePage() {
         open={isSearchOpen}
         onOpenChange={setIsSearchOpen}
       />
-      {selectedCanvas && !isCreateCanvasDialogOpen ? <OnboardingGuide /> : null}
+      {selectedCanvas && !isCreateCanvasDialogOpen && !isLinear ? <OnboardingGuide /> : null}
     </motion.div>
   );
 }

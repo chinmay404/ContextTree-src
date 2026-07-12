@@ -108,6 +108,9 @@ const MessageItem = memo(function MessageItem({
                       className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 type-meta hover:text-foreground"
                     >
                       <GitBranch size={12} strokeWidth={1.75} /> Branch
+                      <kbd className="rounded border border-border bg-muted px-1 type-mono">
+                        ⌘B
+                      </kbd>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-[240px] text-center">

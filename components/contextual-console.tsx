@@ -1182,6 +1182,41 @@ const ContextualConsole = ({
     }
   }, [selectedNode, isFullscreen, onToggleFullscreen, onClose]);
 
+  // ─── Cmd/Ctrl+B → fork from the last message ───────────────
+  // Opens the fork dialog for the last forkable (native-to-this-node)
+  // message. Fires from anywhere in the document while the console is
+  // mounted — including the composer, since forking from the last message
+  // while composing is the primary use — but never from other inputs or
+  // during IME composition.
+  useEffect(() => {
+    if (!selectedNode) return;
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "b") return;
+      if (e.isComposing || e.keyCode === 229) return;
+      const target = e.target as HTMLElement | null;
+      const isEditable =
+        !!target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+      if (isEditable && target !== textareaRef.current) return;
+      if (showForkDialog) return;
+      const candidates = currentMessages.filter(isMessageNativeToSelectedNode);
+      const last = candidates[candidates.length - 1];
+      if (!last) return;
+      e.preventDefault();
+      handleStartFork(last.id);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [
+    selectedNode,
+    showForkDialog,
+    currentMessages,
+    isMessageNativeToSelectedNode,
+    handleStartFork,
+  ]);
+
   // ─── Render ────────────────────────────────────────────
   return (
     <>

@@ -464,6 +464,7 @@ export function GlobalSearch({
                   </kbd>
                   <span>opens search</span>
                 </div>
+                <p className="mt-2 type-meta">Tip: ⌘B branches from the last message</p>
               </div>
             ) : searchResults.length === 0 ? (
               <div className="px-6 py-12 text-center">
