@@ -291,3 +291,29 @@ complete.
   currently accurate.
 - Next feature work when deployment lands: F1 named branches + compare +
   promote (first paying feature).
+
+---
+
+## Checkpoint 008 (2026-07-12, evening) — Relaunch day
+
+Prod fully live end-to-end: sign-in restored (shutdown page reverted),
+FastAPI on Railway (api-production-310d.up.railway.app, NVIDIA NIM
+default model kimi-k2-0905, Groq fallback), Vercel wired (LLM_API_URL,
+BACKEND_JWT_SECRET, BYOK secret, DATABASE_URL on TRANSACTION pooler
+:6543 - session pooler exhausted under lambda fan-out, EMAXCON; pg
+pools capped max 3).
+
+Studio redesign shipped same day (082342b..87ab8fa):
+- REMOVE sweep: -26.6k lines, 13 dead surfaces gone
+- Dark-first token system + chrome, theme toggle, no backdrop-blur
+- Console split (1819->1249 + console/*): breadcrumb header, inline
+  rename, model switcher, auto-named forks
+- Canvas REBUILT from scratch (components/canvas/canvas.tsx ~700
+  lines): always-auto-layout (dagre, multi-root forests), dark pane,
+  lineage hues, non-editable edges, empty state, zoom-follows-select
+- Typography system (5 tiers) + 61 icons normalized (16/14/18, 1.75)
+- Competitor UX research: V2/12-UX-RESEARCH.md
+
+Next: Step 5 ease-of-use (linear-first entry, Cmd+B fork, Cmd+K
+actions), then F1 compare/promote. DB.txt still in workspace - rotate
+all keys + delete after development.
