@@ -70,11 +70,11 @@ export default function ContextTreePage() {
   // pane is hidden and the console becomes the centered main surface.
   // The tree chrome appears the moment branching actually happens.
   const activeCanvas = canvases.find((c) => c._id === selectedCanvas);
-  const branchCount = activeCanvas
-    ? activeCanvas.nodes.filter((n: any) => n.type === "branch").length
-    : 0;
-  const isLinear =
-    !!activeCanvas && branchCount === 0 && !treeViewOverrides[activeCanvas._id];
+  // Linear-first ("centered chat") mode retired 2026-07-13 (owner decision):
+  // every canvas uses the tree + right-docked console, including a brand-new
+  // canvas whose only node is the root. See
+  // docs/superpowers/specs/2026-07-13-contexttree-fix-pass-design.md (D-3).
+  const isLinear = false;
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────
   useEffect(() => {
