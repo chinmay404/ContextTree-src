@@ -28,3 +28,8 @@ export function fetchMyRole(): Promise<string> {
   }
   return myRolePromise;
 }
+
+// Entitlement = paid Founding license (premium) OR admin (admins get
+// everything a Founding license unlocks, by owner decision 2026-07-13).
+export const isPremiumRole = (role?: string | null): boolean =>
+  role === "premium" || role === "admin";
