@@ -11,7 +11,7 @@ export function PremiumLock({ locked, children }: { locked: boolean; children: R
     <div className="relative">
       <div
         aria-disabled
-        {...(locked ? { inert: "" } : {})}
+        inert
         className="pointer-events-none select-none opacity-40"
       >
         {children}
