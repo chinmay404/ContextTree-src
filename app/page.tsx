@@ -65,10 +65,6 @@ export default function ContextTreePage() {
     }
   });
 
-  // ── Linear-first mode ───────────────────────────────────────────────
-  // A canvas with zero "branch" nodes reads as a plain chat: the canvas
-  // pane is hidden and the console becomes the centered main surface.
-  // The tree chrome appears the moment branching actually happens.
   const activeCanvas = canvases.find((c) => c._id === selectedCanvas);
   // Linear-first ("centered chat") mode retired 2026-07-13 (owner decision):
   // every canvas uses the tree + right-docked console, including a brand-new

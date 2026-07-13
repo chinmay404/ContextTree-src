@@ -1254,7 +1254,7 @@ const ContextualConsole = ({
         <ConsoleHeader
           lineage={nodeLineage}
           resolvedName={resolvedName}
-          activeModelId={activeModelId}
+          activeModelId={currentNode ? activeModelId : null}
           isEditingName={isEditingName}
           nameInput={nameInput}
           onNameInputChange={setNameInput}

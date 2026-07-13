@@ -74,7 +74,8 @@ function CompareSiblingsItem({ currentNodeId }: { currentNodeId?: string }) {
 type ConsoleHeaderProps = {
   lineage: LineageEntry[];
   resolvedName?: string;
-  activeModelId: string;
+  /** Null while the selected node's data hasn't loaded — badge stays hidden (B1.3). */
+  activeModelId: string | null;
   isEditingName: boolean;
   nameInput: string;
   onNameInputChange: (value: string) => void;
@@ -195,11 +196,13 @@ export function ConsoleHeader({
               aria-label="Change model"
               title="Change model"
             >
-              <ModelBadge
-                modelId={activeModelId}
-                size="sm"
-                className="max-w-[220px] whitespace-nowrap"
-              />
+              {activeModelId && (
+                <ModelBadge
+                  modelId={activeModelId}
+                  size="sm"
+                  className="max-w-[220px] whitespace-nowrap"
+                />
+              )}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
