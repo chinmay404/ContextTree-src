@@ -9,7 +9,11 @@ export function PremiumLock({ locked, children }: { locked: boolean; children: R
   if (!locked) return <>{children}</>;
   return (
     <div className="relative">
-      <div aria-disabled className="pointer-events-none select-none opacity-40">
+      <div
+        aria-disabled
+        {...(locked ? { inert: "" } : {})}
+        className="pointer-events-none select-none opacity-40"
+      >
         {children}
       </div>
       <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-card/50 backdrop-blur-[1px]">

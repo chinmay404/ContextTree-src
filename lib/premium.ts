@@ -8,9 +8,9 @@ export const PREMIUM_TOOLTIP = "Founding license — coming soon";
 
 // ─── Async role lookup (users.role via /api/me) ───────────────
 // Client-side helper with a module-level cache: one network hit per page
-// load, no matter how many gated components ask. The premium dialogs still
-// use the synchronous isPremiumUser() above — they migrate to fetchMyRole()
-// next, at which point isPremiumUser can be retired.
+// load, no matter how many gated components ask. The premium dialogs consume
+// this via the usePremium() hook (see hooks/use-premium.ts); the synchronous
+// isPremiumUser() above is deprecated and no longer called.
 let myRolePromise: Promise<string> | null = null;
 
 export function fetchMyRole(): Promise<string> {

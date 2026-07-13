@@ -129,6 +129,7 @@ export const ForkDialog = memo(function ForkDialog({
   const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(DEFAULT_ADVANCED_SETTINGS);
   const [showAllModels, setShowAllModels] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const { isPremium: premium } = usePremium();
   useEffect(() => {
     if (!open) return;
     setModel(getDefaultModel());
@@ -143,7 +144,6 @@ export const ForkDialog = memo(function ForkDialog({
   }, [open, sourceName, sourceMessageContent, inheritedSystemPrompt, inheritedAdvancedSettings]);
   if (!open) return null;
 
-  const { isPremium: premium } = usePremium();
   const canCreate = name.trim().length > 0;
   const handleConfirm = () => {
     if (!canCreate) return;
