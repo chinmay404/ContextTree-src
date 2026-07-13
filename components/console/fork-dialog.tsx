@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { X, ChevronRight, ChevronDown, Lock } from "lucide-react";
-import { toast } from "sonner";
 import { getDefaultModel, getModelById, RECOMMENDED_MODELS } from "@/lib/models";
-import { isPremiumUser, PREMIUM_TOOLTIP } from "@/lib/premium";
+import { usePremium } from "@/hooks/use-premium";
+import { PremiumLock } from "@/components/premium-lock";
 import { ModelProviderIcon } from "@/components/model-badge";
 import { ModelSelectionPanel } from "@/components/model-selection-panel";
 import { AdvancedSettingsPanel } from "@/components/advanced-settings-panel";
@@ -143,7 +143,7 @@ export const ForkDialog = memo(function ForkDialog({
   }, [open, sourceName, sourceMessageContent, inheritedSystemPrompt, inheritedAdvancedSettings]);
   if (!open) return null;
 
-  const premium = isPremiumUser();
+  const { isPremium: premium } = usePremium();
   const canCreate = name.trim().length > 0;
   const handleConfirm = () => {
     if (!canCreate) return;
@@ -216,14 +216,8 @@ export const ForkDialog = memo(function ForkDialog({
           <div className="border-t border-border pt-4">
             <button
               type="button"
-              onClick={() => {
-                if (!premium) {
-                  toast(PREMIUM_TOOLTIP);
-                  return;
-                }
-                setAdvancedOpen((value) => !value);
-              }}
-              aria-expanded={premium ? advancedOpen : false}
+              onClick={() => setAdvancedOpen((value) => !value)}
+              aria-expanded={advancedOpen}
               className="flex items-center gap-1.5 type-meta uppercase tracking-[0.08em] transition-colors hover:text-foreground"
               data-slot="fork-advanced-disclosure"
             >
@@ -243,31 +237,33 @@ export const ForkDialog = memo(function ForkDialog({
                 </span>
               )}
             </button>
-            {premium && advancedOpen && (
-              <div className="mt-4 space-y-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-                <div className="space-y-2">
-                  <div className="type-meta uppercase tracking-[0.08em]">
-                    Custom system prompt
+            {advancedOpen && (
+              <PremiumLock locked={!premium}>
+                <div className="mt-4 space-y-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+                  <div className="space-y-2">
+                    <div className="type-meta uppercase tracking-[0.08em]">
+                      Custom system prompt
+                    </div>
+                    <Textarea
+                      value={systemPrompt}
+                      onChange={(event) => setSystemPrompt(event.target.value)}
+                      placeholder="Optional instructions for this branch..."
+                      className="min-h-[110px] resize-none rounded-lg border-border bg-background text-sm leading-relaxed text-foreground"
+                      data-slot="fork-system-prompt-input"
+                    />
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      By default this is copied from the parent node. Edit it only when this branch needs different behavior.
+                    </p>
                   </div>
-                  <Textarea
-                    value={systemPrompt}
-                    onChange={(event) => setSystemPrompt(event.target.value)}
-                    placeholder="Optional instructions for this branch..."
-                    className="min-h-[110px] resize-none rounded-lg border-border bg-background text-sm leading-relaxed text-foreground"
-                    data-slot="fork-system-prompt-input"
+                  <AdvancedSettingsPanel
+                    value={advancedSettings}
+                    onChange={setAdvancedSettings}
+                    modelId={model}
+                    systemPrompt={systemPrompt}
+                    parentSettings={inheritedAdvancedSettings}
                   />
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    By default this is copied from the parent node. Edit it only when this branch needs different behavior.
-                  </p>
                 </div>
-                <AdvancedSettingsPanel
-                  value={advancedSettings}
-                  onChange={setAdvancedSettings}
-                  modelId={model}
-                  systemPrompt={systemPrompt}
-                  parentSettings={inheritedAdvancedSettings}
-                />
-              </div>
+              </PremiumLock>
             )}
           </div>
         </div>

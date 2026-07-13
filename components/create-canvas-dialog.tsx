@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { X, ChevronRight, ChevronDown, Lock } from "lucide-react";
 import { BrandLoader } from "@/components/brand-loader";
-import { toast } from "sonner";
 import { cn, generateCanvasTitle } from "@/lib/utils";
-import { isPremiumUser, PREMIUM_TOOLTIP } from "@/lib/premium";
+import { usePremium } from "@/hooks/use-premium";
+import { PremiumLock } from "@/components/premium-lock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -131,7 +131,7 @@ export const CreateCanvasDialog = ({
     setAdvancedOpen(false);
   }, [initialTitle, open]);
 
-  const premium = isPremiumUser();
+  const { isPremium: premium } = usePremium();
 
   const handleCreate = async () => {
     const trimmedTitle = title.trim();
@@ -219,14 +219,8 @@ export const CreateCanvasDialog = ({
           <div className="border-t border-border pt-4">
             <button
               type="button"
-              onClick={() => {
-                if (!premium) {
-                  toast(PREMIUM_TOOLTIP);
-                  return;
-                }
-                setAdvancedOpen((value) => !value);
-              }}
-              aria-expanded={premium ? advancedOpen : false}
+              onClick={() => setAdvancedOpen((value) => !value)}
+              aria-expanded={advancedOpen}
               className="flex items-center gap-1.5 type-meta uppercase tracking-[0.08em] transition-colors hover:text-foreground"
               data-slot="create-canvas-advanced-disclosure"
             >
@@ -246,30 +240,32 @@ export const CreateCanvasDialog = ({
                 </span>
               )}
             </button>
-            {premium && advancedOpen && (
-              <div className="mt-4 space-y-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-                <div className="space-y-2">
-                  <div className="type-meta uppercase tracking-[0.08em]">
-                    Custom system prompt
+            {advancedOpen && (
+              <PremiumLock locked={!premium}>
+                <div className="mt-4 space-y-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+                  <div className="space-y-2">
+                    <div className="type-meta uppercase tracking-[0.08em]">
+                      Custom system prompt
+                    </div>
+                    <Textarea
+                      value={systemPrompt}
+                      onChange={(event) => setSystemPrompt(event.target.value)}
+                      placeholder="Optional instructions for the base context..."
+                      className="min-h-[110px] resize-none rounded-lg border-border bg-background text-sm leading-relaxed text-foreground"
+                      data-slot="create-canvas-system-prompt-input"
+                    />
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      This is saved on the base node. New branches copy it by default unless edited.
+                    </p>
                   </div>
-                  <Textarea
-                    value={systemPrompt}
-                    onChange={(event) => setSystemPrompt(event.target.value)}
-                    placeholder="Optional instructions for the base context..."
-                    className="min-h-[110px] resize-none rounded-lg border-border bg-background text-sm leading-relaxed text-foreground"
-                    data-slot="create-canvas-system-prompt-input"
+                  <AdvancedSettingsPanel
+                    value={advancedSettings}
+                    onChange={setAdvancedSettings}
+                    modelId={selectedModel}
+                    systemPrompt={systemPrompt}
                   />
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    This is saved on the base node. New branches copy it by default unless edited.
-                  </p>
                 </div>
-                <AdvancedSettingsPanel
-                  value={advancedSettings}
-                  onChange={setAdvancedSettings}
-                  modelId={selectedModel}
-                  systemPrompt={systemPrompt}
-                />
-              </div>
+              </PremiumLock>
             )}
           </div>
         </div>

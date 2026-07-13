@@ -16,11 +16,13 @@ import { User, LogOut, Settings, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ApiKeySettingsDialog } from "@/components/api-key-settings-dialog";
 import { isAdminEmail } from "@/lib/admin";
+import { usePremium } from "@/hooks/use-premium";
 
 export default function UserAuth() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isApiKeysOpen, setIsApiKeysOpen] = useState(false);
+  const { role } = usePremium();
 
   if (status === "loading") {
     return (
@@ -85,7 +87,7 @@ export default function UserAuth() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border" />
-            {isAdminEmail(session.user.email) && (
+            {(isAdminEmail(session.user.email) || role === "admin") && (
               <DropdownMenuItem
                 onClick={() => router.push("/admin")}
                 className="cursor-pointer hover:bg-accent transition-colors"
