@@ -465,10 +465,24 @@ const ContextualConsole = ({
   // ─── Get node model ────────────────────────────────────
   const getNodeModel = useCallback(
     (nodeId: string): string => {
-      const node = canvasData?.nodes?.find((n: any) => n._id === nodeId);
-      return node?.model || getDefaultModel();
+      // 1. Trust the network snapshot's node model when present.
+      const netNode = canvasData?.nodes?.find((n: any) => n._id === nodeId);
+      if (netNode?.model) return netNode.model;
+      // 2. Fall back to the localStorage-merged copy, which is populated
+      //    immediately on fork/create before the server round-trips (this is
+      //    the case where the header used to flash the global "GLM 5.2").
+      const localCanvas = selectedCanvas ? storageService.getCanvas(selectedCanvas) : null;
+      const localNode = localCanvas?.nodes?.find((n: any) => n._id === nodeId);
+      if (localNode?.model) return localNode.model;
+      // 3. Use the canvas's own default model, never the app-wide catalog
+      //    default, so a missing field can't masquerade as "GLM 5.2".
+      return (
+        canvasData?.settings?.defaultModel ||
+        localCanvas?.settings?.defaultModel ||
+        getDefaultModel()
+      );
     },
-    [canvasData]
+    [canvasData, selectedCanvas]
   );
   const activeModelId = useMemo(
     () => (selectedNode ? getNodeModel(selectedNode) : getDefaultModel()),
