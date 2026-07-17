@@ -126,6 +126,11 @@ async function init() {
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now()
     );
+  alter table if exists edges add column if not exists canvas_id text;
+  alter table if exists edges add column if not exists user_email text;
+  alter table if exists edges add column if not exists from_node text;
+  alter table if exists edges add column if not exists to_node text;
+  alter table if exists edges add column if not exists data jsonb;
     create index if not exists idx_edges_canvas on edges(canvas_id);
     create index if not exists idx_edges_from on edges(from_node);
     create index if not exists idx_edges_to on edges(to_node);
@@ -230,6 +235,12 @@ async function init() {
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now()
     );
+  -- Backfill: legacy-shaped tables predate these columns; indexing a missing
+  -- column throws and kills this whole init (the bug_reports(status) lesson).
+  alter table if exists external_files add column if not exists node_id text;
+  alter table if exists external_files add column if not exists canvas_id text;
+  alter table if exists external_files add column if not exists user_email text;
+  alter table if exists external_files add column if not exists processed boolean default false;
     create index if not exists idx_external_files_node on external_files(node_id);
     create index if not exists idx_external_files_user on external_files(user_email);
 
@@ -241,6 +252,10 @@ async function init() {
         embedding vector(768),
         created_at timestamptz not null default now()
     );
+  alter table if exists file_chunks add column if not exists file_id text;
+  alter table if exists file_chunks add column if not exists chunk_index integer;
+  alter table if exists file_chunks add column if not exists chunk_text text;
+  alter table if exists file_chunks add column if not exists embedding vector(768);
     create index if not exists idx_file_chunks_file_id on file_chunks(file_id);
     -- vector index for similarity search
     create index if not exists idx_file_chunks_embedding on file_chunks using ivfflat (embedding vector_cosine_ops) with (lists = 100);
@@ -261,6 +276,9 @@ async function init() {
       token_count integer,
       created_at timestamptz not null default now()
     );
+  alter table if exists context_chunks add column if not exists file_id text;
+  alter table if exists context_chunks add column if not exists content text;
+  alter table if exists context_chunks add column if not exists chunk_index integer;
     create index if not exists idx_context_chunks_file on context_chunks(file_id);
 
     create table if not exists user_api_keys (
@@ -273,6 +291,9 @@ async function init() {
       updated_at timestamptz not null default now(),
       primary key (user_email, provider)
     );
+  alter table if exists user_api_keys add column if not exists encrypted_key text;
+  alter table if exists user_api_keys add column if not exists key_hint text;
+  alter table if exists user_api_keys add column if not exists provider text;
     alter table if exists user_api_keys alter column encrypted_key drop not null;
     alter table if exists user_api_keys add column if not exists metadata jsonb default '{}'::jsonb;
     create index if not exists idx_user_api_keys_provider on user_api_keys(provider);
