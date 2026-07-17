@@ -192,12 +192,13 @@ const CSS = `
 
 /* pricing */
 .ctx3 .pricing { padding: clamp(48px, 7vw, 84px) 0; border-top: 1px solid var(--line); }
-.ctx3 .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 36px; max-width: 780px; }
+.ctx3 .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 36px; max-width: 1080px; }
 .ctx3 .plan { border: 1px solid var(--line); border-radius: 16px; padding: 28px; background: var(--field-2); display: flex; flex-direction: column; }
 .ctx3 .plan.founding { border-color: rgba(124,102,220,0.6); }
 .ctx3 .plan .name { font-family: var(--display); font-weight: 600; font-size: 15px; color: var(--dim); }
 .ctx3 .plan.founding .name { color: var(--accent); }
 .ctx3 .plan .price { font-family: var(--display); font-size: 46px; font-weight: 650; margin: 10px 0 2px; }
+.ctx3 .plan .price.soon { font-size: 26px; color: var(--dim); line-height: 2.15; }
 .ctx3 .plan .per { font-size: 13px; color: var(--dim); margin-bottom: 16px; }
 .ctx3 .plan ul { list-style: none; margin: 0 0 24px; padding: 0; color: var(--dim); font-size: 14.5px; line-height: 2.05; }
 .ctx3 .plan ul li::before { content: "— "; color: var(--accent); }
@@ -483,7 +484,7 @@ export function Landing() {
       </div>
 
       <div className="wrap pricing" id="pricing">
-        <h2>Pay once. Bring your key.</h2>
+        <h2>Start free. Paid plans are coming soon.</h2>
         <div className="plans">
           <div className="plan">
             <span className="name">Free</span>
@@ -496,10 +497,22 @@ export function Landing() {
             </ul>
             <button className="btn btn-ghost" onClick={start}>Start free</button>
           </div>
+          <div className="plan">
+            <span className="name">Managed</span>
+            <div className="price soon">Coming soon</div>
+            <div className="per">no API keys · tokens included</div>
+            <ul>
+              <li>We manage the tokens for you</li>
+              <li>Choose your providers</li>
+              <li>Unlimited canvases</li>
+              <li>Usage dashboard</li>
+            </ul>
+            <button className="btn btn-ghost" disabled aria-disabled="true">Coming soon</button>
+          </div>
           <div className="plan founding">
             <span className="name">Founding license</span>
-            <div className="price">$59</div>
-            <div className="per">one time · first 100 · then $79</div>
+            <div className="price soon">Coming soon</div>
+            <div className="per">one time · bring your own key · first 100 founders</div>
             <ul>
               <li>Unlimited canvases</li>
               <li>Codex: pinned context cards</li>
@@ -540,7 +553,7 @@ export function Landing() {
             </p>
           </details>
           <details>
-            <summary>Is $59 really one-time?</summary>
+            <summary>Is the Founding license really one-time?</summary>
             <p>
               Yes — the license never expires. An optional cloud-sync
               subscription may come later; the studio you buy is yours.
