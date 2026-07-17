@@ -184,6 +184,10 @@ const ContextualConsole = ({
     });
   }, []);
   const isTyping = selectedNode ? typingNodeIds.has(selectedNode) : false;
+  // Declared HERE (not lower with the other state) because the context-file
+  // block below reads it in dependency arrays, which evaluate at render —
+  // declaring it later is a temporal-dead-zone crash on mount.
+  const [canvasData, setCanvasData] = useState<any>(null);
 
   // ─── External context (file RAG) attachments ────────────────
   // Edges between the current chat node and externalContext nodes are the
@@ -354,7 +358,6 @@ const ContextualConsole = ({
     },
     [selectedCanvas, selectedNode, canvasData, publishCanvas, refreshCanvasSoon, toast]
   );
-  const [canvasData, setCanvasData] = useState<any>(null);
   // nodeId -> lineage captured at fork time; canvasData refetches can't erase it.
   const forkLineage = useRef<
     Record<string, { parentNodeId: string; forkedFromMessageId: string | null }>
