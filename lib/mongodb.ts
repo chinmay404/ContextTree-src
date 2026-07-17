@@ -282,7 +282,16 @@ async function init() {
 
 let initPromise: Promise<void> | null = null;
 async function ensureInit() {
-  if (!initPromise) initPromise = init();
+  // Never cache a REJECTED init: a single transient failure used to poison
+  // the warm lambda forever — every later request replayed the old error
+  // even after the database was fixed. Reset so the next request retries.
+  if (!initPromise) {
+    initPromise = init().catch((e) => {
+      initPromise = null;
+      console.error("ensureInit failed (will retry on next request):", e);
+      throw e;
+    });
+  }
   return initPromise;
 }
 
