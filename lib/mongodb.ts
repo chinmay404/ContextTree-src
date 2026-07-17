@@ -369,7 +369,8 @@ export class MongoDBService {
     const n = { ...(res.rows[0].data || {}), _id: res.rows[0].id } as any;
     // Attach messages (flat form) for convenience
     const mRows = await pool.query(
-      "select id, role, content, timestamp from messages where node_id=$1",
+      `select id, role, content, timestamp from messages where node_id=$1
+       order by position asc nulls last, timestamp asc`,
       [nodeId]
     );
     (n as any).chatMessages = mRows.rows.map((m) => ({
@@ -480,10 +481,17 @@ export class MongoDBService {
       [canvasId]
     );
     if (nodeRows.rowCount > 0) {
-      // Load normalized messages
+      // Load normalized messages BY NODE ID, not canvas_id: backend-written
+      // rows (every assistant reply) carry node_id but never canvas_id, so
+      // the canvas_id filter made them invisible — conversations rendered
+      // with holes or empty. Order by position (the backend's source of
+      // truth), falling back to timestamp for legacy NULLs.
+      const nodeIds = nodeRows.rows.map((r) => r.id);
       const msgRows = await pool.query(
-        "select id, node_id, role, content, timestamp from messages where canvas_id=$1",
-        [canvasId]
+        `select id, node_id, role, content, timestamp from messages
+         where node_id = any($1::text[])
+         order by position asc nulls last, timestamp asc`,
+        [nodeIds]
       );
       const byNode: Record<string, any[]> = {};
       for (const m of msgRows.rows) {
@@ -904,7 +912,9 @@ export class MongoDBService {
           `insert into messages (id, node_id, canvas_id, user_email, role, content, timestamp, position)
            values ($1,$2,$3,(select user_email from canvases where id=$3),$4,$5,$6,
                    (select coalesce(max(position),0)+1 from messages where node_id=$2))
-           on conflict (id) do update set content=excluded.content`,
+           on conflict (id) do update set content=excluded.content,
+             canvas_id=coalesce(messages.canvas_id, excluded.canvas_id),
+             user_email=coalesce(messages.user_email, excluded.user_email)`,
           [msg.id, nodeId, canvasId, msg.role, msg.content, msg.timestamp]
         );
       }
@@ -989,7 +999,9 @@ export class MongoDBService {
               `insert into messages (id, node_id, canvas_id, user_email, role, content, timestamp, position)
                values ($1,$2,$3,$4,$5,$6,$7,
                        (select coalesce(max(position),0)+1 from messages where node_id=$2))
-               on conflict (id) do update set content=excluded.content`,
+               on conflict (id) do update set content=excluded.content,
+                 canvas_id=coalesce(messages.canvas_id, excluded.canvas_id),
+                 user_email=coalesce(messages.user_email, excluded.user_email)`,
               [
                 msg.id,
                 node._id,
