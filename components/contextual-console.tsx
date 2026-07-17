@@ -181,6 +181,10 @@ const ContextualConsole = ({
   }, []);
   const isTyping = selectedNode ? typingNodeIds.has(selectedNode) : false;
   const [canvasData, setCanvasData] = useState<any>(null);
+  // nodeId -> lineage captured at fork time; canvasData refetches can't erase it.
+  const forkLineage = useRef<
+    Record<string, { parentNodeId: string; forkedFromMessageId: string | null }>
+  >({});
   const [showForkDialog, setShowForkDialog] = useState(false);
   const [pendingForkMsg, setPendingForkMsg] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -638,8 +642,14 @@ const ContextualConsole = ({
           model,
           message_id: userMsg.id,
           message: userMsg.content,
-          parentNodeId: currentNode?.parentNodeId || null,
-          forkedFromMessageId: currentNode?.forkedFromMessageId || null,
+          parentNodeId:
+            currentNode?.parentNodeId ||
+            forkLineage.current[nodeId]?.parentNodeId ||
+            null,
+          forkedFromMessageId:
+            currentNode?.forkedFromMessageId ||
+            forkLineage.current[nodeId]?.forkedFromMessageId ||
+            null,
           isPrimary: currentNode?.primary || false,
           systemPrompt: currentNode?.systemPrompt || "",
           ...buildAdvancedRequestPayload(currentNode?.advancedSettings, model),
@@ -942,6 +952,15 @@ const ContextualConsole = ({
         })
       );
 
+      // Lineage registry: survives canvasData refetches that may drop the
+      // optimistic node — handleSend falls back to this so the chat body
+      // ALWAYS carries the fork's parent (the backend can seed inheritance
+      // from body pointers alone, even if the node row write raced/failed).
+      forkLineage.current[nodeId] = {
+        parentNodeId: selectedNode,
+        forkedFromMessageId: forkId,
+      };
+
       const nodeCreationPromise = fetch(`/api/canvases/${selectedCanvas}/nodes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -952,9 +971,21 @@ const ContextualConsole = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(edge),
       });
-      // Existing fire-and-forget behavior preserved for the AI-message fork.
-      nodeCreationPromise.catch(() => {});
-      edgeCreationPromise.catch(() => {});
+      // Surface persistence failures instead of swallowing them — a silently
+      // failed node write is how forks lost their parents in prod.
+      nodeCreationPromise
+        .then((r) => {
+          if (!r.ok) {
+            console.error(`Fork node persist failed: ${r.status}`);
+            toast({
+              title: "Branch may not be saved",
+              description: `Server rejected the new branch (${r.status}). It works this session; reload may lose it.`,
+              variant: "destructive",
+            });
+          }
+        })
+        .catch((e) => console.error("Fork node persist failed:", e));
+      edgeCreationPromise.catch((e) => console.error("Fork edge persist failed:", e));
 
       window.dispatchEvent(
         new CustomEvent("canvas-select-node", {
