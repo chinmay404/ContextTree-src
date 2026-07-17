@@ -29,6 +29,9 @@ interface LLMRequest {
   // Sending [] explicitly disables external context for this turn; omitting
   // the field falls back to the persisted canvas edges on the backend.
   contextNodeIds?: string[];
+  // Per-turn opt-in: backend runs a free DuckDuckGo search on the message
+  // and injects the top snippets into <EXTERNAL_CONTEXT>.
+  webSearch?: boolean;
 }
 
 // Create an HTTPS agent that bypasses SSL verification for self-signed certs

@@ -167,6 +167,7 @@ const ContextualConsole = ({
 }: ChatPanelProps) => {
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [inputValue, setInputValue] = useState("");
+  const [webSearch, setWebSearch] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [canvasData, setCanvasData] = useState<any>(null);
   const [showForkDialog, setShowForkDialog] = useState(false);
@@ -632,6 +633,7 @@ const ContextualConsole = ({
           systemPrompt: currentNode?.systemPrompt || "",
           ...buildAdvancedRequestPayload(currentNode?.advancedSettings, model),
           contextNodeIds,
+          webSearch,
         }),
       });
 
@@ -1286,6 +1288,8 @@ const ContextualConsole = ({
           onInputChange={setInputValue}
           autoResize={autoResize}
           onSend={handleSend}
+          webSearch={webSearch}
+          onToggleWebSearch={() => setWebSearch((v) => !v)}
           scrollRef={scrollRef}
           endRef={endRef}
           textareaRef={textareaRef}

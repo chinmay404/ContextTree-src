@@ -14,6 +14,7 @@ import {
   Check,
   ArrowRight,
   MessageSquareDashed,
+  Globe,
 } from "lucide-react";
 import { BrandLoader } from "@/components/brand-loader";
 import {
@@ -390,6 +391,8 @@ type ChatTabProps = {
   onInputChange: (value: string) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
   onSend: () => void;
+  webSearch: boolean;
+  onToggleWebSearch: () => void;
   scrollRef: RefObject<HTMLDivElement | null>;
   endRef: RefObject<HTMLDivElement | null>;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
@@ -413,6 +416,8 @@ export function ChatTab({
   onInputChange,
   autoResize,
   onSend,
+  webSearch,
+  onToggleWebSearch,
   scrollRef,
   endRef,
   textareaRef,
@@ -489,6 +494,27 @@ export function ChatTab({
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-8 z-20 bg-gradient-to-t from-card via-card/95 to-transparent pointer-events-none">
         <div className="max-w-3xl mx-auto pointer-events-auto">
           <div className="rounded-2xl bg-muted focus-within:bg-card focus-within:ring-1 focus-within:ring-ring focus-within:shadow-md transition-all flex items-end p-1.5">
+            <div className="pb-1 pl-1 self-end">
+              <Button
+                onClick={onToggleWebSearch}
+                disabled={isTyping || !selectedNode}
+                size="icon"
+                variant="ghost"
+                aria-pressed={webSearch}
+                title={
+                  webSearch
+                    ? "Web search on — DuckDuckGo results will inform this reply"
+                    : "Search the web (free, DuckDuckGo) for this message"
+                }
+                className={`h-8 w-8 rounded-full transition-all ${
+                  webSearch
+                    ? "bg-primary/15 text-primary hover:bg-primary/25"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Globe size={16} strokeWidth={1.75} />
+              </Button>
+            </div>
             <Textarea
               ref={textareaRef}
               placeholder="Message..."
