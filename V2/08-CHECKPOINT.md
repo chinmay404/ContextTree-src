@@ -395,3 +395,40 @@ review, demo assets, rotate DB.txt keys.
 - Canvas: back to auto-align only (owner decision), Tidy removed.
 - Marketing kit committed (V2/marketing/): Show HN, PH listing, X
   thread, blog postmortem, video scripts + demo canvas recipe.
+
+## Checkpoint 009 — 2026-07-17 (fork-inheritance root cause; test suite)
+
+### Owner-reported bug: "fork a node, it knows nothing"
+
+**Root cause (proven, not guessed):** production runs `origin/main`, but the
+July-13 fix pass (`fix/2026-07-13-fix-pass`) was NEVER PUSHED in either repo.
+Backend main inserts `messages.position = NULL`; every context read filters
+`position > watermark` and `NULL > 0` is never true in SQL → fork inheritance
+reads the parent as empty, working-memory hydration sees nothing, the
+watermark never advances. Fix already exists locally: commit `13c707e`
+(monotonic positions on insert) + migration `004_message_positions.sql`
+(backfills NULL rows). Migration 004 has NOT been applied to prod.
+
+**Proof:** new suite `tests/test_fork_inheritance.py` (14 cases, store +
+chat layers, runs on TEST_DATABASE_URL Docker PG, no LLM/API calls).
+On `fix/2026-07-13-fix-pass`: 14/14 pass (full suite 39/39).
+On `main` with a prod-like DB (migrations 001-003 only): the position/
+hydration cases fail exactly as prod behaves. Committed `11a1402`.
+
+### Go-live steps for the fix (owner)
+1. Backend: merge `fix/2026-07-13-fix-pass` → `main`, push. Frontend: same
+   (7 UI commits, includes entitlement + layout fixes).
+2. Apply migration 004 to prod BEFORE/with deploy (`migrate.py`; render.yaml
+   runs migrate-on-start, so a deploy after merge covers it — the migration
+   file's header documents the ordering).
+3. Old canvases self-heal: positions backfill + the fork re-init path
+   re-runs inheritance for blank forks on their next message.
+
+### Also flagged
+- Admin panel: V1 leftover (7 count tiles + role list; Usage/Billing/Flags
+  are decorative). V2 cut it deliberately (06-CUT-LIST). Owner now wants a
+  real founder console — reversal accepted; data already in DB: quotas,
+  bug_reports (service methods exist, no UI), user_api_keys, waitlist.
+- DB.txt with plaintext prod creds STILL in workspace root (3rd reminder).
+- Structural (unchanged plan): dual-writer on conversation tables remains
+  the systemic risk; single-writer (Day 6) stays the post-launch cure.
