@@ -168,7 +168,18 @@ const ContextualConsole = ({
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [inputValue, setInputValue] = useState("");
   const [webSearch, setWebSearch] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  // Per-node in-flight set: one node generating must not show "Thinking" or
+  // lock the composer in any other node's panel.
+  const [typingNodeIds, setTypingNodeIds] = useState<Set<string>>(new Set());
+  const setNodeTyping = useCallback((id: string, typing: boolean) => {
+    setTypingNodeIds((prev) => {
+      const next = new Set(prev);
+      if (typing) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+  const isTyping = selectedNode ? typingNodeIds.has(selectedNode) : false;
   const [canvasData, setCanvasData] = useState<any>(null);
   const [showForkDialog, setShowForkDialog] = useState(false);
   const [pendingForkMsg, setPendingForkMsg] = useState<string | null>(null);
@@ -580,7 +591,7 @@ const ContextualConsole = ({
 
     setInputValue("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
-    setIsTyping(true);
+    setNodeTyping(nodeId, true);
 
     fetch(`/api/canvases/${canvasId}/nodes/${nodeId}/messages`, {
       method: "POST",
@@ -684,7 +695,7 @@ const ContextualConsole = ({
 
                   if (firstToken) {
                     firstToken = false;
-                    setIsTyping(false);
+                    setNodeTyping(nodeId, false);
                   }
 
                   setMessages((p) => ({
@@ -823,7 +834,7 @@ const ContextualConsole = ({
         [nodeId]: [...(p[nodeId] || []), errorMsg],
       }));
     } finally {
-      setIsTyping(false);
+      setNodeTyping(nodeId, false);
     }
   }, [
     inputValue,
@@ -982,7 +993,7 @@ const ContextualConsole = ({
         };
         // Optimistically render the user message in the new branch.
         setMessages((p) => ({ ...p, [nodeId]: [userMsgForUI] }));
-        setIsTyping(true);
+        setNodeTyping(nodeId, true);
 
         try {
           const advancedForRequest =
@@ -1051,7 +1062,7 @@ const ContextualConsole = ({
                       fullContent += chunk;
                       if (firstToken) {
                         firstToken = false;
-                        setIsTyping(false);
+                        setNodeTyping(nodeId, false);
                       }
                       setMessages((p) => ({
                         ...p,
@@ -1126,7 +1137,7 @@ const ContextualConsole = ({
             variant: "destructive",
           });
         } finally {
-          setIsTyping(false);
+          setNodeTyping(nodeId, false);
         }
       }
     },
@@ -1139,7 +1150,7 @@ const ContextualConsole = ({
       currentMessages,
       onNodeSelect,
       setMessages,
-      setIsTyping,
+      setNodeTyping,
       toast,
     ]
   );

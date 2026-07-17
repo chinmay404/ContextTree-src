@@ -857,11 +857,18 @@ export class MongoDBService {
       [nodeId, canvasId]
     );
     if (nodeRow.rowCount) {
-      await pool.query("delete from messages where node_id=$1", [nodeId]);
       const flat = this.flattenMessages(messages);
+      // NEVER delete-and-replace: the backend owns rows in this table
+      // (positions, embeddings). A delete+reinsert here erased whole
+      // conversations ("previous convo gone") and re-inserted rows with
+      // NULL position — starving fork inheritance and hydration. Upsert
+      // only; a hollow/empty client copy must not destroy server truth.
       for (const msg of flat) {
         await pool.query(
-          `insert into messages (id, node_id, canvas_id, user_email, role, content, timestamp) values ($1,$2,$3,(select user_email from canvases where id=$3),$4,$5,$6) on conflict (id) do update set role=excluded.role, content=excluded.content, timestamp=excluded.timestamp`,
+          `insert into messages (id, node_id, canvas_id, user_email, role, content, timestamp, position)
+           values ($1,$2,$3,(select user_email from canvases where id=$3),$4,$5,$6,
+                   (select coalesce(max(position),0)+1 from messages where node_id=$2))
+           on conflict (id) do update set content=excluded.content`,
           [msg.id, nodeId, canvasId, msg.role, msg.content, msg.timestamp]
         );
       }
@@ -939,14 +946,14 @@ export class MongoDBService {
           // full-canvas save (e.g. deleting a sibling node).
           const incomingMessages = this.flattenMessages(node.chatMessages || []);
           if (incomingMessages.length === 0) continue;
-          await client.query("delete from messages where node_id=$1", [
-            node._id,
-          ]);
+          // Upsert only — no delete-and-replace. The backend owns rows here
+          // (positions, embeddings); client copies are additive at best.
           for (const msg of incomingMessages) {
             await client.query(
-              `insert into messages (id, node_id, canvas_id, user_email, role, content, timestamp)
-               values ($1,$2,$3,$4,$5,$6,$7)
-               on conflict (id) do update set role=excluded.role, content=excluded.content, timestamp=excluded.timestamp`,
+              `insert into messages (id, node_id, canvas_id, user_email, role, content, timestamp, position)
+               values ($1,$2,$3,$4,$5,$6,$7,
+                       (select coalesce(max(position),0)+1 from messages where node_id=$2))
+               on conflict (id) do update set content=excluded.content`,
               [
                 msg.id,
                 node._id,
