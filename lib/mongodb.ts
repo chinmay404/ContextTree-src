@@ -369,8 +369,12 @@ export class MongoDBService {
     const n = { ...(res.rows[0].data || {}), _id: res.rows[0].id } as any;
     // Attach messages (flat form) for convenience
     const mRows = await pool.query(
-      `select id, role, content, timestamp from messages where node_id=$1
-       order by position asc nulls last, timestamp asc`,
+      `select m.id, m.role, m.content, m.timestamp
+       from messages m
+       join nodes n on n.id = m.node_id
+       where m.node_id = $1
+         and (n.is_primary is not false or m.timestamp >= n.created_at)
+       order by m.position asc nulls last, m.timestamp asc`,
       [nodeId]
     );
     (n as any).chatMessages = mRows.rows.map((m) => ({
@@ -487,10 +491,17 @@ export class MongoDBService {
       // with holes or empty. Order by position (the backend's source of
       // truth), falling back to timestamp for legacy NULLs.
       const nodeIds = nodeRows.rows.map((r) => r.id);
+      // Exclude fork-inherited buffer rows (parent messages copied into a
+      // branch to seed the model's context): they are context for the LLM,
+      // not visible history. Same rule the backend uses — a branch's
+      // inherited rows carry timestamps older than the branch itself.
       const msgRows = await pool.query(
-        `select id, node_id, role, content, timestamp from messages
-         where node_id = any($1::text[])
-         order by position asc nulls last, timestamp asc`,
+        `select m.id, m.node_id, m.role, m.content, m.timestamp
+         from messages m
+         join nodes n on n.id = m.node_id
+         where m.node_id = any($1::text[])
+           and (n.is_primary is not false or m.timestamp >= n.created_at)
+         order by m.position asc nulls last, m.timestamp asc`,
         [nodeIds]
       );
       const byNode: Record<string, any[]> = {};
