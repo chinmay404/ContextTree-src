@@ -163,6 +163,12 @@ async function init() {
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now()
     );
+  -- Backfill: the V2 baseline migration created bug_reports WITHOUT status/
+  -- updated_at. Indexing status on that shape threw "column does not exist",
+  -- which killed this whole init block — and with it every canvas/node/message
+  -- write (nodes were never persisted, so forks lost their parents).
+  alter table if exists bug_reports add column if not exists status text not null default 'open';
+  alter table if exists bug_reports add column if not exists updated_at timestamptz not null default now();
     create index if not exists idx_bug_reports_user on bug_reports(user_email);
     create index if not exists idx_bug_reports_severity on bug_reports(severity);
     create index if not exists idx_bug_reports_status on bug_reports(status);
