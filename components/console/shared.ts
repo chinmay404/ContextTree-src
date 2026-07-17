@@ -7,6 +7,9 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  /** Web-search sources the backend consulted for this reply (streamed as
+      an SSE preamble; session-only — not persisted). */
+  webSearch?: { results: { title?: string; url?: string }[] };
 }
 
 export interface ForkedNodeRef {

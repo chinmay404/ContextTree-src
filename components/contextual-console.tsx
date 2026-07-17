@@ -671,6 +671,7 @@ const ContextualConsole = ({
         let fullContent = "";
         let summary: string | undefined;
         let firstToken = true;
+        let webSearchMeta: Message["webSearch"] | null = null;
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -699,11 +700,18 @@ const ContextualConsole = ({
                   summary = parsed.summary;
                 }
 
+                // Web-search preamble arrives before any tokens: materialize
+                // the assistant bubble immediately so the source chips show
+                // while the model is still thinking (Claude/GPT-style).
+                if (parsed.web_search?.results) {
+                  webSearchMeta = parsed.web_search;
+                }
+
                 const chunk = parsed.message || parsed.delta || "";
-                if (chunk) {
+                if (chunk || parsed.web_search) {
                   fullContent += chunk;
 
-                  if (firstToken) {
+                  if (chunk && firstToken) {
                     firstToken = false;
                     setNodeTyping(nodeId, false);
                   }
@@ -717,6 +725,7 @@ const ContextualConsole = ({
                         role: "assistant" as const,
                         content: fullContent,
                         timestamp: botTimestamp,
+                        webSearch: webSearchMeta || undefined,
                       },
                     ]),
                   }));
@@ -742,6 +751,7 @@ const ContextualConsole = ({
           role: "assistant",
           content: fullContent,
           timestamp: botTimestamp,
+          webSearch: webSearchMeta || undefined,
         };
         const allMsgs = dedupeMessages([...updatedMsgs, botMsg]);
         setMessages((p) => ({ ...p, [nodeId]: allMsgs }));

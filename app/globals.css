@@ -533,3 +533,22 @@ html {
 .react-flow__controls button svg {
   fill: currentColor;
 }
+
+/* ─── Streaming status shimmer (Thinking… / Searching…) ─────────────── */
+@keyframes shimmer-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.shimmer-text {
+  background-image: linear-gradient(
+    90deg,
+    var(--muted-foreground) 35%,
+    var(--foreground) 50%,
+    var(--muted-foreground) 65%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-sweep 2.2s linear infinite;
+}

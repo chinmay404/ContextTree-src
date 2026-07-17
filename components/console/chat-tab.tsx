@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, type RefObject } from "react";
+import { memo, useEffect, useRef, useState, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -71,10 +71,12 @@ const parseThinking = (content: string): ThinkingPart[] => {
   return parts.length ? parts : [{ type: "text" as const, content }];
 };
 
-// ─── Thinking block (one presentation for live + completed) ─
-// Muted panel with a primary left border. `live` renders it expanded with
-// the brand dots loader while tokens stream in; completed blocks render as
-// a collapsed <details> with a chevron to expand.
+// ─── Thinking block (Claude/GPT-style) ──────────────────────
+// Live: shimmering "Thinking…" label over a height-clamped window that
+// follows the newest reasoning lines (older lines fade out above). Done:
+// collapses to a quiet "Thought for Ns" row, expandable. The component
+// stays mounted across the live→done flip (keyed by position, not type)
+// so the duration is real, not re-measured.
 function ThinkingBlock({
   content,
   live = false,
@@ -82,27 +84,123 @@ function ThinkingBlock({
   content: string;
   live?: boolean;
 }) {
-  return (
-    <details
-      open={live || undefined}
-      className="group/think mb-3 rounded border-l-2 border-primary/40 bg-muted/40 px-3 py-2"
-    >
-      <summary className="flex cursor-pointer select-none list-none items-center gap-2 type-meta [&::-webkit-details-marker]:hidden">
-        {live ? (
-          <BrandLoader variant="dots" size={16} label="Thinking" />
-        ) : (
-          <ChevronRight
-            size={12}
-            strokeWidth={1.75}
-            className="shrink-0 transition-transform group-open/think:rotate-90"
-          />
+  const startRef = useRef<number>(Date.now());
+  const doneAtRef = useRef<number | null>(null);
+  const sawLiveRef = useRef<boolean>(live);
+  const [, tick] = useState(0);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (live) {
+      sawLiveRef.current = true;
+      const t = setInterval(() => tick((v) => v + 1), 1000);
+      return () => clearInterval(t);
+    }
+    if (sawLiveRef.current && doneAtRef.current === null)
+      doneAtRef.current = Date.now();
+  }, [live]);
+
+  const seconds = Math.max(
+    1,
+    Math.round(((doneAtRef.current ?? Date.now()) - startRef.current) / 1000)
+  );
+
+  if (live) {
+    return (
+      <div className="mb-3" data-slot="thinking-live">
+        <span className="shimmer-text type-meta font-medium">Thinking…</span>
+        {content && (
+          <div
+            className="mt-1.5 flex max-h-24 flex-col justify-end overflow-hidden"
+            style={{
+              maskImage: "linear-gradient(to bottom, transparent, black 45%)",
+              WebkitMaskImage:
+                "linear-gradient(to bottom, transparent, black 45%)",
+            }}
+          >
+            <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground/80">
+              {content}
+            </p>
+          </div>
         )}
-        Thinking
-      </summary>
-      <div className="mt-2 whitespace-pre-wrap type-meta italic text-muted-foreground">
-        {content}
       </div>
-    </details>
+    );
+  }
+
+  return (
+    <div className="mb-3" data-slot="thinking-done">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex select-none items-center gap-1.5 type-meta text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ChevronRight
+          size={12}
+          strokeWidth={1.75}
+          className={`shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
+        />
+        {sawLiveRef.current ? `Thought for ${seconds}s` : "Thinking"}
+      </button>
+      {open && (
+        <div className="mt-1.5 whitespace-pre-wrap border-l-2 border-border pl-3 text-xs leading-relaxed text-muted-foreground">
+          {content}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Web-search sources (Claude/GPT-style chips) ────────────
+function WebSearchSources({
+  results,
+}: {
+  results: { title?: string; url?: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const domain = (url?: string) => {
+    try {
+      return new URL(url || "").hostname.replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  };
+  return (
+    <div className="mb-2" data-slot="web-sources">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex select-none items-center gap-1.5 type-meta text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <Globe size={12} strokeWidth={1.75} className="shrink-0 text-primary/70" />
+        Searched the web
+        <span aria-hidden>·</span>
+        <span>{results.length} sources</span>
+        <ChevronRight
+          size={12}
+          strokeWidth={1.75}
+          className={`shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {results.map((r, i) => (
+            <a
+              key={`${r.url}-${i}`}
+              href={r.url}
+              target="_blank"
+              rel="noreferrer"
+              title={r.title}
+              className="inline-flex max-w-[260px] items-center gap-1.5 truncate rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            >
+              <Globe size={10} strokeWidth={1.75} className="shrink-0 opacity-60" />
+              <span className="truncate">
+                {r.title?.trim() || domain(r.url) || "source"}
+              </span>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -209,16 +307,21 @@ const MessageItem = memo(function MessageItem({
             </div>
           </div>
 
+          {!isUser && message.webSearch?.results?.length ? (
+            <WebSearchSources results={message.webSearch.results} />
+          ) : null}
+
           <div className="type-body">
             {isUser ? (
               <div className="whitespace-pre-wrap">{message.content}</div>
             ) : (
               <div className="prose prose-slate dark:prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:rounded-lg prose-pre:border prose-pre:border-border prose-code:before:content-none prose-code:after:content-none">
                 {parseThinking(message.content).map((part, i) => (
-                  // Key by type too: when a live block closes (</think>
-                  // arrives) the part type flips and the <details> remounts
-                  // in its default collapsed state — the auto-collapse.
-                  <div key={`${part.type}-${i}`}>
+                  // Thinking parts keep a type-STABLE key: when </think>
+                  // lands the part flips live→done but the component stays
+                  // mounted, so the measured duration ("Thought for Ns")
+                  // and the collapse animation are real.
+                  <div key={part.type === "text" ? `text-${i}` : `think-${i}`}>
                     {part.type === "thinking" || part.type === "thinking-live" ? (
                       <ThinkingBlock
                         content={part.content}
