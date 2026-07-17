@@ -46,6 +46,10 @@ import {
   type NodeData,
 } from "@/lib/storage";
 import { layoutTree } from "@/lib/canvas-layout";
+import {
+  isAllowedContextFile,
+  MAX_CONTEXT_FILE_MB,
+} from "@/lib/file-types";
 import { cn } from "@/lib/utils";
 
 // ─── Pure helpers ────────────────────────────────────────────
@@ -615,6 +619,14 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
 
   const uploadFile = useCallback(
     async (file: File) => {
+      if (!isAllowedContextFile(file.name)) {
+        toast.error("Unsupported file type — use PDF, TXT, MD, DOC or DOCX");
+        return;
+      }
+      if (file.size > MAX_CONTEXT_FILE_MB * 1024 * 1024) {
+        toast.error(`File too large — max ${MAX_CONTEXT_FILE_MB}MB`);
+        return;
+      }
       const nodeId = genId("node");
       const now = new Date().toISOString();
       const newNode: NodeData = {

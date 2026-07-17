@@ -15,7 +15,11 @@ import {
   ArrowRight,
   MessageSquareDashed,
   Globe,
+  Paperclip,
+  FileText,
+  Plus,
 } from "lucide-react";
+import { CONTEXT_FILE_ACCEPT } from "@/lib/file-types";
 import { BrandLoader } from "@/components/brand-loader";
 import {
   Tooltip,
@@ -27,7 +31,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github.css";
-import type { Message, ForkedNodeRef } from "./shared";
+import type { Message, ForkedNodeRef, ContextFileChip } from "./shared";
 
 // ─── Thinking block parser ──────────────────────────────────
 // Splits assistant content into text and <think>…</think> segments. A
@@ -496,6 +500,9 @@ type ChatTabProps = {
   onSend: () => void;
   webSearch: boolean;
   onToggleWebSearch: () => void;
+  contextFiles: ContextFileChip[];
+  onToggleContext: (fileNodeId: string) => void;
+  onAttachFile: (file: File) => void;
   scrollRef: RefObject<HTMLDivElement | null>;
   endRef: RefObject<HTMLDivElement | null>;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
@@ -521,10 +528,17 @@ export function ChatTab({
   onSend,
   webSearch,
   onToggleWebSearch,
+  contextFiles,
+  onToggleContext,
+  onAttachFile,
   scrollRef,
   endRef,
   textareaRef,
 }: ChatTabProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showAvailableContext, setShowAvailableContext] = useState(false);
+  const connectedFiles = contextFiles.filter((f) => f.connected);
+  const availableFiles = contextFiles.filter((f) => !f.connected);
   return (
     <>
       {/* Messages */}
@@ -596,8 +610,91 @@ export function ChatTab({
       {/* Composer */}
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-8 z-20 bg-gradient-to-t from-card via-card/95 to-transparent pointer-events-none">
         <div className="max-w-3xl mx-auto pointer-events-auto">
+          {/* Context chips: live controls over chat↔file edges. */}
+          {Boolean(selectedNode) && contextFiles.length > 0 && (
+            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+              {connectedFiles.map((f) => (
+                <span
+                  key={f.id}
+                  className={`inline-flex max-w-[220px] items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${
+                    f.error
+                      ? "border-destructive/40 bg-destructive/10 text-destructive"
+                      : "border-primary/30 bg-primary/10 text-foreground"
+                  }`}
+                  title={
+                    f.error
+                      ? `${f.name} — processing failed`
+                      : f.processing
+                        ? `${f.name} — processing…`
+                        : `${f.name} — informing replies in this node`
+                  }
+                >
+                  <FileText size={11} strokeWidth={1.75} className="shrink-0 opacity-70" />
+                  <span className="truncate">{f.name}</span>
+                  {f.processing && !f.error && (
+                    <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-primary" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onToggleContext(f.id)}
+                    className="shrink-0 rounded-full p-0.5 transition-colors hover:bg-foreground/10"
+                    aria-label={`Disconnect ${f.name}`}
+                  >
+                    <X size={10} strokeWidth={2} />
+                  </button>
+                </span>
+              ))}
+              {availableFiles.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAvailableContext((v) => !v)}
+                  className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                >
+                  <Plus size={11} strokeWidth={2} /> Context
+                  {!showAvailableContext && ` (${availableFiles.length})`}
+                </button>
+              )}
+              {showAvailableContext &&
+                availableFiles.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => {
+                      onToggleContext(f.id);
+                      setShowAvailableContext(false);
+                    }}
+                    className="inline-flex max-w-[220px] items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                    title={`Connect ${f.name} to this node`}
+                  >
+                    <FileText size={11} strokeWidth={1.75} className="shrink-0 opacity-60" />
+                    <span className="truncate">{f.name}</span>
+                  </button>
+                ))}
+            </div>
+          )}
           <div className="rounded-2xl bg-muted focus-within:bg-card focus-within:ring-1 focus-within:ring-ring focus-within:shadow-md transition-all flex items-end p-1.5">
             <div className="pb-1 pl-1 self-end">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={CONTEXT_FILE_ACCEPT}
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) onAttachFile(f);
+                  e.currentTarget.value = "";
+                }}
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isTyping || !selectedNode}
+                size="icon"
+                variant="ghost"
+                title="Attach a document as context (PDF, TXT, MD, DOC, DOCX)"
+                className="h-8 w-8 rounded-full text-muted-foreground transition-all hover:text-foreground"
+              >
+                <Paperclip size={16} strokeWidth={1.75} />
+              </Button>
               <Button
                 onClick={onToggleWebSearch}
                 disabled={isTyping || !selectedNode}

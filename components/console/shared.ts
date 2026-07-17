@@ -26,3 +26,13 @@ export interface LineageEntry {
   id: string;
   name: string;
 }
+
+/** External-context file as shown in the composer chip row. */
+export interface ContextFileChip {
+  id: string;
+  name: string;
+  connected: boolean;
+  edgeId?: string;
+  processing: boolean;
+  error: boolean;
+}

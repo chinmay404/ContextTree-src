@@ -20,7 +20,11 @@ import {
 import { ConsoleHeader } from "@/components/console/header";
 import { ChatTab } from "@/components/console/chat-tab";
 import { ForkDialog } from "@/components/console/fork-dialog";
-import type { Message } from "@/components/console/shared";
+import type { Message, ContextFileChip } from "@/components/console/shared";
+import {
+  isAllowedContextFile,
+  MAX_CONTEXT_FILE_MB,
+} from "@/lib/file-types";
 
 // ─── Types ──────────────────────────────────────────────────
 interface ChatPanelProps {
@@ -180,6 +184,176 @@ const ContextualConsole = ({
     });
   }, []);
   const isTyping = selectedNode ? typingNodeIds.has(selectedNode) : false;
+
+  // ─── External context (file RAG) attachments ────────────────
+  // Edges between the current chat node and externalContext nodes are the
+  // single source of truth (contextNodeIds derives from them per send).
+  // The chips are live controls over those edges.
+  const contextFiles = useMemo(() => {
+    if (!selectedNode || !canvasData?.nodes) return [] as ContextFileChip[];
+    const edges = canvasData.edges || [];
+    return canvasData.nodes
+      .filter((n: any) => n?.type === "externalContext")
+      .map((n: any) => {
+        const edge = edges.find(
+          (e: any) =>
+            (e.from === selectedNode && e.to === n._id) ||
+            (e.to === selectedNode && e.from === n._id)
+        );
+        return {
+          id: n._id as string,
+          name: (n.name || "File") as string,
+          connected: Boolean(edge),
+          edgeId: edge?._id as string | undefined,
+          processing:
+            Boolean(n.data?.loading) || n.contextContract === "Processing...",
+          error: typeof n.data?.error === "string" && n.data.error.length > 0,
+        };
+      });
+  }, [canvasData, selectedNode]);
+
+  const publishCanvas = useCallback((next: any) => {
+    setCanvasData(next);
+    window.dispatchEvent(new CustomEvent("canvas-data-updated", { detail: next }));
+  }, []);
+
+  const refreshCanvasSoon = useCallback(() => {
+    // Ingestion is a backend background task; refetch a few times so the
+    // chip flips from "Processing…" without a manual reload.
+    [5000, 15000, 30000].forEach((ms) =>
+      setTimeout(async () => {
+        if (!selectedCanvas) return;
+        try {
+          const res = await fetch(`/api/canvases/${selectedCanvas}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.canvas) setCanvasData(data.canvas);
+          }
+        } catch {}
+      }, ms)
+    );
+  }, [selectedCanvas]);
+
+  const toggleContextFile = useCallback(
+    (fileNodeId: string) => {
+      if (!selectedCanvas || !selectedNode || !canvasData) return;
+      const entry = contextFiles.find((f) => f.id === fileNodeId);
+      if (!entry) return;
+      if (entry.connected && entry.edgeId) {
+        const next = {
+          ...canvasData,
+          edges: (canvasData.edges || []).filter(
+            (e: any) => e._id !== entry.edgeId
+          ),
+        };
+        publishCanvas(next);
+        fetch(`/api/canvases/${selectedCanvas}/edges/${entry.edgeId}`, {
+          method: "DELETE",
+        }).catch(() => {});
+      } else {
+        const edge = {
+          _id: `edge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          from: selectedNode,
+          to: fileNodeId,
+          createdAt: new Date().toISOString(),
+          meta: { condition: "Context" },
+        };
+        const next = {
+          ...canvasData,
+          edges: [...(canvasData.edges || []), edge],
+        };
+        publishCanvas(next);
+        fetch(`/api/canvases/${selectedCanvas}/edges`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(edge),
+        }).catch(() => {});
+      }
+    },
+    [selectedCanvas, selectedNode, canvasData, contextFiles, publishCanvas]
+  );
+
+  const uploadContextFile = useCallback(
+    async (file: File) => {
+      if (!selectedCanvas || !selectedNode || !canvasData) return;
+      if (!isAllowedContextFile(file.name)) {
+        toast({
+          title: "Unsupported file type",
+          description: "Use PDF, TXT, MD, DOC or DOCX.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (file.size > MAX_CONTEXT_FILE_MB * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: `Maximum size is ${MAX_CONTEXT_FILE_MB}MB.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      const ctxId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const now = new Date().toISOString();
+      const ctxNode: any = {
+        _id: ctxId,
+        name: file.name,
+        primary: false,
+        type: "externalContext",
+        chatMessages: [],
+        runningSummary: "",
+        contextContract: "Processing...",
+        model: "",
+        createdAt: now,
+        data: { label: file.name, fileType: file.type, size: file.size, loading: true },
+      };
+      const edge = {
+        _id: `edge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        from: selectedNode,
+        to: ctxId,
+        createdAt: now,
+        meta: { condition: "Context" },
+      };
+      const next = {
+        ...canvasData,
+        nodes: [...(canvasData.nodes || []), ctxNode],
+        edges: [...(canvasData.edges || []), edge],
+      };
+      publishCanvas(next);
+
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("canvasId", selectedCanvas);
+      fd.append("nodeId", ctxId);
+      const res = await fetch("/api/upload", { method: "POST", body: fd }).catch(
+        () => null
+      );
+      if (!res || !res.ok) {
+        const err = res ? await res.json().catch(() => ({} as any)) : ({} as any);
+        publishCanvas({
+          ...next,
+          nodes: next.nodes.filter((n: any) => n._id !== ctxId),
+          edges: next.edges.filter((e: any) => e._id !== edge._id),
+        });
+        toast({
+          title: "Upload failed",
+          description: err.error || "Could not upload the file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      fetch(`/api/canvases/${selectedCanvas}/edges`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(edge),
+      }).catch(() => {});
+      toast({
+        title: "Context attached",
+        description: `${file.name} is processing — it will inform replies here once ready.`,
+      });
+      refreshCanvasSoon();
+    },
+    [selectedCanvas, selectedNode, canvasData, publishCanvas, refreshCanvasSoon, toast]
+  );
   const [canvasData, setCanvasData] = useState<any>(null);
   // nodeId -> lineage captured at fork time; canvasData refetches can't erase it.
   const forkLineage = useRef<
@@ -1342,6 +1516,9 @@ const ContextualConsole = ({
           onSend={handleSend}
           webSearch={webSearch}
           onToggleWebSearch={() => setWebSearch((v) => !v)}
+          contextFiles={contextFiles}
+          onToggleContext={toggleContextFile}
+          onAttachFile={uploadContextFile}
           scrollRef={scrollRef}
           endRef={endRef}
           textareaRef={textareaRef}

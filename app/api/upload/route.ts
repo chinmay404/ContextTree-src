@@ -5,6 +5,7 @@ import { buildFilesIngestUrl, resolveLlmApiUrl } from "@/lib/llm-backend";
 import { mongoService } from "@/lib/mongodb";
 import type { ExternalFileData } from "@/lib/storage";
 import { logUploadEvent } from "@/lib/server-side-logger";
+import { isAllowedContextFile } from "@/lib/file-types";
 
 export const POST = withAuth(async (request: NextRequest) => {
   try {
@@ -51,6 +52,15 @@ export const POST = withAuth(async (request: NextRequest) => {
     }
 
     logUploadEvent('INFO', `Processing file: ${file.name}, size: ${file.size}, type: ${file.type}`, { user: user.email });
+
+    // Type allowlist: documents only (PDF / TXT / MD / DOC / DOCX).
+    if (!isAllowedContextFile(file.name)) {
+      logUploadEvent('WARN', `Unsupported file type: ${file.name}`, { user: user.email });
+      return NextResponse.json(
+        { error: "Unsupported file type. Allowed: PDF, TXT, MD, DOC, DOCX." },
+        { status: 415 }
+      );
+    }
 
      // Server-side limit check (10MB)
     if (file.size > 10 * 1024 * 1024) {
