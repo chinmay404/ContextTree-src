@@ -155,6 +155,8 @@ interface ContextCardData {
   isSelected?: boolean;
   loading?: boolean;
   error?: string;
+  /** True when an edge links this card to the currently selected chat node. */
+  linkedToActive?: boolean;
   onClick?: () => void;
   [key: string]: unknown;
 }
@@ -180,6 +182,15 @@ function ContextCardComponent({ data, selected, isConnectable }: NodeProps<Conte
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
           {data.label || "Context"}
         </span>
+        {data.linkedToActive && !data.loading && (
+          <span
+            title="In the selected node's context"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-500"
+          >
+            <span className="h-[5px] w-[5px] rounded-full bg-emerald-500" />
+            linked
+          </span>
+        )}
         {data.loading && (
           <span
             aria-label="Processing"
@@ -1084,6 +1095,14 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         !content &&
         (Boolean(nodeData.loading) || contract.toLowerCase() === "processing...");
 
+      const linkedToActive = Boolean(
+        selectedNode &&
+          canvas.edges.some(
+            (e) =>
+              (e.from === selectedNode && e.to === node._id) ||
+              (e.to === selectedNode && e.from === node._id)
+          )
+      );
       return {
         id: node._id,
         type: "contextCard",
@@ -1095,6 +1114,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
           preview: processing ? "Processing…" : content || contract || derivePreview(node),
           error: error || undefined,
           loading: processing,
+          linkedToActive,
           lineageColor: lineageColorOf(node._id),
           isSelected: selectedNode === node._id,
           onClick: () => onNodeSelect(node._id, label, node.type),

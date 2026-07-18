@@ -511,3 +511,36 @@ the DB layer. When Railway eventually deploys, migrate.py no-ops (007
 already recorded). OPEN: Railway GitHub auto-deploy is broken — next
 backend change hits the same wall; fix trigger in dashboard or provide
 RAILWAY_API_TOKEN.
+
+## Checkpoint 016 — 2026-07-18 (fork-destroying edge-write race)
+
+Prod bug report (screenshots): branch rendered as bare "Context" card,
+first branch reply had no inherited context, messages answer-before-
+question, node systemPrompt ignored. ONE root cause for all four:
+- createFork fired node POST + edge POST concurrently; addEdge routed
+  the edge through updateCanvas (full-canvas rewrite from a snapshot);
+  syncNodesToTables DELETED node rows missing from that stale snapshot
+  — cascading the fresh branch's messages + fork seed. The Python
+  backend then recreated the row bare (no type/name/systemPrompt in
+  data) → typeless "Context" card, clueless first reply (seed gone,
+  repaired on 2nd msg), user msgs re-upserted at max(position)+1 →
+  misorder, systemPrompt unrecoverable.
+Fixes (3bc60da + follow-up):
+- addEdge/removeEdge/updateEdge → scoped jsonb writes on
+  canvases.data->edges + edges-table mirror; never touch node rows;
+  dedupe by _id.
+- syncNodesToTables: node delete-loop REMOVED (removeNode is the only
+  delete path).
+- getCanvas: bare rows synthesize type/parentNodeId from lineage
+  columns → already-broken canvases repair at read time.
+- createFork: edge POST strictly after node POST settles.
+- Upload file nodes get name=filename; card/chip labels fall back to
+  data.label; context cards show a green "linked" badge when connected
+  to the selected chat node (issue 5 clarity).
+- ensureInit adds messages.position; pool skips SSL for localhost.
+Verified: scripts/verify-edge-scoped.ts — 18/18 checks on Docker pg
+(scoped writes, stale-save survival, dedupe, bare-row hydration).
+Deployed: Vercel Production Ready.
+LESSON (vault): diff-based sync deletes convert every stale read into
+data loss — "Dual-write full-canvas saves destroy data" recurred via a
+new entry point (edge POSTs). Scoped writes or no deletes, ever.
