@@ -432,3 +432,45 @@ hydration cases fail exactly as prod behaves. Committed `11a1402`.
 - DB.txt with plaintext prod creds STILL in workspace root (3rd reminder).
 - Structural (unchanged plan): dual-writer on conversation tables remains
   the systemic risk; single-writer (Day 6) stays the post-launch cure.
+
+## Checkpoint 013 — 2026-07-17 (afternoon: aftershocks + features)
+
+Table-truth flip aftershocks (fixed + deployed):
+- Messages "vanished": getCanvas filtered on canvas_id which backend rows
+  never carry → load by node_id + ORDER BY position (6b95e93); upserts heal
+  canvas_id/user_email.
+- Fork buffer copies rendered as visible history → hidden via the backend's
+  own rule (branch rows older than the branch = context, not conversation)
+  (02fd6c0).
+Features shipped:
+- Thinking: backend re-frames out-of-band reasoning (reasoning_content /
+  Gemini thought parts) as inline <think> (d49dae7); UI = shimmer
+  "Thinking…" with tail-follow clamp → collapses to "Thought for Ns"
+  (3b67f58).
+- Web search visibility: SSE preamble with sources (e45dcf7) → "Searched
+  the web · N sources" chips, expandable links (session-only metadata).
+- External context attach/detach (a092916 + 74e26e2): paperclip upload
+  (PDF/TXT/MD/DOC/DOCX allowlist at picker/drop/route/ingester, 10MB) →
+  externalContext node + AUTO-EDGE to current chat node; chip row above
+  composer (× disconnect, + Context reconnect). Audit finding: file RAG was
+  fully built but unreachable — no UI could create the gating edge.
+Known rough edges: no retry for stuck "Processing…" (old retry route is
+dead code, sends no auth); chips lag on refetch; web-source chips not
+persisted. PARKED: feat/branch-colors (color picker + depth fade, WIP
+stashed on branch).
+
+## Checkpoint 014 — 2026-07-18 (PDF upload broken in prod: jsonb/bytea)
+
+- Every file upload failed with "unsupported jsonb version number 37":
+  backend 001_baseline.sql created external_files.data as jsonb; 006's
+  ADD COLUMN IF NOT EXISTS data bytea silently no-opped. Upload route
+  passes a Buffer → node-pg sends binary format → jsonb_recv reads
+  '%' of %PDF (0x25 = 37) as the version byte. Verified against prod
+  (information_schema: data=jsonb, table empty — nothing to lose).
+- Fix shipped (backend f07267d): 007_external_files_data_bytea.sql
+  converts jsonb→bytea (guarded, USING NULL); 001 corrected for fresh
+  DBs. Applies on Railway boot. VERIFY: re-upload a PDF after deploy.
+- User-feedback queue (real users, not yet started): (1) branch-from-
+  user-msg vs branch-from-AI-msg mental model unclear; (2) web-search
+  toggle resets, must persist; (3) connect/disconnect of nodes on
+  canvas must be easier/discoverable.
