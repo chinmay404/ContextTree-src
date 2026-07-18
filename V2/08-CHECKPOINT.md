@@ -501,3 +501,13 @@ Google Fonts fetch, builds on Vercel.
 DEPLOY WATCH: backend f07267d (jsonb→bytea migration 007) pushed but
 Railway had NOT deployed it 20+ min later — old process still serving.
 If uploads still fail: Railway dashboard → deploys for commit f07267d.
+
+### 015 addendum — 007 applied manually (2026-07-18, ~13:4x)
+
+Railway never auto-deployed f07267d (35+ min). Applied migration 007 by
+running scripts/migrate.py locally against prod: external_files.data is
+now bytea, schema_migrations records 007. Upload verified unblocked at
+the DB layer. When Railway eventually deploys, migrate.py no-ops (007
+already recorded). OPEN: Railway GitHub auto-deploy is broken — next
+backend change hits the same wall; fix trigger in dashboard or provide
+RAILWAY_API_TOKEN.
