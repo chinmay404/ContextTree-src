@@ -17,7 +17,10 @@ if (!DATABASE_URL) {
 // transaction pooler (port 6543), which multiplexes clients.
 export const pool = new Pool({
   connectionString: DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  // Local dev/test Postgres (Docker) speaks no SSL; hosted DBs require it.
+  ssl: /localhost|127\.0\.0\.1/.test(DATABASE_URL || "")
+    ? undefined
+    : { rejectUnauthorized: false },
   max: 3,
   idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 20000,
@@ -150,6 +153,9 @@ async function init() {
   alter table if exists messages add column if not exists role text;
   alter table if exists messages add column if not exists content text;
   alter table if exists messages add column if not exists timestamp timestamptz default now();
+  -- position is normally added by the backend's migration 004, but getCanvas
+  -- orders by it — a DB initialized by the frontend alone must have it too.
+  alter table if exists messages add column if not exists position bigint;
     create index if not exists idx_messages_node on messages(node_id);
     create index if not exists idx_messages_canvas on messages(canvas_id);
     create table if not exists bug_reports (
@@ -481,7 +487,8 @@ export class MongoDBService {
     const base = this.rowToCanvas(res.rows[0]);
     // Hydrate nodes/messages if normalized records exist
     const nodeRows = await pool.query(
-      "select id, data from nodes where canvas_id=$1",
+      `select id, data, parent_node_id, forked_from_message_id, is_primary, type
+         from nodes where canvas_id=$1`,
       [canvasId]
     );
     if (nodeRows.rowCount > 0) {
@@ -519,6 +526,16 @@ export class MongoDBService {
       const normalized = nodeRows.rows.map((r) => {
         normalizedIds.add(r.id);
         const n = { ...(r.data || {}), _id: r.id } as any;
+        // Bare rows exist: the Python backend creates/repairs node rows with
+        // lineage COLUMNS but no UI payload in data (and one prod incident
+        // left forks that way). Synthesize what the canvas needs so they
+        // render as chat branches with working lineage — not "Context" cards.
+        if (!n.parentNodeId && r.parent_node_id) n.parentNodeId = r.parent_node_id;
+        if (!n.forkedFromMessageId && r.forked_from_message_id)
+          n.forkedFromMessageId = r.forked_from_message_id;
+        if (!n.type) {
+          n.type = r.type || (r.is_primary ? "entry" : "branch");
+        }
         // If embedded version had chatMessages in turn format preserve if DB empty
         const existingEmbedded = embedded.find((e: any) => e._id === r.id);
         const dbMsgs = byNode[r.id] || [];
@@ -855,17 +872,46 @@ export class MongoDBService {
     }
   }
 
-  // Edge operations
+  // Edge operations. These are SCOPED writes on purpose: routing an edge
+  // change through updateCanvas/syncNodesToTables rewrote the whole canvas
+  // from a snapshot, and any node created concurrently (createFork fires its
+  // node POST alongside the edge POST) was missing from that snapshot — the
+  // sync then DELETED the fresh node row, cascading its messages and fork
+  // seed. The backend later recreated the row bare, so branches rendered as
+  // typeless "Context" cards with no inherited context.
   async addEdge(
     canvasId: string,
     edge: EdgeData,
     userEmail?: string
   ): Promise<boolean> {
-    const canvas = await this.getCanvas(canvasId, userEmail);
-    if (!canvas) return false;
-    canvas.edges.push(edge);
-    canvas.updatedAt = new Date().toISOString();
-    await this.updateCanvas(canvasId, canvas, userEmail || canvas.userId);
+    await ensureInit();
+    const owner = await pool.query(
+      userEmail
+        ? "select user_email from canvases where id=$1 and user_email=$2"
+        : "select user_email from canvases where id=$1",
+      userEmail ? [canvasId, userEmail] : [canvasId]
+    );
+    if (!owner.rowCount) return false;
+    const ownerEmail = owner.rows[0].user_email;
+    // Append atomically, replacing any existing edge with the same _id so
+    // optimistic retries can't duplicate.
+    await pool.query(
+      `update canvases
+          set data = jsonb_set(data, '{edges}',
+                (select coalesce(jsonb_agg(e), '[]'::jsonb)
+                   from jsonb_array_elements(coalesce(data->'edges','[]'::jsonb)) e
+                  where e->>'_id' <> $2) || $3::jsonb),
+              updated_at = now()
+        where id=$1`,
+      [canvasId, edge._id, JSON.stringify(edge)]
+    );
+    await pool.query(
+      `insert into edges (id, canvas_id, user_email, from_node, to_node, data, created_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,now(),now())
+       on conflict (id) do update set from_node=excluded.from_node,
+         to_node=excluded.to_node, data=excluded.data, updated_at=now()`,
+      [edge._id, canvasId, ownerEmail, edge.from, edge.to, edge]
+    );
     return true;
   }
 
@@ -874,13 +920,30 @@ export class MongoDBService {
     edgeId: string,
     userEmail?: string
   ): Promise<boolean> {
-    const canvas = await this.getCanvas(canvasId, userEmail);
-    if (!canvas) return false;
-    const before = canvas.edges.length;
-    canvas.edges = canvas.edges.filter((e) => e._id !== edgeId);
-    if (canvas.edges.length === before) return false;
-    canvas.updatedAt = new Date().toISOString();
-    await this.updateCanvas(canvasId, canvas, userEmail || canvas.userId);
+    await ensureInit();
+    const res = await pool.query(
+      userEmail
+        ? `select 1 from canvases where id=$1 and user_email=$3
+             and coalesce(data->'edges','[]'::jsonb) @> jsonb_build_array(jsonb_build_object('_id', $2::text))`
+        : `select 1 from canvases where id=$1
+             and coalesce(data->'edges','[]'::jsonb) @> jsonb_build_array(jsonb_build_object('_id', $2::text))`,
+      userEmail ? [canvasId, edgeId, userEmail] : [canvasId, edgeId]
+    );
+    if (!res.rowCount) return false;
+    await pool.query(
+      `update canvases
+          set data = jsonb_set(data, '{edges}',
+                (select coalesce(jsonb_agg(e), '[]'::jsonb)
+                   from jsonb_array_elements(coalesce(data->'edges','[]'::jsonb)) e
+                  where e->>'_id' <> $2)),
+              updated_at = now()
+        where id=$1`,
+      [canvasId, edgeId]
+    );
+    await pool.query("delete from edges where id=$1 and canvas_id=$2", [
+      edgeId,
+      canvasId,
+    ]);
     return true;
   }
 
@@ -890,13 +953,33 @@ export class MongoDBService {
     updates: any,
     userEmail?: string
   ): Promise<boolean> {
-    const canvas = await this.getCanvas(canvasId, userEmail);
-    if (!canvas) return false;
-    const idx = canvas.edges.findIndex((e) => e._id === edgeId);
-    if (idx === -1) return false;
-    canvas.edges[idx] = { ...canvas.edges[idx], ...updates, _id: edgeId };
-    canvas.updatedAt = new Date().toISOString();
-    await this.updateCanvas(canvasId, canvas, userEmail || canvas.userId);
+    await ensureInit();
+    const res = await pool.query(
+      userEmail
+        ? `select 1 from canvases where id=$1 and user_email=$3
+             and coalesce(data->'edges','[]'::jsonb) @> jsonb_build_array(jsonb_build_object('_id', $2::text))`
+        : `select 1 from canvases where id=$1
+             and coalesce(data->'edges','[]'::jsonb) @> jsonb_build_array(jsonb_build_object('_id', $2::text))`,
+      userEmail ? [canvasId, edgeId, userEmail] : [canvasId, edgeId]
+    );
+    if (!res.rowCount) return false;
+    await pool.query(
+      `update canvases
+          set data = jsonb_set(data, '{edges}',
+                (select coalesce(jsonb_agg(
+                     case when e->>'_id' = $2
+                          then e || $3::jsonb || jsonb_build_object('_id', $2::text)
+                          else e end), '[]'::jsonb)
+                   from jsonb_array_elements(coalesce(data->'edges','[]'::jsonb)) e)),
+              updated_at = now()
+        where id=$1`,
+      [canvasId, edgeId, JSON.stringify(updates)]
+    );
+    await pool.query(
+      `update edges set data = coalesce(data,'{}'::jsonb) || $3::jsonb, updated_at=now()
+        where id=$1 and canvas_id=$2`,
+      [edgeId, canvasId, JSON.stringify(updates)]
+    );
     return true;
   }
 
@@ -963,18 +1046,12 @@ export class MongoDBService {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
-        const existing = await client.query(
-          "select id from nodes where canvas_id=$1",
-          [canvas._id]
-        );
-        const existingIds = new Set(existing.rows.map((r) => r.id));
-        const currentIds = new Set(canvas.nodes.map((n) => n._id));
-        // Delete removed nodes cascades messages
-        for (const rowId of existingIds) {
-          if (!currentIds.has(rowId)) {
-            await client.query("delete from nodes where id=$1", [rowId]);
-          }
-        }
+        // NEVER delete node rows here. This sync runs on every full-canvas
+        // save, and the caller's canvas object is a snapshot — a node created
+        // concurrently (fork POST racing an edge POST) is absent from it, and
+        // deleting "missing" rows cascaded its messages and fork seed away.
+        // Node deletion is an explicit user action and goes through
+        // removeNode() only.
         for (const node of canvas.nodes) {
           const nodeData = { ...node } as any;
           delete nodeData.chatMessages;

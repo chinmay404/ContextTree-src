@@ -92,6 +92,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     const nodeData: any = {
           _id: nodeId,
           type: "externalContext",
+          name: file.name,
           primary: false,
           chatMessages: [],
           runningSummary: "",

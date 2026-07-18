@@ -217,7 +217,7 @@ const ContextualConsole = ({
         );
         return {
           id: n._id as string,
-          name: (n.name || "File") as string,
+          name: (n.name || n.data?.label || "File") as string,
           connected: Boolean(edge),
           edgeId: edge?._id as string | undefined,
           processing:
@@ -1180,11 +1180,19 @@ const ContextualConsole = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newNode),
       });
-      const edgeCreationPromise = fetch(`/api/canvases/${selectedCanvas}/edges`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(edge),
-      });
+      // Edge POST strictly AFTER the node POST settles: firing them together
+      // let the edge write's canvas snapshot race the node insert, and the
+      // old full-canvas sync deleted the "missing" fresh node (branches came
+      // back as bare Context cards with their fork seed destroyed).
+      const edgeCreationPromise = nodeCreationPromise
+        .catch(() => null)
+        .then(() =>
+          fetch(`/api/canvases/${selectedCanvas}/edges`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(edge),
+          })
+        );
       // Surface persistence failures instead of swallowing them — a silently
       // failed node write is how forks lost their parents in prod.
       nodeCreationPromise

@@ -129,7 +129,9 @@ const defaultNodeName = (node: NodeData): string =>
     ? "Base Context"
     : node.type === "branch"
       ? "Branch"
-      : "Context");
+      : // File nodes created before `name` was persisted carry the
+        // filename in data.label — show it instead of a bare "Context".
+        ((node as any).data?.label as string) || "Context");
 
 /** Merge server canvas with locally-cached nodes/edges the server may lag on. */
 const mergeCanvasData = (remote: CanvasData, local: CanvasData | null): CanvasData => {
