@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-utils";
 import { mongoService } from "@/lib/mongodb";
+import { MAX_NODES_PER_CANVAS } from "@/lib/limits";
 import type { NodeData } from "@/lib/storage";
 
 export async function POST(
@@ -55,6 +56,19 @@ export async function POST(
       return NextResponse.json(
         { error: "Canvas not found or access denied" },
         { status: 404 }
+      );
+    }
+
+    // Cap nodes per canvas. Upserts of an existing node id must pass — only
+    // genuinely new nodes count against the limit.
+    const existingNodes = Array.isArray(owned.nodes) ? owned.nodes : [];
+    const isExisting = existingNodes.some((n) => n._id === node._id);
+    if (!isExisting && existingNodes.length >= MAX_NODES_PER_CANVAS) {
+      return NextResponse.json(
+        {
+          error: `Canvas is full (max ${MAX_NODES_PER_CANVAS} nodes). Delete unused branches or start a new canvas.`,
+        },
+        { status: 409 }
       );
     }
 

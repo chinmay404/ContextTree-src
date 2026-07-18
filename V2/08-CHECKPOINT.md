@@ -474,3 +474,30 @@ stashed on branch).
   user-msg vs branch-from-AI-msg mental model unclear; (2) web-search
   toggle resets, must persist; (3) connect/disconnect of nodes on
   canvas must be easier/discoverable.
+
+## Checkpoint 015 — 2026-07-18 (user-feedback batch: UX clarity + limits)
+
+All four real-user complaints shipped in one pass:
+- Sticky web search: toggle persists via localStorage
+  (context-tree-web-search), hydrated after mount (no SSR mismatch).
+- Branch mental model: role-aware everything — message-row button reads
+  "Re-ask" (user msg) vs "Branch" (AI msg); ForkDialog shows the quoted
+  source message + a one-line explanation of what the branch inherits;
+  CTA matches ("Re-ask in branch" / "Create branch").
+- Canvas connect/disconnect: chat nodes expose a source dot (hover),
+  context cards a target dot; drag either direction — onConnect
+  normalizes to chat→context with meta.condition "Context", rejects
+  chat↔chat (lineage stays system-managed). Context edges render dashed
+  + clickable (interactionWidth 16) → click disconnects via per-edge
+  DELETE. Lineage edges stay inert. ConnectionMode.Loose +
+  connectionRadius 40 for forgiving drops. Per-edge POST/DELETE only —
+  no whole-canvas saves (dual-write lesson).
+- Node cap: MAX_NODES_PER_CANVAS = 50 (lib/limits.ts), enforced 409 in
+  nodes POST (upserts exempt) + preflights in createFork,
+  uploadContextFile (console), uploadFile (canvas drop).
+Verified: tsc — the only error in touched files exists on baseline too
+(pre-existing implicit-any); full next build blocked only by sandboxed
+Google Fonts fetch, builds on Vercel.
+DEPLOY WATCH: backend f07267d (jsonb→bytea migration 007) pushed but
+Railway had NOT deployed it 20+ min later — old process still serving.
+If uploads still fail: Railway dashboard → deploys for commit f07267d.

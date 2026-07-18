@@ -7,17 +7,20 @@ import {
   useMemo,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
   Background,
   BackgroundVariant,
+  ConnectionMode,
   MiniMap,
   Panel,
   Handle,
   Position,
   useReactFlow,
+  type Connection,
   type Edge,
   type Node,
   type NodeChange,
@@ -46,6 +49,7 @@ import {
   type NodeData,
 } from "@/lib/storage";
 import { layoutTree } from "@/lib/canvas-layout";
+import { MAX_NODES_PER_CANVAS } from "@/lib/limits";
 import {
   isAllowedContextFile,
   MAX_CONTEXT_FILE_MB,
@@ -157,12 +161,12 @@ type ContextCardNode = Node<ContextCardData>;
 
 const hiddenHandleClass = "!h-1 !w-1 !min-h-0 !min-w-0 !border-0 !bg-transparent";
 
-function ContextCardComponent({ data, selected }: NodeProps<ContextCardNode>) {
+function ContextCardComponent({ data, selected, isConnectable }: NodeProps<ContextCardNode>) {
   const active = selected || data.isSelected;
   return (
     <div
       className={cn(
-        "w-[240px] cursor-pointer rounded-xl border border-border bg-card px-3.5 py-3",
+        "group w-[240px] cursor-pointer rounded-xl border border-border bg-card px-3.5 py-3",
         "transition-all duration-200 ease-out hover:border-white/15 hover:shadow-md",
         active && "ring-2 ring-primary"
       )}
@@ -191,7 +195,15 @@ function ContextCardComponent({ data, selected }: NodeProps<ContextCardNode>) {
           {data.error || data.preview}
         </p>
       )}
-      <Handle type="target" position={Position.Top} isConnectable={false} className={hiddenHandleClass} />
+      {/* Target handle is the drop point for chat → context connections:
+          a dot on hover; drags also snap to it via connectionRadius. */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        isConnectable={isConnectable}
+        title="Drag here from a chat node to connect this context"
+        className="!h-2.5 !w-2.5 !rounded-full !border-2 !border-background !bg-primary opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+      />
       <Handle type="source" position={Position.Bottom} isConnectable={false} className={hiddenHandleClass} />
     </div>
   );
@@ -627,6 +639,12 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         toast.error(`File too large — max ${MAX_CONTEXT_FILE_MB}MB`);
         return;
       }
+      if ((canvas?.nodes?.length || 0) >= MAX_NODES_PER_CANVAS) {
+        toast.error(
+          `Canvas is full — max ${MAX_NODES_PER_CANVAS} nodes. Delete unused branches or start a new canvas.`
+        );
+        return;
+      }
       const nodeId = genId("node");
       const now = new Date().toISOString();
       const newNode: NodeData = {
@@ -728,7 +746,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         markFailed(`Failed to upload ${file.name}`);
       }
     },
-    [applyCanvas, canvasId, pollForExternalContent]
+    [applyCanvas, canvas, canvasId, pollForExternalContent]
   );
 
   const onDrop = useCallback(
@@ -804,6 +822,110 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
       persistLayout(payload);
     },
     [applyCanvas, persistLayout]
+  );
+
+  // ─── Manual context connections ───────────────────────────
+  // Users connect/disconnect context cards to chat nodes by hand (drag
+  // between handles; click a dashed edge to detach). Chat↔chat edges are
+  // fork lineage and stay system-managed — deleting one would corrupt the
+  // tree, so onConnect rejects those and lineage edges are never clickable.
+  // Persistence uses the surgical per-edge endpoints, never a whole-canvas
+  // save (dual-writer lesson: a full-document PUT can wipe state the client
+  // never owned).
+
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      if (!canvas || !connection.source || !connection.target) return;
+      if (connection.source === connection.target) return;
+      const byId = new Map(canvas.nodes.map((n) => [n._id, n]));
+      const a = byId.get(connection.source);
+      const b = byId.get(connection.target);
+      if (!a || !b) return;
+      const isCtx = (n: NodeData) => n.type === "context" || n.type === "externalContext";
+      const isChat = (n: NodeData) => n.type === "entry" || n.type === "branch";
+      // Normalize: context edges always run chat → context, matching the
+      // console's chip-row connect (meta.condition "Context").
+      let chatN: NodeData | undefined;
+      let ctxN: NodeData | undefined;
+      if (isChat(a) && isCtx(b)) [chatN, ctxN] = [a, b];
+      else if (isCtx(a) && isChat(b)) [chatN, ctxN] = [b, a];
+      if (!chatN || !ctxN) {
+        toast.error(
+          "Connect a context card to a chat node — branch links are managed automatically."
+        );
+        return;
+      }
+      const chatId = chatN._id;
+      const ctxId = ctxN._id;
+      const exists = canvas.edges.some(
+        (e) =>
+          (e.from === chatId && e.to === ctxId) ||
+          (e.from === ctxId && e.to === chatId)
+      );
+      if (exists) {
+        toast(`${ctxN.name || "Context"} is already connected`);
+        return;
+      }
+      const now = new Date().toISOString();
+      const edge = {
+        _id: genId("edge"),
+        from: chatId,
+        to: ctxId,
+        createdAt: now,
+        meta: { condition: "Context" },
+      };
+      applyCanvas((prev) => ({ ...prev, edges: [...prev.edges, edge], updatedAt: now }));
+      fetch(`/api/canvases/${canvasId}/edges`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(edge),
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          toast.success(`${ctxN!.name || "Context"} connected`);
+        })
+        .catch(() => {
+          applyCanvas((prev) => ({
+            ...prev,
+            edges: prev.edges.filter((e) => e._id !== edge._id),
+          }));
+          toast.error("Failed to connect — try again");
+        });
+    },
+    [canvas, canvasId, applyCanvas]
+  );
+
+  const handleEdgeClick = useCallback(
+    (_event: ReactMouseEvent, flowEdge: Edge) => {
+      if (!canvas) return;
+      const stored = canvas.edges.find((e) => e._id === flowEdge.id);
+      if (!stored) return;
+      const byId = new Map(canvas.nodes.map((n) => [n._id, n]));
+      const isCtx = (n?: NodeData) =>
+        n?.type === "context" || n?.type === "externalContext";
+      const ctx = isCtx(byId.get(stored.to))
+        ? byId.get(stored.to)
+        : isCtx(byId.get(stored.from))
+          ? byId.get(stored.from)
+          : undefined;
+      if (!ctx) return; // lineage edge — not detachable
+      applyCanvas((prev) => ({
+        ...prev,
+        edges: prev.edges.filter((e) => e._id !== stored._id),
+      }));
+      fetch(`/api/canvases/${canvasId}/edges/${stored._id}`, { method: "DELETE" })
+        .then((r) => {
+          if (!r.ok) throw new Error(String(r.status));
+        })
+        .catch(() => {
+          applyCanvas((prev) => ({ ...prev, edges: [...prev.edges, stored] }));
+          toast.error("Failed to disconnect — try again");
+        });
+      toast.success(
+        `${ctx.name || "Context"} disconnected — drag from a chat node to reconnect`
+      );
+    },
+    [canvas, canvasId, applyCanvas]
   );
 
   // Dagre auto-layout for every visible node — the fallback for nodes with
@@ -923,7 +1045,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
           type: "chat",
           position,
           draggable: false,
-          connectable: false,
+          connectable: true, // source handle → drag to a context card
           data: {
             label,
             preview: derivePreview(node),
@@ -965,7 +1087,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         type: "contextCard",
         position,
         draggable: false,
-        connectable: false,
+        connectable: true, // target handle ← receives chat connections
         data: {
           label,
           preview: processing ? "Processing…" : content || contract || derivePreview(node),
@@ -978,12 +1100,17 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
       } as Node;
     });
 
+    const isCtxType = (n?: NodeData) =>
+      n?.type === "context" || n?.type === "externalContext";
     const edges: Edge[] = canvas.edges
       .filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to))
       .map((e) => {
         // Edges on the selected node's ancestor path render at full lineage
         // color and heavier stroke; everything else stays faded.
         const onActivePath = activePathEdges.has(`${e.from}→${e.to}`);
+        // Context edges are user-detachable: dashed + clickable (see
+        // handleEdgeClick). Lineage edges never capture pointer events.
+        const contextEdge = isCtxType(byId.get(e.from)) || isCtxType(byId.get(e.to));
         return {
           id: e._id,
           source: e.from,
@@ -991,13 +1118,16 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
           type: "default", // bezier
           selectable: false,
           focusable: false,
-          interactionWidth: 0, // edges never capture pointer events
-          style: onActivePath
-            ? { stroke: lineageColorOf(e.from), strokeWidth: 2 }
-            : {
-                stroke: `color-mix(in srgb, ${lineageColorOf(e.from)} 45%, transparent)`,
-                strokeWidth: 1.5,
-              },
+          interactionWidth: contextEdge ? 16 : 0,
+          style: {
+            ...(onActivePath
+              ? { stroke: lineageColorOf(e.from), strokeWidth: 2 }
+              : {
+                  stroke: `color-mix(in srgb, ${lineageColorOf(e.from)} 45%, transparent)`,
+                  strokeWidth: 1.5,
+                }),
+            ...(contextEdge ? { strokeDasharray: "6 4" } : {}),
+          },
         };
       });
 
@@ -1153,6 +1283,14 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         edgesFocusable={false}
         zoomOnDoubleClick={false}
         panOnDrag
+        onConnect={handleConnect}
+        onEdgeClick={handleEdgeClick}
+        // Loose: users may start the drag from either end (chat source or
+        // context target); handleConnect normalizes direction and rejects
+        // chat↔chat. connectionRadius makes drops forgiving — near a valid
+        // handle is enough.
+        connectionMode={ConnectionMode.Loose}
+        connectionRadius={40}
         minZoom={0.25}
         maxZoom={1.75}
         className="!bg-background"

@@ -21,6 +21,7 @@ import { ConsoleHeader } from "@/components/console/header";
 import { ChatTab } from "@/components/console/chat-tab";
 import { ForkDialog } from "@/components/console/fork-dialog";
 import type { Message, ContextFileChip } from "@/components/console/shared";
+import { MAX_NODES_PER_CANVAS } from "@/lib/limits";
 import {
   isAllowedContextFile,
   MAX_CONTEXT_FILE_MB,
@@ -80,6 +81,10 @@ const normalizeForkId = (id?: string | null) => {
 
 const genId = () =>
   Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
+// Sticky web-search preference: real users expect the toggle to stay on
+// once enabled, across node switches and reloads (per-browser).
+const WEB_SEARCH_STICKY_KEY = "context-tree-web-search";
 
 const dedupeMessages = (items: Message[]): Message[] => {
   const byId = new Map<string, Message>();
@@ -172,6 +177,12 @@ const ContextualConsole = ({
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [inputValue, setInputValue] = useState("");
   const [webSearch, setWebSearch] = useState(false);
+  // Hydrate after mount (not in the initializer) so SSR markup matches.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(WEB_SEARCH_STICKY_KEY) === "on") setWebSearch(true);
+    } catch {}
+  }, []);
   // Per-node in-flight set: one node generating must not show "Thinking" or
   // lock the composer in any other node's panel.
   const [typingNodeIds, setTypingNodeIds] = useState<Set<string>>(new Set());
@@ -292,6 +303,14 @@ const ContextualConsole = ({
         toast({
           title: "File too large",
           description: `Maximum size is ${MAX_CONTEXT_FILE_MB}MB.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      if ((canvasData?.nodes?.length || 0) >= MAX_NODES_PER_CANVAS) {
+        toast({
+          title: "Canvas is full",
+          description: `Max ${MAX_NODES_PER_CANVAS} nodes per canvas. Delete unused branches or start a new canvas.`,
           variant: "destructive",
         });
         return;
@@ -1083,6 +1102,14 @@ const ContextualConsole = ({
     ) => {
       const forkId = normalizeForkId(overrideId || pendingForkMsg);
       if (!selectedCanvas || !selectedNode || !forkId) return;
+      if ((canvasData?.nodes?.length || 0) >= MAX_NODES_PER_CANVAS) {
+        toast({
+          title: "Canvas is full",
+          description: `Max ${MAX_NODES_PER_CANVAS} nodes per canvas. Delete unused branches or start a new canvas.`,
+          variant: "destructive",
+        });
+        return;
+      }
       const parentNode = canvasData?.nodes?.find((n: any) => n._id === selectedNode);
       const sourceMessage =
         currentMessages.find(
@@ -1468,6 +1495,7 @@ const ContextualConsole = ({
       <ForkDialog
         open={showForkDialog}
         sourceName={resolvedName || "this branch"}
+        sourceRole={pendingForkSourceMessage?.role === "user" ? "user" : "assistant"}
         sourceMessageContent={pendingForkSourceMessage?.content}
         inheritedSystemPrompt={currentNode?.systemPrompt || ""}
         inheritedAdvancedSettings={currentNode?.advancedSettings}
@@ -1518,7 +1546,15 @@ const ContextualConsole = ({
           autoResize={autoResize}
           onSend={handleSend}
           webSearch={webSearch}
-          onToggleWebSearch={() => setWebSearch((v) => !v)}
+          onToggleWebSearch={() =>
+            setWebSearch((v) => {
+              const next = !v;
+              try {
+                localStorage.setItem(WEB_SEARCH_STICKY_KEY, next ? "on" : "off");
+              } catch {}
+              return next;
+            })
+          }
           contextFiles={contextFiles}
           onToggleContext={toggleContextFile}
           onAttachFile={uploadContextFile}

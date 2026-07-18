@@ -49,7 +49,7 @@ function timeAgo(iso?: string): string {
   return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
+function ChatNodeComponent({ data, selected, isConnectable }: NodeProps<ChatNodeType>) {
   const handleClick = useCallback(
     (e: MouseEvent) => {
       // Shift-click toggles compare selection instead of opening the console.
@@ -77,10 +77,14 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
   const preview = (data.preview || "").trim();
   const time = timeAgo(data.timestamp);
 
-  // Handles stay mounted (edges need anchors) but are never visible or
-  // interactive — edges are system-drawn, so no connection dots, ever.
-  const handleClassName =
+  // Top (target) handle: lineage anchor only — invisible and inert; the
+  // tree's parent→child edges are system-drawn. Bottom (source) handle:
+  // users drag from it to a context card to connect context, so it shows
+  // as a dot on hover (connection drops also snap via connectionRadius).
+  const targetHandleClassName =
     "!h-px !w-px !min-h-0 !min-w-0 !border-0 !bg-transparent !opacity-0 !pointer-events-none";
+  const sourceHandleClassName =
+    "!h-2.5 !w-2.5 !rounded-full !border-2 !border-background !bg-primary opacity-0 transition-opacity duration-150 group-hover:opacity-100";
 
   return (
     <div
@@ -205,8 +209,19 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeType>) {
         )}
       </div>
 
-      <Handle type="target" position={Position.Top} className={handleClassName} />
-      <Handle type="source" position={Position.Bottom} className={handleClassName} />
+      <Handle
+        type="target"
+        position={Position.Top}
+        isConnectable={false}
+        className={targetHandleClassName}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        isConnectable={isConnectable}
+        title="Drag to a context card to connect it"
+        className={sourceHandleClassName}
+      />
     </div>
   );
 }

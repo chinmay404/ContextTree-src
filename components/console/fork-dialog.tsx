@@ -107,6 +107,9 @@ const ModelChipRow = ({
 type ForkDialogProps = {
   open: boolean;
   sourceName: string;
+  /** Role of the message being branched from — drives the dialog's copy so
+      users understand what each kind of branch does. */
+  sourceRole?: "user" | "assistant";
   sourceMessageContent?: string;
   inheritedSystemPrompt?: string;
   inheritedAdvancedSettings?: Partial<AdvancedSettings> | null;
@@ -117,6 +120,7 @@ type ForkDialogProps = {
 export const ForkDialog = memo(function ForkDialog({
   open,
   sourceName,
+  sourceRole = "assistant",
   sourceMessageContent,
   inheritedSystemPrompt = "",
   inheritedAdvancedSettings,
@@ -154,7 +158,9 @@ export const ForkDialog = memo(function ForkDialog({
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4">
       <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
-          <h3 className="type-heading">New branch</h3>
+          <h3 className="type-heading">
+            {sourceRole === "user" ? "Re-ask in a new branch" : "New branch"}
+          </h3>
           <button
             type="button"
             onClick={onCancel}
@@ -166,6 +172,18 @@ export const ForkDialog = memo(function ForkDialog({
         </div>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+          <div className="space-y-1.5 rounded-xl border border-border bg-muted/40 px-3.5 py-3">
+            {sourceMessageContent && (
+              <p className="line-clamp-2 text-xs italic leading-relaxed text-muted-foreground">
+                &ldquo;{sourceMessageContent}&rdquo;
+              </p>
+            )}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {sourceRole === "user"
+                ? "This question is re-asked in the new branch for a fresh answer. The branch inherits everything above it — the original conversation stays untouched."
+                : "The new branch continues from this reply. It inherits everything up to this point and nothing after — the original conversation stays untouched."}
+            </p>
+          </div>
           <div className="space-y-2">
             <label
               htmlFor="fork-branch-name"
@@ -281,7 +299,7 @@ export const ForkDialog = memo(function ForkDialog({
             disabled={!canCreate}
             className="h-9 rounded-lg bg-primary px-4 text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Create branch
+            {sourceRole === "user" ? "Re-ask in branch" : "Create branch"}
           </Button>
         </div>
       </div>

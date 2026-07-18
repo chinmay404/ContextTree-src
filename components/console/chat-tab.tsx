@@ -281,7 +281,8 @@ const MessageItem = memo(function MessageItem({
                       onClick={() => onStartFork(message.id)}
                       className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 type-meta hover:text-foreground"
                     >
-                      <GitBranch size={12} strokeWidth={1.75} /> Branch
+                      <GitBranch size={12} strokeWidth={1.75} />{" "}
+                      {isUser ? "Re-ask" : "Branch"}
                       <kbd className="rounded border border-border bg-muted px-1 type-mono">
                         ⌘B
                       </kbd>
@@ -289,8 +290,8 @@ const MessageItem = memo(function MessageItem({
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-[240px] text-center">
                     {isUser
-                      ? "Branch from this question. The new node will start by re-asking it and getting a fresh answer."
-                      : "Start a new branch from this reply. The child will inherit this point and everything before it, but nothing after it."}
+                      ? "Re-ask this question in a new branch and get a fresh answer — everything above it carries over."
+                      : "Continue in a new branch from this reply — it inherits everything up to here, nothing after."}
                   </TooltipContent>
                 </Tooltip>
               )}
