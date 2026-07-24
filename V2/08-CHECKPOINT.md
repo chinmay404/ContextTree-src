@@ -544,3 +544,27 @@ Deployed: Vercel Production Ready.
 LESSON (vault): diff-based sync deletes convert every stale read into
 data loss — "Dual-write full-canvas saves destroy data" recurred via a
 new entry point (edge POSTs). Scoped writes or no deletes, ever.
+
+## Checkpoint 017 — 2026-07-24 (branch colors shipped; date correction)
+
+NOTE: Checkpoint 016 above is mis-dated — it happened TODAY, 2026-07-24
+(same session, stale date carried from context). 016's fixes and this
+entry are both live in the 2026-07-24 deploys.
+
+Per-branch colors with depth fade (owner: "Each Child we can Decide
+Colour ... as we go down that colour will start to get faint"):
+- lib/branch-palette.ts: 8 hues tuned for the dark canvas.
+- chat-node hover bar: Palette button → inline swatch row; pinned color
+  shows as a dot; X clears back to inherited.
+- effectiveColorOf (canvas.tsx): nearest ancestor-or-self pinned color
+  wins; fades 14%/level below the source, floor 38%; no pin → lineage
+  hash hue faded by depth. Node stripes, lineage edges (child's hue on
+  its incoming edge), demoted pills, context cards all follow it.
+- Persisted via existing node PATCH {color} (optimistic + toast on
+  failure); NodeData.color typed in lib/storage.ts.
+Ported from feat/branch-colors stash (wip-branch-colors) onto main —
+the stash branch predates the edge-race fixes; do NOT merge it now.
+Commit 67f3abd; Vercel Production Ready.
+Railway: nothing to deploy — backend main == origin/main == f07267d,
+already live (webSearch fingerprint + health 200 verified today); a
+redeploy would only restart streams for zero delta.
