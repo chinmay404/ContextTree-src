@@ -294,7 +294,7 @@ complete.
 
 ---
 
-## Checkpoint 008 (2026-07-12, evening) � Relaunch day
+## Checkpoint 008 (2026-07-12, evening) � Relaunch day
 
 Prod fully live end-to-end: sign-in restored (shutdown page reverted),
 FastAPI on Railway (api-production-310d.up.railway.app, NVIDIA NIM
@@ -320,7 +320,7 @@ all keys + delete after development.
 
 ---
 
-## Checkpoint 009 (2026-07-12, late night) � Customer-ready build
+## Checkpoint 009 (2026-07-12, late night) � Customer-ready build
 
 Everything below verified live on contexttree.tech (all routes 200,
 Railway backend healthy):
@@ -349,7 +349,7 @@ assets per marketing plan, rotate ALL keys in DB.txt and delete it.
 
 ---
 
-## Checkpoint 010 (2026-07-13, early) � Bug-bash from live user testing
+## Checkpoint 010 (2026-07-13, early) � Bug-bash from live user testing
 
 Owner tested prod end-to-end; every finding root-caused and shipped:
 
@@ -380,7 +380,7 @@ review, demo assets, rotate DB.txt keys.
 
 ---
 
-## Checkpoint 011 (2026-07-13) � Context inheritance + admin + marketing kit
+## Checkpoint 011 (2026-07-13) � Context inheritance + admin + marketing kit
 
 - CORE FIX: fork context inheritance. Model-404-era chats never persisted
   (stream returned before save), so forks inherited nothing and were
@@ -605,3 +605,65 @@ buffer rows to negative positions; pre-008 tests assert [1,2]) — NOT a
 regression of this session's work. I committed ONLY my hunks (verified
 via git diff) and deployed Railway from a CLEAN WORKTREE at 4794cc6 so
 none of their WIP shipped. Their session owns updating the fork tests.
+
+## Checkpoint 019 — 2026-07-24 (message placement rebuilt: canonical ids + inherited flag)
+
+(The "concurrent session" from checkpoint 018 is this one — feature now
+complete, fork tests updated and green.)
+
+Owner bug report (screenshots, canvas_1784881725968): root card "6 msgs"
+for a 2-turn chat, every branch card "0 msgs", answers rendering before
+their questions, branch messages "showing in the wrong node". Prod rows
+pulled and diagnosed — THREE root causes, all storage-design:
+1. TWO WRITERS, TWO ID CONVENTIONS: backend saved "<base>"/"<base>_ai",
+   frontend saved "<base>_u"/"<base>_a" for the SAME message → PK never
+   deduped → up to 4 rows/turn. Both writers now emit canonical
+   "<base>_u"/"<base>_a" (canonical_message_id in PostgresStore;
+   frontend already did via flattenMessages).
+2. THREE CLOCKS: browser new Date() (assistant stamped at stream START),
+   Python utcnow() (stamped ~12s later post-generation), Postgres now().
+   Fork-buffer visibility was `timestamp >= node.created_at`, ordering
+   timestamp-first → misclassification + answer-before-question
+   (frontend assistant 08:32:56 < backend user 08:32:59, same turn; the
+   inversion was then copied into the GLM fork's buffer). Replaced with
+   explicit `messages.inherited boolean` (migration 008); ordering is
+   position-first everywhere (store + hydration).
+3. BUFFER POSITION RACE: user typed 3s after forking; frontend wrote the
+   native msg at pos 1 before fork-init inserted buffer at pos 2-3.
+   Buffer now inserts at negative positions (always before native);
+   native appends use greatest(max(position),0)+1 on both writers;
+   get_thread_messages_after includes inherited rows while watermark<=0.
+Plus: fork-from-user-message now marks the seed question NATIVE in the
+branch (visible; canonical fork<hex>_u id) — fixes "my message is for
+GLM but shows only in GPT". Node cards get live counts via
+canvas-update-node events (publishNodeMessages in contextual-console);
+dedupeMessages keys on (baseId, role) and preserves position order.
+Migration 008 (db/migrations): adds flag+index, backfills inherited via
+the old heuristic ONCE, shifts inherited to negative positions, deletes
+twin rows (backed up to messages_canonical_backup_008), renames stray
+non-canonical survivors. REHEARSED on Docker pg against an exact replica
+of the broken prod canvas: root 6→4 visible, GPT order fixed, 5 twins
+backed up+deleted — matched prediction exactly.
+TEST-SUITE PROD LEAK found & fixed: store's module-level pool bound to
+.env DATABASE_URL (prod!) when any app module imported before a test set
+the env var — @example.com users/canvases/messages leaked into prod on
+07-12, 07-13 and today (both sessions). tests/conftest.py now forces
+DATABASE_URL to TEST_DATABASE_URL (or a poison sentinel) before anything
+imports. Backend suite: 82 passed, 1 skipped on Docker pg. Frontend
+tsc: only the known baseline errors.
+NOT DONE (blocked on permissions, owner must run):
+1. python scripts/migrate.py           (backend dir; applies 008 to prod)
+2. node scripts/cleanup-test-debris.js (frontend dir; deletes @example.com
+   test debris from prod: ~290 msgs/140 nodes/35 canvases/13 users)
+3. Commit both repos + deploy backend (Railway) then frontend (Vercel).
+   Old code + migrated DB is safe (verified); new duplicate twins only
+   accumulate until both deploys land, and the one-shot dedupe won't
+   catch those — apply + deploy close together.
+4. Local leftover: Docker db "mig008" on ctx-pg can be dropped.
+Diagnostic helpers left in frontend scripts/: inspect-message-placement.js,
+inspect-test-debris.js, cleanup-test-debris.js.
+CONCURRENT-SESSION HYGIENE: the other session's 018 entry also got
+appended to the root-level V2/ copy mid-session; this file (canonical)
+briefly held a double-encoded duplicate from a shell append — cleaned.
+Use the Edit path, not shell Add-Content, for these files.
+

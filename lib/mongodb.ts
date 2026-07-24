@@ -156,8 +156,13 @@ async function init() {
   -- position is normally added by the backend's migration 004, but getCanvas
   -- orders by it — a DB initialized by the frontend alone must have it too.
   alter table if exists messages add column if not exists position bigint;
+  -- provenance flag (backend migration 008): fork-buffer copies are LLM
+  -- context, not visible history. Hydration filters on this — a DB
+  -- initialized by the frontend alone must have it too.
+  alter table if exists messages add column if not exists inherited boolean not null default false;
     create index if not exists idx_messages_node on messages(node_id);
     create index if not exists idx_messages_canvas on messages(canvas_id);
+    create index if not exists idx_messages_node_position on messages(node_id, position);
     create table if not exists bug_reports (
       id text primary key,
       user_email text not null references users(email) on delete cascade,
@@ -500,14 +505,15 @@ export class MongoDBService {
       const nodeIds = nodeRows.rows.map((r) => r.id);
       // Exclude fork-inherited buffer rows (parent messages copied into a
       // branch to seed the model's context): they are context for the LLM,
-      // not visible history. Same rule the backend uses — a branch's
-      // inherited rows carry timestamps older than the branch itself.
+      // not visible history. Provenance is the explicit `inherited` flag —
+      // the old rule compared message timestamps (browser/backend clocks)
+      // against node created_at (Postgres clock) and misclassified rows
+      // whenever the three clocks disagreed.
       const msgRows = await pool.query(
         `select m.id, m.node_id, m.role, m.content, m.timestamp
          from messages m
-         join nodes n on n.id = m.node_id
          where m.node_id = any($1::text[])
-           and (n.is_primary is not false or m.timestamp >= n.created_at)
+           and not coalesce(m.inherited, false)
          order by m.position asc nulls last, m.timestamp asc`,
         [nodeIds]
       );
@@ -803,9 +809,14 @@ export class MongoDBService {
       ]
     );
     if (messages.length) {
-      const insertValues = messages.map((m) =>
-        pool.query(
-          `insert into messages (id, node_id, canvas_id, user_email, role, content, timestamp) values ($1,$2,$3,$4,$5,$6,$7) on conflict (id) do nothing`,
+      // Sequential on purpose: the position subquery reads max(position), so
+      // concurrent inserts would all compute the same position.
+      for (const m of messages) {
+        await pool.query(
+          `insert into messages (id, node_id, canvas_id, user_email, role, content, timestamp, position)
+           values ($1,$2,$3,$4,$5,$6,$7,
+                   (select greatest(coalesce(max(position),0),0)+1 from messages where node_id=$2))
+           on conflict (id) do nothing`,
           [
             m.id,
             node._id,
@@ -815,9 +826,8 @@ export class MongoDBService {
             m.content,
             m.timestamp || new Date().toISOString(),
           ]
-        )
-      );
-      await Promise.all(insertValues);
+        );
+      }
     }
     // Append to the embedded canvas JSON atomically (single statement, no
     // read-modify-write): a full-blob write from the earlier snapshot lost
@@ -1040,10 +1050,12 @@ export class MongoDBService {
       // NULL position — starving fork inheritance and hydration. Upsert
       // only; a hollow/empty client copy must not destroy server truth.
       for (const msg of flat) {
+        // greatest(..., 0): inherited fork-buffer rows sit at negative
+        // positions; native rows must always append at 1, 2, 3…
         await pool.query(
           `insert into messages (id, node_id, canvas_id, user_email, role, content, timestamp, position)
            values ($1,$2,$3,(select user_email from canvases where id=$3),$4,$5,$6,
-                   (select coalesce(max(position),0)+1 from messages where node_id=$2))
+                   (select greatest(coalesce(max(position),0),0)+1 from messages where node_id=$2))
            on conflict (id) do update set content=excluded.content,
              canvas_id=coalesce(messages.canvas_id, excluded.canvas_id),
              user_email=coalesce(messages.user_email, excluded.user_email)`,
@@ -1114,7 +1126,7 @@ export class MongoDBService {
             await client.query(
               `insert into messages (id, node_id, canvas_id, user_email, role, content, timestamp, position)
                values ($1,$2,$3,$4,$5,$6,$7,
-                       (select coalesce(max(position),0)+1 from messages where node_id=$2))
+                       (select greatest(coalesce(max(position),0),0)+1 from messages where node_id=$2))
                on conflict (id) do update set content=excluded.content,
                  canvas_id=coalesce(messages.canvas_id, excluded.canvas_id),
                  user_email=coalesce(messages.user_email, excluded.user_email)`,

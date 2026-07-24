@@ -86,14 +86,19 @@ const genId = () =>
 // once enabled, across node switches and reloads (per-browser).
 const WEB_SEARCH_STICKY_KEY = "context-tree-web-search";
 
+// Key on (base id, role): backend and frontend historically persisted the
+// same logical message under different id suffixes ("x"/"x_ai" vs
+// "x_u"/"x_a"); keyed on the raw id those twins rendered twice. Insertion
+// order is preserved — hydrated arrays arrive in position order (server
+// truth), and re-sorting by timestamp interleaved turns wrongly whenever the
+// browser and backend clocks disagreed.
 const dedupeMessages = (items: Message[]): Message[] => {
-  const byId = new Map<string, Message>();
+  const byKey = new Map<string, Message>();
   for (const item of items) {
-    byId.set(item.id, item);
+    const { baseId } = splitMessageId(item.id);
+    byKey.set(`${baseId || item.id}:${item.role}`, item);
   }
-  return Array.from(byId.values()).sort(
-    (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-  );
+  return Array.from(byKey.values());
 };
 
 const normalizeMessages = (raw: any[], nodeId: string): Message[] =>
@@ -702,16 +707,15 @@ const ContextualConsole = ({
   );
 
   const isMessageNativeToSelectedNode = useCallback(
-    (message: Message) => {
-      if (!currentNode?.parentNodeId) return true;
-      const nodeCreatedAt = toTimestampMs(currentNode.createdAt);
-      const messageTimestamp = toTimestampMs(message.timestamp);
-      if (!Number.isFinite(nodeCreatedAt) || !Number.isFinite(messageTimestamp)) {
-        return true;
-      }
-      return messageTimestamp >= nodeCreatedAt;
+    (_message: Message) => {
+      // Server hydration excludes inherited fork-buffer rows outright (the
+      // `inherited` flag on messages), so everything rendered here is native
+      // to this node. The old timestamp-vs-createdAt comparison spanned two
+      // clocks (browser vs Postgres) and falsely blocked branching from a
+      // branch's own seed message, whose display timestamp is the parent's.
+      return true;
     },
-    [currentNode]
+    []
   );
 
   // ─── Auto resize textarea ─────────────────────────────
@@ -719,6 +723,30 @@ const ContextualConsole = ({
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";
   }, []);
+
+  // Push the node's current transcript onto its canvas card so the
+  // "N msgs" count, preview, and timestamp update live — cards otherwise
+  // showed the stale value from canvas load (fresh forks stuck at "0 msgs").
+  const publishNodeMessages = useCallback(
+    (nodeId: string, msgs: Message[]) => {
+      window.dispatchEvent(
+        new CustomEvent("canvas-update-node", {
+          detail: {
+            nodeId,
+            updates: {
+              chatMessages: msgs.map((m) => ({
+                id: m.id,
+                role: m.role,
+                content: m.content,
+                timestamp: m.timestamp.toISOString(),
+              })),
+            },
+          },
+        })
+      );
+    },
+    []
+  );
 
   // ─── Send message ──────────────────────────────────────
   const handleSend = useCallback(async () => {
@@ -788,6 +816,7 @@ const ContextualConsole = ({
         timestamp: m.timestamp.toISOString(),
       }))
     );
+    publishNodeMessages(nodeId, updatedMsgs);
 
     setInputValue("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -961,6 +990,7 @@ const ContextualConsole = ({
             timestamp: m.timestamp.toISOString(),
           }))
         );
+        publishNodeMessages(nodeId, allMsgs);
 
         if (summary && canvasData) {
           window.dispatchEvent(
@@ -1008,6 +1038,7 @@ const ContextualConsole = ({
           timestamp: m.timestamp.toISOString(),
         }))
       );
+      publishNodeMessages(nodeId, allMsgs);
 
       if (data.summary && canvasData) {
         window.dispatchEvent(
@@ -1059,6 +1090,7 @@ const ContextualConsole = ({
     currentMessages,
     getNodeModel,
     canvasData,
+    publishNodeMessages,
   ]);
 
   // ─── Fork / branch ─────────────────────────────────────
@@ -1253,6 +1285,7 @@ const ContextualConsole = ({
         };
         // Optimistically render the user message in the new branch.
         setMessages((p) => ({ ...p, [nodeId]: [userMsgForUI] }));
+        publishNodeMessages(nodeId, [userMsgForUI]);
         setNodeTyping(nodeId, true);
 
         try {
@@ -1372,6 +1405,7 @@ const ContextualConsole = ({
                   timestamp: m.timestamp.toISOString(),
                 }))
               );
+              publishNodeMessages(nodeId, allMsgs);
               // Persist the assistant message so the UI re-renders correctly
               // on reload. The user message is already in DB (fork buffer).
               fetch(
@@ -1412,6 +1446,7 @@ const ContextualConsole = ({
       setMessages,
       setNodeTyping,
       toast,
+      publishNodeMessages,
     ]
   );
 
