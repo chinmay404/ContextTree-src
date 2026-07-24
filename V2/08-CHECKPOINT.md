@@ -568,3 +568,40 @@ Commit 67f3abd; Vercel Production Ready.
 Railway: nothing to deploy — backend main == origin/main == f07267d,
 already live (webSearch fingerprint + health 200 verified today); a
 redeploy would only restart streams for zero delta.
+
+## Checkpoint 018 — 2026-07-24 (edge-vanish fix; webpage parser; concurrent-session protocol)
+
+Prod report: fresh fork rendered side-by-side with its parent, no edge
+(dagre saw two roots). Lineage data intact (parentNodeId survived) — the
+EDGE was erased. Root cause class: canvases.data is a shared JSON blob
+with multiple read-modify-write writers (updateNodeMessages patch,
+addNode embedded push, updateCanvas); any of them landing after addEdge
+lost the edge (lost-update race; my 016 sequencing change widened the
+window). Fixes (frontend e929150):
+- getCanvas: edges hydrate from the edges TABLE (authoritative; addEdge
+  mirrors, only removeEdge deletes); legacy JSON-only edges merged in.
+- syncNodesToTables edge sync: upsert-only (absence ≠ deletion).
+- updateNodeMessages: embedded-JSON blob patch REMOVED.
+- addNode: embedded append is one atomic jsonb_set statement.
+- canvas.tsx: missing parent→child edges SYNTHESIZED from parentNodeId
+  — a fork can never render as a disconnected root again (also repairs
+  the user's broken canvas at render time).
+- createFork: optimistic console state carries the edge.
+verify-edge-scoped.ts → 23 checks, all pass.
+
+Webpage parser (backend 4794cc6, owner request "secure + don't overload
+context"): pasted http(s) URLs (max 2/turn) fetched into
+<EXTERNAL_CONTEXT> as [page N | title | url]; SSRF guard (public-unicast
+only, every redirect hop re-validated, metadata IP blocked), 2MB stream
+cap, 3500 chars/page, never blocks the turn, WEB_FETCH_ENABLED kill
+switch, joins web_hits so source chips show pages. 32 unit tests (fake
+httpx, no network).
+
+CONCURRENT SESSION NOTE: another chat is mid-feature on message
+canonical identity + inherited flag (untracked migration 008, modified
+PostgresStore.py, mongodb.ts, contextual-console.tsx — all UNCOMMITTED).
+Full backend suite fails against that moving tree (their 008 moves
+buffer rows to negative positions; pre-008 tests assert [1,2]) — NOT a
+regression of this session's work. I committed ONLY my hunks (verified
+via git diff) and deployed Railway from a CLEAN WORKTREE at 4794cc6 so
+none of their WIP shipped. Their session owns updating the fork tests.
