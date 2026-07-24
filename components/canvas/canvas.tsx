@@ -546,6 +546,30 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
     [applyCanvas, canvasId]
   );
 
+  /** Pin (or clear) a branch color: optimistic + persisted via node PATCH.
+      Descendants pick it up automatically — effective color resolution walks
+      ancestors — so one PATCH recolors the whole subtree. */
+  const setNodeColor = useCallback(
+    (nodeId: string, color: string | null) => {
+      applyCanvas((prev) => ({
+        ...prev,
+        nodes: prev.nodes.map((n) =>
+          n._id === nodeId ? { ...n, color: color ?? undefined } : n
+        ),
+      }));
+      fetch(`/api/canvases/${canvasId}/nodes/${nodeId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error(`Failed to save color (${res.status})`);
+        })
+        .catch(() => toast.error("Failed to save branch color"));
+    },
+    [applyCanvas, canvasId]
+  );
+
   /** Shift-click toggle; capped at 3 branches. */
   const toggleCompareSelect = useCallback((nodeId: string) => {
     setCompareSelection((prev) => {
@@ -1007,6 +1031,36 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
     };
     const lineageColorOf = (id: string) => lineageVarFor(rootOf(id));
 
+    // Effective branch color: the nearest ancestor (or self) with a pinned
+    // color wins, and the tint fades as the lineage deepens below it —
+    // "decide a colour per child; going down, it gets fainter". With no pin
+    // anywhere up the chain, fall back to the root-hash hue faded by depth.
+    const FADE_STEP = 14; // % lost per level below the color source
+    const FADE_FLOOR = 38; // never fade past this — stays visible
+    const fadeOf = (depth: number) =>
+      Math.max(FADE_FLOOR, 100 - depth * FADE_STEP);
+    const withFade = (color: string, depth: number) => {
+      const fade = fadeOf(depth);
+      return fade >= 100
+        ? color
+        : `color-mix(in srgb, ${color} ${fade}%, transparent)`;
+    };
+    const effectiveColorOf = (id: string): string => {
+      let cur = byId.get(id);
+      let depth = 0;
+      const seen = new Set<string>();
+      while (cur && !seen.has(cur._id)) {
+        const picked = (cur as any).color;
+        if (typeof picked === "string" && picked.trim())
+          return withFade(picked.trim(), depth);
+        seen.add(cur._id);
+        cur = cur.parentNodeId ? byId.get(cur.parentNodeId) : undefined;
+        depth++;
+      }
+      // depth overshoots by 1 when the walk falls off the root
+      return withFade(lineageColorOf(id), Math.max(0, depth - 1));
+    };
+
     // Active-node presence: the open node's ancestor chain lights up. Walk
     // parentNodeId from the selected node to its root once (O(depth)) and
     // collect the parent→child edge pairs; each edge below then checks the
@@ -1045,7 +1099,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
             connectable: false,
             data: {
               label,
-              lineageColor: lineageColorOf(node._id),
+              lineageColor: effectiveColorOf(node._id),
               isSelected: selectedNode === node._id,
               onClick: () => onNodeSelect(node._id, label, node.type),
               onRestore: () => restoreNode(node._id),
@@ -1065,7 +1119,9 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
             model: node.model,
             messageCount: node.chatMessages?.length || 0,
             timestamp: node.chatMessages?.slice(-1)[0]?.timestamp || node.createdAt,
-            lineageColor: lineageColorOf(node._id),
+            lineageColor: effectiveColorOf(node._id),
+            color: (node as any).color || null,
+            onSetColor: (c: string | null) => setNodeColor(node._id, c),
             kind: node.type,
             parentName:
               node.type === "branch" && parent ? defaultNodeName(parent) : undefined,
@@ -1115,7 +1171,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
           error: error || undefined,
           loading: processing,
           linkedToActive,
-          lineageColor: lineageColorOf(node._id),
+          lineageColor: effectiveColorOf(node._id),
           isSelected: selectedNode === node._id,
           onClick: () => onNodeSelect(node._id, label, node.type),
         },
@@ -1133,6 +1189,14 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
         // Context edges are user-detachable: dashed + clickable (see
         // handleEdgeClick). Lineage edges never capture pointer events.
         const contextEdge = isCtxType(byId.get(e.from)) || isCtxType(byId.get(e.to));
+        // Lineage edges take the CHILD's effective color (each child's chosen
+        // hue shows on its incoming edge); context edges take the chat side's.
+        const strokeSourceId = contextEdge
+          ? isCtxType(byId.get(e.from))
+            ? e.to
+            : e.from
+          : e.to;
+        const strokeColor = effectiveColorOf(strokeSourceId);
         return {
           id: e._id,
           source: e.from,
@@ -1143,9 +1207,9 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
           interactionWidth: contextEdge ? 16 : 0,
           style: {
             ...(onActivePath
-              ? { stroke: lineageColorOf(e.from), strokeWidth: 2 }
+              ? { stroke: strokeColor, strokeWidth: 2 }
               : {
-                  stroke: `color-mix(in srgb, ${lineageColorOf(e.from)} 45%, transparent)`,
+                  stroke: `color-mix(in srgb, ${strokeColor} 45%, transparent)`,
                   strokeWidth: 1.5,
                 }),
             ...(contextEdge ? { strokeDasharray: "6 4" } : {}),
@@ -1178,6 +1242,7 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
     zoomToNode,
     deleteNode,
     restoreNode,
+    setNodeColor,
     toggleCompareSelect,
   ]);
 

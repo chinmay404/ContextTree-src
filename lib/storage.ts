@@ -54,6 +54,9 @@ export interface NodeData {
   runningSummary: string;
   contextContract: string;
   systemPrompt?: string;
+  /** User-pinned branch color (hex). Descendants inherit it, fading with
+      depth; null/absent falls back to the lineage hash hue. */
+  color?: string | null;
   advancedSettings?: AdvancedSettings;
   model: string;
   memory?: object;

@@ -1,9 +1,10 @@
 "use client";
 
-import { memo, useCallback, type MouseEvent } from "react";
+import { memo, useCallback, useState, type MouseEvent } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { Focus, Info, Trash2 } from "lucide-react";
+import { Focus, Info, Palette, Trash2, X } from "lucide-react";
 import { ModelBadge } from "@/components/model-badge";
+import { BRANCH_PALETTE } from "@/lib/branch-palette";
 import { cn } from "@/lib/utils";
 
 export interface ChatNodeData {
@@ -26,6 +27,10 @@ export interface ChatNodeData {
   onFocus?: () => void;
   onShowDetails?: () => void;
   onDelete?: () => void;
+  /** This node's own pinned color (not the inherited effective color). */
+  color?: string | null;
+  /** Pin a palette color on this branch, or null to clear the pin. */
+  onSetColor?: (color: string | null) => void;
   [key: string]: unknown;
 }
 
@@ -70,6 +75,7 @@ function ChatNodeComponent({ data, selected, isConnectable }: NodeProps<ChatNode
     []
   );
 
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const active = selected || data.isSelected;
   const isEntry = data.kind === "entry";
   const lineageColor = data.lineageColor || FALLBACK_LINEAGE;
@@ -127,6 +133,58 @@ function ChatNodeComponent({ data, selected, isConnectable }: NodeProps<ChatNode
       <div
         className="flex items-center gap-0.5 rounded-lg border border-border bg-popover p-0.5 shadow-lg"
       >
+        {paletteOpen ? (
+          <>
+            {BRANCH_PALETTE.map((hex) => (
+              <button
+                key={hex}
+                type="button"
+                aria-label={`Set branch color ${hex}`}
+                title="Color this branch — children inherit it, fading with depth"
+                className={cn(
+                  "flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-accent"
+                )}
+                onClick={stop(() => {
+                  data.onSetColor?.(hex);
+                  setPaletteOpen(false);
+                })}
+              >
+                <span
+                  className={cn(
+                    "h-3.5 w-3.5 rounded-full",
+                    data.color === hex &&
+                      "ring-2 ring-foreground/70 ring-offset-1 ring-offset-popover"
+                  )}
+                  style={{ backgroundColor: hex }}
+                />
+              </button>
+            ))}
+            {data.color && (
+              <button
+                type="button"
+                aria-label="Clear branch color"
+                title="Clear — back to inherited color"
+                className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                onClick={stop(() => {
+                  data.onSetColor?.(null);
+                  setPaletteOpen(false);
+                })}
+              >
+                <X size={12} />
+              </button>
+            )}
+            <button
+              type="button"
+              aria-label="Close color palette"
+              title="Back"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={stop(() => setPaletteOpen(false))}
+            >
+              <Palette size={12} />
+            </button>
+          </>
+        ) : (
+          <>
         <button
           type="button"
           className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -136,6 +194,24 @@ function ChatNodeComponent({ data, selected, isConnectable }: NodeProps<ChatNode
         >
           <Focus size={12} />
         </button>
+        {data.onSetColor && (
+          <button
+            type="button"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            onClick={stop(() => setPaletteOpen(true))}
+            aria-label="Branch color"
+            title="Branch color"
+          >
+            {data.color ? (
+              <span
+                className="h-3 w-3 rounded-full"
+                style={{ backgroundColor: data.color }}
+              />
+            ) : (
+              <Palette size={12} />
+            )}
+          </button>
+        )}
         <button
           type="button"
           className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -155,6 +231,8 @@ function ChatNodeComponent({ data, selected, isConnectable }: NodeProps<ChatNode
           >
             <Trash2 size={12} />
           </button>
+        )}
+          </>
         )}
       </div>
       </div>
