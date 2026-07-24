@@ -681,3 +681,30 @@ fallback — untouched code, not a regression. Frontend: Vercel deploys
 f651f29 via Git integration (no local token to poll the API; site 200 —
 confirm build in dashboard if paranoid).
 
+## Checkpoint 020 — 2026-07-24 (vanishing fork: client-state lost update)
+
+Owner report minutes after 019 shipped: new Mistral branch "Check again"
+vanished from the canvas after its first reply (chat panel stayed open).
+DB verified PERFECT — node, fork edge, blob, canonical message rows,
+negative-position buffer all correct; 019's storage stack works. The bug
+was pure client state, the same lost-update class as 016/018 but in
+React instead of Postgres:
+1. createFork selects the new node instantly; the node-select effect's
+   canvas refetch RACED the fork's node POST — a snapshot read before
+   the POST commit lacks the branch, and setCanvasData(data.canvas)
+   clobbered the optimistic node in console state.
+2. When the reply's summary arrived, handleSend broadcast that stale
+   snapshot via canvas-data-updated; canvas.tsx and page.tsx listeners
+   REPLACED state wholesale → node + edge gone everywhere (sidebar
+   showed 3 nodes ⑂2 · 1h ago while DB had 4/3).
+Fixes (20b3e37): console refetch merges (forkLineage-pinned nodes
+survive until the server copy has them; optimistic messages survive an
+empty read); summary updates are scoped canvas-update-node events (no
+whole-canvas broadcasts from closures); both canvas-data-updated
+listeners merge defensively (nodes <5 min old survive a snapshot that
+lacks them; lineage edges re-synthesize from parentNodeId).
+LESSON (vault, appended to "Lost updates on shared JSON blobs"): every
+setState(wholeObject) fed by a broadcast/snapshot is the client-side
+twin of a full-blob DB write — scoped updates or defensive merges, both
+sides of the wire.
+
