@@ -549,6 +549,30 @@ export class MongoDBService {
       );
       base.nodes = [...normalized, ...orphanEmbedded];
     }
+    // Edges: the edges TABLE is authoritative. The JSON blob copy is written
+    // by several read-modify-write paths and a stale write can erase an edge
+    // added concurrently (fork edges vanished → branches rendered as
+    // disconnected roots). Table rows survive because addEdge mirrors every
+    // edge there and only removeEdge deletes. Keep JSON-only edges (legacy
+    // canvases predating the table) by merging them in.
+    const edgeRows = await pool.query(
+      "select id, from_node, to_node, data from edges where canvas_id=$1",
+      [canvasId]
+    );
+    if (edgeRows.rowCount > 0) {
+      const tableEdges = edgeRows.rows.map((r) => ({
+        ...(r.data || {}),
+        _id: r.id,
+        from: r.from_node,
+        to: r.to_node,
+      }));
+      const tableIds = new Set(tableEdges.map((e: any) => e._id));
+      const jsonEdges = Array.isArray(base.edges) ? base.edges : [];
+      base.edges = [
+        ...tableEdges,
+        ...jsonEdges.filter((e: any) => !tableIds.has(e._id)),
+      ] as any;
+    }
     return base;
   }
 
@@ -795,15 +819,19 @@ export class MongoDBService {
       );
       await Promise.all(insertValues);
     }
-    // Update embedded canvas JSON nodes array minimally
-    const canvasData = canvasRow.rows[0].data;
-    if (!canvasData.nodes.find((n: any) => n._id === node._id)) {
-      canvasData.nodes.push(node);
-      await pool.query(
-        "update canvases set data=$2, updated_at=now() where id=$1",
-        [canvasId, canvasData]
-      );
-    }
+    // Append to the embedded canvas JSON atomically (single statement, no
+    // read-modify-write): a full-blob write from the earlier snapshot lost
+    // concurrent scoped writes (e.g. a racing addEdge's new edge).
+    await pool.query(
+      `update canvases
+          set data = jsonb_set(data, '{nodes}',
+                coalesce(data->'nodes','[]'::jsonb) || $2::jsonb),
+              updated_at = now()
+        where id=$1
+          and not (coalesce(data->'nodes','[]'::jsonb)
+                   @> jsonb_build_array(jsonb_build_object('_id', $3::text)))`,
+      [canvasId, JSON.stringify(node), node._id]
+    );
     return true;
   }
 
@@ -915,21 +943,39 @@ export class MongoDBService {
     return true;
   }
 
+  /** Does the edge exist in the table (authoritative) or legacy JSON copy? */
+  private async edgeExists(
+    canvasId: string,
+    edgeId: string,
+    userEmail?: string
+  ): Promise<boolean> {
+    const owner = await pool.query(
+      userEmail
+        ? "select 1 from canvases where id=$1 and user_email=$2"
+        : "select 1 from canvases where id=$1",
+      userEmail ? [canvasId, userEmail] : [canvasId]
+    );
+    if (!owner.rowCount) return false;
+    const inTable = await pool.query(
+      "select 1 from edges where id=$1 and canvas_id=$2",
+      [edgeId, canvasId]
+    );
+    if (inTable.rowCount) return true;
+    const inJson = await pool.query(
+      `select 1 from canvases where id=$1
+         and coalesce(data->'edges','[]'::jsonb) @> jsonb_build_array(jsonb_build_object('_id', $2::text))`,
+      [canvasId, edgeId]
+    );
+    return Boolean(inJson.rowCount);
+  }
+
   async removeEdge(
     canvasId: string,
     edgeId: string,
     userEmail?: string
   ): Promise<boolean> {
     await ensureInit();
-    const res = await pool.query(
-      userEmail
-        ? `select 1 from canvases where id=$1 and user_email=$3
-             and coalesce(data->'edges','[]'::jsonb) @> jsonb_build_array(jsonb_build_object('_id', $2::text))`
-        : `select 1 from canvases where id=$1
-             and coalesce(data->'edges','[]'::jsonb) @> jsonb_build_array(jsonb_build_object('_id', $2::text))`,
-      userEmail ? [canvasId, edgeId, userEmail] : [canvasId, edgeId]
-    );
-    if (!res.rowCount) return false;
+    if (!(await this.edgeExists(canvasId, edgeId, userEmail))) return false;
     await pool.query(
       `update canvases
           set data = jsonb_set(data, '{edges}',
@@ -954,15 +1000,7 @@ export class MongoDBService {
     userEmail?: string
   ): Promise<boolean> {
     await ensureInit();
-    const res = await pool.query(
-      userEmail
-        ? `select 1 from canvases where id=$1 and user_email=$3
-             and coalesce(data->'edges','[]'::jsonb) @> jsonb_build_array(jsonb_build_object('_id', $2::text))`
-        : `select 1 from canvases where id=$1
-             and coalesce(data->'edges','[]'::jsonb) @> jsonb_build_array(jsonb_build_object('_id', $2::text))`,
-      userEmail ? [canvasId, edgeId, userEmail] : [canvasId, edgeId]
-    );
-    if (!res.rowCount) return false;
+    if (!(await this.edgeExists(canvasId, edgeId, userEmail))) return false;
     await pool.query(
       `update canvases
           set data = jsonb_set(data, '{edges}',
@@ -1012,21 +1050,11 @@ export class MongoDBService {
           [msg.id, nodeId, canvasId, msg.role, msg.content, msg.timestamp]
         );
       }
-      // Patch embedded JSON
-      const cRes = await pool.query("select data from canvases where id=$1", [
-        canvasId,
-      ]);
-      if (cRes.rowCount) {
-        const canvasData = cRes.rows[0].data;
-        const idx = canvasData.nodes.findIndex((n: any) => n._id === nodeId);
-        if (idx !== -1) {
-          canvasData.nodes[idx].chatMessages = messages; // preserve original structure (turns or flat) for UI
-          await pool.query(
-            "update canvases set data=$2, updated_at=now() where id=$1",
-            [canvasId, canvasData]
-          );
-        }
-      }
+      // NO embedded-JSON patch here. It was a read-modify-write of the whole
+      // canvas blob on every message save, and racing it against any scoped
+      // writer (addEdge, addNode) lost the other write — fork edges vanished.
+      // getCanvas hydrates messages from the messages table whenever node
+      // rows exist (they do on this branch), so the blob copy is dead weight.
       return true;
     }
     // fallback legacy path
@@ -1102,13 +1130,17 @@ export class MongoDBService {
             );
           }
         }
-        // Sync Edges
-        await client.query("delete from edges where canvas_id=$1", [canvas._id]);
+        // Sync Edges: UPSERT ONLY. The old delete-then-reinsert dropped any
+        // edge missing from the caller's (possibly stale) snapshot — the same
+        // absence-means-deletion bug as the node delete-loop above. removeEdge
+        // is the only path that deletes edge rows.
         for (const edge of canvas.edges) {
           const edgeData = { ...edge } as any;
           await client.query(
             `insert into edges (id, canvas_id, user_email, from_node, to_node, data, created_at, updated_at)
-             values ($1,$2,$3,$4,$5,$6,now(),now())`,
+             values ($1,$2,$3,$4,$5,$6,now(),now())
+             on conflict (id) do update set from_node=excluded.from_node,
+               to_node=excluded.to_node, data=excluded.data, updated_at=now()`,
             [
               edge._id,
               canvas._id,

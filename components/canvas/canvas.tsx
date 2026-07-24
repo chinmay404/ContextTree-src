@@ -1180,7 +1180,28 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
 
     const isCtxType = (n?: NodeData) =>
       n?.type === "context" || n?.type === "externalContext";
-    const edges: Edge[] = canvas.edges
+    // Lineage is derivable from parentNodeId — the stored edge row is just a
+    // visual record and has been lost to write races before (forks rendered
+    // as disconnected roots). Synthesize any missing parent→child edge so a
+    // fork can never be visually orphaned while its parent pointer exists.
+    const pairKey = (from: string, to: string) => `${from}→${to}`;
+    const storedPairs = new Set(canvas.edges.map((e) => pairKey(e.from, e.to)));
+    const syntheticEdges = visible
+      .filter(
+        (n) =>
+          n.parentNodeId &&
+          visibleIds.has(n.parentNodeId) &&
+          !storedPairs.has(pairKey(n.parentNodeId, n._id)) &&
+          !storedPairs.has(pairKey(n._id, n.parentNodeId))
+      )
+      .map((n) => ({
+        _id: `lineage_${n._id}`,
+        from: n.parentNodeId as string,
+        to: n._id,
+        createdAt: n.createdAt || "",
+        meta: { condition: "Fork" },
+      }));
+    const edges: Edge[] = [...canvas.edges, ...syntheticEdges]
       .filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to))
       .map((e) => {
         // Edges on the selected node's ancestor path render at full lineage

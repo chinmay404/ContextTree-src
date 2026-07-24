@@ -120,6 +120,64 @@ async function main() {
   row = await pool.query("select 1 from nodes where id='n_branch'");
   check("node rows untouched by removeEdge", row.rowCount === 1);
 
+  console.log("\n[4b] edges TABLE is authoritative: blob clobber can't erase an edge");
+  const edge2 = { _id: "e_2", from: "n_root", to: "n_branch", meta: { condition: "Fork" } };
+  await mongoService.addEdge(CANVAS, edge2 as any, USER);
+  // Simulate a racing full-blob writer wiping the JSON edges array.
+  await pool.query(
+    `update canvases set data = jsonb_set(data, '{edges}', '[]'::jsonb) where id=$1`,
+    [CANVAS]
+  );
+  let clobbered = await mongoService.getCanvas(CANVAS, USER);
+  check(
+    "edge survives JSON-blob clobber (read from table)",
+    (clobbered?.edges || []).some((e: any) => e._id === "e_2")
+  );
+  // A stale full-canvas save (snapshot without e_2) must not delete it either.
+  const staleNoEdge = { ...clobbered, edges: [] } as any;
+  await mongoService.updateCanvas(CANVAS, staleNoEdge, USER);
+  clobbered = await mongoService.getCanvas(CANVAS, USER);
+  check(
+    "edge survives stale full-canvas save (upsert-only edge sync)",
+    (clobbered?.edges || []).some((e: any) => e._id === "e_2")
+  );
+  // updateNodeMessages no longer rewrites the blob; edge must survive it too.
+  await mongoService.updateNodeMessages(
+    CANVAS,
+    "n_branch",
+    [{ id: "m_x1", role: "user", content: "hi", timestamp: new Date().toISOString() }],
+    USER
+  );
+  clobbered = await mongoService.getCanvas(CANVAS, USER);
+  check(
+    "edge survives a message save",
+    (clobbered?.edges || []).some((e: any) => e._id === "e_2")
+  );
+  // removeEdge stays the single delete path — gone from table AND reads.
+  await mongoService.removeEdge(CANVAS, "e_2", USER);
+  clobbered = await mongoService.getCanvas(CANVAS, USER);
+  check(
+    "removeEdge still removes for good",
+    !(clobbered?.edges || []).some((e: any) => e._id === "e_2")
+  );
+
+  console.log("\n[4c] addNode embedded append is atomic + idempotent");
+  await mongoService.addNode(
+    CANVAS,
+    { _id: "n_dup", name: "Dup", type: "branch", primary: false, parentNodeId: "n_root", forkedFromMessageId: "m_9", chatMessages: [] } as any,
+    USER
+  );
+  await mongoService.addNode(
+    CANVAS,
+    { _id: "n_dup", name: "Dup", type: "branch", primary: false, parentNodeId: "n_root", forkedFromMessageId: "m_9", chatMessages: [] } as any,
+    USER
+  );
+  const dupCv = await pool.query("select data from canvases where id=$1", [CANVAS]);
+  const dupCount = (dupCv.rows[0].data.nodes || []).filter(
+    (n: any) => n._id === "n_dup"
+  ).length;
+  check("double addNode keeps ONE embedded copy", dupCount === 1, dupCount);
+
   console.log("\n[5] bare backend-created row hydrates as a chat branch");
   await pool.query(
     `insert into nodes (id, canvas_id, user_email, data, parent_node_id, is_primary)

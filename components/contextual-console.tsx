@@ -1159,7 +1159,14 @@ const ContextualConsole = ({
       };
 
       if (canvasData)
-        setCanvasData((p: any) => ({ ...p, nodes: [...(p?.nodes || []), newNode] }));
+        setCanvasData((p: any) => ({
+          ...p,
+          nodes: [...(p?.nodes || []), newNode],
+          // The edge must ride along: this state gets published/replaces the
+          // canvas view wholesale, and an edge-less copy visually orphaned
+          // fresh forks (side-by-side roots with no connecting line).
+          edges: [...(p?.edges || []), edge],
+        }));
       window.dispatchEvent(
         new CustomEvent("canvas-fork-node", {
           detail: { canvasId: selectedCanvas, node: newNode, edge },
