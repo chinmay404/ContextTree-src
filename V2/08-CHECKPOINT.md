@@ -667,3 +667,17 @@ appended to the root-level V2/ copy mid-session; this file (canonical)
 briefly held a double-encoded duplicate from a shell append — cleaned.
 Use the Edit path, not shell Add-Content, for these files.
 
+### 019 addendum — shipped (2026-07-24, ~12:0x)
+
+Owner ran migrate.py + cleanup-test-debris.js on prod. Verified against
+live rows: canvas_1784881725968 root now 4 visible msgs (was 6), GPT
+branch 4 in correct order, buffers at negative positions hidden, ZERO
+@example.com debris rows remain. Commits: backend 049bfa1, frontend
+f651f29, both pushed. Backend deployed via railway up (deployment
+53e49d01 SUCCESS; boot log "Up to date (8 applied)", graph init OK,
+health 200). Known pre-existing log line "Error initializing
+AsyncPostgresSaver: no running event loop" is saver.py's tolerated
+fallback — untouched code, not a regression. Frontend: Vercel deploys
+f651f29 via Git integration (no local token to poll the API; site 200 —
+confirm build in dashboard if paranoid).
+
