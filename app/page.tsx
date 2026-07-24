@@ -259,8 +259,25 @@ export default function ContextTreePage() {
     const onDataUpdated = (e: any) => {
       const updated = e.detail;
       if (!updated?._id) return;
+      // Defensive merge (same rule as the canvas listener): an incoming
+      // snapshot may predate a just-created fork — dropping it here made the
+      // sidebar node/edge counts lie. Recently created nodes survive.
       setCanvases((prev) =>
-        prev.map((c) => (c._id === updated._id ? normalizeCanvas(updated) : c))
+        prev.map((c) => {
+          if (c._id !== updated._id) return c;
+          const next = normalizeCanvas(updated);
+          if (!Array.isArray(c.nodes) || !Array.isArray(next.nodes)) return next;
+          const incoming = new Set(next.nodes.map((n: any) => n._id));
+          const cutoff = Date.now() - 5 * 60 * 1000;
+          const preserved = c.nodes.filter(
+            (n: any) =>
+              !incoming.has(n._id) &&
+              new Date(n.createdAt || 0).getTime() > cutoff
+          );
+          return preserved.length
+            ? { ...next, nodes: [...next.nodes, ...preserved] }
+            : next;
+        })
       );
     };
     window.addEventListener("canvas-fork-node", onFork);

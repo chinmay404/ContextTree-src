@@ -461,11 +461,29 @@ function CanvasViewInner({ canvasId, selectedNode, onNodeSelect }: CanvasViewPro
     return () => window.removeEventListener("canvas-select-node", handler);
   }, [canvas, onNodeSelect]);
 
-  // Whole-canvas refreshes (e.g. running summaries after a message).
+  // Whole-canvas refreshes (context-file edge toggles). Defensive merge:
+  // an incoming snapshot may predate a just-created fork (its node POST was
+  // still in flight when the snapshot was read) — replacing state wholesale
+  // erased the fresh branch from the canvas. Nodes created in the last few
+  // minutes survive; anything older that's absent really was deleted.
   useEffect(() => {
     const handler = (e: any) => {
       const updated = e.detail;
-      if (updated?._id === canvasId) setCanvas(updated);
+      if (updated?._id !== canvasId) return;
+      setCanvas((prev) => {
+        if (!prev?.nodes || !Array.isArray(updated.nodes)) return updated;
+        const incoming = new Set(updated.nodes.map((n: any) => n._id));
+        const cutoff = Date.now() - 5 * 60 * 1000;
+        const preserved = prev.nodes.filter(
+          (n) =>
+            !incoming.has(n._id) &&
+            new Date(n.createdAt || 0).getTime() > cutoff
+        );
+        if (!preserved.length) return updated;
+        // Lineage edges for preserved nodes are synthesized from
+        // parentNodeId at render time, so carrying the nodes is enough.
+        return { ...updated, nodes: [...updated.nodes, ...preserved] };
+      });
     };
     window.addEventListener("canvas-data-updated", handler);
     return () => window.removeEventListener("canvas-data-updated", handler);

@@ -452,7 +452,36 @@ const ContextualConsole = ({
         const data = await res.json();
         if (loadTokenRef.current !== token) return;
 
-        setCanvasData(data.canvas);
+        // Merge, don't replace: this fetch races the fork's node POST
+        // (createFork selects the new node immediately), so a snapshot taken
+        // before that POST commits lacks the fresh branch — blindly storing
+        // it erased the optimistic node, and the stale copy was later
+        // re-broadcast canvas-wide (branch visibly vanished after its first
+        // reply). Forks created this session are pinned via forkLineage
+        // until the server copy includes them.
+        setCanvasData((prev: any) => {
+          const fetched = data.canvas;
+          if (!prev?.nodes || !fetched?.nodes) return fetched;
+          const fetchedIds = new Set(fetched.nodes.map((n: any) => n._id));
+          const missingForks = prev.nodes.filter(
+            (n: any) => !fetchedIds.has(n._id) && forkLineage.current[n._id]
+          );
+          if (!missingForks.length) return fetched;
+          const missingIds = new Set(missingForks.map((n: any) => n._id));
+          const fetchedEdgeIds = new Set(
+            (fetched.edges || []).map((e: any) => e._id)
+          );
+          const missingEdges = (prev.edges || []).filter(
+            (e: any) =>
+              !fetchedEdgeIds.has(e._id) &&
+              (missingIds.has(e.to) || missingIds.has(e.from))
+          );
+          return {
+            ...fetched,
+            nodes: [...fetched.nodes, ...missingForks],
+            edges: [...(fetched.edges || []), ...missingEdges],
+          };
+        });
         const node = data.canvas?.nodes?.find(
           (n: any) => n._id === selectedNode
         );
@@ -467,7 +496,12 @@ const ContextualConsole = ({
             processed = normalizeMessages(local, selectedNode);
         }
         if (loadTokenRef.current !== token) return;
-        setMessages((p) => ({ ...p, [selectedNode]: processed }));
+        // Keep optimistic content when the server copy has nothing yet
+        // (fresh fork whose rows are still being written).
+        setMessages((p) => ({
+          ...p,
+          [selectedNode]: processed.length ? processed : p[selectedNode] || [],
+        }));
       } catch (e: any) {
         if (e?.name === "AbortError") return;
         // Fall back to local cache on network error
@@ -992,15 +1026,23 @@ const ContextualConsole = ({
         );
         publishNodeMessages(nodeId, allMsgs);
 
-        if (summary && canvasData) {
+        if (summary) {
+          // Scoped update only. Broadcasting the whole canvas from this
+          // closure re-published a possibly-stale snapshot and erased
+          // freshly-forked nodes from the canvas and sidebar.
+          setCanvasData((p: any) =>
+            p
+              ? {
+                  ...p,
+                  nodes: p.nodes.map((n: any) =>
+                    n._id === nodeId ? { ...n, runningSummary: summary } : n
+                  ),
+                }
+              : p
+          );
           window.dispatchEvent(
-            new CustomEvent("canvas-data-updated", {
-              detail: {
-                ...canvasData,
-                nodes: canvasData.nodes.map((n: any) =>
-                  n._id === nodeId ? { ...n, runningSummary: summary } : n
-                ),
-              },
+            new CustomEvent("canvas-update-node", {
+              detail: { nodeId, updates: { runningSummary: summary } },
             })
           );
         }
@@ -1040,15 +1082,23 @@ const ContextualConsole = ({
       );
       publishNodeMessages(nodeId, allMsgs);
 
-      if (data.summary && canvasData) {
+      if (data.summary) {
+        // Scoped update only — see the streaming branch above.
+        setCanvasData((p: any) =>
+          p
+            ? {
+                ...p,
+                nodes: p.nodes.map((n: any) =>
+                  n._id === nodeId
+                    ? { ...n, runningSummary: data.summary }
+                    : n
+                ),
+              }
+            : p
+        );
         window.dispatchEvent(
-          new CustomEvent("canvas-data-updated", {
-            detail: {
-              ...canvasData,
-              nodes: canvasData.nodes.map((n: any) =>
-                n._id === nodeId ? { ...n, runningSummary: data.summary } : n
-              ),
-            },
+          new CustomEvent("canvas-update-node", {
+            detail: { nodeId, updates: { runningSummary: data.summary } },
           })
         );
       }
