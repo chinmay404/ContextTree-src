@@ -602,9 +602,17 @@ export class BoardStore {
     void this.patch(id, patch);
   }
 
+  /** A note/doc text edit stamps data.textChangedAt in the same write: that is what "Source changed" compares. */
+  private static stampText<T extends object>(card: Card, data: T): T {
+    if (card.kind !== 'source' || (card.sourceType !== 'note' && card.sourceType !== 'doc') || !('text' in data)) return data;
+    if ((data as { text?: unknown }).text === (card.data as SourceData).text) return data;
+    return { ...data, textChangedAt: new Date().toISOString() };
+  }
+
   private patch(id: Id, patch: CardPatch): Promise<boolean> {
     const card = this.cards.get(id);
     if (!card) return Promise.resolve(false);
+    if (patch.data) patch = { ...patch, data: BoardStore.stampText(card, patch.data) };
     const o = BoardStore.overrideOf(patch);
     const tok = ++this.tokSeq;
     const reads = this.affectsReads(card, patch);
@@ -653,6 +661,7 @@ export class BoardStore {
   patchDataDebounced(id: Id, data: Partial<SourceData> | Partial<ChatData>, ms = 500): void {
     const card = this.cards.get(id);
     if (!card || this.disposed) return;
+    data = BoardStore.stampText(card, data);
     let d = this.debounced.get(id);
     if (!d) {
       d = { data: {}, tok: ++this.tokSeq, timer: setTimeout(() => undefined, 0) };

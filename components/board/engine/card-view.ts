@@ -9,6 +9,7 @@ import { answersInto, chatData, edgesFrom, famOf, isChat, kids, membersOf, nameO
 import { renderMarkdown } from '../lib/markdown';
 import { isRead } from '../lib/reads';
 import { icon } from './icons';
+import type { BoardStore } from '../store';
 import type { EngineContext, ViewNode } from './types';
 
 export const CHAT_W = 320, SRC_W = 212, CHAT_W_S = 260, SRC_W_S = 220;
@@ -18,6 +19,22 @@ export interface CardViewHooks {
   related(): Set<Id> | null;
   bindTips(root: HTMLElement): void;
   focusCompose(id: Id): void; focusNote(id: Id): void; focusDesc(id: Id): void;
+}
+
+/**
+ * "Source changed": a source the chat reads had its content (note/doc text) edited after the chat's last answer,
+ * as the prototype's changedAt. Desc edits, excerpt toggles and desk moves never count.
+ */
+export function chatStale(store: BoardStore, chatId: Id): boolean {
+  const msgs = store.getSnapshot().messages.get(chatId) ?? [];
+  const lastA = [...msgs].reverse().find((x) => x.role === 'assistant');
+  if (!lastA) return false;
+  const at = Date.parse(lastA.createdAt), g = store.graph();
+  return store.readsOf(chatId).items.filter(isRead).some((i) => {
+    const c = g.cards.get(i.cardId);
+    const t = c && !isChat(c) ? sourceData(c).textChangedAt : undefined;
+    return !!t && Date.parse(t) > at;
+  });
 }
 
 const dotsHTML = (g: Graph, list: Card[]): string =>
@@ -114,8 +131,7 @@ export class CardView {
     if (stream?.error) live = `<p class="err">${esc(stream.error)}</p>`;
     else if (stream && stream.text) live = `<div class="ans live">${renderMarkdown(stream.text)}</div>`;
     else if (streaming) live = `<div class="thinking"><i></i>Thinking with ${read.length} source${read.length === 1 ? '' : 's'}…</div><div class="skel"><i style="width:92%"></i><i style="width:76%"></i><i style="width:84%"></i></div>`;
-    const lastA = [...msgs].reverse().find((x) => x.role === 'assistant');
-    const stale = !!lastA && readCards.some((s) => !isChat(s) && s.updatedAt > s.createdAt && s.updatedAt > lastA.createdAt);
+    const stale = chatStale(store, c.id);
     const ap = (a: string, ico: string, label: string) => `<button class="apill" data-act="${a}">${icon(ico)}${label}</button>`;
     const incoming = !!c.parentId || answersInto(g, c.id).length > 0 || wiresInto(g, c.id).length > 0;
     const outgoing = kids(g, c.id).length > 0 || edgesFrom(g, c.id).some((e) => e.kind === 'answer');

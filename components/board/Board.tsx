@@ -1,4 +1,13 @@
 'use client';
+/*
+ * The Pebble board: React renders `.pb-root` and the chrome; BoardEngine owns everything inside `.pb-vp`.
+ *
+ * Notes for later tasks:
+ * - In dev, React StrictMode mounts twice: the first store/engine pair is disposed at once, so the board loads twice
+ *   (two getBoard calls). A test that fails getBoard via MockEngineApi.failNext must queue the failure twice.
+ * - The engine does NOT re-render cards on `ui` changes: it only toggles `selected` / `faded` on selection. A card face
+ *   that depends on other UI state must mark the card dirty itself (ctx.render(id) / ctx.renderAll()).
+ */
 import './pebble.css';
 import './chrome/root.css';
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
@@ -73,7 +82,11 @@ function BoardShell(p: BoardProps): ReactElement {
     return () => document.removeEventListener('keydown', onKey);
   }, [inst]);
 
-  const value = useMemo(() => (inst ? { store: inst.store, engine: inst.engine, props: p } : null), [inst, p]);
+  const { onOpenBoard, onOpenSettings, isModelLocked, topRight } = p;
+  const value = useMemo(
+    () => (inst ? { store: inst.store, engine: inst.engine, props: { api, boardId, onOpenBoard, onOpenSettings, isModelLocked, topRight, testHook } } : null),
+    [inst, api, boardId, onOpenBoard, onOpenSettings, isModelLocked, topRight, testHook],
+  );
 
   return (
     <div ref={rootRef} className={`pb-root ${bricolage.variable}`} data-board={boardId}>

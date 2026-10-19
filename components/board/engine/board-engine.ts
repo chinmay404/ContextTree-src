@@ -2,6 +2,9 @@
  * The board engine: owns the DOM under `.pb-vp`, one view node per visible card, the springs, the camera and the frame
  * loop. Ported from the prototype (addNode 445-454, removeNode 569-573, camera 750-761, select 855-863,
  * tooltips 1192-1193, frame 1199-1209, start 1281). React never renders inside `.pb-vp`.
+ *
+ * Re-renders are driven by store changes (card, messages, stream, reads, edges). A `ui` change only toggles
+ * `selected` / `faded`; a module whose card face depends on other UI state must call ctx.render(id) itself.
  */
 import type { Card, Id } from '../api/types';
 import { ancestors, chatsOf, isChat } from '../lib/graph';
