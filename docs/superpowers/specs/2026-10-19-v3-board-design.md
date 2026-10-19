@@ -1,6 +1,6 @@
 # Context Tree V3 — the board, on the same engine
 
-_Date: 2026-10-19 · Status: draft for owner approval · Branch: `v3` (frontend), `v3` to be created (backend)_
+_Date: 2026-10-19 · Status: approved by owner 2026-10-19 (answers in §12) · Branch: `v3` (frontend), `v3` to be created (backend)_
 
 ## 1. Intent
 
@@ -214,10 +214,11 @@ alter table nodes add column if not exists deleted_at timestamptz;
 alter table edges add column if not exists kind text;            -- lineage|wire|answer
 alter table edges add column if not exists deleted_at timestamptz;
 alter table canvases add column if not exists title text;        -- V2 kept it only inside data
+alter table canvases add column if not exists board_version smallint; -- 3 = V3 board; null = V2 canvas
 create index if not exists nodes_desk_idx on nodes(desk_id);
 create index if not exists nodes_pile_idx on nodes(pile_id);
 create index if not exists edges_to_kind_idx on edges(to_node, kind);
--- backfill kind/source_type/x/y/edges.kind from V2 data (rules in §8)
+-- backfill edges.kind only (rules in §8); V2 canvases are not converted
 ```
 
 Check every column type against `information_schema` in the migration's test (vault: *ADD COLUMN IF NOT
@@ -230,16 +231,18 @@ EXISTS never fixes a wrong column type*).
 | Note | Add menu, N, double-click the board, paste text | `nodes.data.text` | editable text | V3.0 |
 | PDF, DOCX, TXT, MD | drop / Upload | `external_files` + `file_chunks` (page locators exist for PDF) | page strip / text, overview, key passages | V3.0 (engine has it) |
 | Web page | paste or drop a link | fetched with existing `helpers/web_fetch.py` (SSRF guard), text chunked into `file_chunks`, title + summary in `nodes.data` | summary + passages with § locators | V3.0 |
-| YouTube | paste a youtube.com / youtu.be link | transcript with timestamps → chunks with `loc='mm:ss'`; thumbnail from `i.ytimg.com` | thumbnail + timestamped transcript | V3.0 (see open question 3) |
+| YouTube | paste a youtube.com / youtu.be link | title + thumbnail only (YouTube oEmbed, `i.ytimg.com`); `status='soon'`, not read by chats | thumbnail, title, "Reading videos is coming soon" | card V3.0, transcript later |
 | CSV | drop | parsed rows → one chunk per ~40 rows, `loc='rows a–b'`; first 200 rows kept for the table view | table | V3.0 |
-| Image | drop / paste | bytes in `external_files`; a description from a vision-capable model at ingest | large image + "what the AI sees" | open question 3 |
-| Audio / podcast | drop | transcription | waveform + transcript | open question 3 |
+| Image | drop / paste | bytes in `external_files`; `status='soon'`, not read by chats | large image, "Reading images is coming soon" | card V3.0, reading later |
+| Audio / podcast | drop | bytes in `external_files`; `status='soon'`, not read by chats | player, "Reading audio is coming soon" | card V3.0, reading later |
 | Pile | drop a source on another source | pile row + members via `pile_id` | members, each openable | V3.0 |
 
 Every new source gets a short **overview** (one LLM call with `SUMMARY_MODEL_NAME` at ingest) and up to five
 **key passages** (top chunks by similarity to the overview). These fill the card excerpt chips and the viewer.
 
-Ingest status flow: `processing → ready | failed`, on the `nodes.status` column. The board polls
+Ingest status flow: `processing → ready | failed`, on the `nodes.status` column. `soon` marks a card the
+board shows but no chat reads yet (owner, 2026-10-19: video, image and audio reading are "coming soon"). The
+card shows a small "coming soon" pill; the read set skips it like any non-ready source; its desk dot is hollow. The board polls
 `GET /boards/{b}` every 2 s while any card is processing (no websockets in V3.0).
 
 File bytes stay in Postgres `bytea` for V3.0 (no storage migration). **Upload cap drops to 4 MB** in V3.0
@@ -289,24 +292,15 @@ branch sheet with that message as the first question).
 
 ## 8. Existing V2 boards
 
-The default is that every V2 canvas opens in V3 with nothing lost. This is a builder default; the owner can
-override it in open question 1.
-- `entry` / `branch` nodes → `kind='chat'`. `externalContext` / `context` nodes → `kind='source'`, with
-  `source_type` taken from the file type.
-- Positions: V2 rendered with dagre and saved positions only for some boards (`nodes.data.position`). They
-  were dagre's top-to-bottom layout, which does not fit desks, so they are ignored. The first time V3 opens a
-  board with null `x/y`, it lays it out with a tidy tree (root left, branches to the right, as in the
-  prototype seed) and saves the positions.
-- Data that lives only in the `canvases.data` blob is moved into the tables by migration 009, in this order,
-  all `ON CONFLICT DO NOTHING`: the title → `canvases.title`; embedded nodes with no `nodes` row → rows;
-  embedded edges with no `edges` row → rows; embedded `chatMessages` for nodes with no message rows → rows
-  with canonical `<base>_u/_a` ids and positions in array order; a canvas `note` → a note card. The blob
-  itself is left untouched until cleanup (§9 step 5), so nothing is lost if the migration is wrong.
-- Before step 4 of the rollout, the owner runs the read-only counts in `docs/superpowers/specs/v3-migration-counts.sql`
-  on prod, so we know how much of that path real data takes.
-- V2 "Context" edges become `wire` strings. Sources start loose (`desk_id` null) with strings to their chats.
-  Nothing is put on desks automatically.
-- `demoted` nodes stay demoted.
+**V3 starts with fresh boards** (owner, 2026-10-19). V2 canvases are not migrated and V3 does not show them.
+- New column `canvases.board_version smallint`. V3 creates boards with `3`; `GET /boards` lists only those.
+  V2 rows keep `null` and stay in the database untouched, so V2 keeps working until the switch and nothing
+  is deleted.
+- `edges.kind` is still backfilled for existing rows (`'Fork'` → `lineage`, `'Context'` → `wire`, swapping
+  from/to), because the same engine keeps serving V2 and the fork-parent fallback (§5.5) must read lineage
+  edges only.
+- After the switch, V2 boards are unreachable from the UI. Whether to offer an export or a read-only view of
+  them later is a separate decision.
 
 ## 9. Rollout
 
@@ -314,8 +308,11 @@ override it in open question 1.
    fixes, ingestion. Tests run against a local Docker pgvector (`TEST_DATABASE_URL`). V2 keeps working on it.
 2. **Board frontend** (`v3` branch): built against an in-memory mock of the §5.1 API first, so it does not
    wait on step 1. Then switched to the proxy.
-3. **Staging**: a Vercel preview of `v3` plus a staging Railway service, both on a **separate database**
-   (open question 4). Run end-to-end with real models there.
+3. **Staging**: a Vercel preview of `v3` plus a staging Railway service, on the **same production database**
+   (owner, 2026-10-19: keep the DB the same). So: migration 009 must be additive and safe for V2 (it runs when
+   the staging service deploys); the end-to-end run uses the owner's own account and creates `board_version=3`
+   boards that V2 never lists; agents never connect to this database, the owner runs the staging checks.
+   Local development and engine tests use a local Docker pgvector (`TEST_DATABASE_URL`).
 4. **Switch**: the owner deploys backend `v3` first (additive, safe for V2), then turns the flag on in prod.
 5. **Cleanup** (after a week without incidents): delete the V2 Next DB routes and `lib/mongodb.ts`, and stop
    writing `canvases.data` except `viewport`.
@@ -333,7 +330,6 @@ Tests that must exist before the switch:
 - Upload cap 4 MB in V3.0 because of Vercel's body limit (§6).
 - The board engine is a TypeScript port of the prototype, not xyflow (§7).
 - V3 lives in the same Next.js app behind a flag, with per-board URLs `/b/[boardId]` (§7).
-- Old V2 positions are ignored; boards are re-laid out once (§8).
 - No websockets; the board polls while a source is processing (§6).
 - "Click a string → Disconnect pill" stays (DECISIONS row 47, still unconfirmed).
 
@@ -342,16 +338,11 @@ Tests that must exist before the switch:
 - Module boundaries inside `components/board/engine/`, file names, and how the prototype's globals become
   module state.
 - Exact clip lengths and chunk sizes not fixed above.
-- The tidy-tree layout algorithm for V2 boards.
 - Whether `GET /boards/{b}` embeds the last message preview per chat (it should, if cheap).
 
-## 12. Open questions for the owner
+## 12. Owner answers (2026-10-19)
 
-1. **Old boards**: migrate V2 canvases into V3 (default above), or start V3 with fresh boards?
-2. **Release**: V3 replaces V2 at contexttree.tech when it is ready (default), or both run side by side for a
-   while (for example `/b/…` new, `/` old)?
-3. **Paid extras**: image descriptions (vision model), audio transcription (Whisper-class API) and YouTube
-   transcripts (YouTube often blocks cloud servers; a reliable route is a paid transcript API) all cost money
-   or carry risk. In V3.0, or show them as "coming soon"?
-4. **Staging database**: an agent cannot create or read prod resources. Can you create a separate Supabase
-   project or branch for staging (pgvector on) and put its URL in the staging env?
+1. **Old boards**: start fresh. V2 canvases are not migrated (§8).
+2. **Release**: V3 replaces V2 at contexttree.tech when ready.
+3. **Video, image, audio reading**: "coming soon" in V3.0 (§6). Cards can be added; chats don't read them yet.
+4. **Database**: keep the same database; no separate staging database (§9).
