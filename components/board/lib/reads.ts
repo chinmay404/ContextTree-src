@@ -21,7 +21,7 @@ export function computeReads(g: Graph, chatId: Id): Reads {
   const chat = g.cards.get(chatId);
   if (!chat) return { chatId, items: [], totalTokens: 0 };
   const data = chatData(chat);
-  const own: ReadItem[] = [
+  const ownAll: ReadItem[] = [
     ...deskOf(g, chatId).flatMap((c) => expand(g, c, 'desk', chatId)),
     ...wiresInto(g, chatId)
       .map((e) => g.cards.get(e.from))
@@ -32,6 +32,8 @@ export function computeReads(g: Graph, chatId: Id): Reads {
       .filter((c): c is Card => !!c)
       .flatMap((c) => expand(g, c, 'answer', chatId)),
   ];
+  // First occurrence wins (desk, then wire, then answer): a pile member wired into the chat that holds its pile counts once.
+  const own = ownAll.filter((i, n) => ownAll.findIndex((j) => j.cardId === i.cardId) === n);
   const ownIds = new Set(own.map((i) => i.cardId));
   const hide = data.hide ?? [];
   const up: ReadItem[] = chat.parentId && data.inheritDesk !== false

@@ -76,3 +76,13 @@ it('an answer chat with no answer is waiting', () => {
   expect(item.state).toBe('waiting');
   expect(isRead(item)).toBe(false);
 });
+
+it('a pile member wired into the chat that holds its pile is listed and counted once', () => {
+  const b = board();
+  b.edges.push({ id: 'e_dup', boardId: b.id, kind: 'wire', from: 'interviews_1', to: 'second', createdAt: '2026-10-19T12:00:00Z' });
+  const r = computeReads(graphOf(b), 'second');
+  const mine = r.items.filter((i) => i.cardId === 'interviews_1');
+  expect(mine).toHaveLength(1);
+  expect(mine[0].how).toBe('desk');
+  expect(r.totalTokens).toBe(computeReads(g, 'second').totalTokens);
+});
