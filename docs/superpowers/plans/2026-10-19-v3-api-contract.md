@@ -63,6 +63,7 @@ interface SourceData {
   table?: { columns: string[]; rows: string[][] };   // csv, first 200 rows
   error?: string;                       // when status = 'failed'
   off?: boolean;                        // pile member switched off: never read
+  textChangedAt?: string;               // ISO; set by the client whenever it changes note/doc text (drives "Source changed")
 }
 
 interface Card {
