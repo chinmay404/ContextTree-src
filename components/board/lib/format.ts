@@ -1,7 +1,7 @@
-const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
 /** HTML-escape a value before it goes into innerHTML. */
-export const esc = (s: unknown): string => String(s ?? '').replace(/[&<>"]/g, (c) => ESC[c]);
+export const esc = (s: unknown): string => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
 
 /** Clip to n characters with an ellipsis. */
 export const cut = (s: unknown, n: number): string => {

@@ -11,8 +11,9 @@ describe('format', () => {
     expect(sizeOf(2500)).toBe('3 KB');
     expect(sizeOf(2_500_000)).toBe('2.5 MB');
   });
-  it('esc escapes & < > " and tolerates null', () => {
+  it('esc escapes & < > double and single quotes and tolerates null', () => {
     expect(esc('<a href="x">&</a>')).toBe('&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;');
+    expect(esc("it's")).toBe('it&#39;s');
     expect(esc(undefined)).toBe('');
   });
 });
