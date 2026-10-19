@@ -188,7 +188,11 @@ it('polls every 2 s while a card is processing, then stops', async () => {
   const n0 = slow.calls.filter((c) => c.method === 'getBoard').length;
   await vi.advanceTimersByTimeAsync(4100);
   expect(slow.calls.filter((c) => c.method === 'getBoard').length - n0).toBeGreaterThanOrEqual(2);
+  const n41 = slow.calls.filter((c) => c.method === 'getBoard').length;
   await vi.advanceTimersByTimeAsync(4000);               // ingest done at 5 s; the poll at 6 s sees it and stops
+  expect(slow.calls.filter((c) => c.method === 'getBoard').length).toBeGreaterThan(n41);
+  const up = slow.calls.find((c) => c.method === 'uploadFile')!.args[1] as { id: string };
+  expect(st.getSnapshot().cards.get(up.id)!.status).toBe('ready');
   const n = slow.calls.filter((c) => c.method === 'getBoard').length;
   await vi.advanceTimersByTimeAsync(6000);
   expect(slow.calls.filter((c) => c.method === 'getBoard').length).toBe(n);
@@ -203,4 +207,91 @@ it('patchDataDebounced shows each keystroke and sends one patch', async () => {
   await new Promise((r) => setTimeout(r, 150));
   expect(calls('updateCard')).toHaveLength(1);
   expect(data('note').text).toBe('ab');
+});
+
+
+class GatedApi extends MockEngineApi {
+  gates: Record<string, (() => void)[]> = {};
+  hold = new Set<string>();
+  private wait(m: string): Promise<void> {
+    if (!this.hold.has(m)) return Promise.resolve();
+    this.hold.delete(m);
+    return new Promise((r) => { (this.gates[m] ??= []).push(r); });
+  }
+  release(m: string) { this.gates[m]?.shift()?.(); }
+  async createCard(...a: Parameters<MockEngineApi['createCard']>) { await this.wait('createCard'); return super.createCard(...a); }
+  async updateCard(...a: Parameters<MockEngineApi['updateCard']>) { await this.wait('updateCard'); return super.updateCard(...a); }
+}
+
+describe('write ordering', () => {
+  let g: GatedApi;
+  let gs: BoardStore;
+  beforeEach(async () => {
+    g = new GatedApi({ ingestMs: 10, firstTokenMs: 0, wordMs: 0 });
+    gs = new BoardStore(g, 'b_seed', { readsDebounceMs: 5, toastMs: 5000 });
+    await gs.load();
+  });
+  afterEach(() => gs.dispose());
+  const sent = (n: string) => g.calls.filter((c) => c.method === n);
+
+  it('member patches wait for the pile create', async () => {
+    g.hold.add('createCard');
+    const pile = gs.makePile('web', 'pdf', [0, 0]);
+    await flush();
+    expect(sent('createCard')).toHaveLength(0);
+    expect(sent('updateCard')).toHaveLength(0);
+    g.release('createCard');
+    await flush();
+    expect(sent('createCard')).toHaveLength(1);
+    expect(sent('updateCard')).toHaveLength(2);
+    expect((await g.getBoard('b_seed')).cards.find((c) => c.id === 'pdf')!.pileId).toBe(pile);
+  });
+
+  it('a failed pile create drops the member patches quietly with one toast', async () => {
+    g.failNext('createCard', new ApiError(400, 'invalid'));
+    gs.makePile('web', 'pdf', [0, 0]);
+    await flush();
+    expect(sent('updateCard')).toHaveLength(0);
+    expect(gs.getSnapshot().cards.get('pdf')).toMatchObject({ pileId: null, deskId: 'main' });
+    expect(gs.getSnapshot().cards.get('web')).toMatchObject({ pileId: null, deskId: 'second' });
+    expect(gs.getSnapshot().ui.toast!.id).toBe(1);
+  });
+
+  it('patches to one card are sent one at a time, latest wins', async () => {
+    g.hold.add('updateCard');
+    gs.patchCard('pdf', { data: { desc: 'one' } });
+    gs.patchCard('pdf', { data: { desc: 'two' } });
+    await flush();
+    expect(sent('updateCard')).toHaveLength(0);
+    g.release('updateCard');
+    await flush();
+    expect(sent('updateCard')).toHaveLength(2);
+    const srv = (await g.getBoard('b_seed')).cards.find((c) => c.id === 'pdf')!.data as SourceData;
+    expect(srv.desc).toBe('two');
+  });
+
+  it('setDesk keeps the wire until the desk patch succeeds, and restores it on failure', async () => {
+    g.failNext('updateCard', new ApiError(400, 'invalid'));
+    gs.setDesk('csv', 'deep');
+    expect(gs.getSnapshot().edges.has('e_seed_csv_deep')).toBe(false);
+    await flush();
+    expect(gs.getSnapshot().edges.has('e_seed_csv_deep')).toBe(true);
+    expect(sent('deleteEdge')).toHaveLength(0);
+    expect(gs.getSnapshot().cards.get('csv')!.deskId).toBeNull();
+  });
+
+  it('retry with no kept file or link does nothing', async () => {
+    await g.createCard('b_seed', { id: 'bad', kind: 'source', sourceType: 'pdf', x: 0, y: 0, status: 'failed', data: { title: 'x' } });
+    await gs.refresh();
+    gs.retrySource('bad');   // no kept file or url: nothing happens
+    expect(sent('uploadFile')).toHaveLength(0);
+  });
+
+  it('an older snapshot cannot overwrite a newer title', async () => {
+    const stale = await g.getBoard('b_seed');
+    gs.renameBoard('New title');
+    await flush();
+    gs.applyBoard(stale);
+    expect(gs.getSnapshot().board!.title).toBe('New title');
+  });
 });

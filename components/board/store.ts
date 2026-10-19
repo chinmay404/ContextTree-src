@@ -93,6 +93,7 @@ export class BoardStore {
   private readonly hiddenCards = new Set<Id>();
   private readonly hiddenEdges = new Set<Id>();
   private readonly pendingCards = new Map<Id, Promise<boolean>>();
+  private readonly patchQueue = new Map<Id, Promise<boolean>>();
   private readonly pendingEdges = new Map<Id, Promise<boolean>>();
   private readonly files = new Map<Id, File>();
   private readonly links = new Map<Id, { url: string; desc?: string }>();
@@ -197,13 +198,18 @@ export class BoardStore {
     return p;
   }
 
-  /** Per-entity reconcile of a fetched snapshot. Never a whole replace. */
+  /**
+   * Per-entity reconcile of a fetched snapshot. Never a whole replace.
+   * Snapshots must be applied in the order they were fetched (refresh() allows one in flight at a time).
+   */
   applyBoard(board: Board, initial = false): void {
     const changes: StoreChange[] = [];
     if (!this.board) {
       this.board = { id: board.id, title: board.title, viewport: board.viewport };
       changes.push({ kind: 'board' });
-    } else if (this.pendingTitle === null && this.board.title !== board.title) {
+    } else if (this.pendingTitle !== null) {
+      if (board.title === this.pendingTitle) this.pendingTitle = null;   // the server echoed our rename
+    } else if (this.board.title !== board.title) {
       this.board = { ...this.board, title: board.title };
       changes.push({ kind: 'board' });
     }
@@ -246,8 +252,9 @@ export class BoardStore {
   private ingest(s: Card): Card {
     const known = this.lastServer.get(s.id);
     let src = s;
-    if (known && s.updatedAt < known.updatedAt) {
-      src = known;
+    if (known && Date.parse(s.updatedAt) < Date.parse(known.updatedAt)) {
+      const loc = this.cards.get(s.id);
+      src = loc ? { ...known, x: loc.x, y: loc.y } : known;
     } else {
       this.lastServer.set(s.id, s);
       const loc = this.cards.get(s.id);
@@ -378,6 +385,7 @@ export class BoardStore {
   // ---- toasts ----
 
   toast(text: string, undoCardId: Id | null = null): void {
+    if (this.disposed) return;
     const id = ++this.toastSeq;
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.ui = { ...this.ui, toast: { id, text, undoCardId } };
@@ -399,7 +407,14 @@ export class BoardStore {
     return this.pendingCards.get(id) ?? null;
   }
 
-  private create(card: Card, run: () => Promise<Card>, ctx: ErrCtx, after?: Promise<unknown>): void {
+  /** Resolves false when any of these cards has a create in flight that fails. */
+  private async created(ids: (Id | null | undefined)[]): Promise<boolean> {
+    const waits = ids.map((i) => (i ? this.pendingCards.get(i) : undefined)).filter((x): x is Promise<boolean> => !!x);
+    if (!waits.length) return true;
+    return (await Promise.all(waits)).every(Boolean);
+  }
+
+  private create(card: Card, run: () => Promise<Card>, ctx: ErrCtx, after?: Promise<boolean>): void {
     const id = card.id;
     this.cards.set(id, card);
     this.pinnedCards.add(id);
@@ -408,7 +423,9 @@ export class BoardStore {
     const p = (async (): Promise<boolean> => {
       let res: Card;
       try {
-        if (after) await after.catch(() => undefined);
+        const deps = this.created([card.deskId, card.pileId, card.parentId]);
+        if (after && !(await after.catch(() => false))) throw new Silent();
+        if (!(await deps)) throw new Silent();
         res = await this.track(run());
       } catch (e) {
         const before = this.affected(id);
@@ -417,7 +434,7 @@ export class BoardStore {
         this.files.delete(id); this.links.delete(id); this.intros.delete(id);
         this.markStale(before);
         this.emit([{ kind: 'card-removed', id }]);
-        this.toast(errorText(e, ctx));
+        if (!(e instanceof Silent)) this.toast(errorText(e, ctx));
         return false;
       }
       const local = this.cards.get(id);
@@ -442,7 +459,7 @@ export class BoardStore {
     return this.makeNote(i);
   }
 
-  private makeNote(i: { x: number; y: number; deskId: Id | null; text?: string; meta?: string }, after?: Promise<unknown>): Id {
+  private makeNote(i: { x: number; y: number; deskId: Id | null; text?: string; meta?: string }, after?: Promise<boolean>): Id {
     const data: SourceData = { text: i.text ?? '', meta: i.meta ?? 'Note · You' };
     const card = this.blankSource('note', i.x, i.y, i.deskId, 'ready', data);
     this.create(card, () => this.api.createCard(this.boardId, {
@@ -455,7 +472,7 @@ export class BoardStore {
     return this.makeFile(file, at, deskId, intro, desc);
   }
 
-  private makeFile(file: File, at: [number, number], deskId: Id | null, intro: 'single' | 'multi', desc?: string, after?: Promise<unknown>): Id {
+  private makeFile(file: File, at: [number, number], deskId: Id | null, intro: 'single' | 'multi', desc?: string, after?: Promise<boolean>): Id {
     const ext = (file.name.split('.').pop() ?? '').toLowerCase();
     const [type, status] = (file.name.includes('.') ? FILE_TYPES[ext] : undefined) ?? ['doc', 'processing'];
     const data: SourceData = {
@@ -473,7 +490,7 @@ export class BoardStore {
     return this.makeLink(url, at, deskId);
   }
 
-  private makeLink(url: string, at: [number, number], deskId: Id | null, desc?: string, after?: Promise<unknown>): Id | null {
+  private makeLink(url: string, at: [number, number], deskId: Id | null, desc?: string, after?: Promise<boolean>): Id | null {
     let u: URL;
     try { u = new URL(url.trim()); } catch { return null; }
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
@@ -577,12 +594,20 @@ export class BoardStore {
     return this.send(id, patch, tok);
   }
 
-  private async send(id: Id, patch: CardPatch, tok: number): Promise<boolean> {
+  /** One PATCH at a time per card, so the server can never apply an older value last. */
+  private send(id: Id, patch: CardPatch, tok: number): Promise<boolean> {
+    const prev = this.patchQueue.get(id);
+    const p = prev ? prev.then(() => this.sendNow(id, patch, tok)) : this.sendNow(id, patch, tok);
+    this.patchQueue.set(id, p);
+    void p.then(() => { if (this.patchQueue.get(id) === p) this.patchQueue.delete(id); });
+    return p;
+  }
+
+  private async sendNow(id: Id, patch: CardPatch, tok: number): Promise<boolean> {
     let res: Card | null = null;
     let err: unknown = null;
     try {
-      const wait = this.pendingCards.get(id);
-      if (wait && !(await wait)) throw new Silent();
+      if (!(await this.created([id, patch.deskId, patch.pileId]))) throw new Silent();
       res = await this.track(this.api.updateCard(this.boardId, id, patch));
     } catch (e) {
       err = e;
@@ -606,7 +631,7 @@ export class BoardStore {
 
   patchDataDebounced(id: Id, data: Partial<SourceData> | Partial<ChatData>, ms = 500): void {
     const card = this.cards.get(id);
-    if (!card) return;
+    if (!card || this.disposed) return;
     let d = this.debounced.get(id);
     if (!d) {
       d = { data: {}, tok: ++this.tokSeq, timer: setTimeout(() => undefined, 0) };
@@ -619,7 +644,7 @@ export class BoardStore {
     if (entry) entry.o = { fields: {}, data: { ...d.data } };
     this.put(mergeCard(card, { fields: {}, data: { ...data } }));
     clearTimeout(d.timer);
-    d.timer = setTimeout(() => this.flushDebounced(id), ms);
+    d.timer = setTimeout(() => { if (!this.disposed) this.flushDebounced(id); }, ms);
   }
 
   private flushDebounced(id: Id): void {
@@ -633,9 +658,9 @@ export class BoardStore {
   }
 
   setDesk(id: Id, deskId: Id | null): void {
-    this.patchCard(id, { deskId });
+    const ok = this.patch(id, { deskId });
     if (deskId) {
-      for (const e of [...this.edges.values()]) if (e.kind === 'wire' && e.from === id && e.to === deskId) this.disconnect(e.id);
+      for (const e of [...this.edges.values()]) if (e.kind === 'wire' && e.from === id && e.to === deskId) this.disconnect(e.id, ok);
     }
   }
 
@@ -698,7 +723,8 @@ export class BoardStore {
     return id;
   }
 
-  disconnect(edgeId: Id): void {
+  /** `after`: the delete is sent only once this resolves true; on false the edge comes back without a toast. */
+  disconnect(edgeId: Id, after?: Promise<boolean>): void {
     const e = this.edges.get(edgeId);
     if (!e || e.kind === 'lineage') return;
     this.edges.delete(edgeId);
@@ -710,6 +736,7 @@ export class BoardStore {
       try {
         const wait = this.pendingEdges.get(edgeId);
         if (wait && !(await wait)) return;
+        if (after && !(await after)) throw new Silent();
         await this.track(this.api.deleteEdge(this.boardId, edgeId));
       } catch (err) {
         if (err instanceof ApiError && err.status === 404) return;
@@ -717,7 +744,7 @@ export class BoardStore {
         this.edges.set(edgeId, e);
         this.markStale(this.chatAndDesc(e.to));
         this.emit([{ kind: 'edge', id: edgeId }]);
-        this.toast(errorText(err, 'other'));
+        if (!(err instanceof Silent)) this.toast(errorText(err, 'other'));
       }
     })();
   }
@@ -735,7 +762,7 @@ export class BoardStore {
   makePile(srcId: Id, targetId: Id, at: [number, number]): Id {
     const src = this.cards.get(srcId);
     const target = this.cards.get(targetId);
-    if (!src || !target) return targetId;
+    if (!src || !target || src.sourceType === 'pile') return targetId;   // pile into pile: Task 12
     if (target.sourceType === 'pile') {
       void this.patch(srcId, { pileId: targetId, deskId: null });
       this.moveWires(srcId, targetId);
@@ -768,7 +795,8 @@ export class BoardStore {
       moved.push({ id: m.id, x, y });
       ops.push(this.patch(m.id, { pileId: null, deskId: pile.deskId }));
     });
-    for (const e of wires) for (const m of members) this.connect('wire', m.id, e.to);
+    const added: Id[] = [];
+    for (const e of wires) for (const m of members) { const id = this.connect('wire', m.id, e.to); if (id) added.push(id); }
 
     const gone = [...this.edges.values()].filter((e) => e.kind !== 'lineage' && (e.from === pileId || e.to === pileId));
     const before = this.affected(pileId);
@@ -780,19 +808,33 @@ export class BoardStore {
     this.emit([...gone.map((e): StoreChange => ({ kind: 'edge-removed', id: e.id })), { kind: 'card-removed', id: pileId }]);
     this.savePositions(moved);
 
+    const restore = (err: unknown, okIds: Id[]): void => {
+      this.hiddenCards.delete(pileId);
+      this.cards.set(pileId, pile);
+      for (const e of gone) { this.hiddenEdges.delete(e.id); this.edges.set(e.id, e); }
+      for (const id of added) this.disconnect(id);
+      for (const id of okIds) {
+        const m = members.find((x) => x.id === id)!;
+        void this.patch(id, { pileId, deskId: m.deskId });
+      }
+      this.savePositions(members.map((m) => ({ id: m.id, x: m.x, y: m.y })));
+      this.markStale(this.affected(pileId));
+      this.emit([{ kind: 'card', id: pileId, fields: ['created'] }, ...gone.map((e): StoreChange => ({ kind: 'edge', id: e.id }))]);
+      if (!(err instanceof Silent)) this.toast(errorText(err, 'other'));
+    };
     void (async () => {
+      const results = await Promise.all(ops);
+      if (!results.every(Boolean)) {
+        restore(new Silent(), members.filter((_, i) => results[i]).map((m) => m.id));
+        return;
+      }
       try {
-        await Promise.all(ops);
         const wait = this.pendingCards.get(pileId);
         if (wait) await wait;
         await this.track(this.api.deleteCard(this.boardId, pileId));
       } catch (err) {
         if (err instanceof ApiError && err.status === 404) return;
-        this.hiddenCards.delete(pileId);
-        this.cards.set(pileId, pile);
-        for (const e of gone) { this.hiddenEdges.delete(e.id); this.edges.set(e.id, e); }
-        this.emit([{ kind: 'card', id: pileId, fields: ['created'] }, ...gone.map((e): StoreChange => ({ kind: 'edge', id: e.id }))]);
-        this.toast(errorText(err, 'other'));
+        restore(err, members.map((m) => m.id));
       }
     })();
     return members.map((m) => m.id);
@@ -840,7 +882,6 @@ export class BoardStore {
           this.emit([{ kind: 'board' }]);
         }
         this.toast(errorText(e, 'other'));
-      } finally {
         if (this.pendingTitle === title) this.pendingTitle = null;
       }
     })();
