@@ -3,7 +3,7 @@
 _Updated: 2026-10-19 by Claude (with owner) · at commit d47aef3_
 
 ## Where we are
-Starting V3 ("the board"): design rounds for the canvas and its cards, frontend-only with mock data. See `DIRECTION.md`.
+V3 ("the board") design rounds. Current prototype: `docs/design/board-prototype-v3.html` (standalone HTML, open in a browser; mock data, no backend). Branch `v3`. See `DIRECTION.md` and the 2026-10-19 rows in `DECISIONS.md`.
 
 ## What moved
 - 2026-10-19: owner returned after a ~3-month pause; decided to continue; competitor study of Slashspace done; `context/` created.
@@ -24,7 +24,7 @@ Starting V3 ("the board"): design rounds for the canvas and its cards, frontend-
 - Nothing for design work. Prod DB reads from an agent session need the owner's permission.
 
 ## Next step
-Design round R1: a mock-data board on a branch (e.g. `v3-design-lab`) showing the board surface and the chat card in its states; screenshot for owner review.
+Owner reviews prototype v3. Open question: the orange signal + orange ports are the last thing that reads as Slashspace — keep or change hue/shape?
 
 ## Run it locally
 ```
