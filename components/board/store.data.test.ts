@@ -287,6 +287,52 @@ describe('write ordering', () => {
     expect(sent('uploadFile')).toHaveLength(0);
   });
 
+  it('retrySource skips the create when the delete failed', async () => {
+    const id = gs.createSourceFromFile(new File(['%PDF'], 'a.pdf'), [0, 0], null, 'single');
+    await flush();
+    g.failNext('deleteCard', new ApiError(500, 'boom'));
+    gs.retrySource(id);
+    await flush();
+    expect(sent('uploadFile')).toHaveLength(1);
+    expect(gs.getSnapshot().cards.has(id)).toBe(true);
+  });
+
+  it('replaceWithNote skips the create when the delete failed', async () => {
+    g.failNext('deleteCard', new ApiError(500, 'boom'));
+    gs.replaceWithNote('pdf');
+    await flush();
+    expect(sent('createCard')).toHaveLength(0);
+    expect(gs.getSnapshot().cards.has('pdf')).toBe(true);
+    expect([...gs.getSnapshot().cards.values()].filter((c) => c.sourceType === 'note')).toHaveLength(1);
+  });
+
+  it('unstack with a failing member patch restores the pile and its members', async () => {
+    g.failNext('updateCard', new ApiError(400, 'invalid'));
+    gs.unstack('interviews', [[0, 0], [10, 10], [20, 20], [30, 30]]);
+    await flush();
+    expect(gs.getSnapshot().cards.has('interviews')).toBe(true);
+    for (const id of ['interviews_1', 'interviews_2', 'interviews_3', 'interviews_4']) {
+      expect(gs.getSnapshot().cards.get(id)).toMatchObject({ pileId: 'interviews' });
+    }
+    expect(sent('deleteCard')).toHaveLength(0);
+    const srv = await g.getBoard('b_seed');
+    expect(srv.cards.some((c) => c.id === 'interviews')).toBe(true);
+    expect(srv.cards.filter((c) => c.pileId === 'interviews')).toHaveLength(4);
+  });
+
+  it('the rename latch lets go after the rename settles', async () => {
+    const other = await g.getBoard('b_seed');
+    vi.useFakeTimers();
+    gs.renameBoard('Mine');
+    await vi.advanceTimersByTimeAsync(50);
+    gs.applyBoard({ ...other, title: 'Server normalised' });
+    expect(gs.getSnapshot().board!.title).toBe('Mine');         // still guarding against stale snapshots
+    await vi.advanceTimersByTimeAsync(6000);
+    gs.applyBoard({ ...other, title: 'Server normalised' });
+    expect(gs.getSnapshot().board!.title).toBe('Server normalised');
+    vi.useRealTimers();
+  });
+
   it('an older snapshot cannot overwrite a newer title', async () => {
     const stale = await g.getBoard('b_seed');
     gs.renameBoard('New title');

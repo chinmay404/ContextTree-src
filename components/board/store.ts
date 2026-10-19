@@ -1,11 +1,11 @@
 import { ApiError } from './api/types';
 import type {
-  AdvancedSettings, Board, Card, CardPatch, Carry, ChatData, Edge, EngineApi, Id, Message, Reads, SourceData, SourceType, Status,
+  AdvancedSettings, Board, Card, CardPatch, Carry, ChatData, ChatRequest, Edge, EngineApi, Id, Message, Reads, SourceData, SourceType, Status,
 } from './api/types';
-import { newId } from './api/ids';
-import { TYPE_INFO } from './lib/catalog';
+import { genMessageId, newId } from './api/ids';
+import { DEFAULT_ADVANCED, DEFAULT_MODEL_KEY, MODELS, PERSONAS, TYPE_INFO } from './lib/catalog';
 import { sizeOf } from './lib/format';
-import { canPlug, chatsOf, descendants, membersOf, type Graph } from './lib/graph';
+import { canPlug, chatsOf, descendants, membersOf, nameOf, qNum, type Graph } from './lib/graph';
 import { deepEqual, mergeCard, reconcile, changedFields, type CardOverride } from './lib/merge';
 import { computeReads } from './lib/reads';
 
@@ -39,6 +39,11 @@ export interface StoreOptions { pollMs?: number; readsDebounceMs?: number; toast
 
 // ---- helpers ----
 
+/** True while any overlay is up: Tasks 9, 16 and 19 use it for "no overlay open". */
+export function overlayOpen(ui: UiState): boolean {
+  return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.linkPop || ui.confirm || ui.compare);
+}
+
 const initialUi = (): UiState => ({
   selected: null, dialog: null, viewer: null, focus: null, menu: null, linkPop: null, confirm: null, toast: null,
   compare: null, dropping: false, webSearch: {},
@@ -67,6 +72,7 @@ function errorText(err: unknown, ctx: ErrCtx): string {
 class Silent extends Error {}
 
 const CHANGE_KEYS = ['data', 'status', 'deskId', 'pileId', 'parentId', 'created', 'messageCount', 'lastMessage'];
+const TITLE_LATCH_MS = 5000;
 const nowIso = () => new Date().toISOString();
 
 // ---- the store ----
@@ -112,6 +118,10 @@ export class BoardStore {
   private tokSeq = 0;
   private inflight = 0;
   private pendingTitle: string | null = null;
+  private titleTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly streams = new Map<Id, { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null }>();
+  private readonly aborts = new Map<Id, AbortController>();
+  private readonly deleted = new Map<Id, { ids: Id[]; edges: Edge[]; done: Promise<boolean> }>();
   private disposed = false;
 
   private readonly changeListeners = new Set<(c: StoreChange[]) => void>();
@@ -130,7 +140,7 @@ export class BoardStore {
       this.snap = {
         version: this.version, status: this.status, error: this.error, board: this.board,
         cards: new Map(this.cards), edges: new Map(this.edges), messages: new Map(this.messages),
-        streaming: new Map(), ui: this.ui,
+        streaming: new Map(this.streams), ui: this.ui,
       };
     }
     return this.snap;
@@ -591,11 +601,11 @@ export class BoardStore {
     this.addOverride(id, tok, o);
     this.put(mergeCard(card, o));
     if (reads) this.markStale(new Set([...before, ...this.affected(id)]));
-    return this.send(id, patch, tok);
+    return this.sendPatch(id, patch, tok);
   }
 
   /** One PATCH at a time per card, so the server can never apply an older value last. */
-  private send(id: Id, patch: CardPatch, tok: number): Promise<boolean> {
+  private sendPatch(id: Id, patch: CardPatch, tok: number): Promise<boolean> {
     const prev = this.patchQueue.get(id);
     const p = prev ? prev.then(() => this.sendNow(id, patch, tok)) : this.sendNow(id, patch, tok);
     this.patchQueue.set(id, p);
@@ -654,7 +664,7 @@ export class BoardStore {
     this.debounced.delete(id);
     const card = this.cards.get(id);
     if (card && this.affectsReads(card, { data: d.data })) this.markStale(this.affected(id));
-    void this.send(id, { data: d.data as CardPatch['data'] }, d.tok);
+    void this.sendPatch(id, { data: d.data as CardPatch['data'] }, d.tok);
   }
 
   setDesk(id: Id, deskId: Id | null): void {
@@ -876,6 +886,12 @@ export class BoardStore {
     void (async () => {
       try {
         await this.track(this.api.updateBoard(this.boardId, { title }));
+        // The latch only guards against stale snapshots while the rename settles; after that the server's title wins.
+        if (this.titleTimer) clearTimeout(this.titleTimer);
+        this.titleTimer = setTimeout(() => {
+          this.titleTimer = null;
+          if (this.pendingTitle === title) this.pendingTitle = null;
+        }, TITLE_LATCH_MS);
       } catch (e) {
         if (this.board && this.pendingTitle === title) {
           this.board = { ...this.board, title: prev };
@@ -885,6 +901,348 @@ export class BoardStore {
         if (this.pendingTitle === title) this.pendingTitle = null;
       }
     })();
+  }
+
+  // ---- UI state ----
+
+  private setUi(p: Partial<UiState>): void {
+    this.ui = { ...this.ui, ...p };
+    this.emit([{ kind: 'ui' }]);
+  }
+
+  select(id: Id | null): void { if (this.ui.selected !== id) this.setUi({ selected: id }); }
+  openViewer(cardId: Id, memberId: Id | null = null, anchor: DOMRect | null = null): void { this.setUi({ viewer: { cardId, memberId, anchor } }); }
+  closeViewer(): void { if (this.ui.viewer) this.setUi({ viewer: null }); }
+  openFocus(id: Id): void { this.setUi({ focus: id }); }
+  closeFocus(): void { if (this.ui.focus) this.setUi({ focus: null }); }
+  openCompare(id: Id): void { this.setUi({ compare: id }); }
+  closeCompare(): void { if (this.ui.compare) this.setUi({ compare: null }); }
+  openMenu(m: UiState['menu']): void { this.setUi({ menu: m, linkPop: null }); }
+  closeMenu(): void { if (this.ui.menu) this.setUi({ menu: null }); }
+  openLinkPop(p: UiState['linkPop']): void { this.setUi({ linkPop: p, menu: null }); }
+  closeLinkPop(): void { if (this.ui.linkPop) this.setUi({ linkPop: null }); }
+  setDropping(on: boolean): void { if (this.ui.dropping !== on) this.setUi({ dropping: on }); }
+  setWebSearch(chatId: Id, on: boolean): void { this.setUi({ webSearch: { ...this.ui.webSearch, [chatId]: on } }); }
+
+  // ---- branch dialog ----
+
+  openDialog(o: {
+    mode: DialogState['mode']; parentId?: Id | null; chatId?: Id | null; at?: [number, number] | null;
+    anchor?: DOMRect | null; first?: string; forkedFromMessageId?: Id | null;
+  }): void {
+    const chat = o.mode === 'edit' && o.chatId ? this.cards.get(o.chatId) : undefined;
+    if (o.mode === 'edit' && chat?.kind !== 'chat') return;
+    const parentId = o.mode === 'root' ? null : o.mode === 'edit' ? chat!.parentId : o.parentId ?? null;
+    const parent = parentId ? this.cards.get(parentId) : undefined;
+    const base = chat ? (chat.data as ChatData) : null;
+    const draft: BranchDraft = {
+      name: base ? base.name : o.mode === 'root' ? 'A new question' : 'New question, same desk',
+      first: o.first ?? '',
+      model: base?.model ?? (parent?.kind === 'chat' ? (parent.data as ChatData).model : MODELS[DEFAULT_MODEL_KEY].engineId),
+      persona: base?.persona ?? 'none',
+      personaText: base?.systemPrompt ?? '',
+      inheritDesk: base?.inheritDesk ?? true,
+      carry: base?.carry ?? 'summary',
+      advanced: { ...(base?.advanced ?? DEFAULT_ADVANCED) },
+      advOpen: false,
+    };
+    this.setUi({
+      menu: null, linkPop: null,
+      dialog: {
+        mode: o.mode, parentId, chatId: chat ? chat.id : null, at: o.at ?? null, anchor: o.anchor ?? null,
+        forkedFromMessageId: o.forkedFromMessageId ?? null, draft,
+      },
+    });
+  }
+
+  setDraft(patch: Partial<BranchDraft>): void {
+    const d = this.ui.dialog;
+    if (!d) return;
+    this.setUi({ dialog: { ...d, draft: { ...d.draft, ...patch } } });
+  }
+
+  closeDialog(): void { if (this.ui.dialog) this.setUi({ dialog: null }); }
+
+  /** edit: patches the chat; branch/root: creates a chat at `spot`. Returns the chat's id, or null with no dialog open. */
+  confirmDialog(spot: [number, number] | null): Id | null {
+    const d = this.ui.dialog;
+    if (!d) return null;
+    const dr = d.draft;
+    const text = dr.personaText.trim();
+    const preset = (PERSONAS as Record<string, { text: string }>)[dr.persona];
+    const persona = preset && preset.text === text ? dr.persona : text ? 'custom' : 'none';
+    const fields = {
+      name: dr.name.trim() || 'Untitled', model: dr.model, persona, systemPrompt: text,
+      inheritDesk: dr.inheritDesk, carry: dr.carry, advanced: { ...dr.advanced },
+    };
+    this.setUi({ dialog: null });
+    if (d.mode === 'edit') {
+      if (!d.chatId || !this.cards.has(d.chatId)) return null;
+      this.patchCard(d.chatId, { data: fields });
+      return d.chatId;
+    }
+    const parent = d.parentId ? this.cards.get(d.parentId) : undefined;
+    const at: [number, number] = spot ?? d.at ?? (parent ? [parent.x + 528, parent.y + 160] : [0, 0]);
+    const lastMsg = d.parentId ? this.messages.get(d.parentId)?.at(-1)?.id ?? null : null;
+    return this.createChat({
+      parentId: d.parentId, x: at[0], y: at[1], forkedFromMessageId: d.forkedFromMessageId ?? lastMsg,
+      data: { ...fields, hide: [] },
+    });
+  }
+
+  createChat(i: { parentId: Id | null; x: number; y: number; data: ChatData; forkedFromMessageId: Id | null }): Id {
+    const t = nowIso();
+    const card: Card = {
+      id: newId('c'), boardId: this.boardId, kind: 'chat', sourceType: null, x: i.x, y: i.y, deskId: null, pileId: null,
+      parentId: i.parentId, forkedFromMessageId: i.forkedFromMessageId, status: null, data: i.data,
+      createdAt: t, updatedAt: t, messageCount: 0, lastMessage: null,
+    };
+    this.messages.set(card.id, []);
+    this.create(card, () => this.api.createCard(this.boardId, {
+      id: card.id, kind: 'chat', x: i.x, y: i.y, parentId: i.parentId, forkedFromMessageId: i.forkedFromMessageId, data: i.data,
+    }), 'other');
+    return card.id;
+  }
+
+  // ---- compare / promote ----
+
+  setDemoted(id: Id, demoted: boolean): void {
+    if (this.cards.get(id)?.kind === 'chat') this.patchCard(id, { data: { demoted } });
+  }
+
+  promote(winnerId: Id): void {
+    const w = this.cards.get(winnerId);
+    if (!w || w.kind !== 'chat') return;
+    const sibs = w.parentId ? chatsOf(this.graph()).filter((c) => c.parentId === w.parentId && c.id !== winnerId) : [];
+    const label = qNum(this.graph(), winnerId);
+    this.setDemoted(winnerId, false);
+    for (const c of sibs) this.setDemoted(c.id, true);
+    this.ui = { ...this.ui, compare: null };
+    this.toast(sibs.length ? `Kept ${label} · ${sibs.length} ${sibs.length === 1 ? 'sibling' : 'siblings'} folded` : `Kept ${label}`);
+  }
+
+  // ---- send / stream ----
+
+  /** True while an answer is on its way; a kept error does not count, so the composer is free again. */
+  isStreaming(chatId: Id): boolean {
+    const s = this.streams.get(chatId);
+    return !!s && !s.error;
+  }
+
+  async send(chatId: Id, text: string): Promise<void> {
+    const msg = text.trim();
+    const card = this.cards.get(chatId);
+    if (!msg || !card || card.kind !== 'chat' || this.isStreaming(chatId) || this.disposed) return;
+    const messageId = genMessageId();
+    const ctrl = new AbortController();
+    const list = this.messages.get(chatId) ?? [];
+    const fresh = list.length === 0 && !(card.messageCount ?? 0);
+    this.messages.set(chatId, [...list, { id: `${messageId}_u`, role: 'user', content: msg, position: list.length, createdAt: nowIso() }]);
+    this.streams.set(chatId, { messageId, text: '', web: null, error: null });
+    this.aborts.set(chatId, ctrl);
+    this.emit([{ kind: 'messages', chatId }, { kind: 'stream', chatId }]);
+
+    const mine = () => this.streams.get(chatId)?.messageId === messageId;
+    const update = (p: Partial<{ text: string; web: { title?: string; url?: string }[] | null; error: string | null }>) => {
+      const cur = this.streams.get(chatId);
+      if (!cur || cur.messageId !== messageId || ctrl.signal.aborted) return;
+      this.streams.set(chatId, { ...cur, ...p });
+      this.emit([{ kind: 'stream', chatId }]);
+    };
+    const finish = () => { if (this.aborts.get(chatId) === ctrl) this.aborts.delete(chatId); };
+    const syncMessages = async (): Promise<Message[] | null> => {
+      try { return await this.api.getMessages(this.boardId, chatId); } catch { return null; }
+    };
+
+    let errored = false;
+    try {
+      if (!(await this.created([chatId]))) throw new Silent();
+      const cur = this.cards.get(chatId);
+      if (!cur || ctrl.signal.aborted) throw new Silent();
+      const d = cur.data as ChatData;
+      const a = d.advanced;
+      const req: ChatRequest = {
+        boardId: this.boardId, chatId, messageId, message: msg, model: d.model, systemPrompt: d.systemPrompt,
+        temperature: a.temperature, maxOutputTokens: a.maxOutputTokens,
+        lastKMessages: a.historyMode === 'lastK' ? a.lastKMessages : null,
+        externalContextTopK: a.externalContextTopK, webSearch: !!this.ui.webSearch[chatId],
+        ...(fresh && cur.parentId ? { parentNodeId: cur.parentId } : {}),
+        ...(fresh && cur.forkedFromMessageId ? { forkedFromMessageId: cur.forkedFromMessageId } : {}),
+      };
+      await this.api.streamChat(req, (e) => {
+        if (e.type === 'delta') update({ text: (this.streams.get(chatId)?.text ?? '') + e.text });
+        else if (e.type === 'web') update({ web: e.results });
+        else if (e.type === 'error') { errored = true; update({ error: e.message }); }
+      }, ctrl.signal);
+    } catch (e) {
+      finish();
+      if (!mine()) return;
+      if (e instanceof Silent || ctrl.signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) {
+        this.streams.delete(chatId);
+        this.emit([{ kind: 'stream', chatId }]);
+        if (!(e instanceof Silent) && this.cards.has(chatId)) {
+          const msgs = await syncMessages();   // the server keeps the question of a stopped stream
+          if (msgs && !this.disposed && this.cards.has(chatId) && !this.streams.has(chatId)) {
+            this.messages.set(chatId, msgs);
+            this.emit([{ kind: 'messages', chatId }]);
+          }
+        }
+        return;
+      }
+      update({ error: e instanceof Error && e.message ? e.message : 'Something went wrong. Try again.' });
+      return;
+    }
+    finish();
+    if (!mine() || errored || this.disposed) return;
+
+    const cur = this.streams.get(chatId)!;
+    const known = this.messages.get(chatId) ?? [];
+    const msgs = (await syncMessages())
+      ?? [...known, { id: `${messageId}_a`, role: 'assistant' as const, content: cur.text, position: known.length, createdAt: nowIso() }];
+    if (!mine()) return;
+    this.streams.delete(chatId);
+    if (!this.cards.has(chatId)) { this.emit([{ kind: 'stream', chatId }]); return; }
+    this.messages.set(chatId, msgs);
+    this.emit([{ kind: 'messages', chatId }, { kind: 'stream', chatId }]);
+    const c = this.cards.get(chatId);
+    const last = msgs.at(-1);
+    if (c) this.put({ ...c, messageCount: msgs.length, lastMessage: last ? { role: last.role, content: last.content.slice(0, 280) } : null });
+  }
+
+  stop(chatId: Id): void {
+    const a = this.aborts.get(chatId);
+    if (a) { a.abort(); return; }
+    if (this.streams.delete(chatId)) this.emit([{ kind: 'stream', chatId }]);   // clears a kept error
+  }
+
+  // ---- delete and undo ----
+
+  requestDelete(id: Id): void {
+    const card = this.cards.get(id);
+    if (!card) return;
+    if (card.kind !== 'chat') { void this.deleteSet(id); return; }
+    const g = this.graph();
+    const n = descendants(g, id).length;
+    const q = qNum(g, id);
+    const text = n
+      ? `Delete ${q} and its ${n} ${n === 1 ? 'branch' : 'branches'}? Sources on their desks stay on the board.`
+      : `Delete ${q}? Sources on its desk stay on the board.`;
+    this.setUi({ confirm: { cardId: id, text } });
+  }
+
+  cancelConfirm(): void { if (this.ui.confirm) this.setUi({ confirm: null }); }
+
+  async confirmDelete(): Promise<void> {
+    const c = this.ui.confirm;
+    if (!c) return;
+    this.ui = { ...this.ui, confirm: null };
+    await this.deleteSet(c.cardId);
+  }
+
+  /** Hides the set at once, then tells the server; a failed delete brings everything back. */
+  private deleteSet(root: Id): Promise<boolean> {
+    const card = this.cards.get(root);
+    if (!card) return Promise.resolve(false);
+    const g = this.graph();
+    const isChat = card.kind === 'chat';
+    const kidsOf = isChat ? descendants(g, root) : [];
+    const label = isChat ? qNum(g, root) : nameOf(g, card);
+    const text = !isChat ? `Removed ${label}`
+      : kidsOf.length ? `Deleted ${label} and ${kidsOf.length} ${kidsOf.length === 1 ? 'branch' : 'branches'}` : `Deleted ${label}`;
+    const ids = [root, ...kidsOf.map((c) => c.id)];
+    const gone = new Set(ids);
+    const originals = ids.map((i) => this.cards.get(i)!);
+    const edges = [...this.edges.values()].filter((e) => gone.has(e.from) || gone.has(e.to));
+    const detach = [...this.cards.values()].filter((c) => c.kind === 'source' && !gone.has(c.id)
+      && ((c.deskId && gone.has(c.deskId)) || (c.pileId && gone.has(c.pileId))));
+    const before = new Set<Id>();
+    for (const i of ids) for (const a of this.affected(i)) before.add(a);
+
+    // Sources on a deleted desk and members of a deleted pile stay on the board, detached.
+    const toks: { id: Id; tok: number }[] = [];
+    for (const c of detach) {
+      const fields: CardOverride['fields'] = {};
+      if (c.deskId && gone.has(c.deskId)) fields.deskId = null;
+      if (c.pileId && gone.has(c.pileId)) fields.pileId = null;
+      const o: CardOverride = { fields, data: {} };
+      const tok = ++this.tokSeq;
+      this.addOverride(c.id, tok, o);
+      toks.push({ id: c.id, tok });
+      this.put(mergeCard(c, o));
+    }
+    const streamed: Id[] = [];
+    for (const i of ids) {
+      this.cards.delete(i); this.pinnedCards.delete(i); this.hiddenCards.add(i);
+      this.aborts.get(i)?.abort();
+      if (this.streams.delete(i)) streamed.push(i);
+    }
+    for (const e of edges) { this.edges.delete(e.id); this.pinnedEdges.delete(e.id); this.hiddenEdges.add(e.id); }
+    const ui: Partial<UiState> = {};
+    if (this.ui.selected && gone.has(this.ui.selected)) ui.selected = null;
+    if (this.ui.viewer && gone.has(this.ui.viewer.cardId)) ui.viewer = null;
+    if (this.ui.focus && gone.has(this.ui.focus)) ui.focus = null;
+    if (this.ui.compare && gone.has(this.ui.compare)) ui.compare = null;
+    this.ui = { ...this.ui, ...ui };
+    this.markStale(before);
+    this.emit([
+      ...edges.map((e): StoreChange => ({ kind: 'edge-removed', id: e.id })),
+      ...ids.map((id): StoreChange => ({ kind: 'card-removed', id })),
+      ...streamed.map((chatId): StoreChange => ({ kind: 'stream', chatId })),
+      { kind: 'ui' },
+    ]);
+    this.toast(text, root);
+
+    const dropOverrides = () => { for (const t of toks) this.dropOverride(t.id, t.tok); };
+    const done = (async (): Promise<boolean> => {
+      try {
+        if (!(await this.created(ids))) { dropOverrides(); return false; }
+        await this.track(this.api.deleteCard(this.boardId, root));
+        dropOverrides();
+        return true;
+      } catch (e) {
+        dropOverrides();
+        if (e instanceof ApiError && e.status === 404) return true;
+        for (const c of originals) { this.hiddenCards.delete(c.id); this.cards.set(c.id, c); }
+        for (const ed of edges) { this.hiddenEdges.delete(ed.id); this.edges.set(ed.id, ed); }
+        for (const c of detach) {
+          const cur = this.cards.get(c.id);
+          if (cur) this.cards.set(c.id, { ...cur, deskId: c.deskId, pileId: c.pileId });
+        }
+        this.deleted.delete(root);
+        const after = new Set<Id>(before);
+        for (const i of ids) for (const a of this.affected(i)) after.add(a);
+        this.markStale(after);
+        this.emit([
+          ...ids.map((id): StoreChange => ({ kind: 'card', id, fields: ['created'] })),
+          ...detach.map((c): StoreChange => ({ kind: 'card', id: c.id, fields: ['deskId', 'pileId'] })),
+          ...edges.map((ed): StoreChange => ({ kind: 'edge', id: ed.id })),
+        ]);
+        this.toast(errorText(e, 'other'));
+        return false;
+      }
+    })();
+    this.deleted.set(root, { ids, edges, done });
+    return done;
+  }
+
+  async undo(): Promise<void> {
+    const id = this.ui.toast?.undoCardId;
+    if (!id) return;
+    this.dismissToast();
+    const rec = this.deleted.get(id);
+    if (!rec || !(await rec.done)) return;
+    let restored: Id[];
+    try {
+      restored = await this.track(this.api.restoreCard(this.boardId, id));
+    } catch (e) {
+      this.toast(errorText(e, 'other'));
+      return;
+    }
+    this.deleted.delete(id);
+    for (const x of [...restored, ...rec.ids]) this.hiddenCards.delete(x);
+    for (const e of rec.edges) this.hiddenEdges.delete(e.id);
+    if (this.refreshing) await this.refreshing;   // an older in-flight snapshot would not show the restore
+    await this.refresh();
   }
 
   // ---- small queries ----
@@ -907,7 +1265,9 @@ export class BoardStore {
     if (this.pollTimer) clearInterval(this.pollTimer);
     if (this.readsTimer) clearTimeout(this.readsTimer);
     if (this.toastTimer) clearTimeout(this.toastTimer);
-    this.pollTimer = this.readsTimer = this.toastTimer = null;
+    if (this.titleTimer) clearTimeout(this.titleTimer);
+    for (const a of this.aborts.values()) a.abort();
+    this.pollTimer = this.readsTimer = this.toastTimer = this.titleTimer = null;
     this.changeListeners.clear();
     this.subscribers.clear();
   }
