@@ -47,6 +47,8 @@ const clip = (s: string) => s.slice(0, 280);
 const abortError = () => new DOMException('AbortError', 'AbortError');
 
 export class MockEngineApi implements EngineApi {
+  /** Lets e2e tests build an ApiError from the page: `new window.__mock.constructor.ApiError(409, 'not_allowed')`. */
+  static ApiError = ApiError;
   readonly calls: { method: string; args: unknown[] }[] = [];
 
   private readonly o: Required<Omit<MockOptions, 'foreignIds'>>;

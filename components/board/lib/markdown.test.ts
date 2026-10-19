@@ -16,6 +16,14 @@ describe('renderMarkdown', () => {
   it('strips think blocks before escaping (multi-line, multiple)', () => {
     expect(renderMarkdown('<think>a\nb</think>One<think>c</think> two')).toBe('<p>One two</p>');
   });
+  it('strips think tags in any case', () => {
+    expect(renderMarkdown('<THINK>a</Think>Hi')).toBe('<p>Hi</p>');
+    expect(renderMarkdown('Hi<Think>half')).toBe('<p>Hi</p>');
+  });
+  it('drops everything before a lone closing think tag', () => {
+    expect(renderMarkdown('reasoning here\n</think>\nAnswer')).toBe('<p>Answer</p>');
+    expect(renderMarkdown('x</THINK>Answer')).toBe('<p>Answer</p>');
+  });
   it('only http(s) and mailto links', () => {
     expect(renderMarkdown('[x](javascript:alert(1))')).not.toContain('href');
     expect(renderMarkdown('[x](data:text/html,hi)')).not.toContain('href');

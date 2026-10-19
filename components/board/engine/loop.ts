@@ -5,6 +5,7 @@ export class FrameLoop {
   private last: number | null = null;
   private handle: number | null = null;
   private running = false;
+  private gen = 0;   // each start() owns one rAF chain; an older chain stops at its next frame
   constructor(
     private readonly sys: SpringSystem,
     private readonly onFrame: (dt: number, now: number) => void,
@@ -15,7 +16,12 @@ export class FrameLoop {
     if (this.running) return;
     this.running = true;
     this.last = null;
-    const run = (now: number) => { this.tick(now); if (this.running) this.handle = this.raf(run); };
+    const g = ++this.gen;
+    const run = (now: number) => {
+      if (g !== this.gen) return;
+      this.tick(now);
+      if (this.running && g === this.gen) this.handle = this.raf(run);
+    };
     this.handle = this.raf(run);
   }
   stop(): void {

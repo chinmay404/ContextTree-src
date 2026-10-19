@@ -1,6 +1,6 @@
 import { esc } from '../lib/format';
 import {
-  createElement, Play, AudioLines, FileText, FilePenLine, StickyNote, Globe, Sheet, Image, Layers, MessageCircle,
+  Play, AudioLines, FileText, FilePenLine, StickyNote, Globe, Sheet, Image, Layers, MessageCircle,
   GitFork, Plus, Minus, Maximize, Link, Maximize2, ChevronsDownUp, ChevronsUpDown, Ungroup, X, TriangleAlert,
   Unlink, GitBranch, ArrowUp, SlidersHorizontal, ChevronDown, ArrowLeft, Copy, Upload, Ellipsis, GlobeLock,
   Trash2, RotateCcw,
@@ -22,13 +22,21 @@ export const ICON_NAMES: string[] = Object.keys(NODES);
 
 const cache = new Map<string, string>();
 
+type IconNode = [tag: string, attrs: Record<string, string | number>, children?: IconNode[]];
+
+/** lucide's createElement builds DOM nodes; serializing the node tree to a string keeps icon() safe on the server. */
+function serialize([tag, attrs, children = []]: IconNode): string {
+  const a = Object.entries(attrs).map(([k, v]) => ` ${k}="${esc(v)}"`).join('');
+  return `<${tag}${a}>${children.map(serialize).join('')}</${tag}>`;
+}
+
 /** Serialized <svg> for a name (cached). Throws on a name the board doesn't use. */
-function svgOf(name: string): string {
+export function iconSvg(name: string): string {
   const hit = cache.get(name);
   if (hit) return hit;
   const node = (NODES as Record<string, unknown>)[name];
   if (!node) throw new Error(`Unknown icon: ${name}`);
-  const svg = createElement(node as Parameters<typeof createElement>[0]).outerHTML;
+  const svg = serialize(node as IconNode);
   cache.set(name, svg);
   return svg;
 }
@@ -37,5 +45,5 @@ function svgOf(name: string): string {
 
 export function icon(name: string, color?: string, size?: number): string {
   const style = `${color ? `--c:${esc(color)};` : ''}${size ? `--s:${size}px;` : ''}`;
-  return `<span class="i"${style ? ` style="${style}"` : ''}>${svgOf(name)}</span>`;
+  return `<span class="i"${style ? ` style="${style}"` : ''}>${iconSvg(name)}</span>`;
 }

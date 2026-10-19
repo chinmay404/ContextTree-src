@@ -1,0 +1,18 @@
+/* Board root additions (pebble.css is frozen after Task 6). Scoped under .pb-root like everything else. */
+
+/* Light only: native controls (scrollbars, selects, range inputs) must not follow a dark OS or V2 theme. */
+.pb-root { color-scheme: light; line-height: normal; }
+
+/* V2's global CSS (Tailwind preflight + app/globals.css) would otherwise restyle board elements:
+   preflight strips list markers and heading sizes, and globals.css recolours every scrollbar. */
+.pb-root .ans ol { list-style: decimal; }
+.pb-root .ans ul { list-style: disc; margin: 0; padding-left: 16px; }
+.pb-root * { scrollbar-color: var(--pb-edge) transparent; }
+.pb-root *::-webkit-scrollbar-thumb { background: var(--pb-edge); }
+
+/* Load failure: a centred box on the canvas. */
+.pb-root .pb-error { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30; border-radius: 28px; padding: 24px 28px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+.pb-root .pb-error p { margin: 0; font-size: 17px; font-weight: 600; }
+
+/* Host-supplied controls (e.g. the account menu) in the top-right corner. */
+.pb-root .pb-topright { position: fixed; top: 16px; right: 16px; z-index: 20; display: flex; align-items: center; gap: 8px; }

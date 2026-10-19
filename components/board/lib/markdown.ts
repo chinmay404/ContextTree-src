@@ -1,7 +1,13 @@
 import { esc } from './format';
 
-/** Reasoning blocks never reach the page: whole blocks first, then an unterminated tail. */
-const stripThink = (s: string): string => s.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/<think>[\s\S]*$/, '');
+/**
+ * Reasoning blocks never reach the page (any case): whole blocks first, then everything before a lone closing tag
+ * (a stream that started mid-thought), then an unterminated opening tail.
+ */
+const stripThink = (s: string): string => s
+  .replace(/<think>[\s\S]*?<\/think>/gi, '')
+  .replace(/^[\s\S]*<\/think>/i, '')
+  .replace(/<think>[\s\S]*$/i, '');
 
 const emph = (s: string): string =>
   s.replace(/\*\*(?=\S)(.+?)\*\*/g, '<b>$1</b>').replace(/\*(?=\S)(.+?)\*/g, '<i>$1</i>');
