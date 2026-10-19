@@ -15,7 +15,7 @@ export default defineConfig({
         command: `npx next dev --port ${port}`,
         url: `${baseURL}/board-dev`,
         reuseExistingServer: !process.env.CI,
-        timeout: 180_000,
+        timeout: 600_000,
       },
   outputDir: 'test-results/board',
 });

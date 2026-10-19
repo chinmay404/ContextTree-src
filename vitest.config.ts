@@ -13,5 +13,6 @@ export default defineConfig({
     ],
   },
   resolve: { alias: { '@': path.resolve(__dirname) } },
+  // NODE_ENV stubbed to development would otherwise select the dev JSX runtime (jsxDEV), absent under vitest.
   esbuild: { jsx: 'automatic', jsxDev: false },
 });
