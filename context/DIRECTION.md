@@ -42,7 +42,7 @@ the token-saving context engine, compare/promote.
 2. See how the answer changes if one more thing is added.
 3. Backtrack: see how the thinking went and where each question came from.
 
-The Desks prototype maps these to Branch, What if, and the Trail.
+The Desks prototype maps these to Branch (same desk, new question; or add a source on the new desk and compare), hand-strung sources, and the Trail + focus-view timeline. ("What if" as a separate mode was tried and removed, 2026-10-19.)
 
 ## V3 goals
 

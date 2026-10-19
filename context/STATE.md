@@ -7,6 +7,7 @@ V3 ("the board") design rounds. Chosen: Desks workflow in the Pebble visual syst
 
 ## What moved
 - 2026-10-19: owner returned after a ~3-month pause; decided to continue; competitor study of Slashspace done; `context/` created.
+- 2026-10-19 (latest round): What if removed; knob-drag strings for connecting and branching; double-click viewers per source type; Add button + right-click menu replace the rail; scroll cycles piles; swinging strings back.
 - Last code change: fresh forks no longer vanish after first reply (20b3e37, 2026-07-24).
 
 ## What's live
