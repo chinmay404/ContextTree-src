@@ -6,6 +6,7 @@ describe('Spring', () => {
   it('cfg sets k and c from period and damping', () => { const s = new Spring(0).cfg(.5, .8); expect(s.k).toBeCloseTo((2 * Math.PI / .5) ** 2); expect(s.c).toBeCloseTo(4 * Math.PI * .8 / .5); });
   it('snaps instead of animating when reduced motion is on', () => { const s = new Spring(0, .4, 1, true).to(50); expect(s.x).toBe(50); s.kick(10); expect(s.v).toBe(0); });
   it('to(t, vel) sets velocity; kick adds', () => { const s = new Spring(0).to(10, 5); expect(s.v).toBe(5); s.kick(2); expect(s.v).toBe(7); });
+  it('mid-flight to() keeps x and v', () => { const s = new Spring(0).to(100); for (let i = 0; i < 20; i++) s.step(1 / 240); const x = s.x, v = s.v; s.to(50); expect(s.x).toBe(x); expect(s.v).toBe(v); expect(s.t).toBe(50); });
   it('is not settled while moving', () => { expect(new Spring(0).to(100).settled()).toBe(false); });
 });
 describe('SpringSystem', () => {

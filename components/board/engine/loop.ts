@@ -4,6 +4,7 @@ import type { SpringSystem } from './spring';
 export class FrameLoop {
   private last: number | null = null;
   private handle: number | null = null;
+  private running = false;
   constructor(
     private readonly sys: SpringSystem,
     private readonly onFrame: (dt: number, now: number) => void,
@@ -11,12 +12,14 @@ export class FrameLoop {
     private readonly caf: (h: number) => void = h => cancelAnimationFrame(h),
   ) {}
   start(): void {
-    if (this.handle !== null) return;
+    if (this.running) return;
+    this.running = true;
     this.last = null;
-    const run = (now: number) => { this.tick(now); this.handle = this.raf(run); };
+    const run = (now: number) => { this.tick(now); if (this.running) this.handle = this.raf(run); };
     this.handle = this.raf(run);
   }
   stop(): void {
+    this.running = false;
     if (this.handle !== null) this.caf(this.handle);
     this.handle = null;
   }

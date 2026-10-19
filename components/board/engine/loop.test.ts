@@ -8,10 +8,28 @@ describe('FrameLoop', () => {
     l.tick(0); l.tick(1000);
     expect(dts[1]).toBe(.05);
     expect(step).toHaveBeenCalledTimes(1 + 12);
+    for (const c of step.mock.calls.slice(1)) expect(c[0]).toBeCloseTo(.05 / 12, 10);
   });
   it('start schedules via raf and stop cancels', () => {
     let cb: FrameRequestCallback | null = null; const caf = vi.fn(); const frames: number[] = [];
     const l = new FrameLoop(new SpringSystem(false), (_d, n) => frames.push(n), c => { cb = c; return 7; }, caf);
     l.start(); cb!(16); expect(frames).toEqual([16]); l.stop(); expect(caf).toHaveBeenCalledWith(7);
+  });
+  it('stop() inside onFrame is not overridden by rescheduling', () => {
+    const raf = vi.fn((_c: FrameRequestCallback) => 1); let l!: FrameLoop;
+    l = new FrameLoop(new SpringSystem(false), () => l.stop(), raf, () => {});
+    l.start(); const cb = raf.mock.calls[0][0]; cb(16);
+    expect(raf).toHaveBeenCalledTimes(1);
+  });
+  it('start() after stop() restarts with dt 0', () => {
+    let cb!: FrameRequestCallback; const dts: number[] = [];
+    const l = new FrameLoop(new SpringSystem(false), dt => dts.push(dt), c => { cb = c; return 1; }, () => {});
+    l.start(); cb(0); cb(100); l.stop(); l.start(); cb(5000);
+    expect(dts).toEqual([0, .05, 0]);
+  });
+  it('start() twice schedules once', () => {
+    const raf = vi.fn((_c: FrameRequestCallback) => 1);
+    const l = new FrameLoop(new SpringSystem(false), () => {}, raf, () => {});
+    l.start(); l.start(); expect(raf).toHaveBeenCalledTimes(1);
   });
 });
