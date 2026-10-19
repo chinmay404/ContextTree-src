@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Context Tree · Pebble desks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   Pebble — soft colour-coded objects, thick tubes
+   ========================================================= */
+:root {
+  --bg: #EFE9F7; --ink: #2B2340; --ink-2: #6E6585; --ink-3: #9A91B0; --lilac: #D8CFEA; --tube: #CFC6E6; --trail: #8F7FC0;
+  --white: #FFFFFF; --bubble: #F3EEFA; --flow: #E2B52A; --flow-2: #C79A10; --snap: #FF6B8A; --snap-bg: #FFE1E8; --amber: #E8A93A;
+  --media: #FFD9C7; --media-ink: #E0673A; --docs: #FFF0B3; --docs-ink: #C79A10; --web: #C9ECFF; --web-ink: #2A86C4;
+  --data: #D4F2C9; --data-ink: #3F9A2E; --note: #FFE4EF; --note-ink: #D1467E; --stack: #E6DBFF; --stack-ink: #7A52D6;
+  --sh: 0 12px 30px -14px rgba(43,35,64,.33); --sh-lift: 0 30px 56px -18px rgba(43,35,64,.48);
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-variant-numeric: tabular-nums; color: var(--ink); -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--trail); outline-offset: 3px; }
+.i { width: var(--s, 16px); height: var(--s, 16px); flex: none; display: inline-block; background: var(--c, currentColor); -webkit-mask: var(--u) center / contain no-repeat; mask: var(--u) center / contain no-repeat; }
+@keyframes caret { 50% { opacity: 0; } }
+@keyframes bubbles { to { stroke-dashoffset: -28; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shim { to { background-position: -200% 0; } }
+
+#vp { position: fixed; inset: 0; touch-action: none; }
+#vp.panning { cursor: grabbing; }
+#world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+#tubes { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; z-index: 1; pointer-events: none; }
+#tubes .tube { fill: none; stroke: var(--tube); stroke-width: 7; stroke-linecap: round; transition: stroke 220ms ease, opacity 220ms ease; }
+#tubes .tube.trail { stroke: var(--trail); }
+#tubes .tube.flow { stroke: var(--flow); }
+#tubes .tube.faded { opacity: .35; }
+#tubes .bub { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-dasharray: .1 14; opacity: 0; transition: opacity 200ms ease; }
+#tubes .bub.flow { opacity: 1; animation: bubbles .7s linear infinite; }
+#tubes .knob { fill: #fff; stroke: var(--tube); stroke-width: 5; transition: stroke 220ms ease; }
+#tubes .knob.trail { stroke: var(--trail); } #tubes .knob.flow { stroke: var(--flow); fill: var(--ink); }
+
+/* ---------- desks: soft blobs ---------- */
+.desk { position: absolute; left: 0; top: 0; z-index: 0; border-radius: 44px; background: rgba(255,255,255,.42); pointer-events: none; transition: background-color 200ms ease, box-shadow 200ms ease, opacity 220ms ease; }
+.desk.hot { background: rgba(255,255,255,.7); box-shadow: 0 0 0 4px var(--flow); }
+.desk.faded { opacity: .4; }
+.desk .tab { position: absolute; left: 22px; top: -15px; height: 30px; padding: 0 12px 0 6px; border-radius: 15px; background: #fff; box-shadow: 0 6px 16px -8px rgba(43,35,64,.35); display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.desk .tab .q { height: 20px; padding: 0 7px; border-radius: 10px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; }
+.desk .tab .dots { display: inline-flex; }
+.desk .tab .dots i { width: 12px; height: 12px; border-radius: 6px; border: 2px solid #fff; margin-left: -5px; }
+.desk .tab .dots i:first-child { margin-left: 0; }
+.desk .tab .up { color: var(--ink-2); font-weight: 500; }
+.desk.hot .tab { box-shadow: 0 0 0 3px var(--flow); }
+
+/* ---------- nodes ---------- */
+.card { position: absolute; left: 0; top: 0; will-change: transform; z-index: 2; user-select: none; -webkit-user-select: none; transition: opacity 220ms ease; transform-origin: 50% 40%; }
+.card.faded { opacity: .4; }
+.face { position: relative; border-radius: 28px; box-shadow: var(--sh); cursor: grab; transition: box-shadow 240ms var(--ease-out); }
+.card.lift .face { box-shadow: var(--sh-lift); cursor: grabbing; }
+.card.selected .face { box-shadow: 0 0 0 3px var(--ink), var(--sh-lift); }
+.card.reading .face { box-shadow: 0 0 0 4px var(--flow), var(--sh); }
+.card.drop .face { box-shadow: 0 0 0 4px var(--stack-ink), var(--sh-lift); }
+.sheet { position: absolute; inset: 0; border-radius: 28px; }
+.sheet.a { transform: rotate(-5deg) translate(4px, 6px); filter: brightness(.94); }
+.sheet.b { transform: rotate(3.5deg) translate(-2px, 3px); filter: brightness(.97); }
+
+/* family colours */
+.f-media { --fc: var(--media); --fi: var(--media-ink); } .f-docs { --fc: var(--docs); --fi: var(--docs-ink); } .f-web { --fc: var(--web); --fi: var(--web-ink); }
+.f-data { --fc: var(--data); --fi: var(--data-ink); } .f-note { --fc: var(--note); --fi: var(--note-ink); } .f-stack { --fc: var(--stack); --fi: var(--stack-ink); }
+.src .face, .src .sheet { background: var(--fc); }
+.src.failed .face { background: var(--snap-bg); --fi: var(--snap); }
+
+/* M: pebble with a miniature */
+.m { display: flex; gap: 14px; align-items: center; padding: 14px 18px 14px 14px; min-height: 104px; }
+.well { width: 64px; height: 64px; flex: none; border-radius: 22px; background: #fff; position: relative; display: grid; place-items: center; }
+.txt { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.meta { font-size: 12px; font-weight: 600; color: var(--fi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ttl { font-size: 16px; font-weight: 600; line-height: 1.15; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ex { display: flex; gap: 6px; align-items: baseline; font-size: 13px; line-height: 1.35; color: color-mix(in srgb, var(--ink) 72%, var(--fi)); }
+.ex span:last-child { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.loc { flex: none; height: 19px; padding: 0 7px; border-radius: 10px; background: #fff; color: var(--fi); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; }
+.retry { height: 24px; padding: 0 10px; border-radius: 12px; background: var(--snap); color: #fff; font-size: 12px; font-weight: 700; }
+.badge { position: absolute; right: -5px; top: -5px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; z-index: 2; }
+.shimmer { background: linear-gradient(90deg, rgba(255,255,255,.35) 0%, rgba(255,255,255,.8) 50%, rgba(255,255,255,.35) 100%); background-size: 200% 100%; animation: shim 1.2s linear infinite; border-radius: 8px; height: 12px; }
+
+/* miniatures */
+.mv { width: 44px; height: 32px; border-radius: 9px; background: var(--fc); display: grid; place-items: center; position: relative; }
+.mv::after { content: ''; position: absolute; left: 5px; right: 5px; bottom: 4px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--fi) 62%, rgba(255,255,255,.7) 62%); }
+.wave { display: flex; gap: 2px; align-items: center; height: 36px; }
+.wave i { width: 3px; border-radius: 2px; background: var(--fc); } .wave i.on { background: var(--fi); }
+.pg { width: 34px; height: 44px; border-radius: 4px; background: var(--fc); padding: 6px 5px; display: flex; flex-direction: column; gap: 3px; }
+.pg b { height: 4px; border-radius: 2px; background: var(--fi); width: 80%; } .pg span { height: 2px; border-radius: 1px; background: color-mix(in srgb, var(--fi) 45%, transparent); }
+.br { width: 46px; height: 36px; border-radius: 8px; background: var(--fc); padding: 5px; display: flex; flex-direction: column; gap: 3px; }
+.br .d { display: flex; gap: 2px; } .br .d i { width: 4px; height: 4px; border-radius: 2px; background: var(--fi); opacity: .6; }
+.br b { height: 3px; border-radius: 2px; background: var(--fi); } .br span { height: 2px; border-radius: 1px; background: color-mix(in srgb, var(--fi) 40%, transparent); }
+.gr { display: grid; grid-template-columns: repeat(4, 8px); gap: 2px; }
+.gr i { height: 6px; border-radius: 2px; background: var(--fc); } .gr i.h { background: var(--fi); }
+.fan { position: relative; width: 44px; height: 40px; }
+.fan i { position: absolute; left: 10px; top: 2px; width: 24px; height: 34px; border-radius: 4px; background: var(--fc); box-shadow: 0 0 0 2px #fff; }
+.fan i:nth-child(1) { transform: rotate(-14deg) translateX(-7px); } .fan i:nth-child(3) { transform: rotate(14deg) translateX(7px); }
+.nt { font-size: 26px; font-weight: 800; color: var(--fi); line-height: 1; }
+
+/* note: text-first pebble */
+.note-in { padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 6px; }
+.note-in .n { font-size: 16px; line-height: 1.4; font-weight: 500; outline: none; cursor: text; user-select: text; -webkit-user-select: text; min-height: 44px; }
+.note-in .n:empty::before { content: 'Write a note…'; color: var(--ink-3); }
+
+/* L: opened in place */
+.l { padding: 14px 16px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.l .top { display: flex; gap: 14px; align-items: center; }
+.exl { display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,.55); border-radius: 18px; padding: 6px; }
+.exl button { display: flex; gap: 8px; align-items: baseline; text-align: left; padding: 6px 8px; border-radius: 12px; font-size: 13px; line-height: 1.35; transition: background-color 150ms ease, opacity 200ms ease; }
+.exl button.off { opacity: .45; } .exl button.off span:last-child { text-decoration: line-through; }
+@media (hover: hover) and (pointer: fine) { .exl button:hover { background: #fff; } }
+.lfoot { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.lfoot .pill { height: 24px; padding: 0 10px; border-radius: 12px; background: #fff; display: inline-flex; align-items: center; }
+.lfoot button { margin-left: auto; color: var(--ink-2); }
+
+/* S: pill at low zoom */
+.s { height: 52px; border-radius: 26px; display: flex; align-items: center; gap: 10px; padding: 0 16px 0 6px; }
+.s .dot { width: 40px; height: 40px; border-radius: 20px; background: #fff; display: grid; place-items: center; flex: none; }
+.s .t { flex: 1; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card.size-s .face { border-radius: 26px; } .card.size-s .sheet { border-radius: 26px; }
+
+/* tools (inside node, on hover) */
+.tools { position: absolute; right: 10px; top: 10px; display: flex; gap: 4px; opacity: 0; transform: scale(.94); transition: opacity 140ms ease-out, transform 160ms var(--ease-out); z-index: 3; }
+.card.selected .tools { opacity: 1; transform: none; }
+@media (hover: hover) and (pointer: fine) { .card:hover .tools { opacity: 1; transform: none; } }
+.tb { height: 28px; min-width: 28px; padding: 0 10px; border-radius: 14px; background: #fff; box-shadow: 0 4px 10px -4px rgba(43,35,64,.3); font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: transform 120ms var(--ease-out), background-color 150ms ease; }
+.tb.ic { padding: 0; }
+.tools.inline { position: static; margin-left: auto; }
+.tb:active { transform: scale(.92); }
+@media (hover: hover) and (pointer: fine) { .tb:hover { background: var(--bubble); } }
+
+/* chat pebble */
+.chat .face { background: #fff; }
+.chd { display: flex; align-items: center; gap: 8px; padding: 16px 20px 0; min-height: 44px; }
+.chd .md { width: 12px; height: 12px; border-radius: 6px; background: var(--c); flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 25%, transparent); }
+.chd .q { font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.chd .live { font-size: 12px; font-weight: 700; color: var(--flow-2); }
+.chat .ttl { padding: 6px 20px 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em; -webkit-line-clamp: 3; }
+.cbody { max-height: 300px; overflow: auto; padding: 12px 20px 8px; cursor: auto; user-select: text; -webkit-user-select: text; scrollbar-width: thin; scrollbar-color: var(--lilac) transparent; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(#000 calc(100% - 24px), transparent); mask-image: linear-gradient(#000 calc(100% - 24px), transparent); }
+.cbody.short { -webkit-mask-image: none; mask-image: none; }
+.mu { display: inline-block; max-width: 96%; background: var(--bubble); border-radius: 18px; padding: 9px 13px; font-size: 14px; line-height: 1.45; font-weight: 500; margin: 0 0 10px; }
+.ma { font-size: 14px; line-height: 1.55; color: var(--ink-2); margin-bottom: 10px; }
+.ma b, .ma h3 { color: var(--ink); } .ma h3 { font-size: 14px; font-weight: 700; margin: 10px 0 2px; } .ma h3:first-child { margin-top: 0; }
+.ma p { margin: 0 0 7px; } .ma ol { margin: 0 0 7px; padding-left: 18px; }
+.ma.live p:last-child::after { content: ''; display: inline-block; width: 8px; height: 15px; margin-left: 2px; vertical-align: -2px; border-radius: 3px; background: var(--flow); animation: caret 900ms steps(1) infinite; }
+.ma .changed { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--docs); color: var(--docs-ink); font-size: 12px; font-weight: 700; }
+.cfoot { display: flex; align-items: center; gap: 8px; padding: 6px 16px 14px 20px; font-size: 13px; color: var(--ink-2); }
+.cfoot .dots { display: inline-flex; }
+.cfoot .dots i { width: 14px; height: 14px; border-radius: 7px; border: 2px solid #fff; margin-left: -6px; } .cfoot .dots i:first-child { margin-left: 0; }
+.cfoot .warn { height: 24px; padding: 0 10px; border-radius: 12px; background: #FFF0D6; color: #A86A0B; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; }
+.cfoot .sp { flex: 1; }
+.send { width: 40px; height: 40px; border-radius: 20px; background: var(--ink); display: grid; place-items: center; flex: none; transition: transform 120ms var(--ease-out), opacity 150ms ease; }
+.send .i { --c: #fff; --s: 18px; } .send:active { transform: scale(.92); } .send:disabled { opacity: .25; cursor: default; }
+.compose { display: none; margin: 0 10px 10px; padding: 8px 8px 8px 16px; border-radius: 22px; background: var(--bubble); align-items: flex-end; gap: 8px; cursor: auto; }
+.card.selected .compose, .card.empty .compose { display: flex; }
+.compose textarea { flex: 1; border: 0; outline: none; resize: none; background: none; color: var(--ink); font: 500 14px/1.45 'Bricolage Grotesque'; min-height: 22px; max-height: 110px; padding: 9px 0; }
+.compose textarea::placeholder { color: var(--ink-3); }
+
+/* ---------- chrome ---------- */
+.chrome { background: #fff; border-radius: 18px; box-shadow: 0 10px 30px -12px rgba(43,35,64,.35); }
+#top { position: fixed; top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; z-index: 20; pointer-events: none; }
+#top > * { pointer-events: auto; }
+.brand { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 16px 0 8px; }
+.brand .lg { width: 32px; height: 32px; border-radius: 16px; background: var(--ink); display: grid; place-items: center; }
+.brand b { font-size: 17px; font-weight: 800; letter-spacing: -.02em; } .brand span { font-size: 13px; color: var(--ink-2); font-weight: 500; }
+#rail { position: fixed; left: 14px; top: 50%; transform: translateY(-50%); z-index: 20; display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+#rail button { width: 44px; height: 44px; border-radius: 22px; display: grid; place-items: center; transition: transform 160ms var(--ease-out); }
+#rail button:active { transform: scale(.9); }
+@media (hover: hover) and (pointer: fine) { #rail button:hover { transform: scale(1.08); } }
+#rail .sep { height: 2px; border-radius: 1px; background: var(--bubble); margin: 2px 8px; }
+#trail { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 4px; padding: 6px; max-width: calc(100vw - 280px); overflow: hidden; }
+#trail .lb { font-size: 12px; font-weight: 700; color: var(--ink-2); padding: 0 6px 0 10px; }
+#trail button { height: 34px; padding: 0 12px 0 6px; border-radius: 17px; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis; transition: background-color 150ms ease; }
+#trail button .q { height: 22px; padding: 0 7px; border-radius: 11px; background: var(--bubble); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; }
+#trail button.here { background: var(--ink); color: #fff; } #trail button.here .q { background: rgba(255,255,255,.18); }
+#trail .sep { color: var(--ink-3); font-weight: 700; }
+#trail .hint { font-size: 14px; color: var(--ink-2); padding: 0 10px 0 4px; white-space: nowrap; }
+@media (hover: hover) and (pointer: fine) { #trail button:not(.here):hover { background: var(--bubble); } }
+#zoom { position: fixed; right: 14px; bottom: 16px; z-index: 20; display: flex; align-items: center; padding: 4px; gap: 2px; }
+#zoom button { width: 36px; height: 36px; border-radius: 18px; font-size: 18px; font-weight: 600; transition: background-color 150ms ease; }
+@media (hover: hover) and (pointer: fine) { #zoom button:hover { background: var(--bubble); } }
+#zoom .z { width: 48px; text-align: center; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.tip { position: fixed; z-index: 100; pointer-events: none; background: var(--ink); color: #fff; font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 10px; white-space: nowrap; opacity: 0; transform: translateX(-4px); transition: opacity 120ms ease-out, transform 140ms var(--ease-out); }
+.tip.show { opacity: 1; transform: none; }
+
+/* ---------- full-screen ---------- */
+#scrim { position: fixed; inset: 0; background: rgba(43,35,64,.3); opacity: 0; pointer-events: none; z-index: 40; }
+#reader { position: fixed; inset: 0; z-index: 50; display: none; background: #fff; }
+#reader .in { position: absolute; inset: 12px; display: grid; grid-template-columns: 310px 1fr; grid-template-rows: 64px 1fr; }
+.r-top { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 12px; }
+.r-top strong { font-size: 18px; font-weight: 700; }
+.rail { margin: 0 0 12px 12px; padding: 18px 14px; overflow: auto; display: flex; flex-direction: column; gap: 18px; background: var(--bubble); border-radius: 28px; }
+.rail h4 { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.rrow { display: flex; gap: 10px; align-items: center; padding: 7px 8px; border-radius: 14px; font-size: 14px; font-weight: 500; line-height: 1.25; }
+.rrow .k { height: 22px; min-width: 34px; padding: 0 7px; border-radius: 11px; background: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.rrow .c { width: 14px; height: 14px; border-radius: 7px; flex: none; }
+.rrow.here { background: #fff; font-weight: 700; }
+.rrow button { text-align: left; }
+.budget { margin-top: auto; padding: 12px; border-radius: 20px; background: #fff; font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+.budget b { display: block; font-size: 26px; font-weight: 800; color: var(--ink); letter-spacing: -.02em; }
+.r-main { display: flex; flex-direction: column; min-height: 0; }
+.r-scroll { flex: 1; overflow: auto; padding: 28px 24px; }
+.r-th { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.r-th h2 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -.025em; line-height: 1.1; }
+.r-th .mu { align-self: flex-end; font-size: 16px; }
+.r-th .ma { font-size: 17px; line-height: 1.65; }
+.r-compose { max-width: 720px; width: calc(100% - 48px); margin: 0 auto 18px; display: flex; gap: 8px; align-items: flex-end; padding: 8px 8px 8px 18px; border-radius: 26px; background: var(--bubble); }
+.r-compose textarea { flex: 1; border: 0; outline: none; resize: none; background: none; color: var(--ink); font: 500 16px/1.5 'Bricolage Grotesque'; min-height: 24px; padding: 8px 0; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+</style>
+</head>
+<body>
+<div id="vp"><div id="world"><svg id="tubes"></svg></div></div>
+<div id="top"><div class="brand chrome"><span class="lg"><span class="i" data-i="git-fork" style="--c:#fff;--s:17px"></span></span><b>Context Tree</b><span>Pricing study</span></div></div>
+<div id="rail" class="chrome"></div>
+<div id="trail" class="chrome"></div>
+<div id="zoom" class="chrome"><button data-z="out" aria-label="Zoom out">−</button><span class="z" id="zl">100%</span><button data-z="in" aria-label="Zoom in">+</button><button data-z="fit" aria-label="Fit board">⤢</button></div>
+<div id="scrim"></div>
+<div id="reader" role="dialog" aria-modal="true"><div class="in"></div></div>
+<div class="tip" id="tip"></div>
+
+<script>
+/* ---------- helpers ---------- */
+const LU = n => `url(https://unpkg.com/lucide-static@0.460.0/icons/${n}.svg)`;
+const I = (n, c, s) => `<span class="i" style="--u:${LU(n)};${c ? `--c:${c};` : ''}${s ? `--s:${s}px;` : ''}"></span>`;
+const hydrate = (r = document) => r.querySelectorAll('[data-i]').forEach(e => { e.style.setProperty('--u', LU(e.dataset.i)); e.removeAttribute('data-i'); });
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const strip = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const springs = new Set();
+class Spring {
+  constructor(v, r = .4, d = 1) { this.x = v; this.t = v; this.v = 0; this.cfg(r, d); springs.add(this); }
+  cfg(r, d) { this.k = (2 * Math.PI / r) ** 2; this.c = 4 * Math.PI * d / r; return this; }
+  to(t, vel) { this.t = t; if (vel !== undefined) this.v = vel; if (RM) this.snap(t); return this; }
+  snap(v) { this.x = this.t = v; this.v = 0; return this; }
+  kick(v) { if (!RM) this.v += v; return this; }
+  step(dt) { const f = -this.k * (this.x - this.t) - this.c * this.v; this.v += f * dt; this.x += this.v * dt; }
+}
+const project = (v, d = .99) => (v / 1000) * d / (1 - d);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- types ---------- */
+const TYPES = {
+  video: { fam: 'media', icon: 'play', label: 'Video' }, podcast: { fam: 'media', icon: 'audio-lines', label: 'Podcast' },
+  pdf: { fam: 'docs', icon: 'file-text', label: 'PDF' }, web: { fam: 'web', icon: 'globe', label: 'Web page' },
+  csv: { fam: 'data', icon: 'sheet', label: 'Spreadsheet' }, note: { fam: 'note', icon: 'sticky-note', label: 'Note' }, stack: { fam: 'stack', icon: 'layers', label: 'Pile' },
+};
+const FAMC = { media: ['#FFD9C7', '#E0673A'], docs: ['#FFF0B3', '#C79A10'], web: ['#C9ECFF', '#2A86C4'], data: ['#D4F2C9', '#3F9A2E'], note: ['#FFE4EF', '#D1467E'], stack: ['#E6DBFF', '#7A52D6'] };
+const MODELS = { claude: ['Claude', '#E0673A'], gpt: ['GPT', '#3F9A2E'], gemini: ['Gemini', '#2A86C4'] };
+const famOf = n => n.type === 'stack' ? (n.members.every(m => TYPES[m.type].fam === TYPES[n.members[0].type].fam) ? TYPES[n.members[0].type].fam : 'stack') : TYPES[n.type].fam;
+
+function mini(n) {
+  if (n.status === 'processing') return I('loader-circle', 'var(--fi)', 26).replace('class="i"', 'class="i" style="animation:spin 1s linear infinite;--u:' + LU('loader-circle') + ';--c:var(--fi);--s:26px"');
+  if (n.status === 'failed') return I('unlink', 'var(--snap)', 26);
+  switch (n.type) {
+    case 'video': return `<div class="mv">${I('play', 'var(--fi)', 14)}</div>`;
+    case 'podcast': return `<div class="wave">${[30, 60, 40, 80, 50, 92, 38, 66, 30].map((h, i) => `<i class="${i === 5 ? 'on' : i < 5 ? 'on' : ''}" style="height:${h}%"></i>`).join('')}</div>`;
+    case 'pdf': return `<div class="pg"><b></b>${'<span></span>'.repeat(5)}</div>`;
+    case 'web': return `<div class="br"><div class="d"><i></i><i></i><i></i></div><b style="width:80%"></b><span></span><span style="width:70%"></span></div>`;
+    case 'csv': return `<div class="gr">${Array.from({ length: 16 }, (_, i) => `<i class="${i < 4 ? 'h' : ''}"></i>`).join('')}</div>`;
+    case 'note': return `<span class="nt">“</span>`;
+    case 'stack': return `<div class="fan"><i></i><i></i><i></i></div>`;
+  }
+}
+const onEx = n => n.type === 'stack' ? n.members.filter(m => !m.off) : (n.ex || []).filter(e => e.on);
+const tokensOf = n => n.status !== 'ready' ? 0 : n.type === 'note' ? Math.max(20, Math.round((n.text || '').length / 4)) : n.type === 'stack' ? onEx(n).length * 1400 : onEx(n).length * 450 + 200;
+
+/* ---------- board state ---------- */
+const vp = document.getElementById('vp'), world = document.getElementById('world'), TB = document.getElementById('tubes'), NS = 'http://www.w3.org/2000/svg';
+const nodes = new Map(), tubes = [], desks = [];
+let selected = null, zTop = 10, uid = 100, size = 'M';
+const cam = { x: new Spring(0, .5, 1), y: new Spring(0, .5, 1), z: new Spring(1, .45, 1) };
+const isChat = n => n && n.kind === 'chat';
+const chats = () => [...nodes.values()].filter(isChat);
+const kids = id => chats().filter(c => c.parent === id);
+const ancestors = id => { const o = []; let c = nodes.get(id); while (c && c.parent) { c = nodes.get(c.parent); if (c) o.push(c); } return o; };
+const deskOf = id => [...nodes.values()].filter(n => !isChat(n) && n.desk === id);
+const readsOf = id => [...deskOf(id), ...ancestors(id).flatMap(a => deskOf(a.id))];
+const qNum = c => !c.parent ? 'Q' + (chats().filter(x => !x.parent).indexOf(c) + 1) : qNum(nodes.get(c.parent)) + '.' + (kids(c.parent).indexOf(c) + 1);
+const dotsHTML = list => `<span class="dots">${list.slice(0, 6).map(n => `<i style="background:${FAMC[famOf(n)][1]}"></i>`).join('')}</span>`;
+
+/* ---------- nodes ---------- */
+function addNode(d, { pop = false } = {}) {
+  const el = document.createElement('div'); el.dataset.id = d.id; el.tabIndex = 0; world.appendChild(el);
+  const n = Object.assign({ status: 'ready' }, d, {
+    el, px: new Spring(d.x, .4, 1), py: new Spring(d.y, .4, 1),
+    s: new Spring(pop ? .8 : 1, .42, pop ? .55 : 1), o: new Spring(pop ? 0 : 1, .25, 1),
+    rot: new Spring(0, .5, .3), h: 104,
+  });
+  n.w = isChat(n) ? (d.w || 400) : 300;
+  if (pop) { n.s.to(1); n.o.to(1); }
+  nodes.set(n.id, n); render(n);
+  new ResizeObserver(() => n.h = el.offsetHeight).observe(el);
+  return n;
+}
+function render(n) {
+  const ta = n.el.querySelector('textarea'), focus = ta && ta === document.activeElement, draft = ta?.value || '';
+  const sc = n.el.querySelector('.cbody')?.scrollTop;
+  const fam = isChat(n) ? '' : famOf(n);
+  const reading = !isChat(n) && n.desk && chats().some(c => c.streaming && (c.id === n.desk || ancestors(c.id).some(a => a.id === n.desk)));
+  n.el.className = `card ${isChat(n) ? 'chat' : 'src f-' + fam} size-${size.toLowerCase()}${n.id === selected ? ' selected' : ''}${isChat(n) && !n.msgs.length ? ' empty' : ''}${reading ? ' reading' : ''}${n.status === 'failed' ? ' failed' : ''}`;
+  n.el.style.width = (size === 'S' ? (isChat(n) ? 300 : 260) : n.w) + 'px';
+  n.el.innerHTML = isChat(n) ? chatHTML(n) : srcHTML(n);
+  bind(n);
+  const b = n.el.querySelector('.cbody'); if (b) { b.scrollTop = sc ?? 0; b.classList.toggle('short', b.scrollHeight <= b.clientHeight + 2); }
+  const nt = n.el.querySelector('textarea'); if (nt) { nt.value = draft; if (focus) nt.focus({ preventScroll: true }); nt.dispatchEvent(new Event('input')); }
+  n.h = n.el.offsetHeight;
+}
+function srcHTML(n) {
+  const T = TYPES[n.type], sheets = n.type === 'stack' ? (size === 'S' ? '<div class="sheet b"></div>' : '<div class="sheet a"></div><div class="sheet b"></div>') : '';
+  const badge = n.type === 'stack' ? `<span class="badge">${n.members.length}</span>` : '';
+  if (size === 'S') return `${sheets}<div class="face"><div class="s"><span class="dot" style="position:relative">${I(T.icon, 'var(--fi)', 18)}${badge}</span><span class="t">${esc(n.title || (n.text || 'Note'))}</span></div></div>`;
+  let body;
+  const tools = `<div class="tools">${n.type !== 'note' ? `<button class="tb ic" data-act="expand" data-tip="${n.open ? 'Collapse' : 'Choose excerpts'}">${I(n.open ? 'chevrons-down-up' : 'chevrons-up-down', 'var(--ink)', 14)}</button>` : ''}${n.type === 'stack' ? `<button class="tb ic" data-act="unstack" data-tip="Unpile">${I('ungroup', 'var(--ink)', 14)}</button>` : ''}<button class="tb ic" data-act="del" data-tip="Remove">${I('x', 'var(--ink)', 14)}</button></div>`;
+  if (n.type === 'note') body = `<div class="note-in"><div class="meta">Note · You</div><div class="n" contenteditable="true" spellcheck="false">${esc(n.text)}</div></div>`;
+  else if (n.open && n.status === 'ready') {
+    const list = n.type === 'stack'
+      ? n.members.map((m, i) => `<button data-mem="${i}" class="${m.off ? 'off' : ''}"><span class="loc">${String(i + 1).padStart(2, '0')}</span><span>${esc(m.title)}</span></button>`).join('')
+      : n.ex.map((e, i) => `<button data-ex="${i}" class="${e.on ? '' : 'off'}">${e.loc ? `<span class="loc">${esc(e.loc)}</span>` : ''}<span>${esc(e.t)}</span></button>`).join('');
+    const tot = n.type === 'stack' ? n.members.length : n.ex.length;
+    body = `<div class="l"><div class="top"><div class="well" style="position:relative">${mini(n)}</div><div class="txt"><div class="meta">${esc(metaOf(n))}</div><div class="ttl">${esc(n.title)}</div></div></div><div class="exl">${list}</div><div class="lfoot"><span class="pill">${onEx(n).length} of ${tot} used</span><span class="pill">${(tokensOf(n) / 1000).toFixed(1)}k tokens</span><button data-act="expand">Done</button></div></div>`;
+  } else {
+    const e = n.type === 'stack' ? null : (n.ex || []).find(x => x.on) || (n.ex || [])[0];
+    const line = n.status === 'processing' ? `<div class="shimmer" style="width:80%"></div>`
+      : n.status === 'failed' ? `<div class="ex"><span>${esc(n.failText || "Couldn't read this.")}</span></div><div style="margin-top:4px"><button class="retry" data-retry>Try again</button></div>`
+      : n.type === 'stack' ? `<div class="ex"><span>${n.members.length} ${n.members.every(m => m.type === n.members[0].type) ? TYPES[n.members[0].type].label + 's' : 'sources'} in one pile</span></div>`
+      : e ? `<div class="ex">${e.loc ? `<span class="loc">${esc(e.loc)}</span>` : ''}<span>${esc(e.t)}</span></div>` : '';
+    body = `<div class="m"><div class="well">${mini(n)}${badge}</div><div class="txt"><div class="meta">${esc(n.status === 'processing' ? (n.procText || 'Reading…') : n.status === 'failed' ? 'Snapped' : metaOf(n))}</div><div class="ttl">${esc(n.title)}</div>${line}</div></div>`;
+  }
+  return `${sheets}<div class="face">${body}${tools}</div>`;
+}
+const metaOf = n => n.type === 'stack' ? `Pile · ${n.members.length} items` : n.meta;
+function chatHTML(c) {
+  const [mn, mc] = MODELS[c.model], r = readsOf(c.id).filter(x => x.status === 'ready'), own = deskOf(c.id).length, up = r.length - deskOf(c.id).filter(x => x.status === 'ready').length;
+  if (size === 'S') return `<div class="face"><div class="s"><span class="dot"><span style="width:12px;height:12px;border-radius:6px;background:${mc}"></span></span><span class="t">${esc(c.title)}</span><span style="font-size:12px;font-weight:700;color:var(--ink-2)">${qNum(c)}</span></div></div>`;
+  const msgs = c.msgs.length ? c.msgs.map(m => m.r === 'u' ? `<div class="mu">${esc(m.t)}</div>` : `<div class="ma ${m.live ? 'live' : ''}">${m.t || '<p></p>'}</div>`).join('') : `<div class="ma">${c.parent ? 'Same desk as the chat above. Ask the question you were holding back.' : 'Put sources on this desk, then ask.'}</div>`;
+  const outdated = readsOf(c.id).some(x => x.changedAt && x.changedAt > (c.answeredAt || 0));
+  return `<div class="face"><div class="chd"><span class="md" style="--c:${mc}"></span><span class="q">${qNum(c)} · ${mn}</span>${c.streaming ? `<span class="live">· reading ${r.length} source${r.length === 1 ? '' : 's'}…</span>` : `<div class="tools inline"><button class="tb" data-act="open">${I('maximize-2', 'var(--ink)', 13)}Open</button><button class="tb" data-act="branch">${I('git-branch', 'var(--ink)', 13)}Branch</button><button class="tb" data-act="whatif">${I('flask-conical', 'var(--ink)', 13)}What if</button></div>`}</div>
+    <div class="ttl">${esc(c.title)}</div>
+    <div class="cbody">${msgs}</div>
+    <div class="cfoot">${r.length ? dotsHTML(r) : ''}<span>${r.length ? `${r.length} source${r.length > 1 ? 's' : ''}${up ? ` · ${up} from above` : ''}` : 'Desk is empty'}</span><span class="sp"></span>${outdated ? '<span class="warn">Source changed · ask again</span>' : c.whatIf ? '<span class="warn" style="background:var(--stack);color:var(--stack-ink)">What if</span>' : ''}</div>
+    <div class="compose"><textarea rows="1" placeholder="${c.msgs.length ? 'Ask a follow-up' : 'Ask'}" aria-label="Message"></textarea><button class="send" aria-label="Send" disabled>${I('arrow-up')}</button></div>
+    </div>`;
+}
+function bind(n) {
+  const ta = n.el.querySelector('.compose textarea');
+  if (ta) {
+    const sb = n.el.querySelector('.send');
+    ta.addEventListener('input', () => { sb.disabled = !ta.value.trim(); ta.style.height = 'auto'; ta.style.height = Math.min(110, ta.scrollHeight) + 'px'; });
+    const go = () => { const v = ta.value.trim(); if (!v) return; ta.value = ''; send(n, v); };
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(); } });
+    sb.addEventListener('click', go);
+  }
+  n.el.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); act(n, b.dataset.act); }));
+  n.el.querySelectorAll('[data-ex]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const x = n.ex[+b.dataset.ex]; x.on = !x.on; render(n); refreshChats(); }));
+  n.el.querySelectorAll('[data-mem]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const m = n.members[+b.dataset.mem]; m.off = !m.off; render(n); refreshChats(); }));
+  n.el.querySelector('[data-retry]')?.addEventListener('click', e => { e.stopPropagation(); n.status = 'processing'; n.procText = 'Trying again…'; render(n); setTimeout(() => { n.status = 'ready'; n.ex = n.ex?.length ? n.ex : [{ loc: '04:12', t: 'Charge annually from the first day.', on: true }]; render(n); jiggle(n); refreshChats(); }, 1500); });
+  const note = n.el.querySelector('.note-in .n');
+  if (note) note.addEventListener('input', () => { n.text = note.textContent; n.changedAt = Date.now(); refreshChats(); });
+  bindTips(n.el);
+}
+function act(n, a) {
+  if (a === 'open') openReader(n.id);
+  if (a === 'branch') { const c = branch(n.id); select(c.id); flyTo(c); focus(c); }
+  if (a === 'whatif') whatIf(n);
+  if (a === 'expand') { n.open = !n.open; n.el.style.zIndex = ++zTop; render(n); jiggle(n, .6); }
+  if (a === 'unstack') unstack(n);
+  if (a === 'del') removeNode(n);
+}
+const focus = n => setTimeout(() => n.el.querySelector('.compose textarea')?.focus({ preventScroll: true }), 50);
+function refreshChats() { chats().forEach(c => { if (!c.streaming) render(c); }); renderTrail(); if (reader.id) renderReader(nodes.get(reader.id)); }
+function jiggle(n, amt = 1) { n.s.cfg(.42, .45).kick(-1.2 * amt); n.rot.cfg(.5, .3).kick((Math.random() > .5 ? 1 : -1) * 40 * amt); }
+function removeNode(n) {
+  n.o.cfg(.22, 1).to(0); n.s.cfg(.3, 1).to(.85);
+  setTimeout(() => { n.el.remove(); nodes.delete(n.id); refreshChats(); }, RM ? 0 : 230); select(null);
+}
+
+/* ---------- tubes + desks ---------- */
+function addTube(parent, child) {
+  const p = document.createElementNS(NS, 'path'), b = document.createElementNS(NS, 'path'), k = document.createElementNS(NS, 'circle');
+  p.setAttribute('class', 'tube'); b.setAttribute('class', 'bub'); k.setAttribute('class', 'knob'); k.setAttribute('r', 8);
+  TB.append(p, b, k); tubes.push({ parent, child, p, b, k });
+}
+function makeDesk(c) {
+  const el = document.createElement('div'); el.className = 'desk'; el.innerHTML = '<div class="tab"></div>'; world.insertBefore(el, world.firstChild);
+  desks.push({ chat: c.id, el, b: [0, 0, 0, 0].map(() => new Spring(0, .5, .55)), init: false });
+}
+function deskBounds(d, except) {
+  const c = nodes.get(d.chat); if (!c) return null;
+  let x0 = c.px.x, y0 = c.py.x, x1 = c.px.x + c.w, y1 = c.py.x + c.h;
+  deskOf(d.chat).forEach(m => { if (m === except) return; x0 = Math.min(x0, m.px.x); y0 = Math.min(y0, m.py.x); x1 = Math.max(x1, m.px.x + m.w); y1 = Math.max(y1, m.py.x + m.h); });
+  return [x0 - 40, y0 - 44, x1 + 40, y1 + 40];
+}
+function freeSpot(x, y, w, h) {
+  const boxes = [...nodes.values()].map(n => [n.px.t - 60, n.py.t - 70, n.px.t + n.w + 60, n.py.t + n.h + 60]);
+  desks.forEach(d => { const b = deskBounds(d); if (b) boxes.push([b[0] - 20, b[1] - 30, b[2] + 20, b[3] + 20]); });
+  for (let i = 0; i < 40; i++) { const yy = y + i * 60; if (!boxes.some(b => x < b[2] && x + w > b[0] && yy < b[3] && yy + h > b[1])) return [x, yy]; }
+  return [x + 480, y];
+}
+function branch(pid, extra = {}) {
+  const p = nodes.get(pid), spot = freeSpot(p.px.t + p.w + 240, p.py.t - 60, 380, 340);
+  const c = addNode(Object.assign({ id: 'q' + (++uid), kind: 'chat', model: p.model, parent: pid, title: 'New question, same desk', msgs: [], w: 380, x: spot[0], y: spot[1] }, extra), { pop: true });
+  c.el.style.zIndex = ++zTop; addTube(pid, c.id); makeDesk(c); refreshChats(); return c;
+}
+function whatIf(p) {
+  const q = [...p.msgs].reverse().find(m => m.r === 'u');
+  const c = branch(p.id, { title: 'What if… (same question)', whatIf: true, msgs: q ? [{ r: 'u', t: q.t }, { r: 'a', t: `<p>Same question, same desk as ${qNum(p)}. Drop one more source on this desk and I'll answer again, then say what changed.</p>` }] : [] });
+  select(c.id); setTimeout(() => flyTo(c), 60);
+}
+
+/* ---------- stacks ---------- */
+function asMembers(s) { return s.type === 'stack' ? s.members : [{ type: s.type, title: s.title || (s.text || 'Note').slice(0, 40), meta: s.meta, ex: s.ex }]; }
+function pile(src, target) {
+  let st = target;
+  if (target.type !== 'stack') {
+    st = addNode({ id: 'p' + (++uid), type: 'stack', x: target.px.x, y: target.py.x, title: target.type === src.type ? TYPES[target.type].label + ' pile' : 'Mixed pile', members: [...asMembers(target), ...asMembers(src)], desk: target.desk }, { pop: true });
+    target.el.remove(); nodes.delete(target.id);
+  } else st.members.push(...asMembers(src));
+  src.el.remove(); nodes.delete(src.id);
+  render(st); jiggle(st); select(st.id); refreshChats();
+}
+function unstack(st) {
+  st.members.forEach((m, i) => { const n = addNode(Object.assign({ id: 'u' + (++uid), x: st.px.x, y: st.py.x, desk: st.desk, ex: m.ex || [{ loc: null, t: 'Read in full.', on: true }] }, m), { pop: true }); n.py.cfg(.5, .6).to(st.py.x + i * 130); n.px.cfg(.5, .6).to(st.px.x + (i % 2) * 30); });
+  st.el.remove(); nodes.delete(st.id); select(null); refreshChats();
+}
+
+/* ---------- camera + pointer ---------- */
+const s2w = (x, y) => [(x - cam.x.x) / cam.z.x, (y - cam.y.x) / cam.z.x];
+function camSnap(x, y, z) { cam.x.snap(x); cam.y.snap(y); if (z !== undefined) cam.z.snap(z); }
+function zoomAt(px, py, nz, anim) { nz = clamp(nz, .2, 2); const z = anim ? cam.z.t : cam.z.x, bx = anim ? cam.x.t : cam.x.x, by = anim ? cam.y.t : cam.y.x; const nx = px - (px - bx) * nz / z, ny = py - (py - by) * nz / z; anim ? (cam.z.to(nz), cam.x.to(nx), cam.y.to(ny)) : camSnap(nx, ny, nz); }
+function fit(anim = true) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  nodes.forEach(n => { x0 = Math.min(x0, n.px.t - 50); y0 = Math.min(y0, n.py.t - 60); x1 = Math.max(x1, n.px.t + n.w + 50); y1 = Math.max(y1, n.py.t + n.h + 50); });
+  const vw = innerWidth, vh = innerHeight, l = 80, pt = 76, pb = 76;
+  const z = Math.min(1, (vw - l - 40) / (x1 - x0), (vh - pt - pb) / (y1 - y0));
+  const x = l + (vw - l - 40 - (x1 - x0) * z) / 2 - x0 * z, y = pt + (vh - pt - pb - (y1 - y0) * z) / 2 - y0 * z;
+  anim ? (cam.x.to(x), cam.y.to(y), cam.z.to(z)) : camSnap(x, y, z);
+}
+function flyTo(n) { const z = Math.max(cam.z.t, .8); cam.z.to(z); cam.x.to(innerWidth / 2 - (n.px.t + n.w / 2) * z); cam.y.to(innerHeight / 2 - (n.py.t + 160) * z); }
+function track(e, move, up) {
+  const id = e.pointerId; try { vp.setPointerCapture(id); } catch {}
+  const mv = ev => ev.pointerId === id && move(ev);
+  const u = ev => { if (ev.pointerId !== id) return; vp.removeEventListener('pointermove', mv); vp.removeEventListener('pointerup', u); vp.removeEventListener('pointercancel', u); up(ev); };
+  vp.addEventListener('pointermove', mv); vp.addEventListener('pointerup', u); vp.addEventListener('pointercancel', u);
+}
+function velocity(h) { const now = performance.now(), L = h[h.length - 1]; if (!L || now - L.t > 90) return [0, 0]; let i = h.length - 1; while (i > 0 && L.t - h[i - 1].t < 70) i--; const F = h[Math.max(0, i - 1)], dt = (L.t - F.t) / 1000 || 1; return [(L.x - F.x) / dt, (L.y - F.y) / dt]; }
+vp.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  const t = e.target, ce = t.closest('.card');
+  if (ce && t.closest('.cbody, .compose, .note-in .n, .exl, .lfoot')) { if (selected !== ce.dataset.id) select(ce.dataset.id); return; }
+  if (t.closest('button, textarea')) return;
+  e.preventDefault();
+  if (ce) return drag(nodes.get(ce.dataset.id), e);
+  pan(e);
+});
+let lastClick = { id: null, t: 0 };
+const deskAt = (x, y, ex) => desks.find(d => { const b = deskBounds(d, ex); return b && x > b[0] && x < b[2] && y > b[1] && y < b[3]; });
+function drag(n, e) {
+  getSelection()?.removeAllRanges();
+  const [wx, wy] = s2w(e.clientX, e.clientY), off = [wx - n.px.x, wy - n.py.x], sx = e.clientX, sy = e.clientY, hist = [];
+  let moved = false, deskT = null, pileT = null, vxs = 0, lastX = n.px.x, lastT = performance.now();
+  const group = isChat(n) ? deskOf(n.id).map(m => ({ m, dx: m.px.x - n.px.x, dy: m.py.x - n.py.x })) : [];
+  track(e, ev => {
+    if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 4) { moved = true; n.dragging = true; n.el.classList.add('lift'); n.el.style.zIndex = ++zTop; n.s.cfg(.25, .7).to(1.04); n.rot.cfg(.2, .7); group.forEach(g => g.m.el.style.zIndex = ++zTop); }
+    if (!moved) return;
+    const [x, y] = s2w(ev.clientX, ev.clientY); n.px.snap(x - off[0]); n.py.snap(y - off[1]);
+    // wobble: tilt with horizontal speed, like carrying something soft
+    const now = performance.now(), dt = Math.max(8, now - lastT); vxs = vxs * .6 + ((n.px.x - lastX) / dt * 1000) * .4; lastX = n.px.x; lastT = now;
+    n.rot.to(clamp(vxs * .008, -9, 9));
+    group.forEach(g => { g.m.px.snap(n.px.x + g.dx); g.m.py.snap(n.py.x + g.dy); g.m.rot.to(clamp(vxs * .005, -6, 6)); });
+    hist.push({ x: n.px.x, y: n.py.x, t: now }); if (hist.length > 12) hist.shift();
+    if (!isChat(n)) {
+      n.el.style.pointerEvents = 'none'; const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.card.src'); n.el.style.pointerEvents = '';
+      const pt = under && nodes.get(under.dataset.id); const okPile = pt && pt !== n && pt.type !== 'note' && n.type !== 'note' && pt.status === 'ready' && n.status === 'ready' ? pt : null;
+      if (okPile !== pileT) { pileT?.el.classList.remove('drop'); pileT = okPile; pileT?.el.classList.add('drop'); }
+      const d = okPile ? null : deskAt(x, y, n); if (d !== deskT) { deskT?.el.classList.remove('hot'); deskT = d; deskT?.el.classList.add('hot'); }
+    }
+  }, () => {
+    n.dragging = false;
+    if (!moved) { const now = performance.now(); if (lastClick.id === n.id && now - lastClick.t < 320 && isChat(n)) { openReader(n.id); lastClick = { id: null }; } else { select(n.id); lastClick = { id: n.id, t: now }; } return; }
+    n.el.classList.remove('lift'); deskT?.el.classList.remove('hot'); pileT?.el.classList.remove('drop');
+    n.s.cfg(.45, .4).to(1); n.rot.cfg(.55, .28).to(0); group.forEach(g => g.m.rot.cfg(.55, .3).to(0));
+    if (pileT) return pile(n, pileT);
+    const [vx, vy] = velocity(hist), damp = Math.hypot(vx, vy) > 350 ? .75 : 1;
+    if (!isChat(n)) {
+      const before = n.desk, after = deskT ? deskT.chat : null; n.desk = after;
+      if (before !== after) { refreshChats(); if (deskT) { jiggle(n, .5); const c = nodes.get(after); if (c?.whatIf && n.status === 'ready') reask(c, n); } }
+      if (deskT) { n.px.cfg(.42, 1).to(n.px.x, 0); n.py.cfg(.42, 1).to(n.py.x, 0); return; }
+    }
+    n.px.cfg(.42, damp).to(n.px.x + project(vx), vx); n.py.cfg(.42, damp).to(n.py.x + project(vy), vy);
+    group.forEach(g => { g.m.px.cfg(.42, damp).to(n.px.t + g.dx, vx); g.m.py.cfg(.42, damp).to(n.py.t + g.dy, vy); });
+  });
+}
+function pan(e) {
+  const sx = e.clientX, sy = e.clientY, ox = cam.x.x, oy = cam.y.x, hist = []; let moved = false;
+  track(e, ev => { if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 3) { moved = true; vp.classList.add('panning'); } if (!moved) return; camSnap(ox + ev.clientX - sx, oy + ev.clientY - sy); hist.push({ x: cam.x.x, y: cam.y.x, t: performance.now() }); if (hist.length > 12) hist.shift(); },
+    () => { vp.classList.remove('panning'); if (!moved) return select(null); const [vx, vy] = velocity(hist); cam.x.cfg(.5, 1).to(cam.x.x + project(vx, .992), vx); cam.y.cfg(.5, 1).to(cam.y.x + project(vy, .992), vy); });
+}
+vp.addEventListener('wheel', e => {
+  const b = e.target.closest?.('.cbody'); if (b && !e.ctrlKey && b.scrollHeight > b.clientHeight) return;
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey) zoomAt(e.clientX, e.clientY, cam.z.x * Math.exp(-e.deltaY * .0105), false); else camSnap(cam.x.x - e.deltaX, cam.y.x - e.deltaY);
+}, { passive: false });
+document.querySelectorAll('#zoom [data-z]').forEach(b => b.onclick = () => { const k = b.dataset.z; k === 'fit' ? fit(true) : zoomAt(innerWidth / 2, innerHeight / 2, cam.z.t * (k === 'in' ? 1.25 : .8), true); });
+
+/* ---------- selection + trail ---------- */
+function select(id) {
+  selected = id;
+  nodes.forEach(n => n.el.classList.toggle('selected', n.id === id));
+  const sel = nodes.get(id), rel = new Set();
+  if (isChat(sel)) { [sel, ...ancestors(id)].forEach(c => { rel.add(c.id); deskOf(c.id).forEach(m => rel.add(m.id)); }); }
+  nodes.forEach(n => n.el.classList.toggle('faded', !!(isChat(sel) && !rel.has(n.id))));
+  desks.forEach(d => d.el.classList.toggle('faded', !!(isChat(sel) && !rel.has(d.chat))));
+  if (sel) sel.el.style.zIndex = ++zTop;
+  renderTrail();
+}
+function renderTrail() {
+  const T = document.getElementById('trail'), sel = nodes.get(selected);
+  if (!isChat(sel)) { T.innerHTML = `<span class="lb">Trail</span><span class="hint">Pick a chat to see the questions that led to it.</span>`; return; }
+  const path = [...ancestors(sel.id)].reverse().concat(sel);
+  T.innerHTML = `<span class="lb">Trail</span>` + path.map((c, i) => `${i ? '<span class="sep">›</span>' : ''}<button data-go="${c.id}" class="${c.id === sel.id ? 'here' : ''}"><span class="q">${qNum(c)}</span>${esc(c.title)}</button>`).join('');
+  T.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { const n = nodes.get(b.dataset.go); select(n.id); flyTo(n); });
+}
+
+/* ---------- asking ---------- */
+function stream(c, html) {
+  const ai = { r: 'a', t: '', live: true }; c.msgs.push(ai); c.streaming = true; nodes.forEach(render);
+  const words = strip(html).split(' '); let i = 0;
+  const tick = () => {
+    i = Math.min(words.length, i + 2); ai.t = `<p>${esc(words.slice(0, i).join(' '))}</p>`;
+    const el = c.el.querySelector('.ma.live'); if (el) el.innerHTML = ai.t;
+    const r = reader.id === c.id && document.querySelector('#reader .ma.live'); if (r) r.innerHTML = ai.t;
+    const b = c.el.querySelector('.cbody'); if (b) { b.scrollTop = b.scrollHeight; b.classList.remove('short'); }
+    if (i < words.length) setTimeout(tick, 46); else { ai.t = html; ai.live = false; c.streaming = false; c.answeredAt = Date.now(); nodes.forEach(render); const b2 = c.el.querySelector('.cbody'); if (b2) b2.scrollTop = b2.scrollHeight; if (reader.id === c.id) renderReader(c); jiggle(c, .3); }
+  };
+  setTimeout(tick, 600);
+}
+function send(c, text) {
+  c.msgs.push({ r: 'u', t: text });
+  const r = readsOf(c.id).filter(x => x.status === 'ready').map(x => x.type === 'note' ? 'your note' : x.title);
+  stream(c, `<p>${r.length ? `Reading ${r.slice(0, 2).join(' and ')}${r.length > 2 ? ` plus ${r.length - 2} more` : ''}: ` : 'Nothing on this desk yet, so going on the conversation alone: '}try $12 a month with ten real users before you decide, and ask what they'd pay before you show a number.</p>`);
+  if (reader.id === c.id) renderReader(c);
+}
+function reask(c, n) {
+  const say = { podcast: 'Raising early makes $15 safer than $12.', web: 'A 6% loss at double the price says start higher: $15.', csv: 'Most tools sit at $12, so $12 is the safe middle.', stack: 'Two of three people would pay $15; start there.', video: 'Anchored to time saved, $15 is fair.', pdf: 'The survey keeps $12 as the median.', note: 'Your $8 floor still holds.' };
+  stream(c, `<p>With “${esc(n.title || 'your note')}” added: ${say[n.type] || 'the answer shifts a little.'}</p><span class="changed">Changed because of ${esc(n.title || 'the note')}</span>`);
+}
+
+/* ---------- full-screen ---------- */
+const R = document.getElementById('reader'), RI = R.querySelector('.in'), scrim = document.getElementById('scrim');
+const reader = { id: null, prog: new Spring(0, .48, .85), rect: null };
+const rectOf = n => { const r = n.el.querySelector('.face').getBoundingClientRect(); return { l: r.left, t: r.top, r: innerWidth - r.right, b: innerHeight - r.bottom, rad: 28 * cam.z.x }; };
+function openReader(id) { const n = nodes.get(id); if (!isChat(n)) return; select(id); reader.id = id; reader.rect = rectOf(n); renderReader(n); R.style.display = 'block'; reader.prog.cfg(.5, .82).to(1); }
+function closeReader() { if (!reader.id) return; const n = nodes.get(reader.id); if (n) reader.rect = rectOf(n); reader.prog.cfg(.38, 1).to(0); }
+function finishClose() { const n = nodes.get(reader.id); R.style.display = 'none'; scrim.style.opacity = 0; reader.id = null; reader.prog.snap(0); if (n) { n.el.style.opacity = ''; render(n); jiggle(n, .25); } }
+function renderReader(c) {
+  const path = [...ancestors(c.id)].reverse().concat(c), own = deskOf(c.id), above = ancestors(c.id).flatMap(a => deskOf(a.id).map(m => ({ m, a })));
+  const total = 600 + (c.parent ? 420 : 0) + [...own, ...above.map(x => x.m)].reduce((a, m) => a + tokensOf(m), 0);
+  const row = m => `<div class="rrow"><span class="c" style="background:${FAMC[famOf(m)][1]}"></span>${esc(m.title || ((m.text || 'Note').length > 38 ? (m.text || 'Note').slice(0, 36).trim() + '…' : (m.text || 'Note')))}</div>`;
+  RI.innerHTML = `<div class="r-top"><button class="tb" data-close>${I('arrow-left', 'var(--ink)', 14)}Board · Esc</button><span class="q" style="font-size:13px;font-weight:700;color:var(--ink-2)">${qNum(c)} · ${MODELS[c.model][0]}</span><strong>${esc(c.title)}</strong></div>
+    <aside class="rail">
+      <div><h4>Trail</h4>${path.map(p => `<div class="rrow ${p.id === c.id ? 'here' : ''}"><span class="k">${qNum(p)}</span><button data-go="${p.id}">${esc(p.title)}</button></div>`).join('')}</div>
+      <div><h4>On its desk</h4>${own.map(row).join('') || '<div class="rrow" style="color:var(--ink-2)">Nothing of its own.</div>'}</div>
+      ${above.length ? `<div><h4>From the desk above</h4>${above.map(x => row(x.m)).join('')}</div>` : ''}
+      <div class="budget"><b>≈ ${(total / 1000).toFixed(1)}k</b>tokens sent with each question.</div>
+    </aside>
+    <section class="r-main"><div class="r-scroll"><div class="r-th"><h2>${esc(c.title)}</h2>${c.msgs.map(m => m.r === 'u' ? `<div class="mu">${esc(m.t)}</div>` : `<div class="ma ${m.live ? 'live' : ''}">${m.t || '<p></p>'}</div>`).join('')}</div></div>
+    <div class="r-compose"><textarea rows="1" placeholder="Ask a follow-up"></textarea><button class="send" disabled>${I('arrow-up')}</button></div></section>`;
+  RI.querySelector('[data-close]').onclick = closeReader;
+  RI.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { const n = nodes.get(b.dataset.go); reader.id = n.id; select(n.id); renderReader(n); });
+  const ta = RI.querySelector('textarea'), sb = RI.querySelector('.send');
+  const go = () => { const v = ta.value.trim(); if (!v) return; ta.value = ''; sb.disabled = true; send(c, v); };
+  ta.addEventListener('input', () => sb.disabled = !ta.value.trim());
+  ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(); } });
+  sb.onclick = go;
+  const sc = RI.querySelector('.r-scroll'); sc.scrollTop = sc.scrollHeight;
+}
+document.addEventListener('keydown', e => {
+  const typing = e.target.closest?.('textarea, [contenteditable="true"]');
+  if (e.key === 'Escape') { if (reader.id) return closeReader(); if (typing) return e.target.blur(); return select(null); }
+  if (typing || reader.id) return;
+  if (e.key === 'Enter' && isChat(nodes.get(selected))) { e.preventDefault(); openReader(selected); }
+});
+
+/* ---------- add rail ---------- */
+const NEW = {
+  chat: () => ({ kind: 'chat', model: 'claude', title: 'A new question', msgs: [] }),
+  note: () => ({ type: 'note', text: '', meta: 'Note · You' }),
+  pdf: () => ({ type: 'pdf', title: 'Churn analysis Q3', meta: 'PDF · 12 pages', status: 'processing', procText: 'Reading 12 pages…', after: 1700, ex: [{ loc: 'p. 4', t: 'Churn doubles for users who never add a source.', on: true }, { loc: 'p. 9', t: 'Annual plans churn at a third of monthly.', on: true }] }),
+  web: () => ({ type: 'web', title: 'The middle plan effect', meta: 'pricingpage.guide', status: 'processing', procText: 'Reading the page…', after: 1500, ex: [{ loc: null, t: 'With three plans, the middle one is chosen 60% of the time.', on: true }] }),
+  video: () => ({ type: 'video', title: 'Founder Q&A: first 100 customers', meta: 'YouTube · 41:07', status: 'processing', procText: 'Getting the transcript…', fail: 1700, failText: 'This video has no captions.', ex: [] }),
+  podcast: () => ({ type: 'podcast', title: 'Bootstrapped pricing', meta: 'Podcast · 52:10', status: 'processing', procText: 'Listening…', after: 1900, ex: [{ loc: '08:15', t: 'Per-seat pricing breaks down for solo tools.', on: true }, { loc: '40:02', t: 'Charge annually from day one.', on: true }] }),
+  csv: () => ({ type: 'csv', title: 'Signups by plan', meta: 'CSV · 240 rows', status: 'processing', procText: 'Reading 240 rows…', after: 1400, ex: [{ loc: 'C-002', t: '71% stay on the free plan after 30 days.', on: true }] }),
+};
+const RAIL = [['chat', 'New chat', 'message-circle', '#2B2340', '#fff'], ['sep'], ['note', 'Note', 'sticky-note', '#FFE4EF', '#D1467E'], ['pdf', 'PDF', 'file-text', '#FFF0B3', '#C79A10'], ['web', 'Web page', 'globe', '#C9ECFF', '#2A86C4'], ['video', 'Video', 'play', '#FFD9C7', '#E0673A'], ['podcast', 'Podcast', 'audio-lines', '#FFD9C7', '#E0673A'], ['csv', 'Spreadsheet', 'sheet', '#D4F2C9', '#3F9A2E']];
+document.getElementById('rail').innerHTML = RAIL.map(r => r[0] === 'sep' ? '<div class="sep"></div>' : `<button data-add="${r[0]}" data-tip="${r[1]}" style="background:${r[3]}" aria-label="Add ${r[1]}">${I(r[2], r[4], 19)}</button>`).join('');
+document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
+  const k = b.dataset.add, d = NEW[k](); d.id = k + (++uid);
+  const [cx, cy] = s2w(innerWidth / 2, innerHeight / 2), j = nodes.size % 5; d.x = cx - 150 + (j - 2) * 26; d.y = cy - 80 + (j - 2) * 20;
+  const n = addNode(d, { pop: true }); n.el.style.zIndex = ++zTop; select(n.id);
+  if (k === 'chat') { makeDesk(n); focus(n); refreshChats(); }
+  if (d.after) setTimeout(() => { n.status = 'ready'; render(n); jiggle(n, .6); refreshChats(); }, d.after);
+  if (d.fail) setTimeout(() => { n.status = 'failed'; render(n); jiggle(n, .8); }, d.fail);
+  if (k === 'note') setTimeout(() => n.el.querySelector('.note-in .n')?.focus(), 40);
+});
+const tip = document.getElementById('tip'); let tipT, warm = 0;
+function bindTips(root) { root.querySelectorAll('[data-tip]').forEach(b => { b.addEventListener('pointerenter', () => { clearTimeout(tipT); const show = () => { tip.textContent = b.dataset.tip; const r = b.getBoundingClientRect(), side = !!b.closest('#rail'); tip.style.left = (side ? r.right + 12 : r.left + r.width / 2 - tip.offsetWidth / 2) + 'px'; tip.style.top = (side ? r.top + r.height / 2 - 15 : r.top - 36) + 'px'; tip.classList.add('show'); }; performance.now() - warm < 500 ? show() : (tipT = setTimeout(show, 380)); }); b.addEventListener('pointerleave', () => { clearTimeout(tipT); if (tip.classList.contains('show')) warm = performance.now(); tip.classList.remove('show'); }); }); }
+bindTips(document.getElementById('rail')); hydrate();
+
+/* ---------- frame ---------- */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  const steps = Math.max(1, Math.ceil(dt * 240)), h = dt / steps;
+  for (let i = 0; i < steps; i++) springs.forEach(s => s.step(h));
+  const z = cam.z.x;
+  const want = size === 'S' ? (z > .5 ? 'M' : 'S') : (z < .42 ? 'S' : 'M');
+  if (want !== size) { size = want; nodes.forEach(render); }
+  world.style.transform = `translate3d(${cam.x.x}px,${cam.y.x}px,0) scale(${z})`;
+  document.getElementById('zl').textContent = Math.round(z * 100) + '%';
+  nodes.forEach(n => {
+    n.el.style.transform = `translate3d(${n.px.x}px,${n.py.x}px,0) rotate(${n.rot.x.toFixed(2)}deg) scale(${n.s.x})`;
+    if (reader.id === n.id) return; n.el.style.opacity = n.el.classList.contains('faded') ? '' : clamp(n.o.x, 0, 1);
+  });
+  const sel = nodes.get(selected), trailSet = new Set(isChat(sel) ? [sel.id, ...ancestors(sel.id).map(a => a.id)] : []);
+  const flowing = new Set(); chats().forEach(c => { if (c.streaming) [c.id, ...ancestors(c.id).map(a => a.id)].forEach(x => flowing.add(x)); });
+  tubes.forEach(t => {
+    const A = nodes.get(t.parent), B = nodes.get(t.child); if (!A || !B) return;
+    const a = [A.px.x + A.w - 6, A.py.x + 30], b = [B.px.x + 6, B.py.x + 30], mx = (a[0] + b[0]) / 2;
+    const d = `M${a[0]},${a[1]} C${mx},${a[1]} ${mx},${b[1]} ${b[0]},${b[1]}`; t.p.setAttribute('d', d); t.b.setAttribute('d', d);
+    t.k.setAttribute('cx', b[0]); t.k.setAttribute('cy', b[1]);
+    const flow = flowing.has(t.child) && flowing.has(t.parent), on = trailSet.has(t.child) && trailSet.has(t.parent);
+    const cls = flow ? 'flow' : on ? 'trail' : isChat(sel) ? 'faded' : '';
+    t.p.setAttribute('class', 'tube ' + cls); t.b.setAttribute('class', 'bub ' + (flow ? 'flow' : '')); t.k.setAttribute('class', 'knob ' + (flow ? 'flow' : on ? 'trail' : ''));
+    t.p.style.opacity = t.k.style.opacity = clamp(B.o.x, 0, 1);
+  });
+  const dragged = [...nodes.values()].find(n => n.dragging && !isChat(n));
+  desks.forEach(d => {
+    const c = nodes.get(d.chat); if (!c) { d.el.style.display = 'none'; return; }
+    const b = deskBounds(d, dragged && dragged.desk === d.chat ? dragged : null);
+    if (!d.init) { d.b.forEach((s, i) => s.snap(b[i])); d.init = true; } else d.b.forEach((s, i) => s.to(b[i]));
+    d.el.style.transform = `translate3d(${d.b[0].x}px,${d.b[1].x}px,0)`; d.el.style.width = (d.b[2].x - d.b[0].x) + 'px'; d.el.style.height = (d.b[3].x - d.b[1].x) + 'px';
+    const own = deskOf(c.id), up = ancestors(c.id).reduce((a, x) => a + deskOf(x.id).length, 0);
+    const key = qNum(c) + own.map(m => m.id + famOf(m)).join() + up;
+    const tab = d.el.querySelector('.tab'); if (tab.dataset.v !== key) { tab.dataset.v = key; tab.innerHTML = `<span class="q">${qNum(c)}</span>${own.length ? dotsHTML(own) : ''}<span>${own.length ? `${own.length} on this desk` : 'Empty desk'}</span>${up ? `<span class="up">+ ${up} from above</span>` : ''}`; }
+  });
+  if (reader.id) {
+    const p = clamp(reader.prog.x, 0, 1.04), r = reader.rect, F = 12, L = (a, b) => a + (b - a) * p;
+    R.style.clipPath = `inset(${L(r.t, F)}px ${L(r.r, F)}px ${L(r.b, F)}px ${L(r.l, F)}px round ${L(r.rad, 36)}px)`;
+    const co = clamp((p - .3) / .5, 0, 1); RI.style.opacity = co; RI.style.transform = `translateY(${(1 - co) * 12}px)`;
+    scrim.style.opacity = Math.min(1, p); const n = nodes.get(reader.id); if (n) n.el.style.opacity = Math.max(0, 1 - p / .25);
+    if (reader.prog.t === 0 && reader.prog.x < .004 && Math.abs(reader.prog.v) < .05) finishClose();
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- seed ---------- */
+const A_MAIN = `<h3>Start from your floor</h3><p>Your note puts costs near $0.40 per active user a month, and you said never below $8.</p><h3>What the desk says</h3><p>The survey's median is $12. The video's point: people pay for time saved, not features.</p><h3>So</h3><ol><li><b>Free</b> with your own key.</li><li><b>$12 a month</b> with hosted models.</li><li><b>$59 once</b> for the first 300.</li></ol>`;
+const main = addNode({ id: 'main', kind: 'chat', model: 'claude', title: 'How should I price Context Tree?', x: 400, y: 20, w: 400, msgs: [{ r: 'u', t: 'Using what is on this desk, what should a solo founder charge?' }, { r: 'a', t: A_MAIN }], answeredAt: 1 });
+const side = addNode({ id: 'side', kind: 'chat', model: 'gpt', parent: 'main', title: 'What does value-based pricing mean?', x: 1060, y: -80, w: 370, msgs: [{ r: 'u', t: 'Same desk, different question: what does value-based pricing mean?' }, { r: 'a', t: `<p>Price from what it's worth to the customer, not from what it costs you. If it saves two hours a week, that time is your anchor.</p>` }], answeredAt: 1 });
+const second = addNode({ id: 'second', kind: 'chat', model: 'gemini', parent: 'main', title: 'Second opinion with real customers', x: 1060, y: 440, w: 380, msgs: [{ r: 'u', t: 'Same question, with the blog post and the interviews on my desk too.' }, { r: 'a', t: `<p>The blog post: doubling the price lost only 6% of users. Two of three interviewees would pay $15. Start at $15.</p>` }], answeredAt: 1 });
+const S = [
+  { id: 'video', type: 'video', title: 'How to price a developer tool', meta: 'YouTube · 18:42', x: 0, y: 0, desk: 'main', ex: [{ loc: '12:04', t: 'Developers pay for time saved, not for features.', on: true }, { loc: '18:10', t: "Anchor the price to an hour of a developer's time.", on: true }, { loc: '02:30', t: 'Sponsor segment', on: false }] },
+  { id: 'pdf', type: 'pdf', title: 'Pricing survey 2025', meta: 'PDF · 24 pages', x: 0, y: 140, desk: 'main', ex: [{ loc: 'p. 3', t: 'Solo-dev tools cluster between $8 and $20.', on: true }, { loc: 'p. 7', t: 'Median price for tools like this is $12.', on: true }, { loc: 'p. 19', t: 'Methodology and sample', on: false }] },
+  { id: 'note', type: 'note', title: '', text: 'Costs ≈ $0.40 per active user a month. Never go below $8.', meta: 'Note · You', x: 0, y: 280, desk: 'main' },
+  { id: 'web', type: 'web', title: 'Why we doubled our price', meta: 'harbor.dev', x: 1500, y: 440, desk: 'second', ex: [{ loc: null, t: 'Doubling the price lost only 6% of users.', on: true }] },
+  { id: 'interviews', type: 'stack', title: 'Customer interviews', x: 1500, y: 580, desk: 'second', members: [{ type: 'pdf', title: 'Priya, indie developer', meta: 'PDF · 9 pages', ex: [{ loc: 'p. 2', t: 'Would pay $15 without thinking.', on: true }] }, { type: 'pdf', title: 'Marco, agency lead', meta: 'PDF · 12 pages', ex: [{ loc: 'p. 6', t: 'Wants a team plan first.', on: true }] }, { type: 'pdf', title: 'Lea, student', meta: 'PDF · 10 pages', ex: [{ loc: 'p. 3', t: 'Would only use the free tier.', on: true }] }] },
+  { id: 'podcast', type: 'podcast', title: 'The pricing episode', meta: 'Podcast · 38:10', x: 0, y: 560, desk: null, ex: [{ loc: '21:40', t: "Raise prices before you think you're ready.", on: true }, { loc: '30:05', t: 'Lifetime deals attract the wrong first users.', on: true }] },
+  { id: 'csv', type: 'csv', title: 'Competitor prices', meta: 'CSV · 18 rows', x: 400, y: 620, desk: null, ex: [{ loc: 'B-014', t: 'Median $12 across 18 tools; range $0–$20.', on: true }] },
+];
+S.forEach(d => addNode(d));
+[main, side, second].forEach(makeDesk);
+addTube('main', 'side'); addTube('main', 'second');
+requestAnimationFrame(() => { nodes.forEach(n => n.h = n.el.offsetHeight); refreshChats(); fit(false); select(null); requestAnimationFrame(frame); });
+addEventListener('resize', () => fit(true));
+</script>
+</body>
+</html>

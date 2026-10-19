@@ -433,8 +433,8 @@ function select(id) {
   nodes.forEach(n => n.el.classList.toggle('selected', n.id === id));
   const sel = nodes.get(id), rel = new Set();
   if (isChat(sel)) { rel.add(id); ancestors(id).forEach(a => rel.add(a.id)); [id, ...ancestors(id).map(a => a.id)].forEach(cid => deskMembers(cid).forEach(m => rel.add(m.id))); }
-  nodes.forEach(n => n.el.classList.toggle('faded', isChat(sel) && !rel.has(n.id)));
-  desks.forEach(d => d.el.classList.toggle('faded', isChat(sel) && !rel.has(d.chat)));
+  nodes.forEach(n => n.el.classList.toggle('faded', !!(isChat(sel) && !rel.has(n.id))));
+  desks.forEach(d => d.el.classList.toggle('faded', !!(isChat(sel) && !rel.has(d.chat))));
   if (sel) sel.el.style.zIndex = ++zTop;
   renderTrail();
 }

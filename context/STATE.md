@@ -3,7 +3,7 @@
 _Updated: 2026-10-19 by Claude (with owner) · at commit d47aef3_
 
 ## Where we are
-V3 ("the board") design rounds. Chosen workflow: Desks. Current prototype: `docs/design/desks-prototype.html` (standalone HTML; mock data, no backend). Branch `v3`. See `DIRECTION.md` and the 2026-10-19 rows in `DECISIONS.md`.
+V3 ("the board") design rounds. Chosen: Desks workflow in the Pebble visual system. Current prototype: `docs/design/pebble-desks-prototype.html` (standalone HTML; mock data, no backend). Branch `v3`. See `DIRECTION.md` and the 2026-10-19 rows in `DECISIONS.md`.
 
 ## What moved
 - 2026-10-19: owner returned after a ~3-month pause; decided to continue; competitor study of Slashspace done; `context/` created.
@@ -24,7 +24,7 @@ V3 ("the board") design rounds. Chosen workflow: Desks. Current prototype: `docs
 - Nothing for design work. Prod DB reads from an agent session need the owner's permission.
 
 ## Next step
-Owner picks one of the four node systems in `docs/design/desks-prototype.html` (switch top-right; Ledger is the default). Then write the V3 design spec from it. Earlier explorations: `docs/design/context-workflows-abc.html`; wired backup tag `v3-board-wires-backup`.
+Owner reviews the Pebble prototype; once it feels right, write the V3 design spec (`docs/superpowers/specs/`) from it, then plan the backend it needs. Earlier explorations: `docs/design/context-workflows-abc.html`; wired backup tag `v3-board-wires-backup`.
 
 ## Run it locally
 ```
