@@ -120,6 +120,7 @@ body.stringing, body.stringing * { cursor: crosshair !important; }
 .s .tile { width: 36px; height: 36px; border-radius: 18px; }
 .s .t { flex: 1; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card.size-s .face { border-radius: 24px; } .card.size-s .sheet { border-radius: 24px; }
+.s.blob { padding: 0 22px; } .s.blob .mdot { width: 14px; height: 14px; border-radius: 7px; }
 .tools { position: absolute; right: 8px; top: -12px; display: flex; gap: 3px; opacity: 0; transform: translateY(3px); transition: opacity 140ms ease-out, transform 160ms var(--ease-out); z-index: 4; }
 .card.selected .tools { opacity: 1; transform: none; }
 @media (hover: hover) and (pointer: fine) { .card:hover .tools { opacity: 1; transform: none; } }
@@ -484,7 +485,8 @@ function metaOf(n) {
 }
 function srcHTML(n) {
   const sheets = n.type === 'stack' ? '<div class="sheet s2"></div><div class="sheet s1"></div>' : '';
-  if (size === 'S') return `${sheets}<div class="face"><div class="s">${tileHTML(n)}<span class="t">${esc(nameOf(n))}</span></div></div>`;
+  // zoomed out: a plain coloured pebble; the desk names carry the words (map view)
+  if (size === 'S') return `${sheets}<div class="face" title="${esc(nameOf(n))}"><div class="s blob"></div></div>`;
   const port = n.status === 'ready' ? `<span class="port out ${n.links.size ? '' : 'free'}" data-port="src" data-tip="Drag onto a chat to connect"></span>` : '';
   const ic = (a, icon, tip) => `<button class="ic" data-act="${a}" data-tip="${tip}" aria-label="${tip}">${I(icon)}</button>`;
   const tools = n.status === 'processing' ? '' : `<div class="tools">${n.status === 'ready' ? ic('view', 'maximize-2', 'Open · double-click') : ''}${n.type !== 'note' && n.status === 'ready' ? ic('expand', n.open ? 'chevrons-down-up' : 'chevrons-up-down', n.open ? 'Done' : 'Excerpts and what it is for') : ''}${n.type === 'stack' ? ic('unstack', 'ungroup', 'Unpile') : ''}${ic('del', 'x', 'Remove')}</div>`;
@@ -515,7 +517,7 @@ function srcHTML(n) {
 }
 function chatHTML(c) {
   const [mn, mc] = MODELS[c.model], r = readsOf(c.id), up = ctx(c.id).filter(x => x.inherited && !x.hidden).length, own = r.length - up;
-  if (size === 'S') return `<div class="face"><div class="s"><span class="tile" style="background:var(--pb-lilac)"><span class="mdot" style="--c:${mc}"></span></span><span class="t">${esc(c.title)}</span><span class="qchip soft">${qNum(c)}</span></div></div>`;
+  if (size === 'S') return `<div class="face" title="${esc(c.title)}"><div class="s blob"><span class="mdot" style="--c:${mc}"></span></div></div>`;
   const last = c.msgs[c.msgs.length - 1], thinking = c.streaming && last && !last.t;
   const msgs = c.msgs.map(m => m.r === 'u' ? `<div class="qb">${esc(m.t)}</div>` : m.t ? `<div class="ans ${m.live ? 'live' : ''}">${m.t}</div>` : '').join('');
   const think = thinking ? `<div class="thinking"><i></i>Thinking with ${r.length} source${r.length === 1 ? '' : 's'}…</div><div class="skel"><i style="width:92%"></i><i style="width:76%"></i><i style="width:84%"></i></div>` : '';
@@ -658,6 +660,67 @@ function startString(n, kind, e) {
   });
 }
 
+/* ================= make room: a dropped card never sits on top of another ================= */
+// A source dropped onto a chat slides to the chat's left (its desk side); anything it now overlaps is
+// nudged out of the way along the shortest direction, and those nudges cascade. Chats are never shoved by sources.
+function makeRoom(n) {
+  const G = 18, box = m => [m.px.t, m.py.t, m.px.t + m.w, m.py.t + m.h + (m.type === 'stack' ? 14 : 0)];
+  const hits = (a, b) => a[0] < b[2] + G && a[2] + G > b[0] && a[1] < b[3] + G && a[3] + G > b[1];
+  const move = (m, x, y) => { m.px.cfg(.5, .72).to(x); m.py.cfg(.5, .72).to(y); };
+  // 1. off any chat card: to the chat's left, or its right if the source came from that side
+  chats().forEach(c => {
+    const A = box(n), C = box(c); if (!hits(A, C)) return;
+    const left = (A[0] + A[2]) / 2 <= (C[0] + C[2]) / 2 + c.w * .25;
+    move(n, left ? C[0] - n.w - 28 : C[2] + 28, clamp(n.py.t, C[1] - 10, C[3] - 40));
+  });
+  // 2. push whatever the card now overlaps; pushed cards push their own neighbours
+  const fixed = new Set([n]), queue = [n];
+  for (let guard = 0; queue.length && guard < 80; guard++) {
+    const a = queue.shift(), A = box(a);
+    nodes.forEach(m => {
+      if (fixed.has(m) || m.dragging || isChat(m)) return;
+      const B = box(m); if (!hits(A, B)) return;
+      const dx1 = A[2] + G - B[0], dx2 = B[2] + G - A[0], dy1 = A[3] + G - B[1], dy2 = B[3] + G - A[1];
+      const pen = Math.min(dx1, dx2, dy1, dy2);
+      if (pen === dy1) move(m, m.px.t, A[3] + G); else if (pen === dy2) move(m, m.px.t, A[1] - G - (B[3] - B[1]));
+      else if (pen === dx1) move(m, A[2] + G, m.py.t); else move(m, A[0] - G - m.w, m.py.t);
+      m.rot.kick((Math.random() > .5 ? 1 : -1) * 18); fixed.add(m); queue.push(m);
+    });
+  }
+  if (n.desk) separateDesks(n.desk);
+}
+// Desks never overlap: when one grows (or its chat is dropped near another), the neighbouring
+// desk slides away as a whole — its chat and every source on it — and that can push the next one.
+function deskBoxT(chatId) {
+  const c = nodes.get(chatId), m = deskOf(chatId);
+  let x0 = c.px.t, y0 = c.py.t, x1 = c.px.t + c.w, y1 = c.py.t + c.h;
+  m.forEach(s => { x0 = Math.min(x0, s.px.t); y0 = Math.min(y0, s.py.t); x1 = Math.max(x1, s.px.t + s.w); y1 = Math.max(y1, s.py.t + s.h + (s.type === 'stack' ? 14 : 0)); });
+  const P = 28; return [x0 - P, y0 - P - 18, Math.max(x1 + P, x0 + (m.length ? 0 : 300)), y1 + P + (m.length ? 0 : 44)];
+}
+function moveDesk(chatId, dx, dy) { [nodes.get(chatId), ...deskOf(chatId)].forEach(m => { m.px.cfg(.55, .8).to(m.px.t + dx); m.py.cfg(.55, .8).to(m.py.t + dy); }); }
+function separateDesks(fromId) {
+  if (!nodes.get(fromId)) return;
+  const G = 36, fixed = new Set([fromId]), queue = [fromId];
+  for (let guard = 0; queue.length && guard < 40; guard++) {
+    const id = queue.shift(), A = deskBoxT(id);
+    desks.forEach(d => {
+      if (fixed.has(d.chat) || !nodes.get(d.chat) || nodes.get(d.chat).dragging) return;
+      const B = deskBoxT(d.chat); if (!(A[0] < B[2] + G && A[2] + G > B[0] && A[1] < B[3] + G && A[3] + G > B[1])) return;
+      const opts = [[A[2] + G - B[0], 0], [-(B[2] + G - A[0]), 0], [0, A[3] + G - B[1]], [0, -(B[3] + G - A[1])]];
+      const [dx, dy] = opts.reduce((a, b) => Math.hypot(...b) < Math.hypot(...a) ? b : a);
+      moveDesk(d.chat, dx, dy); jiggle(nodes.get(d.chat), .25); fixed.add(d.chat); queue.push(d.chat);
+    });
+    // loose cards caught under a desk slide out with it
+    sources().forEach(s => {
+      if (s.desk || fixed.has(s) || s.dragging) return;
+      const B = [s.px.t, s.py.t, s.px.t + s.w, s.py.t + s.h]; if (!(A[0] < B[2] + 20 && A[2] + 20 > B[0] && A[1] < B[3] + 20 && A[3] + 20 > B[1])) return;
+      const opts = [[A[2] + 20 - B[0], 0], [-(B[2] + 20 - A[0]), 0], [0, A[3] + 20 - B[1]], [0, -(B[3] + 20 - A[1])]];
+      const [dx, dy] = opts.reduce((a, b) => Math.hypot(...b) < Math.hypot(...a) ? b : a);
+      s.px.cfg(.55, .8).to(s.px.t + dx); s.py.cfg(.55, .8).to(s.py.t + dy); fixed.add(s);
+    });
+  }
+}
+
 /* ================= piles ================= */
 const asMembers = s => s.type === 'stack' ? s.members : [{ type: s.type, title: s.title || cut(s.text || 'Note', 40), meta: s.meta, ex: s.ex, text: s.text, desc: s.desc, thumb: s.thumb, ytid: s.ytid, transcript: s.transcript, summary: s.summary }];
 function pile(src, target) {
@@ -761,10 +824,12 @@ function drag(n, e) {
     if (!isChat(n)) {
       const before = n.desk, after = deskT ? deskT.chat : null; n.desk = after; if (after) n.links.delete(after);
       if (before !== after) { refreshChats(); if (deskT) jiggle(n, .5); }
-      if (deskT) { n.px.cfg(.42, 1).to(n.px.x, 0); n.py.cfg(.42, 1).to(n.py.x, 0); return; }
+      if (deskT) { n.px.cfg(.42, 1).to(n.px.x, 0); n.py.cfg(.42, 1).to(n.py.x, 0); makeRoom(n); return; }
     }
     n.px.cfg(.42, damp).to(n.px.x + project(vx), vx); n.py.cfg(.42, damp).to(n.py.x + project(vy), vy);
+    if (!isChat(n)) makeRoom(n);
     group.forEach(g => { g.m.px.cfg(.42, damp).to(n.px.t + g.dx, vx); g.m.py.cfg(.42, damp).to(n.py.t + g.dy, vy); });
+    if (isChat(n)) separateDesks(n.id);
   });
 }
 function pan(e) {
@@ -1042,7 +1107,7 @@ const KIND = [[/\.(pdf)$/i, 'pdf', 'PDF', 'Detected a PDF · reading…'], [/\.(
 const sizeOf = b => b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB';
 function addDetected(spec, x, y, deskId, single) {
   const n = addNode(Object.assign({ id: 'f' + (++uid), x, y, desk: deskId, status: 'processing' }, spec), { pop: true });
-  n.el.style.zIndex = ++zTop;
+  n.el.style.zIndex = ++zTop; makeRoom(n);
   setTimeout(() => {
     if (spec.failAfter) { n.status = 'failed'; render(n); jiggle(n, .7); return; }
     n.status = 'ready'; n.fresh = !single; if (single && n.type !== 'doc') n.open = true;
@@ -1072,7 +1137,7 @@ function addLink(text, deskId, at) {
 }
 function spawnNote(x, y) {
   const d = deskAt(x + 106, y + 40), n = addNode({ id: 'n' + (++uid), type: 'note', text: '', meta: 'Note · You', x, y, desk: d ? d.chat : null }, { pop: true });
-  n.el.style.zIndex = ++zTop; select(n.id); refreshChats(); setTimeout(() => n.el.querySelector('.note-in .n')?.focus(), 40); return n;
+  n.el.style.zIndex = ++zTop; select(n.id); refreshChats(); makeRoom(n); setTimeout(() => n.el.querySelector('.note-in .n')?.focus(), 40); return n;
 }
 const DROP = document.getElementById('drop'); let dragDepth = 0;
 const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
