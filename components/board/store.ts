@@ -400,6 +400,7 @@ export class BoardStore {
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.ui = { ...this.ui, toast: { id, text, undoCardId } };
     this.toastTimer = setTimeout(() => { if (this.ui.toast?.id === id) this.dismissToast(); }, this.toastMs);
+    this.pruneDeleted();
     this.emit([{ kind: 'ui' }]);
   }
 
@@ -407,7 +408,14 @@ export class BoardStore {
     if (this.toastTimer) { clearTimeout(this.toastTimer); this.toastTimer = null; }
     if (!this.ui.toast) return;
     this.ui = { ...this.ui, toast: null };
+    this.pruneDeleted();
     this.emit([{ kind: 'ui' }]);
+  }
+
+  /** Only the deletion the current toast can undo is kept. */
+  private pruneDeleted(): void {
+    const keep = this.ui.toast?.undoCardId ?? null;
+    for (const k of [...this.deleted.keys()]) if (k !== keep) this.deleted.delete(k);
   }
 
   // ---- creates ----
@@ -442,8 +450,11 @@ export class BoardStore {
         this.cards.delete(id);
         this.pinnedCards.delete(id);
         this.files.delete(id); this.links.delete(id); this.intros.delete(id);
+        const lid = `lin_${id}`;
+        const lin = this.edges.delete(lid);
+        this.pinnedEdges.delete(lid);
         this.markStale(before);
-        this.emit([{ kind: 'card-removed', id }]);
+        this.emit([...(lin ? [{ kind: 'edge-removed', id: lid } as StoreChange] : []), { kind: 'card-removed', id }]);
         if (!(e instanceof Silent)) this.toast(errorText(e, ctx));
         return false;
       }
@@ -946,6 +957,14 @@ export class BoardStore {
       advanced: { ...(base?.advanced ?? DEFAULT_ADVANCED) },
       advOpen: false,
     };
+    if (o.mode === 'branch' && parent?.kind === 'chat' && !(this.messages.get(parent.id)?.length) && (parent.messageCount ?? 0) > 0) {
+      const pid = parent.id;   // the fork point is the parent's last message: load it if the list is missing
+      void this.api.getMessages(this.boardId, pid).then((msgs) => {
+        if (this.disposed || this.messages.get(pid)?.length) return;
+        this.messages.set(pid, msgs);
+        this.emit([{ kind: 'messages', chatId: pid }]);
+      }, () => undefined);
+    }
     this.setUi({
       menu: null, linkPop: null,
       dialog: {
@@ -998,9 +1017,15 @@ export class BoardStore {
       createdAt: t, updatedAt: t, messageCount: 0, lastMessage: null,
     };
     this.messages.set(card.id, []);
+    if (i.parentId) {
+      const lid = `lin_${card.id}`;   // the server names it the same, so its snapshot reconciles by id
+      this.edges.set(lid, { id: lid, boardId: this.boardId, kind: 'lineage', from: i.parentId, to: card.id, createdAt: t });
+      this.pinnedEdges.add(lid);
+    }
     this.create(card, () => this.api.createCard(this.boardId, {
       id: card.id, kind: 'chat', x: i.x, y: i.y, parentId: i.parentId, forkedFromMessageId: i.forkedFromMessageId, data: i.data,
     }), 'other');
+    if (i.parentId) this.emit([{ kind: 'edge', id: `lin_${card.id}` }]);
     return card.id;
   }
 
@@ -1036,7 +1061,7 @@ export class BoardStore {
     const messageId = genMessageId();
     const ctrl = new AbortController();
     const list = this.messages.get(chatId) ?? [];
-    const fresh = list.length === 0 && !(card.messageCount ?? 0);
+    const fresh = !(card.messageCount ?? 0);   // server-synced count: a failed first send leaves it 0, so a retry stays fresh
     this.messages.set(chatId, [...list, { id: `${messageId}_u`, role: 'user', content: msg, position: list.length, createdAt: nowIso() }]);
     this.streams.set(chatId, { messageId, text: '', web: null, error: null });
     this.aborts.set(chatId, ctrl);
@@ -1050,6 +1075,10 @@ export class BoardStore {
       this.emit([{ kind: 'stream', chatId }]);
     };
     const finish = () => { if (this.aborts.get(chatId) === ctrl) this.aborts.delete(chatId); };
+    const dropUser = () => {   // a failed send shows an error; the retry sends the text again
+      const cur = this.messages.get(chatId);
+      if (cur) { this.messages.set(chatId, cur.filter((x) => x.id !== `${messageId}_u`)); this.emit([{ kind: 'messages', chatId }]); }
+    };
     const syncMessages = async (): Promise<Message[] | null> => {
       try { return await this.api.getMessages(this.boardId, chatId); } catch { return null; }
     };
@@ -1089,11 +1118,13 @@ export class BoardStore {
         }
         return;
       }
+      dropUser();
       update({ error: e instanceof Error && e.message ? e.message : 'Something went wrong. Try again.' });
       return;
     }
     finish();
-    if (!mine() || errored || this.disposed) return;
+    if (!mine() || this.disposed) return;
+    if (errored) { dropUser(); return; }
 
     const cur = this.streams.get(chatId)!;
     const known = this.messages.get(chatId) ?? [];
@@ -1228,8 +1259,8 @@ export class BoardStore {
   async undo(): Promise<void> {
     const id = this.ui.toast?.undoCardId;
     if (!id) return;
-    this.dismissToast();
     const rec = this.deleted.get(id);
+    this.dismissToast();
     if (!rec || !(await rec.done)) return;
     let restored: Id[];
     try {
@@ -1239,8 +1270,12 @@ export class BoardStore {
       return;
     }
     this.deleted.delete(id);
-    for (const x of [...restored, ...rec.ids]) this.hiddenCards.delete(x);
-    for (const e of rec.edges) this.hiddenEdges.delete(e.id);
+    for (const x of restored) this.hiddenCards.delete(x);
+    const back = new Set(restored);
+    for (const e of rec.edges) {
+      const alive = (x: Id) => back.has(x) || this.cards.has(x);
+      if (alive(e.from) && alive(e.to)) this.hiddenEdges.delete(e.id);
+    }
     if (this.refreshing) await this.refreshing;   // an older in-flight snapshot would not show the restore
     await this.refresh();
   }

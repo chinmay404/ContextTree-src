@@ -308,3 +308,60 @@ describe('compare, selection and small state', () => {
     expect(snap().ui.webSearch).toEqual({ main: true });
   });
 });
+
+describe('fix round 1', () => {
+  it('createChat shows the lineage edge at once and keeps its id after the snapshot', async () => {
+    const id = s.createChat({ parentId: 'main', x: 0, y: 0, data: defaultChatData('b'), forkedFromMessageId: null });
+    expect(snap().edges.get(`lin_${id}`)).toMatchObject({ kind: 'lineage', from: 'main', to: id });
+    await flush();
+    await s.refresh();
+    expect(snap().edges.get(`lin_${id}`)).toMatchObject({ kind: 'lineage', from: 'main', to: id });
+  });
+
+  it('a failed create removes the lineage edge too', async () => {
+    m.failNext('createCard', new ApiError(400, 'invalid'));
+    const id = s.createChat({ parentId: 'main', x: 0, y: 0, data: defaultChatData('b'), forkedFromMessageId: null });
+    expect(snap().edges.has(`lin_${id}`)).toBe(true);
+    await flush();
+    expect(snap().edges.has(`lin_${id}`)).toBe(false);
+    expect(snap().cards.has(id)).toBe(false);
+  });
+
+  it('a retry after a failed first send still sends the parent ids and drops the stale question', async () => {
+    const id = s.createChat({ parentId: 'main', x: 0, y: 0, data: defaultChatData('b'), forkedFromMessageId: 'seed_main_a' });
+    await flush();
+    m.failNext('streamChat', new ApiError(500, 'boom', 'down'));
+    await s.send(id, 'q');
+    expect(snap().messages.get(id)).toHaveLength(0);
+    await s.send(id, 'q');
+    const reqs = calls('streamChat').map((c) => c.args[0]);
+    expect(reqs).toHaveLength(2);
+    for (const r of reqs) expect(r).toMatchObject({ parentNodeId: 'main', forkedFromMessageId: 'seed_main_a' });
+  });
+
+  it('openDialog loads the parent messages when they are missing', async () => {
+    (s as unknown as { messages: Map<string, unknown> }).messages.delete('main');
+    s.openDialog({ mode: 'branch', parentId: 'main' });
+    await flush();
+    const id = s.confirmDialog([0, 0])!;
+    expect(snap().cards.get(id)!.forkedFromMessageId).toBe('seed_main_a');
+  });
+
+  it('undo when restoreCard fails toasts and leaves the card deleted', async () => {
+    s.requestDelete('csv');
+    await flush();
+    m.failNext('restoreCard', new ApiError(409, 'card_limit'));
+    await s.undo();
+    expect(snap().cards.has('csv')).toBe(false);
+    expect(snap().ui.toast!.text).toBe('This board is full (50 cards). Remove something to add more.');
+  });
+
+  it('undo after the toast expired does nothing', async () => {
+    vi.useFakeTimers();
+    s.requestDelete('csv');
+    await vi.advanceTimersByTimeAsync(10001);
+    expect(snap().ui.toast).toBeNull();
+    await s.undo();
+    expect(calls('restoreCard')).toHaveLength(0);
+  });
+});
