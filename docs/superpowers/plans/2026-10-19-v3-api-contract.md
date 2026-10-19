@@ -149,6 +149,7 @@ SSE frames (unchanged): `data: {"web_search":{"results":[{title,url}]}}` (option
 - Every HTTP error, including 401 and 429, has the body `{error, detail}`.
 - Board routes are rate-limited per user, not per IP (all traffic comes from the proxy's IPs).
 - **Piles in the read set.** A pile never appears as a `ReadItem`; its members do, each with the pile's `how`/`via`. A pile id in `ChatData.hide` hides all its members.
+- **Detach.** In `PATCH …/cards/{id}`, `deskId: null` / `pileId: null` detaches (an absent key leaves it unchanged).
 - **Default model.** `POST /boards` gives the first chat `model: "openai/gpt-oss-120b"`; the board uses the same default for chats it creates.
 - `HttpEngineApi.streamChat` sends `boardId` (from `ChatRequest.boardId`) and `canvasId` with the same value.
 
@@ -189,7 +190,7 @@ interface EngineApi {
   uploadFile(boardId: Id, input: { id: Id; file: File; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card>;
   addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card>;
   streamChat(req: ChatRequest, onEvent: (e: StreamEvent) => void, signal?: AbortSignal): Promise<void>;
-  rawFileUrl(cardId: Id): string | null;   // URL of GET /files/{cardId}/raw for <img>/<audio>; mock returns null
+  rawFileUrl(cardId: Id): string | null;   // URL of GET /files/{cardId}/raw for <img>/<audio>; mock returns an object URL for files it was given, else null
 }
 class ApiError extends Error { status: number; code: string }   // thrown by both implementations
 ```
