@@ -230,7 +230,7 @@ Not started until the owner says so in chat.
 
 - [ ] **Step 1: Write the switch checklist** in `docs/superpowers/plans/v3-switch-checklist.md`. These are owner actions, in order:
   1. Push both `v3` branches.
-  2. Deploy the engine `v3` on Railway. Migration 009 runs on start; it is additive, so V2 is unaffected. Check `/api/v1/health/`.
+  2. Deploy the engine `v3` on Railway. It also closes a live V2 security hole found during the build: `/files/ingest` let a signed-in user write extracted text into another user's node (engine commit 7b21b29), so deploy it soon even before the V3 switch. Migration 009 runs on start; it is additive, so V2 is unaffected. Check `/api/v1/health/`.
   3. Open a Vercel preview of the frontend `v3` with `NEXT_PUBLIC_BOARD_V3=1`, against prod. Run through the live spec's steps 2–10 by hand on your own account.
   4. Merge both branches to `main`. Set `NEXT_PUBLIC_BOARD_V3=1` in Vercel production. Redeploy.
   5. Watch for a week. Each day, check Railway logs for 5xx on `/api/v1/boards`.

@@ -3,7 +3,10 @@
 _Updated: 2026-10-19 by Claude (with owner) · at commit d47aef3_
 
 ## Where we are
-V3 ("the board") design rounds. Chosen: Desks workflow in the Pebble visual system. Current prototype: `docs/design/pebble-desks-prototype.html` (standalone HTML; mock data, no backend). Branch `v3`. See `DIRECTION.md` and the 2026-10-19 rows in `DECISIONS.md`.
+V3 build in progress (subagent-driven, one task at a time per repo, each reviewed). Plans: `docs/superpowers/plans/2026-10-19-v3-{engine,board-frontend,integration}.md` + `…-v3-api-contract.md`. Ledgers (git-ignored): `ContextTree/.superpowers/sdd/2026-10-19-v3-engine/progress.md`, `ContextTree-src/.superpowers/sdd/2026-10-19-v3-board-frontend/progress.md`.
+- Engine (`ContextTree` branch `v3`, local only): Tasks 1–11 done; 12 (ingestion) in fix review; 13–15 left.
+- Board (`ContextTree-src` branch `v3`): Tasks 1–8 done; 9 (board shell on `/board-dev`) in progress; 10–20 left.
+- Local servers for the owner: Next `:3100` (`/board-dev`), engine `:8000` against local Docker DB `v3dev` (container `ctx-pg`, port 55432), prototype `:8090`.
 
 ## What moved
 - 2026-10-19: owner returned after a ~3-month pause; decided to continue; competitor study of Slashspace done; `context/` created.
@@ -26,7 +29,7 @@ V3 ("the board") design rounds. Chosen: Desks workflow in the Pebble visual syst
 - Nothing for design work. Prod DB reads from an agent session need the owner's permission.
 
 ## Next step
-Implementation plan from the approved V3 spec, then parallel build (engine on a backend `v3` branch, board frontend against a mock API). Earlier explorations: `docs/design/context-workflows-abc.html`; wired backup tag `v3-board-wires-backup`.
+Finish engine Tasks 12–15 and board Tasks 9–20 (rulings recorded in each ledger), then the integration plan (proxy, HttpEngineApi, `/boards` + `/b/[id]`, live e2e). Owner deploys; the DB password in git history still needs rotating.
 
 ## Run it locally
 ```
