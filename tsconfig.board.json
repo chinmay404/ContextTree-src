@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["vitest/globals"] },
+  "include": [
+    "components/board/**/*",
+    "app/board-dev/**/*",
+    "e2e/**/*",
+    "tests/unit/**/*",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "next-env.d.ts"
+  ]
+}

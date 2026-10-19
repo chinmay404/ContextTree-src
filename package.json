@@ -8,7 +8,11 @@
     "dev": "next dev",
     "lint": "next lint",
     "security:scan": "node scripts/security-scan.js",
-    "start": "next start"
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "typecheck:board": "tsc -p tsconfig.board.json --noEmit"
   },
   "dependencies": {
     "@aws-sdk/credential-providers": "latest",
@@ -89,16 +93,19 @@
     "zod": "3.25.67"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.1.9",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9.36.0",
     "eslint-config-next": "15.5.4",
+    "jsdom": "^26.1.0",
     "playwright": "^1.61.1",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

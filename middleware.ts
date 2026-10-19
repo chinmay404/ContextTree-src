@@ -21,7 +21,8 @@ export default withAuth(
           pathname === "/privacy" || // Legal pages must be public
           pathname === "/terms" ||
           pathname.startsWith("/_next/") ||
-          pathname.startsWith("/favicon.ico")
+          pathname.startsWith("/favicon.ico") ||
+          (process.env.NODE_ENV !== "production" && pathname === "/board-dev") // v3 dev board page (404s in prod)
         ) {
           return true;
         }
