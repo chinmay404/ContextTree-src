@@ -63,6 +63,7 @@
     "highlight.js": "^11.11.1",
     "input-otp": "1.4.1",
     "kerberos": "latest",
+    "lucide": "0.460.0",
     "lucide-react": "^0.454.0",
     "mammoth": "^1.11.0",
     "mongodb": "latest",
