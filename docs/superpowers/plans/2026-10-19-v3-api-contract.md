@@ -145,7 +145,7 @@ SSE frames (unchanged): `data: {"web_search":{"results":[{title,url}]}}` (option
 - `GET …/messages` on a source card → 400 `invalid`. An edge whose end card is missing or on another board → 404.
 - Restoring a card whose parent is still deleted → 409 `not_allowed`. Restore or upload that would pass 50 live cards → 409 `card_limit`.
 - Re-posting an existing source id → 200 with the existing card, no second ingest.
-- Lineage edges appear in `GET /boards/{b}` only when both ends are live.
+- Edges of every kind (lineage, wire, answer) appear in `GET /boards/{b}` only when both end cards are live.
 - Every HTTP error, including 401 and 429, has the body `{error, detail}`.
 - Board routes are rate-limited per user, not per IP (all traffic comes from the proxy's IPs).
 - **Piles in the read set.** A pile never appears as a `ReadItem`; its members do, each with the pile's `how`/`via`. A pile id in `ChatData.hide` hides all its members.
