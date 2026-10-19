@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=IBM+Plex+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Archivo:wght@400;600;700&family=Archivo+Black&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   Skins — the four node systems. Structure is shared; tokens differ.
+   ========================================================= */
+body.sk-ledger {
+  --bg: #F3EFE6; --grid: none; --ink: #1D1B17; --ink-2: #6B655A; --ink-3: #9A9182; --rule: #B8AE9A;
+  --card: #FBF8F1; --card-border: 1px solid #1D1B17; --radius: 0px; --shadow: none; --shadow-lift: 4px 6px 0 rgba(29,27,23,.12);
+  --chat: #1D1B17; --chat-ink: #F3EFE6; --chat-2: #A39B8B; --chat-border: 1px solid #1D1B17; --bubble: #2E2B25;
+  --live: #C8361D; --live-soft: #FF8A70; --line: #1D1B17; --line-w: 1.25; --line-route: curve;
+  --desk-bg: rgba(29,27,23,.025); --desk-border: 1px dashed #B8AE9A; --desk-radius: 0px;
+  --f-ui: 'Newsreader', Georgia, serif; --f-title: 'Newsreader', Georgia, serif; --f-mono: 'IBM Plex Mono', monospace; --f-body: 'Newsreader', Georgia, serif;
+  --title-size: 18px; --title-weight: 400; --body-size: 15px; --tag-border: 1px solid #1D1B17; --chrome: #FBF8F1; --chrome-border: 1px solid #1D1B17;
+}
+body.sk-schematic {
+  --bg: #0B2A4A; --grid: repeating-linear-gradient(0deg, transparent 0 23px, #12375E 23px 24px), repeating-linear-gradient(90deg, transparent 0 23px, #12375E 23px 24px);
+  --ink: #D8F0FF; --ink-2: #A8CBE6; --ink-3: #6FA0C8; --rule: #7FD3FF55;
+  --card: #0B2A4A; --card-border: 1px solid #7FD3FF; --radius: 0px; --shadow: none; --shadow-lift: 0 0 0 1px #7FD3FF, 0 12px 30px rgba(0,0,0,.4);
+  --chat: #0B2A4A; --chat-ink: #D8F0FF; --chat-2: #6FA0C8; --chat-border: 3px double #7FD3FF; --bubble: #12375E;
+  --live: #FFD166; --live-soft: #FFD166; --line: #7FD3FF; --line-w: 1.5; --line-route: elbow;
+  --desk-bg: rgba(127,211,255,.03); --desk-border: 1px dashed #7FD3FF88; --desk-radius: 0px;
+  --f-ui: 'JetBrains Mono', monospace; --f-title: 'JetBrains Mono', monospace; --f-mono: 'JetBrains Mono', monospace; --f-body: 'JetBrains Mono', monospace;
+  --title-size: 13px; --title-weight: 500; --body-size: 12.5px; --tag-border: 1px solid #7FD3FF; --chrome: #0B2A4A; --chrome-border: 1px solid #7FD3FF;
+}
+body.sk-pebble {
+  --bg: #EFE9F7; --grid: none; --ink: #2B2340; --ink-2: #6E6585; --ink-3: #9A91B0; --rule: #D8CFEA;
+  --card: #FFFFFF; --card-border: 0; --radius: 28px; --shadow: 0 12px 30px -14px rgba(43,35,64,.33); --shadow-lift: 0 26px 50px -18px rgba(43,35,64,.45);
+  --chat: #FFFFFF; --chat-ink: #2B2340; --chat-2: #6E6585; --chat-border: 0; --bubble: #F3EEFA;
+  --live: #E2B52A; --live-soft: #C79A10; --line: #B3A9CC; --line-w: 7; --line-route: curve;
+  --desk-bg: rgba(255,255,255,.45); --desk-border: 0; --desk-radius: 44px;
+  --f-ui: 'Bricolage Grotesque', sans-serif; --f-title: 'Bricolage Grotesque', sans-serif; --f-mono: 'Bricolage Grotesque', sans-serif; --f-body: 'Bricolage Grotesque', sans-serif;
+  --title-size: 16px; --title-weight: 600; --body-size: 14px; --tag-border: 0; --chrome: #FFFFFF; --chrome-border: 0;
+}
+body.sk-signal {
+  --bg: #FFFFFF; --grid: radial-gradient(#00000014 1px, transparent 1.2px); --ink: #000; --ink-2: #333; --ink-3: #666; --rule: #000;
+  --card: #FFFFFF; --card-border: 2px solid #000; --radius: 0px; --shadow: 5px 5px 0 #000; --shadow-lift: 10px 10px 0 #000;
+  --chat: #000; --chat-ink: #FFF; --chat-2: #BDBDBD; --chat-border: 2px solid #000; --bubble: #222;
+  --live: #2F5BFF; --live-soft: #8FA6FF; --line: #000; --line-w: 3; --line-route: elbow;
+  --desk-bg: transparent; --desk-border: 2px dashed #000; --desk-radius: 0px;
+  --f-ui: 'Archivo', sans-serif; --f-title: 'Archivo', sans-serif; --f-mono: 'Archivo', sans-serif; --f-body: 'Archivo', sans-serif;
+  --title-size: 15px; --title-weight: 700; --body-size: 13.5px; --tag-border: 2px solid #000; --chrome: #FFF; --chrome-border: 2px solid #000;
+}
+:root { --ease-out: cubic-bezier(.23, 1, .32, 1); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-ui); -webkit-font-smoothing: antialiased; transition: background-color 300ms ease; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--live); outline-offset: 2px; }
+.mono { font-family: var(--f-mono); }
+@keyframes caret { 50% { opacity: 0; } }
+@keyframes flowdash { to { stroke-dashoffset: -28; } }
+
+#vp { position: fixed; inset: 0; background-image: var(--grid); touch-action: none; }
+#vp.panning { cursor: grabbing; }
+#world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+#lines { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; z-index: 1; pointer-events: none; }
+#lines path { fill: none; stroke: var(--line); stroke-width: var(--line-w); stroke-linecap: round; stroke-linejoin: round; transition: stroke 200ms ease, opacity 200ms ease; }
+#lines path.trail { stroke: var(--live); }
+#lines path.faded { opacity: .22; }
+#lines rect { fill: var(--line); transition: fill 200ms ease; }
+#lines rect.trail { fill: var(--live); }
+
+/* ---------- desks ---------- */
+.desk { position: absolute; left: 0; top: 0; z-index: 0; background: var(--desk-bg); border: var(--desk-border); border-radius: var(--desk-radius); pointer-events: none; transition: border-color 180ms ease, background-color 180ms ease, opacity 200ms ease, box-shadow 180ms ease; }
+.desk.hot { border-color: var(--live); box-shadow: inset 0 0 0 1px var(--live); }
+.sk-pebble .desk.hot { box-shadow: 0 0 0 4px var(--live); }
+.desk.faded { opacity: .35; }
+.desk .tab { position: absolute; left: 16px; top: -12px; height: 23px; padding: 0 9px; display: inline-flex; align-items: center; gap: 8px; background: var(--bg); font: 400 11px var(--f-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; border: var(--desk-border); border-radius: var(--desk-radius); }
+.sk-pebble .desk .tab { background: #FFF; border-radius: 12px; text-transform: none; font-weight: 600; letter-spacing: 0; top: -14px; box-shadow: 0 6px 16px -8px rgba(43,35,64,.3); }
+.sk-signal .desk .tab { font-family: 'Archivo Black'; background: #FFE14D; border: 2px solid #000; }
+.desk.hot .tab { color: var(--live); }
+.desk .tab b { font-weight: 500; color: var(--ink); }
+
+/* ---------- nodes ---------- */
+.card { position: absolute; left: 0; top: 0; will-change: transform; z-index: 2; user-select: none; -webkit-user-select: none; transition: opacity 220ms ease; }
+.card.faded { opacity: .38; }
+.face { position: relative; background: var(--card); border: var(--card-border); border-radius: var(--radius); box-shadow: var(--shadow); cursor: grab; transition: box-shadow 220ms var(--ease-out), border-color 200ms ease, background-color 300ms ease; overflow: hidden; }
+.card.lift .face { box-shadow: var(--shadow-lift); cursor: grabbing; }
+.card.selected .face { outline: 2px solid var(--live); outline-offset: 3px; }
+.sk-pebble .card.selected .face { outline-offset: 4px; border-radius: var(--radius); }
+
+/* source card */
+.src .face { width: 300px; min-height: 104px; display: flex; flex-direction: column; }
+.hd { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 13px 0; }
+.tag { font: 500 10px/1 var(--f-mono); letter-spacing: .04em; padding: 3px 5px; border: var(--tag-border); white-space: nowrap; }
+.no { font: 400 10px/1 var(--f-mono); color: var(--ink-2); letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd { padding: 6px 13px 11px; display: flex; flex-direction: column; gap: 5px; }
+.ttl { font: var(--title-weight) var(--title-size)/1.15 var(--f-title); }
+.exc { font: 400 13px/1.35 var(--f-body); color: var(--ink-2); border-top: 1px dotted var(--rule); padding-top: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.exc .loc { font: 500 10px var(--f-mono); color: var(--ink); margin-right: 6px; }
+.card.reading .tag { background: var(--live); color: #fff; border-color: var(--live); }
+.card.reading .face { border-color: var(--live); }
+/* skin specifics for source cards */
+.sk-ledger .src .ttl { font-size: 18px; }
+.sk-schematic .src .hd { padding: 5px 10px; border-bottom: 1px solid #7FD3FF55; color: #7FD3FF; }
+.sk-schematic .src .tag { border: 0; padding: 0; color: #7FD3FF; }
+.sk-schematic .src .no { color: #7FD3FF; }
+.sk-schematic .src .exc { border-top: 0; color: var(--ink-3); font-size: 11px; }
+.sk-schematic .src .exc::before { content: '› '; }
+.sk-schematic .card.reading .face { border-color: #FFD166; }
+.sk-schematic .card.reading .hd, .sk-schematic .card.reading .tag, .sk-schematic .card.reading .no { color: #FFD166; background: none; }
+.sk-pebble .src .face { flex-direction: row; align-items: center; gap: 12px; padding: 14px 18px 14px 14px; min-height: 96px; }
+.sk-pebble .src .hd { display: none; }
+.sk-pebble .src .bd { padding: 0; }
+.sk-pebble .src .exc { border-top: 0; padding: 0; font-size: 13px; }
+.sk-pebble .src .knob { width: 48px; height: 48px; flex: none; border-radius: 24px; background: #FFF; display: grid; place-items: center; font: 800 12px var(--f-ui); }
+.sk-pebble .src[data-fam=media] .face { background: #FFD9C7; } .sk-pebble .src[data-fam=media] .knob { color: #E0673A; }
+.sk-pebble .src[data-fam=docs] .face { background: #FFF0B3; } .sk-pebble .src[data-fam=docs] .knob { color: #C79A10; }
+.sk-pebble .src[data-fam=web] .face { background: #C9ECFF; } .sk-pebble .src[data-fam=web] .knob { color: #2A86C4; }
+.sk-pebble .src[data-fam=data] .face { background: #D4F2C9; } .sk-pebble .src[data-fam=data] .knob { color: #3F9A2E; }
+.sk-pebble .src[data-fam=note] .face { background: #FFE4EF; } .sk-pebble .src[data-fam=note] .knob { color: #D1467E; }
+.sk-pebble .card.reading .face { box-shadow: 0 0 0 4px #E2B52A, var(--shadow); }
+.knob { display: none; }
+.sk-pebble .knob { display: grid; }
+.sk-signal .src .hd { padding: 0 10px; height: 26px; border-bottom: 2px solid #000; font-family: 'Archivo Black'; }
+.sk-signal .src .tag { border: 0; padding: 0; font: 12px 'Archivo Black'; letter-spacing: 0; }
+.sk-signal .src .no { font: 12px 'Archivo Black'; color: inherit; }
+.sk-signal .src[data-fam=media] .hd { background: #FFE14D; } .sk-signal .src[data-fam=docs] .hd { background: #2F5BFF; color: #FFF; }
+.sk-signal .src[data-fam=web] .hd { background: #FF3B2F; color: #FFF; } .sk-signal .src[data-fam=data] .hd { background: #000; color: #FFF; } .sk-signal .src[data-fam=note] .hd { background: #FFF; }
+.sk-signal .src .exc { border-top: 0; padding-top: 0; color: #000; font-size: 12px; }
+.sk-signal .card.reading .face { box-shadow: 5px 5px 0 #2F5BFF; }
+.sk-signal .card.reading .tag { background: none; color: inherit; }
+
+/* chat card */
+.chat .face { background: var(--chat); color: var(--chat-ink); border: var(--chat-border); }
+.chd { display: flex; align-items: center; gap: 8px; padding: 12px 16px 0; }
+.chd .no { color: var(--chat-2); }
+.chd .tag.ask { background: var(--chat-ink); color: var(--chat); border: 0; padding: 4px 7px; }
+.chd .live { font: 500 10px var(--f-mono); color: var(--live-soft); letter-spacing: .04em; }
+.chd .sp { flex: 1; }
+.chat .ttl { padding: 8px 16px 0; font-size: calc(var(--title-size) + 1px); }
+.cbody { max-height: 300px; overflow: auto; padding: 12px 16px 12px; cursor: auto; user-select: text; -webkit-user-select: text; scrollbar-width: thin; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(#000 calc(100% - 22px), transparent); mask-image: linear-gradient(#000 calc(100% - 22px), transparent); }
+.cbody.short { -webkit-mask-image: none; mask-image: none; }
+.mu { display: inline-block; max-width: 96%; background: var(--bubble); padding: 8px 11px; font: 400 var(--body-size)/1.45 var(--f-body); margin: 0 0 10px; border-radius: calc(var(--radius) * .5); }
+.ma { font: 400 var(--body-size)/1.55 var(--f-body); color: var(--chat-2); margin-bottom: 10px; }
+.ma b, .ma h3 { color: var(--chat-ink); }
+.ma h3 { font: 600 var(--body-size)/1.3 var(--f-ui); margin: 10px 0 2px; } .ma h3:first-child { margin-top: 0; }
+.ma p { margin: 0 0 7px; } .ma ol { margin: 0 0 7px; padding-left: 18px; }
+.ma.live p:last-child::after { content: ''; display: inline-block; width: 7px; height: 14px; margin-left: 2px; vertical-align: -2px; background: var(--live); animation: caret 900ms steps(1) infinite; }
+.ma .changed { display: block; margin-top: 6px; font: 500 10px var(--f-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--live-soft); }
+.cfoot { display: flex; justify-content: space-between; align-items: center; padding: 0 16px 12px; font: 400 10px var(--f-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--chat-2); gap: 8px; }
+.cfoot .go { color: var(--live-soft); }
+.compose { display: none; border-top: 1px solid color-mix(in srgb, var(--chat-ink) 15%, transparent); padding: 10px 12px 10px 16px; gap: 8px; align-items: flex-end; cursor: auto; }
+.card.selected .compose, .card.empty .compose { display: flex; }
+.compose textarea { flex: 1; border: 0; outline: none; resize: none; background: none; color: var(--chat-ink); font: 400 var(--body-size)/1.45 var(--f-body); min-height: 22px; max-height: 110px; }
+.compose textarea::placeholder { color: var(--chat-2); }
+.send { height: 28px; padding: 0 10px; font: 500 11px var(--f-mono); letter-spacing: .04em; background: var(--live); color: #FFF; border-radius: calc(var(--radius) * .4); transition: transform 120ms var(--ease-out), opacity 150ms ease; }
+.send:active { transform: scale(.95); } .send:disabled { opacity: .3; cursor: default; }
+.sk-signal .send { background: #FFE14D; color: #000; font-family: 'Archivo Black'; }
+.sk-pebble .send { border-radius: 14px; background: #2B2340; }
+.tools { display: flex; gap: 2px; opacity: 0; transition: opacity 140ms ease; }
+.card.selected .tools { opacity: 1; }
+@media (hover: hover) and (pointer: fine) { .card:hover .tools { opacity: 1; } }
+.tb { height: 22px; padding: 0 7px; font: 500 10px var(--f-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--chat-2); border: 1px solid color-mix(in srgb, var(--chat-ink) 22%, transparent); border-radius: calc(var(--radius) * .3); transition: color 150ms ease, border-color 150ms ease, transform 120ms var(--ease-out); white-space: nowrap; }
+.tb:active { transform: scale(.95); }
+@media (hover: hover) and (pointer: fine) { .tb:hover { color: var(--chat-ink); border-color: var(--chat-ink); } }
+.sk-pebble .chat .face { padding-bottom: 2px; }
+.sk-signal .chat .face { box-shadow: 6px 6px 0 #FFE14D; }
+.sk-signal .chd .tag.ask { background: #FFE14D; color: #000; font-family: 'Archivo Black'; }
+
+/* ---------- chrome ---------- */
+.chrome { background: var(--chrome); border: var(--chrome-border); color: var(--ink); }
+.sk-pebble .chrome { border-radius: 16px; box-shadow: 0 10px 30px -12px rgba(43,35,64,.35); }
+.sk-signal .chrome { box-shadow: 4px 4px 0 #000; }
+#top { position: fixed; top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 20; pointer-events: none; }
+#top > * { pointer-events: auto; }
+.brand { display: flex; align-items: baseline; gap: 10px; padding: 9px 14px; }
+.brand b { font: var(--title-weight) 17px var(--f-title); }
+.brand span { font: 400 10px var(--f-mono); letter-spacing: .05em; color: var(--ink-2); text-transform: uppercase; }
+.skins { display: flex; padding: 3px; gap: 2px; }
+.skins button { height: 30px; padding: 0 11px; font: 500 11px var(--f-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); border-radius: calc(var(--radius) * .3); transition: background-color 150ms ease, color 150ms ease; }
+.skins button.on { background: var(--ink); color: var(--bg); }
+#trail { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 4px; padding: 6px 8px; max-width: calc(100vw - 260px); overflow: hidden; }
+#trail .lb { font: 400 10px var(--f-mono); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); padding: 0 6px 0 4px; white-space: nowrap; }
+#trail button { height: 28px; padding: 0 9px; display: inline-flex; align-items: center; gap: 6px; font: 400 13px var(--f-ui); white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; border-radius: calc(var(--radius) * .3); transition: background-color 150ms ease; }
+#trail button .q { font: 500 10px var(--f-mono); color: var(--ink-2); }
+#trail button.here { background: var(--ink); color: var(--bg); } #trail button.here .q { color: inherit; opacity: .7; }
+#trail .sep { color: var(--ink-3); }
+#trail .hint { font: 400 13px var(--f-ui); color: var(--ink-2); padding: 0 6px; white-space: nowrap; }
+@media (hover: hover) and (pointer: fine) { #trail button:not(.here):hover { background: color-mix(in srgb, var(--ink) 8%, transparent); } }
+#zoom { position: fixed; right: 14px; bottom: 16px; z-index: 20; display: flex; align-items: center; padding: 3px; gap: 2px; }
+#zoom button { width: 30px; height: 30px; font: 500 15px var(--f-mono); border-radius: calc(var(--radius) * .3); }
+#zoom .z { width: 46px; text-align: center; font: 400 11px var(--f-mono); color: var(--ink-2); }
+#help { position: fixed; left: 14px; bottom: 16px; z-index: 20; max-width: 300px; padding: 10px 12px; font: 400 12.5px/1.5 var(--f-ui); color: var(--ink-2); }
+#help b { color: var(--ink); font-weight: 600; }
+
+/* ---------- full-screen ---------- */
+#scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; z-index: 40; }
+#reader { position: fixed; inset: 0; z-index: 50; display: none; background: var(--chat); color: var(--chat-ink); }
+#reader .in { position: absolute; inset: 12px; display: grid; grid-template-columns: 300px 1fr; grid-template-rows: 54px 1fr; }
+.r-top { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 14px; border-bottom: 1px solid color-mix(in srgb, var(--chat-ink) 15%, transparent); font: 400 13px var(--f-ui); }
+.r-top .tb { opacity: 1; }
+.r-top strong { font: var(--title-weight) 16px var(--f-title); }
+.rail { border-right: 1px solid color-mix(in srgb, var(--chat-ink) 15%, transparent); padding: 18px 16px; overflow: auto; display: flex; flex-direction: column; gap: 18px; }
+.rail h4 { margin: 0 0 8px; font: 400 10px var(--f-mono); letter-spacing: .05em; text-transform: uppercase; color: var(--chat-2); }
+.rrow { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px dotted color-mix(in srgb, var(--chat-ink) 20%, transparent); font: 400 14px/1.3 var(--f-ui); }
+.rrow .k { font: 500 10px var(--f-mono); color: var(--chat-2); min-width: 54px; }
+.rrow.here { color: var(--live-soft); }
+.rrow button { text-align: left; }
+.budget { margin-top: auto; font: 400 12px/1.45 var(--f-ui); color: var(--chat-2); }
+.budget b { display: block; font: 500 22px var(--f-mono); color: var(--chat-ink); }
+.r-scroll { overflow: auto; padding: 36px 24px; }
+.r-th { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.r-th h2 { margin: 0; font: var(--title-weight) 30px/1.15 var(--f-title); letter-spacing: -.01em; }
+.r-th .mu { align-self: flex-end; font-size: 16px; }
+.r-th .ma { font-size: 17px; line-height: 1.65; }
+.r-main { display: flex; flex-direction: column; min-height: 0; }
+.r-compose { max-width: 720px; width: calc(100% - 48px); margin: 0 auto 18px; display: flex; gap: 8px; align-items: flex-end; padding: 12px 12px 12px 16px; border: 1px solid color-mix(in srgb, var(--chat-ink) 22%, transparent); border-radius: calc(var(--radius) * .5); }
+.r-compose textarea { flex: 1; border: 0; outline: none; resize: none; background: none; color: var(--chat-ink); font: 400 16px/1.5 var(--f-body); min-height: 24px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+</style>
+</head>
+<body>
+<div id="vp"><div id="world"><svg id="lines"></svg></div></div>
+<div id="top">
+  <div class="brand chrome"><b>Context Tree</b><span>Desks · pricing study</span></div>
+  <div class="skins chrome" id="skins"></div>
+</div>
+<div id="trail" class="chrome"></div>
+<div id="zoom" class="chrome"><button data-z="out" aria-label="Zoom out">−</button><span class="z" id="zl">100%</span><button data-z="in" aria-label="Zoom in">+</button><button data-z="fit" aria-label="Fit">⤢</button></div>
+<div id="help" class="chrome"><b>Desks.</b> What sits on a chat's desk is what it reads; branches also read the desk above. Drag sources in or out. <b>What if</b> re-asks a question so you can drop in one more source and see what changes.</div>
+<div id="scrim"></div>
+<div id="reader" role="dialog" aria-modal="true"><div class="in"></div></div>
+
+<script>
+/* ---------- skin ---------- */
+const SKINS = { ledger: 'Ledger', schematic: 'Schematic', pebble: 'Pebble', signal: 'Signal' };
+let skin = 'ledger'; try { skin = localStorage.getItem('ct-skin') || 'ledger'; } catch {}
+if (!SKINS[skin]) skin = 'ledger';
+document.body.className = 'sk-' + skin;
+document.getElementById('skins').innerHTML = Object.entries(SKINS).map(([k, v]) => `<button data-skin="${k}" class="${k === skin ? 'on' : ''}">${v}</button>`).join('');
+document.querySelectorAll('[data-skin]').forEach(b => b.onclick = () => {
+  skin = b.dataset.skin; try { localStorage.setItem('ct-skin', skin); } catch {}
+  document.body.className = 'sk-' + skin; document.querySelectorAll('[data-skin]').forEach(x => x.classList.toggle('on', x === b));
+  nodes.forEach(render); requestAnimationFrame(() => nodes.forEach(n => n.h = n.el.offsetHeight));
+});
+
+/* ---------- springs ---------- */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const springs = new Set();
+class Spring {
+  constructor(v, r = .4, d = 1) { this.x = v; this.t = v; this.v = 0; this.cfg(r, d); springs.add(this); }
+  cfg(r, d) { this.k = (2 * Math.PI / r) ** 2; this.c = 4 * Math.PI * d / r; return this; }
+  to(t, vel) { this.t = t; if (vel !== undefined) this.v = vel; if (RM) this.snap(t); return this; }
+  snap(v) { this.x = this.t = v; this.v = 0; return this; }
+  step(dt) { const f = -this.k * (this.x - this.t) - this.c * this.v; this.v += f * dt; this.x += this.v * dt; }
+}
+const project = (v, d = .99) => (v / 1000) * d / (1 - d);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const strip = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+/* ---------- content ---------- */
+const SRC = {
+  video:      { no: 1, tag: 'VID', fam: 'media', title: 'How to price a developer tool', meta: '18:42', loc: '12:04', ex: 'Developers pay for time saved, not for features.', short: 'the video' },
+  pdf:        { no: 2, tag: 'PDF', fam: 'docs', title: 'Pricing survey 2025', meta: '24 pp.', loc: 'p. 7', ex: 'Median price for tools like this is $12 a month.', short: 'the survey' },
+  note:       { no: 3, tag: 'NOTE', fam: 'note', title: 'Cost note', meta: 'You · 2d', loc: null, ex: 'Costs ≈ $0.40 per active user a month. Never below $8.', short: 'your cost note' },
+  web:        { no: 4, tag: 'WEB', fam: 'web', title: 'Why we doubled our price', meta: 'harbor.dev', loc: null, ex: 'Doubling the price lost only 6% of users.', short: 'the blog post' },
+  interviews: { no: 5, tag: 'PDF ×3', fam: 'docs', title: 'Customer interviews', meta: '31 pp.', loc: 'p. 2', ex: 'Priya would pay $15 without thinking.', short: 'the interviews' },
+  podcast:    { no: 6, tag: 'AUD', fam: 'media', title: 'The pricing episode', meta: '38:10', loc: '21:40', ex: "Raise prices before you think you're ready.", short: 'the podcast' },
+  csv:        { no: 7, tag: 'CSV', fam: 'data', title: 'Competitor prices', meta: '18 rows', loc: 'B-014', ex: 'Median $12 across 18 tools; range $0–$20.', short: 'the price sheet' },
+};
+const nos = list => { const ns = list.map(id => SRC[id].no).sort((a, b) => a - b); if (!ns.length) return ''; const runs = []; let s = ns[0], p = ns[0]; for (const n of ns.slice(1)) { if (n === p + 1) { p = n; continue; } runs.push(s === p ? pad(s) : `${pad(s)}–${pad(p)}`); s = p = n; } runs.push(s === p ? pad(s) : `${pad(s)}–${pad(p)}`); return (ns.length > 1 ? 'Nos. ' : 'No. ') + runs.join(', '); };
+const pad = n => String(n).padStart(2, '0');
+const MODELS = { claude: 'Claude', gpt: 'GPT', gemini: 'Gemini' };
+const A_MAIN = `<h3>Start from your floor</h3><p>Your note puts costs near $0.40 per active user a month, and you said never below $8.</p><h3>What the desk says</h3><p>The survey's median is $12. The video's point: people pay for time saved, not features.</p><h3>So</h3><ol><li><b>Free</b> with your own key.</li><li><b>$12 a month</b> with hosted models.</li><li><b>$59 once</b> for the first 300.</li></ol>`;
+
+/* ---------- board ---------- */
+const vp = document.getElementById('vp'), world = document.getElementById('world'), LN = document.getElementById('lines'), NS = 'http://www.w3.org/2000/svg';
+const nodes = new Map(), lins = [], desks = [];
+let selected = null, zTop = 10, uid = 0;
+const cam = { x: new Spring(0, .5, 1), y: new Spring(0, .5, 1), z: new Spring(1, .45, 1) };
+const isChat = n => n && n.kind === 'chat';
+const chats = () => [...nodes.values()].filter(isChat);
+const childrenOf = id => chats().filter(c => c.parent === id);
+const ancestors = id => { const out = []; let c = nodes.get(id); while (c && c.parent) { c = nodes.get(c.parent); if (c) out.push(c); } return out; };
+const deskMembers = id => [...nodes.values()].filter(n => !isChat(n) && n.desk === id);
+const reads = id => [...deskMembers(id), ...ancestors(id).flatMap(a => deskMembers(a.id))].map(m => m.src);
+function qNum(c) { if (!c.parent) return 'Q' + (chats().filter(x => !x.parent).indexOf(c) + 1); const p = nodes.get(c.parent); return qNum(p) + '.' + (childrenOf(p.id).indexOf(c) + 1); }
+
+function addNode(d, { pop = false } = {}) {
+  const el = document.createElement('div'); el.dataset.id = d.id; el.tabIndex = 0; world.appendChild(el);
+  const n = Object.assign(d, { el, px: new Spring(d.x, .4, 1), py: new Spring(d.y, .4, 1), s: new Spring(pop ? .94 : 1, .34, 1), o: new Spring(pop ? 0 : 1, .3, 1), h: 104 });
+  n.w = isChat(n) ? (n.w || 400) : 300;
+  if (pop) { n.s.to(1); n.o.to(1); }
+  nodes.set(n.id, n); render(n);
+  new ResizeObserver(() => n.h = el.offsetHeight).observe(el);
+  return n;
+}
+function render(n) {
+  const ta = n.el.querySelector('textarea'), focus = ta && ta === document.activeElement, draft = ta?.value || '';
+  const sc = n.el.querySelector('.cbody')?.scrollTop;
+  const reading = !isChat(n) && n.desk && [nodes.get(n.desk), ...chats().filter(c => ancestors(c.id).some(a => a.id === n.desk))].some(c => c && c.streaming);
+  n.el.className = `card ${isChat(n) ? 'chat' : 'src'}${n.id === selected ? ' selected' : ''}${isChat(n) && !n.msgs.length ? ' empty' : ''}${reading ? ' reading' : ''}`;
+  if (!isChat(n)) n.el.dataset.fam = SRC[n.src].fam;
+  n.el.style.width = n.w + 'px';
+  n.el.innerHTML = isChat(n) ? chatHTML(n) : srcHTML(n.src);
+  bind(n);
+  const b = n.el.querySelector('.cbody'); if (b) { b.scrollTop = sc ?? 0; b.classList.toggle('short', b.scrollHeight <= b.clientHeight + 2); }
+  const nt = n.el.querySelector('textarea'); if (nt) { nt.value = draft; if (focus) nt.focus({ preventScroll: true }); nt.dispatchEvent(new Event('input')); }
+  n.h = n.el.offsetHeight;
+}
+function srcHTML(id) {
+  const s = SRC[id];
+  return `<div class="face"><span class="knob">${s.tag.split(' ')[0]}</span><div class="hd"><span class="tag">${s.tag}</span><span class="no">No. ${pad(s.no)} · ${esc(s.meta)}</span></div><div class="bd"><div class="ttl">${esc(s.title)}</div><div class="exc">${s.loc ? `<span class="loc">${esc(s.loc)}</span>` : ''}${esc(s.ex)}</div></div></div>`;
+}
+function chatHTML(c) {
+  const r = reads(c.id), own = deskMembers(c.id).map(m => m.src);
+  const msgs = c.msgs.length ? c.msgs.map(m => m.r === 'u' ? `<div class="mu">${esc(m.t)}</div>` : `<div class="ma ${m.live ? 'live' : ''}">${m.t || '<p></p>'}</div>`).join('') : `<div class="ma" style="opacity:.8">${c.parent ? 'Same desk as the chat above. Ask the question you were holding back.' : 'Put sources on this desk, then ask.'}</div>`;
+  return `<div class="face"><div class="chd"><span class="tag ask">ASK</span><span class="no">${qNum(c)} · ${MODELS[c.model]}</span><span class="sp"></span>${c.streaming ? `<span class="live">READING ${esc(nos(r)) || '…'}</span>` : `<span class="tools"><button class="tb" data-act="open">Open</button><button class="tb" data-act="branch">Branch</button><button class="tb" data-act="whatif">What if</button></span>`}</div>
+    <div class="ttl">${esc(c.title)}</div>
+    <div class="cbody">${msgs}</div>
+    <div class="cfoot"><span>${r.length ? `Citing ${esc(nos(r))}` : 'Desk is empty'}${c.parent && own.length !== r.length ? ` · ${r.length - own.length} from above` : ''}</span><span class="go">${c.whatIf ? 'What-if branch' : ''}</span></div>
+    <div class="compose"><textarea rows="1" placeholder="${c.msgs.length ? 'Ask a follow-up' : 'Ask'}" aria-label="Message"></textarea><button class="send" disabled>Ask →</button></div></div>`;
+}
+function bind(n) {
+  const ta = n.el.querySelector('textarea');
+  if (ta) {
+    const sb = n.el.querySelector('.send');
+    ta.addEventListener('input', () => { sb.disabled = !ta.value.trim(); ta.style.height = 'auto'; ta.style.height = Math.min(110, ta.scrollHeight) + 'px'; });
+    const go = () => { const v = ta.value.trim(); if (!v) return; ta.value = ''; send(n, v); };
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(); } });
+    sb.addEventListener('click', go);
+  }
+  n.el.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation(); const a = b.dataset.act;
+    if (a === 'open') openReader(n.id);
+    if (a === 'branch') { const c = branch(n.id); select(c.id); setTimeout(() => flyTo(c), 60); focusCompose(c); }
+    if (a === 'whatif') whatIf(n);
+  }));
+}
+const focusCompose = n => setTimeout(() => n.el.querySelector('textarea')?.focus({ preventScroll: true }), 40);
+function addLin(parent, child) { const p = document.createElementNS(NS, 'path'), k = document.createElementNS(NS, 'rect'); k.setAttribute('width', 7); k.setAttribute('height', 7); LN.append(p, k); lins.push({ parent, child, p, k }); }
+function makeDesk(chat) { const el = document.createElement('div'); el.className = 'desk'; el.innerHTML = '<div class="tab"></div>'; world.insertBefore(el, world.firstChild); desks.push({ chat: chat.id, el, b: [0, 0, 0, 0].map(() => new Spring(0, .4, 1)), init: false }); }
+function branch(pid, extra = {}) {
+  const p = nodes.get(pid), kids = childrenOf(pid).length;
+  const spot = freeSpot(p.px.t + p.w + 220, p.py.t - 60, 380, 340);
+  const c = addNode(Object.assign({ id: 'q' + (++uid), kind: 'chat', model: p.model, parent: pid, title: 'New question, same desk', msgs: [], w: 380, x: spot[0], y: spot[1] }, extra), { pop: true });
+  c.el.style.zIndex = ++zTop; addLin(pid, c.id); makeDesk(c); refreshAll(); return c;
+}
+function freeSpot(x, y, w, h) {
+  const boxes = [...nodes.values()].map(n => [n.px.t - 60, n.py.t - 60, n.px.t + n.w + 60, n.py.t + n.h + 60]);
+  desks.forEach(d => { const b = deskBounds(d); if (b) boxes.push([b[0] - 20, b[1] - 30, b[2] + 20, b[3] + 20]); });
+  for (let i = 0; i < 40; i++) { const yy = y + i * 60; if (!boxes.some(b => x < b[2] && x + w > b[0] && yy < b[3] && yy + h > b[1])) return [x, yy]; }
+  return [x + 460, y];
+}
+function whatIf(p) {
+  const lastQ = [...p.msgs].reverse().find(m => m.r === 'u');
+  const c = branch(p.id, { title: 'What if… ' + (lastQ ? '(same question)' : ''), whatIf: true, baseFrom: p.id, msgs: lastQ ? [{ r: 'u', t: lastQ.t }, { r: 'a', t: `<p>Same question, same desk as ${qNum(p)}. Drop one more source on this desk and I'll answer again, then say what changed.</p>` }] : [] });
+  select(c.id); setTimeout(() => flyTo(c), 60);
+}
+function refreshAll() { nodes.forEach(n => { if (isChat(n)) render(n); }); renderTrail(); }
+
+/* ---------- camera + pointer ---------- */
+const s2w = (x, y) => [(x - cam.x.x) / cam.z.x, (y - cam.y.x) / cam.z.x];
+function camSnap(x, y, z) { cam.x.snap(x); cam.y.snap(y); if (z !== undefined) cam.z.snap(z); }
+function zoomAt(px, py, nz, anim) { nz = Math.min(2, Math.max(.25, nz)); const z = anim ? cam.z.t : cam.z.x, bx = anim ? cam.x.t : cam.x.x, by = anim ? cam.y.t : cam.y.x; const nx = px - (px - bx) * nz / z, ny = py - (py - by) * nz / z; anim ? (cam.z.to(nz), cam.x.to(nx), cam.y.to(ny)) : camSnap(nx, ny, nz); }
+function fit(anim = true, list) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  (list || [...nodes.values()]).forEach(n => { x0 = Math.min(x0, n.px.t - 40); y0 = Math.min(y0, n.py.t - 50); x1 = Math.max(x1, n.px.t + n.w + 40); y1 = Math.max(y1, n.py.t + n.h + 40); });
+  const vw = innerWidth, vh = innerHeight, pt = 70, pb = 70;
+  const z = Math.min(1, (vw - 80) / (x1 - x0), (vh - pt - pb) / (y1 - y0));
+  const x = (vw - (x1 - x0) * z) / 2 - x0 * z, y = pt + (vh - pt - pb - (y1 - y0) * z) / 2 - y0 * z;
+  anim ? (cam.x.to(x), cam.y.to(y), cam.z.to(z)) : camSnap(x, y, z);
+}
+function flyTo(n) { const z = Math.max(cam.z.t, .8); cam.z.to(z); cam.x.to(innerWidth / 2 - (n.px.t + n.w / 2) * z); cam.y.to(innerHeight / 2 - (n.py.t + n.h / 2) * z); }
+function track(e, move, up) {
+  const id = e.pointerId; try { vp.setPointerCapture(id); } catch {}
+  const mv = ev => ev.pointerId === id && move(ev);
+  const u = ev => { if (ev.pointerId !== id) return; vp.removeEventListener('pointermove', mv); vp.removeEventListener('pointerup', u); vp.removeEventListener('pointercancel', u); up(ev); };
+  vp.addEventListener('pointermove', mv); vp.addEventListener('pointerup', u); vp.addEventListener('pointercancel', u);
+}
+function velocity(h) { const now = performance.now(), L = h[h.length - 1]; if (!L || now - L.t > 90) return [0, 0]; let i = h.length - 1; while (i > 0 && L.t - h[i - 1].t < 70) i--; const F = h[Math.max(0, i - 1)], dt = (L.t - F.t) / 1000 || 1; return [(L.x - F.x) / dt, (L.y - F.y) / dt]; }
+vp.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  const t = e.target, ce = t.closest('.card');
+  if (ce && t.closest('.cbody, .compose')) { if (selected !== ce.dataset.id) select(ce.dataset.id); return; }
+  if (t.closest('button, textarea')) return;
+  e.preventDefault();
+  if (ce) return startDrag(nodes.get(ce.dataset.id), e);
+  startPan(e);
+});
+let lastClick = { id: null, t: 0 };
+function deskAt(x, y, except) { return desks.find(d => { const b = deskBounds(d, except); return b && x > b[0] && x < b[2] && y > b[1] && y < b[3]; }); }
+function startDrag(n, e) {
+  getSelection()?.removeAllRanges();
+  const [wx, wy] = s2w(e.clientX, e.clientY), off = [wx - n.px.x, wy - n.py.x], sx = e.clientX, sy = e.clientY, hist = [];
+  let moved = false, target = null;
+  const group = isChat(n) ? deskMembers(n.id).map(m => ({ m, dx: m.px.x - n.px.x, dy: m.py.x - n.py.x })) : [];
+  track(e, ev => {
+    if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 4) { moved = true; n.el.classList.add('lift'); n.el.style.zIndex = ++zTop; n.s.cfg(.25, 1).to(1.02); n.dragging = true; group.forEach(g => g.m.el.style.zIndex = ++zTop); }
+    if (!moved) return;
+    const [x, y] = s2w(ev.clientX, ev.clientY); n.px.snap(x - off[0]); n.py.snap(y - off[1]);
+    group.forEach(g => { g.m.px.snap(n.px.x + g.dx); g.m.py.snap(n.py.x + g.dy); });
+    hist.push({ x: n.px.x, y: n.py.x, t: performance.now() }); if (hist.length > 12) hist.shift();
+    if (!isChat(n)) { const d = deskAt(x, y, n); if (d !== target) { target?.el.classList.remove('hot'); target = d; target?.el.classList.add('hot'); } }
+  }, () => {
+    n.dragging = false;
+    if (!moved) { const now = performance.now(); if (lastClick.id === n.id && now - lastClick.t < 320 && isChat(n)) { openReader(n.id); lastClick = { id: null }; } else { select(n.id); lastClick = { id: n.id, t: now }; } return; }
+    n.el.classList.remove('lift'); n.s.to(1); target?.el.classList.remove('hot');
+    const [vx, vy] = velocity(hist), damp = Math.hypot(vx, vy) > 350 ? .82 : 1;
+    if (!isChat(n)) {
+      const before = n.desk, after = target ? target.chat : null;
+      n.desk = after;
+      if (before !== after) { refreshAll(); const c = after && nodes.get(after); if (c && c.whatIf) reaskWhatIf(c, n.src); }
+      if (target) { n.px.cfg(.42, 1).to(n.px.x, 0); n.py.cfg(.42, 1).to(n.py.x, 0); return; }
+    }
+    n.px.cfg(.42, damp).to(n.px.x + project(vx), vx); n.py.cfg(.42, damp).to(n.py.x + project(vy), vy);
+    group.forEach(g => { g.m.px.cfg(.42, damp).to(n.px.t + g.dx, vx); g.m.py.cfg(.42, damp).to(n.py.t + g.dy, vy); });
+  });
+}
+function startPan(e) {
+  const sx = e.clientX, sy = e.clientY, ox = cam.x.x, oy = cam.y.x, hist = []; let moved = false;
+  track(e, ev => { if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 3) { moved = true; vp.classList.add('panning'); } if (!moved) return; camSnap(ox + ev.clientX - sx, oy + ev.clientY - sy); hist.push({ x: cam.x.x, y: cam.y.x, t: performance.now() }); if (hist.length > 12) hist.shift(); },
+    () => { vp.classList.remove('panning'); if (!moved) return select(null); const [vx, vy] = velocity(hist); cam.x.cfg(.5, 1).to(cam.x.x + project(vx, .992), vx); cam.y.cfg(.5, 1).to(cam.y.x + project(vy, .992), vy); });
+}
+vp.addEventListener('wheel', e => {
+  const b = e.target.closest?.('.cbody'); if (b && !e.ctrlKey && b.scrollHeight > b.clientHeight) return;
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey) zoomAt(e.clientX, e.clientY, cam.z.x * Math.exp(-e.deltaY * .0105), false); else camSnap(cam.x.x - e.deltaX, cam.y.x - e.deltaY);
+}, { passive: false });
+document.querySelectorAll('#zoom [data-z]').forEach(b => b.onclick = () => { const k = b.dataset.z; k === 'fit' ? fit(true) : zoomAt(innerWidth / 2, innerHeight / 2, cam.z.t * (k === 'in' ? 1.25 : .8), true); });
+
+/* ---------- selection + trail (backtracking) ---------- */
+function select(id) {
+  selected = id;
+  nodes.forEach(n => n.el.classList.toggle('selected', n.id === id));
+  const sel = nodes.get(id), rel = new Set();
+  if (isChat(sel)) { rel.add(id); ancestors(id).forEach(a => rel.add(a.id)); [id, ...ancestors(id).map(a => a.id)].forEach(cid => deskMembers(cid).forEach(m => rel.add(m.id))); }
+  nodes.forEach(n => n.el.classList.toggle('faded', isChat(sel) && !rel.has(n.id)));
+  desks.forEach(d => d.el.classList.toggle('faded', isChat(sel) && !rel.has(d.chat)));
+  if (sel) sel.el.style.zIndex = ++zTop;
+  renderTrail();
+}
+function renderTrail() {
+  const T = document.getElementById('trail'), sel = nodes.get(selected);
+  if (!isChat(sel)) { T.innerHTML = `<span class="lb">Trail</span><span class="hint">Select a chat to see the path of questions that led to it.</span>`; return; }
+  const path = [...ancestors(sel.id)].reverse().concat(sel);
+  T.innerHTML = `<span class="lb">Trail</span>` + path.map((c, i) => `${i ? '<span class="sep">›</span>' : ''}<button data-go="${c.id}" class="${c.id === sel.id ? 'here' : ''}"><span class="q">${qNum(c)}</span>${esc(c.title)}</button>`).join('');
+  T.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { const n = nodes.get(b.dataset.go); select(n.id); flyTo(n); });
+}
+
+/* ---------- asking ---------- */
+function stream(c, html, after) {
+  const ai = { r: 'a', t: '', live: true }; c.msgs.push(ai); c.streaming = true; nodes.forEach(render);
+  const words = strip(html).split(' '); let i = 0;
+  const tick = () => {
+    i = Math.min(words.length, i + 2); ai.t = `<p>${esc(words.slice(0, i).join(' '))}</p>`;
+    const el = c.el.querySelector('.ma.live'); if (el) el.innerHTML = ai.t;
+    const r = reader.id === c.id && document.querySelector('#reader .ma.live'); if (r) r.innerHTML = ai.t;
+    const b = c.el.querySelector('.cbody'); if (b) { b.scrollTop = b.scrollHeight; b.classList.remove('short'); }
+    if (i < words.length) setTimeout(tick, 48); else { ai.t = html; ai.live = false; c.streaming = false; nodes.forEach(render); const b2 = c.el.querySelector('.cbody'); if (b2) b2.scrollTop = b2.scrollHeight; if (reader.id === c.id) renderReader(c); after && after(); }
+  };
+  setTimeout(tick, 550);
+}
+function send(c, text) {
+  c.msgs.push({ r: 'u', t: text });
+  const r = reads(c.id).map(id => SRC[id].short);
+  stream(c, `<p>${r.length ? `Reading ${r.slice(0, 3).join(', ')}${r.length > 3 ? ` and ${r.length - 3} more` : ''}: ` : 'Nothing on this desk yet, so going on the conversation alone: '}test $12 a month with ten real users before you decide, and ask what they'd pay before you show a number.</p>`);
+  if (reader.id === c.id) renderReader(c);
+}
+function reaskWhatIf(c, added) {
+  const s = SRC[added];
+  const lines = { podcast: 'Raising earlier makes $15 safer than $12.', web: 'A 6% loss at double the price says you can start higher: $15.', csv: 'Most of the 18 tools sit at $12, so $12 is the safe middle.', interviews: 'Two of three people would pay $15; start there.', video: 'Anchor to time saved: $15 is fair if it saves an hour a month.', pdf: 'The survey keeps $12 as the median.', note: 'Your floor of $8 still holds.' };
+  stream(c, `<p>With ${s.short} added: ${lines[added] || 'the answer shifts a little.'}</p><span class="changed">Changed because: + No. ${pad(s.no)} ${esc(s.title)}</span>`);
+}
+
+/* ---------- full-screen ---------- */
+const R = document.getElementById('reader'), RI = R.querySelector('.in'), scrim = document.getElementById('scrim');
+const reader = { id: null, prog: new Spring(0, .46, 1), rect: null };
+const rectOf = n => { const r = n.el.querySelector('.face').getBoundingClientRect(); return { l: r.left, t: r.top, r: innerWidth - r.right, b: innerHeight - r.bottom }; };
+function openReader(id) { const n = nodes.get(id); if (!isChat(n)) return; select(id); reader.id = id; reader.rect = rectOf(n); renderReader(n); R.style.display = 'block'; reader.prog.cfg(.46, 1).to(1); }
+function closeReader() { if (!reader.id) return; const n = nodes.get(reader.id); if (n) reader.rect = rectOf(n); reader.prog.cfg(.36, 1).to(0); }
+function finishClose() { const n = nodes.get(reader.id); R.style.display = 'none'; scrim.style.opacity = 0; reader.id = null; reader.prog.snap(0); if (n) { n.el.style.opacity = ''; render(n); } }
+function renderReader(c) {
+  const path = [...ancestors(c.id)].reverse().concat(c), own = deskMembers(c.id).map(m => m.src), above = ancestors(c.id).flatMap(a => deskMembers(a.id).map(m => ({ src: m.src, a })));
+  const total = 600 + (c.parent ? 420 : 0) + (own.length + above.length) * 650;
+  RI.innerHTML = `<div class="r-top"><button class="tb" data-close>← Board · Esc</button><span class="no">${qNum(c)} · ${MODELS[c.model]}</span><strong>${esc(c.title)}</strong></div>
+    <aside class="rail">
+      <div><h4>Trail</h4>${path.map(p => `<div class="rrow ${p.id === c.id ? 'here' : ''}"><span class="k">${qNum(p)}</span><button data-go="${p.id}">${esc(p.title)}</button></div>`).join('')}</div>
+      <div><h4>On its desk</h4>${own.map(id => `<div class="rrow"><span class="k">No. ${pad(SRC[id].no)}</span>${esc(SRC[id].title)}</div>`).join('') || '<div class="rrow" style="opacity:.7">Nothing of its own.</div>'}</div>
+      ${above.length ? `<div><h4>From the desk above</h4>${above.map(x => `<div class="rrow"><span class="k">No. ${pad(SRC[x.src].no)}</span>${esc(SRC[x.src].title)}</div>`).join('')}</div>` : ''}
+      <div class="budget"><b>≈ ${(total / 1000).toFixed(1)}k</b>tokens sent with each question.</div>
+    </aside>
+    <section class="r-main"><div class="r-scroll"><div class="r-th"><h2>${esc(c.title)}</h2>${c.msgs.map(m => m.r === 'u' ? `<div class="mu">${esc(m.t)}</div>` : `<div class="ma ${m.live ? 'live' : ''}">${m.t || '<p></p>'}</div>`).join('')}</div></div>
+    <div class="r-compose"><textarea rows="1" placeholder="Ask a follow-up"></textarea><button class="send" disabled>Ask →</button></div></section>`;
+  RI.querySelector('[data-close]').onclick = closeReader;
+  RI.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { const n = nodes.get(b.dataset.go); reader.id = n.id; select(n.id); renderReader(n); });
+  const ta = RI.querySelector('textarea'), sb = RI.querySelector('.send');
+  const go = () => { const v = ta.value.trim(); if (!v) return; ta.value = ''; sb.disabled = true; send(c, v); };
+  ta.addEventListener('input', () => sb.disabled = !ta.value.trim());
+  ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(); } });
+  sb.onclick = go;
+  const sc = RI.querySelector('.r-scroll'); sc.scrollTop = sc.scrollHeight;
+}
+document.addEventListener('keydown', e => {
+  const typing = e.target.closest?.('textarea');
+  if (e.key === 'Escape') { if (reader.id) return closeReader(); if (typing) return e.target.blur(); return select(null); }
+  if (typing || reader.id) return;
+  if (e.key === 'Enter' && isChat(nodes.get(selected))) { e.preventDefault(); openReader(selected); }
+});
+
+/* ---------- desks geometry ---------- */
+function deskBounds(d, except) {
+  const c = nodes.get(d.chat); if (!c) return null;
+  let x0 = c.px.x, y0 = c.py.x, x1 = c.px.x + c.w, y1 = c.py.x + c.h;
+  deskMembers(d.chat).forEach(m => { if (m === except) return; x0 = Math.min(x0, m.px.x); y0 = Math.min(y0, m.py.x); x1 = Math.max(x1, m.px.x + m.w); y1 = Math.max(y1, m.py.x + m.h); });
+  const P = skin === 'pebble' ? 40 : 32; return [x0 - P, y0 - P - 4, x1 + P, y1 + P];
+}
+
+/* ---------- frame ---------- */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  const steps = Math.max(1, Math.ceil(dt * 240)), h = dt / steps;
+  for (let i = 0; i < steps; i++) springs.forEach(s => s.step(h));
+  const z = cam.z.x;
+  world.style.transform = `translate3d(${cam.x.x}px,${cam.y.x}px,0) scale(${z})`;
+  vp.style.backgroundSize = `${24 * z}px ${24 * z}px`; vp.style.backgroundPosition = `${cam.x.x}px ${cam.y.x}px`;
+  document.getElementById('zl').textContent = Math.round(z * 100) + '%';
+  nodes.forEach(n => { n.el.style.transform = `translate3d(${n.px.x}px,${n.py.x}px,0) scale(${n.s.x})`; if (reader.id === n.id) return; n.el.style.opacity = n.el.classList.contains('faded') ? '' : Math.max(0, Math.min(1, n.o.x)); });
+  const sel = nodes.get(selected), trailSet = new Set(isChat(sel) ? [sel.id, ...ancestors(sel.id).map(a => a.id)] : []);
+  const elbow = skin === 'schematic' || skin === 'signal';
+  lins.forEach(l => {
+    const A = nodes.get(l.parent), B = nodes.get(l.child); if (!A || !B) return;
+    const a = [A.px.x + A.w, A.py.x + 28], b = [B.px.x, B.py.x + 28], mx = (a[0] + b[0]) / 2;
+    l.p.setAttribute('d', elbow ? `M${a[0]},${a[1]} H${mx} V${b[1]} H${b[0]}` : `M${a[0]},${a[1]} C${mx},${a[1]} ${mx},${b[1]} ${b[0]},${b[1]}`);
+    l.k.setAttribute('x', b[0] - 3.5); l.k.setAttribute('y', b[1] - 3.5);
+    const on = trailSet.has(l.child) && trailSet.has(l.parent);
+    l.p.setAttribute('class', on ? 'trail' : isChat(sel) ? 'faded' : ''); l.k.setAttribute('class', on ? 'trail' : '');
+    l.p.style.opacity = Math.min(1, B.o.x);
+  });
+  const dragged = [...nodes.values()].find(n => n.dragging && !isChat(n));
+  desks.forEach(d => {
+    const c = nodes.get(d.chat); if (!c) return;
+    const b = deskBounds(d, dragged && dragged.desk === d.chat ? dragged : null);
+    if (!d.init) { d.b.forEach((s, i) => s.snap(b[i])); d.init = true; } else d.b.forEach((s, i) => s.to(b[i]));
+    d.el.style.transform = `translate3d(${d.b[0].x}px,${d.b[1].x}px,0)`; d.el.style.width = (d.b[2].x - d.b[0].x) + 'px'; d.el.style.height = (d.b[3].x - d.b[1].x) + 'px';
+    const own = deskMembers(c.id).map(m => m.src), up = ancestors(c.id).reduce((a, x) => a + deskMembers(x.id).length, 0);
+    const txt = `Desk ${qNum(c)} · <b>${own.length ? esc(nos(own)) : 'empty'}</b>${up ? ` · + ${up} from above` : ''}`;
+    const tab = d.el.querySelector('.tab'); if (tab.dataset.v !== txt) { tab.innerHTML = txt; tab.dataset.v = txt; }
+  });
+  if (reader.id) {
+    const p = Math.max(0, Math.min(1.02, reader.prog.x)), r = reader.rect, F = 12, L = (a, b) => a + (b - a) * p;
+    R.style.clipPath = `inset(${L(r.t, F)}px ${L(r.r, F)}px ${L(r.b, F)}px ${L(r.l, F)}px)`;
+    const co = Math.max(0, Math.min(1, (p - .3) / .5)); RI.style.opacity = co; RI.style.transform = `translateY(${(1 - co) * 10}px)`;
+    scrim.style.opacity = Math.min(1, p); const n = nodes.get(reader.id); if (n) n.el.style.opacity = Math.max(0, 1 - p / .25);
+    if (reader.prog.t === 0 && reader.prog.x < .004 && Math.abs(reader.prog.v) < .05) finishClose();
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- seed ---------- */
+const chatSeed = o => Object.assign({ kind: 'chat', msgs: [] }, o);
+const main = addNode(chatSeed({ id: 'main', model: 'claude', title: 'How should I price Context Tree?', x: 380, y: 20, w: 400, msgs: [{ r: 'u', t: 'Using what is on this desk, what should a solo founder charge?' }, { r: 'a', t: A_MAIN }] }));
+const side = addNode(chatSeed({ id: 'side', model: 'gpt', parent: 'main', title: 'What does value-based pricing mean?', x: 1000, y: -60, w: 360, msgs: [{ r: 'u', t: 'Same desk, different question: what does value-based pricing mean?' }, { r: 'a', t: `<p>Price from what it's worth to the customer, not from what it costs you. If it saves two hours a week, that time is your anchor.</p>` }] }));
+const second = addNode(chatSeed({ id: 'second', model: 'gemini', parent: 'main', title: 'Second opinion with real customers', x: 1000, y: 420, w: 380, msgs: [{ r: 'u', t: 'Same question, but with the blog post and the interviews on my desk too.' }, { r: 'a', t: `<p>The blog post: doubling the price lost only 6% of users. Priya would pay $15 without thinking. Start at $15.</p>` }] }));
+[['video', 0, 0, 'main'], ['pdf', 0, 130, 'main'], ['note', 0, 260, 'main'], ['web', 1420, 420, 'second'], ['interviews', 1420, 550, 'second'], ['podcast', 0, 520, null], ['csv', 380, 560, null]].forEach(([s, x, y, d]) => addNode({ id: s, kind: 'src', src: s, x, y, desk: d }));
+[main, side, second].forEach(makeDesk);
+addLin('main', 'side'); addLin('main', 'second');
+uid = 10;
+requestAnimationFrame(() => { nodes.forEach(n => n.h = n.el.offsetHeight); refreshAll(); fit(false); select(null); requestAnimationFrame(frame); });
+addEventListener('resize', () => fit(true));
+</script>
+</body>
+</html>

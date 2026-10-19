@@ -36,6 +36,14 @@ proof (PH badges, logos, user count, wall of love) → founder's note in a human
 Gaps we can own: web (no install), free BYOK tier, shareable boards (theirs is "coming soon"),
 the token-saving context engine, compare/promote.
 
+## Why people branch (owner's own reasons, 2026-10-19)
+
+1. Ask a different question with the same context.
+2. See how the answer changes if one more thing is added.
+3. Backtrack: see how the thinking went and where each question came from.
+
+The Desks prototype maps these to Branch, What if, and the Trail.
+
 ## V3 goals
 
 1. **The board.** A detective-board canvas: chats, files, videos, links and notes pinned on one
