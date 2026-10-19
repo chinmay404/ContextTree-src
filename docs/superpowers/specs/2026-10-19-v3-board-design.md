@@ -91,14 +91,14 @@ Every write touches one entity. No route accepts a whole board.
 
 ```
 GET    /boards                         list (id, title, updated_at, card count)
-POST   /boards                         create {title} → board with one empty chat
+POST   /boards                         create {id, title} → board with one empty chat (exact shapes: docs/superpowers/plans/2026-10-19-v3-api-contract.md)
 GET    /boards/{b}                     full board: cards, edges, viewport (messages NOT included)
 PATCH  /boards/{b}                     {title?, viewport?}
-DELETE /boards/{b}
+DELETE /boards/{b}                     soft (canvases.deleted_at)
 
 POST   /boards/{b}/cards               create a card {id, kind, source_type?, x, y, desk_id?, pile_id?, parent_id?, forked_from_message_id?, data}
 PATCH  /boards/{b}/cards/{id}          partial {data keys..., desk_id?, pile_id?}; data is merged key by key with jsonb ||, never replaced
-DELETE /boards/{b}/cards/{id}          soft-deletes (sets deleted_at) the card and, for a chat, its whole subtree; their strings go with them; sources on those desks fall loose (desk_id=null), never deleted
+DELETE /boards/{b}/cards/{id}          soft-deletes (sets deleted_at) the card and, for a chat, its whole subtree; their strings go with them; sources on those desks show as loose while it stays deleted (desk_id is kept for restore), never deleted
 POST   /boards/{b}/cards/{id}/restore  undo of the above (clears deleted_at on the same set)
 PATCH  /boards/{b}/positions           [{id, x, y}] batch, one UPDATE … FROM (VALUES …)
 
@@ -192,7 +192,7 @@ These extend `_init_fork_if_needed` (`app/api/v1/endpoints/chat.py:159`):
 - **Lineage only from lineage edges.** The fork-parent fallback (`PostgresStore.py:326-343`) must read only
   edges with `kind='lineage'`. Otherwise a wire or answer string into a chat would be taken as its parent.
 - **`edges.kind` backfill.** `meta.condition='Fork'` or `data.meta.condition='Fork'` → `lineage`.
-  `'Context'` → `wire`, with from/to swapped: V2 stored chat→file, V3 stores source→chat.
+  `'Context'` → `wire`, direction left as V2 wrote it (chat→file); V3 never reads V2 canvases.
 - **`/files/ingest` ownership check.** The file must belong to the JWT user. Today it is not checked.
 - **Summary every turn.** `summury_decision` keeps firing after turn 10 because `count` never resets. Reset
   it after summarising.
@@ -215,6 +215,7 @@ alter table edges add column if not exists kind text;            -- lineage|wire
 alter table edges add column if not exists deleted_at timestamptz;
 alter table canvases add column if not exists title text;        -- V2 kept it only inside data
 alter table canvases add column if not exists board_version smallint; -- 3 = V3 board; null = V2 canvas
+alter table canvases add column if not exists deleted_at timestamptz;
 create index if not exists nodes_desk_idx on nodes(desk_id);
 create index if not exists nodes_pile_idx on nodes(pile_id);
 create index if not exists edges_to_kind_idx on edges(to_node, kind);
@@ -296,8 +297,8 @@ branch sheet with that message as the first question).
 - New column `canvases.board_version smallint`. V3 creates boards with `3`; `GET /boards` lists only those.
   V2 rows keep `null` and stay in the database untouched, so V2 keeps working until the switch and nothing
   is deleted.
-- `edges.kind` is still backfilled for existing rows (`'Fork'` → `lineage`, `'Context'` → `wire`, swapping
-  from/to), because the same engine keeps serving V2 and the fork-parent fallback (§5.5) must read lineage
+- `edges.kind` is still backfilled for existing rows (`'Fork'` → `lineage`, `'Context'` → `wire`, direction
+  left as V2 wrote it), because the same engine keeps serving V2 and the fork-parent fallback (§5.5) must read lineage
   edges only.
 - After the switch, V2 boards are unreachable from the UI. Whether to offer an export or a read-only view of
   them later is a separate decision.
