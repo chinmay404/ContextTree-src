@@ -157,6 +157,8 @@ export class BoardEngine {
       clearTimeout(dead.timer); this.dying.delete(c.id);
       dead.n.o.cfg(.25, 1).to(1); dead.n.s.cfg(.42, 1).to(1);
       this.ctx.nodes.set(c.id, dead.n); this.ro?.observe(dead.n.el);
+      dead.n.deskId = c.deskId;
+      this.view.render(dead.n);
       return dead.n;
     }
     const sp = this.springs, el = document.createElement('div');
