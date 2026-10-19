@@ -24,7 +24,7 @@ V3 ("the board") design rounds. Current prototype: `docs/design/board-prototype-
 - Nothing for design work. Prod DB reads from an agent session need the owner's permission.
 
 ## Next step
-Owner reviews prototype v3. Open question: the orange signal + orange ports are the last thing that reads as Slashspace — keep or change hue/shape?
+Owner compares three context workflows in `docs/design/context-workflows-abc.html` (A shelves + inheritance, B @citations + library, C desks); switch with the A/B/C control at the top. Wired prototype v3 is the backup (tag `v3-board-wires-backup`).
 
 ## Run it locally
 ```

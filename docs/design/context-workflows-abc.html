@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Context workflows: shelves, citations, desks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --canvas: #141311; --node: #1C1B19; --raised: #262522; --border: #2E2D2A; --edge: #55555C; --paper: #EFE9DA;
+  --t1: #E8E6E1; --t2: #A19E96; --t3: #8A877F; --t-prompt: #DCD9D2; --t-body: #C9C6BF;
+  --signal: #F25A1A; --signal-2: #F2733A; --ready: #3FBF7F; --failed: #FF7A66; --muted: #3A3936;
+  --media: #B38CFF; --web: #6FB3FF; --docs: #E8E6E1; --data: #3FBF7F;
+  --well-media: #241D33; --well-web: #172230; --well-docs: #262522; --well-data: #16241C;
+  --sh: 0 10px 30px -14px rgba(0,0,0,.7); --sh-lift: 0 2px 6px rgba(0,0,0,.35), 0 30px 60px -16px rgba(0,0,0,.85);
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  font-family: Geist, system-ui, sans-serif; color: var(--t1); -webkit-font-smoothing: antialiased; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--canvas); }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.i { width: var(--s, 16px); height: var(--s, 16px); flex: none; display: inline-block; background: var(--c, var(--t2)); -webkit-mask: var(--u) center / contain no-repeat; mask: var(--u) center / contain no-repeat; }
+.meta { font: 400 10px/1.2 'Geist Mono', monospace; letter-spacing: .04em; text-transform: uppercase; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip { font: 400 10px/1 'Geist Mono', monospace; padding: 3px 5px; border-radius: 4px; flex: none; background: var(--raised); color: var(--t-prompt); }
+.chip.media { background: #2A2433; color: #C9B3FF; } .chip.data { background: #16301F; color: #7FE0AA; } .chip.web { background: #17283A; color: #A9D0FF; }
+@keyframes caret { 50% { opacity: 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes arrive { from { transform: scale(.7); opacity: 0; } }
+
+#vp { position: fixed; inset: 0; background-color: var(--canvas); background-image: radial-gradient(#2A2926 1px, transparent 1.2px); touch-action: none; }
+#vp.panning { cursor: grabbing; }
+#world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+#lines { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; z-index: 1; pointer-events: none; }
+#lines path { fill: none; stroke: #45443F; stroke-width: 2; stroke-linecap: round; transition: stroke 200ms ease, opacity 200ms ease; }
+#lines path.on { stroke: var(--t3); }
+#lines path.flow { stroke: var(--signal); stroke-width: 2.5; }
+#lines path.faded { opacity: .25; }
+#lines circle { fill: var(--canvas); stroke: #45443F; stroke-width: 2; transition: stroke 200ms ease, opacity 200ms ease; }
+#lines circle.flow { stroke: var(--signal); }
+
+/* nodes */
+.card { position: absolute; left: 0; top: 0; will-change: transform; z-index: 2; transition: opacity 220ms ease; user-select: none; -webkit-user-select: none; }
+.card.faded { opacity: .42; }
+.face { position: relative; background: var(--node); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--sh); cursor: grab; transition: box-shadow 240ms var(--ease-out), border-color 200ms ease; }
+.card.lift .face { box-shadow: var(--sh-lift); cursor: grabbing; }
+.card.selected .face { border-color: var(--signal); box-shadow: 0 0 0 1px var(--signal), var(--sh-lift); }
+.card.lit .face { border-color: #6A3B22; }
+.card.drop .face { border-color: var(--signal); box-shadow: 0 0 0 4px rgba(242,90,26,.14), var(--sh-lift); }
+.m { height: 120px; padding: 12px; display: flex; gap: 12px; }
+.well { width: 88px; height: 96px; flex: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.title { font-size: 13px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex { display: flex; gap: 6px; align-items: flex-start; }
+.ex span:last-child { font-size: 12px; line-height: 1.4; color: var(--t2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pg { width: 58px; height: 78px; background: #F4F3EF; border-radius: 2px; padding: 8px 7px; display: flex; flex-direction: column; gap: 3px; }
+.pg b { height: 4px; background: #2A2724; border-radius: 1px; width: 82%; margin-bottom: 2px; } .pg span { height: 2px; background: #C9C5BB; border-radius: 1px; } .pg span:nth-child(4n) { width: 66%; }
+.wave { display: flex; align-items: center; gap: 2px; height: 100%; padding: 0 8px; } .wave i { width: 3px; border-radius: 2px; background: var(--media); } .wave i.past { background: #6B5A8A; } .wave i.at { background: var(--signal); }
+.vframe { position: absolute; inset: 10px 8px 22px; border-radius: 5px; background: #1A1526; display: grid; place-items: center; }
+.vbar { position: absolute; left: 8px; right: 8px; bottom: 12px; height: 3px; border-radius: 2px; background: #3A2F4E; } .vbar i { position: absolute; left: 0; top: 0; bottom: 0; width: 64%; background: var(--media); border-radius: 2px; } .vbar b { position: absolute; top: -3px; left: 64%; width: 3px; height: 9px; border-radius: 1px; background: var(--signal); }
+.browser { position: absolute; inset: 10px 8px; border-radius: 5px; background: #1D2B3B; padding: 6px; display: flex; flex-direction: column; gap: 4px; } .browser b { height: 4px; border-radius: 1px; background: var(--web); opacity: .85; } .browser span { height: 2px; border-radius: 1px; background: #3E5670; }
+.grid { position: absolute; inset: 12px 8px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; align-content: start; } .grid i { height: 7px; border-radius: 1px; background: #24382C; } .grid i.h { background: var(--data); opacity: .8; }
+.card.note .face { background: var(--paper); border-color: #D9D1BD; color: #2A2724; }
+.card.note.selected .face { border-color: var(--signal); }
+.note-in { padding: 12px 14px 14px; height: 120px; display: flex; flex-direction: column; gap: 6px; }
+.note-in .meta { color: #8C836F; } .note-in .n { font-size: 14px; line-height: 1.45; }
+
+/* chat */
+.chat-h { display: flex; align-items: center; gap: 8px; padding: 12px 14px 0; min-height: 34px; }
+.md { width: 8px; height: 8px; border-radius: 4px; background: var(--c); flex: none; }
+.chat-h .title { flex: 1; }
+.chat-h .meta.live { color: var(--signal-2); }
+.cbody { max-height: 300px; overflow: auto; padding: 12px 14px 14px; cursor: auto; user-select: text; scrollbar-width: thin; scrollbar-color: #3A3936 transparent; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(#000 calc(100% - 24px), transparent); mask-image: linear-gradient(#000 calc(100% - 24px), transparent); }
+.cbody.short { -webkit-mask-image: none; mask-image: none; }
+.mu { display: inline-block; max-width: 96%; background: var(--raised); border-radius: 10px; padding: 8px 11px; font-size: 13.5px; line-height: 1.55; color: var(--t-prompt); margin: 0 0 12px; }
+.ma { font-size: 13px; line-height: 1.55; color: var(--t2); margin-bottom: 12px; }
+.ma h3 { font-size: 13px; font-weight: 600; color: var(--t1); margin: 12px 0 3px; } .ma h3:first-child { margin-top: 0; }
+.ma p { margin: 0 0 8px; } .ma ol { margin: 0 0 8px; padding-left: 18px; } .ma li { margin-bottom: 3px; } .ma b { color: var(--t1); font-weight: 600; }
+.ma.live p:last-child::after { content: ''; display: inline-block; width: 6px; height: 13px; margin-left: 2px; vertical-align: -2px; background: var(--signal); animation: caret 900ms steps(1) infinite; }
+.cempty { font-size: 13px; line-height: 1.5; color: var(--t3); }
+.compose { border-top: 1px solid var(--border); padding: 10px 10px 8px 14px; display: none; cursor: auto; position: relative; }
+.card.selected .compose, .card.empty .compose { display: block; }
+.compose textarea { width: 100%; border: 0; outline: none; resize: none; font: inherit; font-size: 14px; line-height: 1.45; background: none; color: var(--t1); min-height: 22px; max-height: 120px; }
+.compose textarea::placeholder { color: var(--t3); }
+.cbar { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.send { width: 28px; height: 28px; border-radius: 14px; background: var(--signal); display: grid; place-items: center; margin-left: auto; transition: transform 120ms var(--ease-out), opacity 150ms ease; flex: none; }
+.send .i { --c: #140A05; --s: 14px; } .send:active { transform: scale(.92); } .send:disabled { opacity: .25; cursor: default; }
+.tools { position: absolute; right: 8px; top: 8px; display: flex; gap: 1px; padding: 2px; border-radius: 8px; background: var(--node); box-shadow: -10px 0 12px -4px var(--node); opacity: 0; pointer-events: none; transition: opacity 140ms ease-out; z-index: 2; }
+.card.selected .tools { opacity: 1; pointer-events: auto; }
+@media (hover: hover) and (pointer: fine) { .card:hover .tools { opacity: 1; pointer-events: auto; } }
+.tb { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; transition: background-color 150ms ease, transform 120ms var(--ease-out); }
+.tb:active { transform: scale(.92); }
+@media (hover: hover) and (pointer: fine) { .tb:hover { background: var(--raised); } .tb:hover .i { --c: var(--t1); } }
+
+/* ---------- A: shelves ---------- */
+.shelf { margin: 10px 10px 0; padding: 6px; border-radius: 9px; background: #171614; border: 1px dashed transparent; display: flex; flex-wrap: wrap; gap: 4px; min-height: 36px; align-items: center; transition: border-color 160ms ease, background-color 160ms ease; cursor: auto; }
+.card.drop .shelf { border-color: var(--signal); background: #22170F; }
+.shelf .lbl { font: 400 10px 'Geist Mono', monospace; letter-spacing: .04em; color: var(--t3); padding: 0 4px; text-transform: uppercase; }
+.shelf .hint { font-size: 12px; color: var(--t3); padding: 0 4px; }
+.sch { height: 24px; padding: 0 8px 0 6px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; background: var(--raised); color: var(--t1); transition: background-color 150ms ease, opacity 200ms ease, box-shadow 150ms ease, transform 120ms var(--ease-out); }
+.sch .i { --s: 13px; }
+.sch:active { transform: scale(.96); }
+.sch.arrive { animation: arrive 320ms var(--ease-out); }
+.sch.inh { background: transparent; box-shadow: inset 0 0 0 1px #3A3936; color: var(--t2); }
+.sch.inh .up { font: 400 10px 'Geist Mono', monospace; color: var(--t3); }
+.sch.off { opacity: .4; text-decoration: line-through; }
+.sch .x { width: 14px; height: 14px; display: none; place-items: center; border-radius: 4px; margin-right: -3px; }
+.sch .x .i { --s: 11px; }
+@media (hover: hover) and (pointer: fine) { .sch.own:hover .x { display: grid; } .sch:hover { box-shadow: inset 0 0 0 1px var(--signal); } }
+.loose-tag { position: absolute; left: 2px; bottom: calc(100% + 8px); font: 400 10px 'Geist Mono', monospace; letter-spacing: .04em; text-transform: uppercase; color: var(--t3); }
+
+/* ---------- B: citations ---------- */
+#drawer { position: fixed; left: 0; top: 0; bottom: 0; width: 320px; background: #181715; border-right: 1px solid var(--border); z-index: 15; display: flex; flex-direction: column; padding-top: 68px; }
+#drawer .dh { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 10px; }
+#drawer .dh b { font: 400 10px 'Geist Mono', monospace; letter-spacing: .06em; color: var(--t3); font-weight: 400; }
+#drawer .list { flex: 1; overflow: auto; padding: 0 10px 20px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; scrollbar-color: #3A3936 transparent; }
+.dsrc { border: 1px solid var(--border); border-radius: 10px; background: var(--node); padding: 10px; display: flex; flex-direction: column; gap: 8px; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.dsrc.hot { border-color: var(--signal); box-shadow: 0 0 0 3px rgba(242,90,26,.14); }
+.dsrc .top { display: flex; gap: 10px; align-items: center; }
+.dsrc .w { width: 34px; height: 40px; border-radius: 6px; display: grid; place-items: center; flex: none; }
+.dsrc .key { font: 400 11px 'Geist Mono', monospace; color: var(--signal-2); }
+.dex { display: flex; gap: 8px; align-items: flex-start; text-align: left; padding: 5px 6px; margin: 0 -4px; border-radius: 6px; font-size: 12px; line-height: 1.4; color: var(--t-body); transition: background-color 150ms ease, box-shadow 150ms ease; }
+.dex.hot { box-shadow: inset 0 0 0 1px var(--signal); background: #22170F; }
+@media (hover: hover) and (pointer: fine) { .dex:hover { background: var(--raised); } }
+.cite { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; margin: 0 1px; border-radius: 5px; background: #2A1C14; color: #FFB48C; font: 500 11px/1 'Geist Mono', monospace; vertical-align: 1px; cursor: help; transition: background-color 150ms ease; white-space: nowrap; }
+.cite .i { --s: 11px; --c: #FFB48C; }
+.cite:hover, .cite.hot { background: #3D2414; }
+#overlay { position: fixed; inset: 0; pointer-events: none; z-index: 16; }
+#overlay path { fill: none; stroke: var(--signal); stroke-width: 1.5; stroke-dasharray: 4 4; }
+#overlay circle { fill: var(--signal); }
+.picker { position: fixed; z-index: 70; width: 340px; max-height: 280px; overflow: auto; padding: 4px; border-radius: 10px; background: var(--node); border: 1px solid var(--border); box-shadow: var(--sh-lift); display: none; }
+.picker.open { display: block; }
+.picker .ph { font: 400 10px 'Geist Mono', monospace; letter-spacing: .04em; color: var(--t3); padding: 6px 8px 4px; text-transform: uppercase; }
+.picker button { width: 100%; display: flex; gap: 8px; align-items: flex-start; text-align: left; padding: 6px 8px; border-radius: 7px; font-size: 12px; line-height: 1.4; color: var(--t-body); }
+.picker button.act { background: var(--raised); color: var(--t1); }
+.picker button .k { font: 400 11px 'Geist Mono', monospace; color: var(--signal-2); flex: none; min-width: 92px; }
+
+/* ---------- C: desks ---------- */
+.desk { position: absolute; left: 0; top: 0; z-index: 0; border-radius: 22px; background: rgba(255, 250, 240, .025); border: 1px solid #2A2926; transition: border-color 180ms ease, background-color 180ms ease, opacity 200ms ease; pointer-events: none; }
+.desk.hot { border-color: var(--signal); background: rgba(242, 90, 26, .05); }
+.desk.faded { opacity: .35; }
+.desk .tab { position: absolute; left: 18px; top: -11px; height: 22px; padding: 0 10px; border-radius: 11px; background: var(--canvas); border: 1px solid #2A2926; display: inline-flex; align-items: center; gap: 8px; font: 400 10px 'Geist Mono', monospace; letter-spacing: .04em; text-transform: uppercase; color: var(--t3); white-space: nowrap; transition: border-color 180ms ease, color 180ms ease; }
+.desk.hot .tab { border-color: var(--signal); color: var(--signal-2); }
+.desk .tab b { color: var(--t2); font-weight: 400; }
+
+/* chrome */
+.bar { background: rgba(28,27,25,.8); backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); border: 1px solid var(--border); box-shadow: 0 12px 32px -12px rgba(0,0,0,.7); }
+#seg { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+#seg .btns { display: flex; padding: 4px; border-radius: 12px; gap: 2px; }
+#seg button { height: 32px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--t2); display: inline-flex; align-items: center; gap: 8px; transition: background-color 150ms ease, color 150ms ease, transform 120ms var(--ease-out); }
+#seg button b { font: 500 11px 'Geist Mono', monospace; color: var(--t3); }
+#seg button.on { background: var(--raised); color: var(--t1); } #seg button.on b { color: var(--signal-2); }
+#seg button:active { transform: scale(.96); }
+#seg .sub { font-size: 12.5px; color: var(--t2); background: rgba(20,19,17,.85); padding: 5px 10px; border-radius: 8px; max-width: 640px; text-align: center; line-height: 1.45; }
+#rail { position: fixed; left: 14px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 2px; padding: 5px; border-radius: 14px; z-index: 20; }
+#rail button { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; transition: background-color 150ms ease, transform 120ms var(--ease-out); }
+#rail button .i { --s: 18px; } #rail button:active { transform: scale(.92); }
+@media (hover: hover) and (pointer: fine) { #rail button:hover { background: var(--raised); } }
+#zoom { position: fixed; right: 18px; bottom: 18px; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 12px; z-index: 20; }
+#zoom button { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; transition: background-color 150ms ease; }
+#zoom .z { width: 46px; font: 500 12px 'Geist Mono', monospace; color: var(--t2); text-align: center; }
+@media (hover: hover) and (pointer: fine) { #zoom button:hover { background: var(--raised); } }
+#hint { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; font-size: 12.5px; color: var(--t3); z-index: 20; line-height: 1.6; max-width: 560px; text-align: center; background: rgba(20,19,17,.85); padding: 6px 12px; border-radius: 8px; }
+body.mode-b #hint { left: calc(50% + 160px); }
+#hint b { color: var(--t2); font-weight: 600; }
+.tip { position: fixed; z-index: 100; pointer-events: none; background: var(--t1); color: var(--canvas); font-size: 12px; font-weight: 500; padding: 5px 8px; border-radius: 7px; white-space: nowrap; opacity: 0; transition: opacity 125ms ease-out; }
+.tip.show { opacity: 1; }
+
+/* full-screen node */
+#scrim { position: fixed; inset: 0; background: rgba(5,5,4,.55); opacity: 0; pointer-events: none; z-index: 40; }
+#reader { position: fixed; inset: 0; z-index: 50; display: none; background: var(--node); }
+#reader .in { position: absolute; inset: 12px; display: grid; grid-template-columns: 300px 1fr; grid-template-rows: 56px 1fr; }
+.r-top { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 8px; border-bottom: 1px solid var(--border); }
+.pb { height: 30px; padding: 0 11px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--t2); display: inline-flex; align-items: center; gap: 6px; transition: background-color 150ms ease, color 150ms ease; }
+@media (hover: hover) and (pointer: fine) { .pb:hover { background: var(--raised); color: var(--t1); } }
+.r-top kbd { font: 500 10px 'Geist Mono', monospace; color: var(--t3); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+.r-crumb { font-size: 13px; color: var(--t3); display: flex; gap: 8px; min-width: 0; } .r-crumb strong { color: var(--t1); font-weight: 600; }
+.rail { border-right: 1px solid var(--border); padding: 20px 16px; overflow: auto; display: flex; flex-direction: column; gap: 20px; }
+.rail h4 { margin: 0 0 10px; font: 400 10px 'Geist Mono', monospace; letter-spacing: .04em; color: var(--t3); }
+.rs { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 6px; }
+.rs.off { opacity: .45; }
+.rs .ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex: none; }
+.rs .tx { flex: 1; min-width: 0; } .rs .tx b { display: block; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.budget { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); }
+.budget .n { font: 500 22px 'Geist Mono', monospace; letter-spacing: -0.03em; } .budget p { margin: 4px 0 0; font-size: 12px; line-height: 1.45; color: var(--t3); }
+.r-main { display: flex; flex-direction: column; min-height: 0; }
+.r-scroll { flex: 1; overflow: auto; padding: 40px 24px 24px; }
+.r-th { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.r-title { font-size: 28px; line-height: 1.12; font-weight: 600; letter-spacing: -0.025em; margin: 0 0 4px; }
+.rmu { align-self: flex-end; max-width: 82%; background: var(--raised); border-radius: 12px; padding: 10px 14px; font-size: 15px; line-height: 1.6; color: var(--t-prompt); }
+.rma { font-size: 16px; line-height: 1.7; color: var(--t-body); }
+.rma h3 { font-size: 16px; font-weight: 600; color: var(--t1); margin: 18px 0 2px; } .rma h3:first-child { margin-top: 0; }
+.rma p { margin: 0 0 12px; } .rma ol { margin: 0 0 12px; padding-left: 22px; } .rma b { color: var(--t1); }
+.rma.live p:last-child::after { content: ''; display: inline-block; width: 7px; height: 16px; margin-left: 2px; vertical-align: -3px; background: var(--signal); animation: caret 900ms steps(1) infinite; }
+.r-compose { max-width: 720px; width: calc(100% - 48px); margin: 0 auto 20px; border-radius: 14px; background: var(--canvas); border: 1px solid var(--border); padding: 12px 12px 10px 14px; position: relative; }
+.r-compose textarea { width: 100%; border: 0; outline: none; resize: none; font: inherit; font-size: 15px; line-height: 1.5; min-height: 24px; max-height: 160px; color: var(--t1); background: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+</style>
+</head>
+<body>
+<div id="vp"><div id="world"><svg id="lines"></svg></div></div>
+<div id="seg"><div class="btns bar">
+  <button data-mode="a"><b>A</b>Shelves</button><button data-mode="b"><b>B</b>Citations</button><button data-mode="c"><b>C</b>Desks</button>
+</div><div class="sub" id="sub"></div></div>
+<div id="rail" class="bar"></div>
+<div id="zoom" class="bar"><button data-z="out" aria-label="Zoom out"><span class="i" data-i="minus"></span></button><span class="z" id="zl">100%</span><button data-z="in" aria-label="Zoom in"><span class="i" data-i="plus"></span></button><button data-z="fit" aria-label="Fit board"><span class="i" data-i="scan"></span></button></div>
+<div id="hint"></div>
+<svg id="overlay"></svg>
+<div class="picker" id="picker"></div>
+<div id="scrim"></div>
+<div id="reader" role="dialog" aria-modal="true"><div class="in"></div></div>
+<div class="tip" id="tip"></div>
+
+<script>
+/* ======================= shared ======================= */
+const MODE = (location.hash.slice(1) || 'a').toLowerCase();
+document.body.classList.add('mode-' + MODE);
+const LU = n => `url(https://unpkg.com/lucide-static@0.460.0/icons/${n}.svg)`;
+const I = (n, c, s) => `<span class="i" style="--u:${LU(n)};${c ? `--c:${c};` : ''}${s ? `--s:${s}px;` : ''}"></span>`;
+const hydrate = (r = document) => r.querySelectorAll('[data-i]').forEach(e => { e.style.setProperty('--u', LU(e.dataset.i)); e.removeAttribute('data-i'); });
+hydrate();
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const strip = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const springs = new Set();
+class Spring {
+  constructor(v, r = .4, d = 1) { this.x = v; this.t = v; this.v = 0; this.cfg(r, d); springs.add(this); }
+  cfg(r, d) { this.k = (2 * Math.PI / r) ** 2; this.c = 4 * Math.PI * d / r; return this; }
+  to(t, vel) { this.t = t; if (vel !== undefined) this.v = vel; if (RM) this.snap(t); return this; }
+  snap(v) { this.x = this.t = v; this.v = 0; return this; }
+  step(dt) { const f = -this.k * (this.x - this.t) - this.c * this.v; this.v += f * dt; this.x += this.v * dt; }
+}
+const project = (v, d = .99) => (v / 1000) * d / (1 - d);
+
+/* ---------- sources (same content in every mode) ---------- */
+const FAM = { media: ['var(--media)', 'var(--well-media)', 'media'], web: ['var(--web)', 'var(--well-web)', 'web'], docs: ['var(--docs)', 'var(--well-docs)', ''], data: ['var(--data)', 'var(--well-data)', 'data'] };
+const TYPES = { video: ['play', 'media'], podcast: ['audio-lines', 'media'], pdf: ['file-text', 'docs'], web: ['globe', 'web'], note: ['sticky-note', 'docs'], csv: ['sheet', 'data'] };
+const SRC = {
+  video: { type: 'video', key: 'video', short: 'Video', title: 'How to price a developer tool', meta: 'YouTube · 18:42', ex: [{ id: '12:04', loc: '12:04', t: 'Developers pay for time saved, not for features.' }, { id: '18:10', loc: '18:10', t: "Anchor the price to one hour of a developer's time." }] },
+  podcast: { type: 'podcast', key: 'podcast', short: 'Podcast', title: 'The pricing episode', meta: 'Podcast · Ep. 41 · 38:10', ex: [{ id: '21:40', loc: '21:40', t: "Raise prices before you think you're ready." }, { id: '30:05', loc: '30:05', t: 'Lifetime deals attract the wrong first users.' }] },
+  pdf: { type: 'pdf', key: 'survey', short: 'Survey', title: 'Pricing survey 2025', meta: 'PDF · 24 pages', ex: [{ id: 'p3', loc: 'p. 3', t: 'Solo-dev tools cluster between $8 and $20 a month.' }, { id: 'p7', loc: 'p. 7', t: 'Median price for tools like this is $12.' }] },
+  note: { type: 'note', key: 'note', short: 'Cost note', title: 'Cost note', meta: 'Note · You · 2d ago', ex: [{ id: 'n', loc: null, t: 'Costs ≈ $0.40 per active user a month. Never go below $8.' }] },
+  web: { type: 'web', key: 'blog', short: 'Blog post', title: 'Why we doubled our price', meta: 'Web · harbor.dev', ex: [{ id: 'w', loc: null, t: 'Doubling the price lost only 6% of users; support load went down.' }] },
+  csv: { type: 'csv', key: 'prices', short: 'Prices', title: 'Competitor prices', meta: 'CSV · 4 columns · 18 rows', ex: [{ id: 'B-014', loc: 'B-014', t: 'Median $12 a month across 18 tools; range $0–$20.' }] },
+  interviews: { type: 'pdf', key: 'interviews', short: 'Interviews', title: 'Customer interviews', meta: 'PDF · 3 files · 31 pages', ex: [{ id: 'p2', loc: 'p. 2', t: 'Priya would pay $15 without thinking.' }, { id: 'p14', loc: 'p. 14', t: 'Marco wants a team plan before paying.' }] },
+};
+const tok = id => SRC[id].ex.length * 450 + 200;
+const MODELS = { claude: { name: 'Claude', c: '#D97757' }, gpt: { name: 'GPT', c: '#10A37F' }, gemini: { name: 'Gemini', c: '#6FA0FF' } };
+const A_MAIN = `<h3>Start from your floor</h3><p>Your note puts costs at about $0.40 per active user a month, and you said never go below $8.</p><h3>What the sources say</h3><p>The survey puts tools like this between $8 and $20, median $12. The video's point: developers pay for time saved, not for features.</p><h3>Three shapes that fit</h3><ol><li><b>Free with your own key.</b> It's how people try it.</li><li><b>$12 a month.</b> Hosted models, with a usage cap.</li><li><b>$59 once</b> for the first 300 supporters.</li></ol>`;
+const A_SIDE = `<p>You set the price from what the product is worth to the customer, not from what it costs you to run. If it saves someone two hours a week, that time is your anchor.</p>`;
+const A_SECOND = `<h3>What changes my mind</h3><p>The blog post: doubling the price lost only 6% of users. Priya would pay $15 without thinking.</p><h3>My pick</h3><p>Start at $15 a month and skip the lifetime deal.</p>`;
+
+function wellHTML(id, h = 96) {
+  const s = SRC[id], [c, bg] = FAM[TYPES[s.type][1]]; let inner = '';
+  if (s.type === 'pdf') inner = `<div class="pg"><b></b>${'<span></span>'.repeat(11)}</div>`;
+  if (s.type === 'podcast') inner = `<div class="wave">${[22, 48, 34, 66, 40, 74, 30, 56, 24, 44].map((v, i) => `<i class="${i < 5 ? '' : i === 5 ? 'at' : 'past'}" style="height:${v}%"></i>`).join('')}</div>`;
+  if (s.type === 'video') inner = `<div class="vframe">${I('play', 'var(--media)', 18)}</div><div class="vbar"><i></i><b></b></div>`;
+  if (s.type === 'web') inner = `<div class="browser"><b style="width:80%"></b><b style="width:55%"></b><span></span><span style="width:86%"></span><span></span></div>`;
+  if (s.type === 'csv') inner = `<div class="grid">${Array.from({ length: 28 }, (_, i) => `<i class="${i < 4 ? 'h' : ''}"></i>`).join('')}</div>`;
+  return `<div class="well" style="background:${bg};height:${h}px">${inner}</div>`;
+}
+const chipFor = (id, e) => e.loc ? `<span class="chip ${FAM[TYPES[SRC[id].type][1]][2]}">${esc(e.loc)}</span>` : '';
+function srcCardHTML(id) {
+  const s = SRC[id];
+  if (s.type === 'note') return `<div class="note-in"><div class="meta">${esc(s.meta)}</div><div class="n">${esc(s.ex[0].t)}</div></div>`;
+  return `<div class="m">${wellHTML(id)}<div class="txt"><div class="meta">${esc(s.meta)}</div><div class="title">${esc(s.title)}</div><div class="ex">${chipFor(id, s.ex[0])}<span>${esc(s.ex[0].t)}</span></div></div></div>`;
+}
+const srcIcon = (id, s = 13) => { const t = TYPES[SRC[id].type]; return I(t[0], SRC[id].type === 'note' ? 'var(--paper)' : FAM[t[1]][0], s); };
+
+/* ---------- board ---------- */
+const vp = document.getElementById('vp'), world = document.getElementById('world'), LN = document.getElementById('lines');
+const NS = 'http://www.w3.org/2000/svg';
+const nodes = new Map(), lins = [];
+let selected = null, zTop = 10, uid = 0;
+const cam = { x: new Spring(0, .5, 1), y: new Spring(0, .5, 1), z: new Spring(1, .45, 1) };
+const isChat = n => n.kind === 'chat';
+const chats = () => [...nodes.values()].filter(isChat);
+const children = id => chats().filter(c => c.parent === id);
+const ancestors = id => { const out = []; let c = nodes.get(id); while (c && c.parent) { c = nodes.get(c.parent); if (c) out.push(c); } return out; };
+
+function addNode(d, { pop = false } = {}) {
+  const el = document.createElement('div'); el.dataset.id = d.id; el.tabIndex = 0; world.appendChild(el);
+  const n = Object.assign(d, { el, px: new Spring(d.x, .4, 1), py: new Spring(d.y, .4, 1), s: new Spring(pop ? .94 : 1, .34, 1), o: new Spring(pop ? 0 : 1, .3, 1), h: 120 });
+  if (!n.w) n.w = isChat(n) ? 400 : 340;
+  if (pop) { n.s.to(1); n.o.to(1); }
+  nodes.set(n.id, n); render(n);
+  new ResizeObserver(() => n.h = el.offsetHeight).observe(el);
+  return n;
+}
+function render(n) {
+  const ta = n.el.querySelector('.compose textarea'), focus = ta && ta === document.activeElement, draft = ta?.value || '';
+  const sc = n.el.querySelector('.cbody')?.scrollTop;
+  n.el.className = `card ${isChat(n) ? 'chat' : 'src ' + SRC[n.src].type}${n.id === selected ? ' selected' : ''}${isChat(n) && !n.msgs.length ? ' empty' : ''}`;
+  n.el.style.width = n.w + 'px';
+  n.el.innerHTML = isChat(n) ? chatHTML(n) : `<div class="face">${MODE === 'a' ? `<div class="loose-tag">Not on a shelf · drag onto a chat</div>` : ''}${srcCardHTML(n.src)}</div>`;
+  bind(n);
+  const b = n.el.querySelector('.cbody'); if (b) { b.scrollTop = sc ?? 0; b.classList.toggle('short', b.scrollHeight <= b.clientHeight + 2); }
+  const nt = n.el.querySelector('.compose textarea'); if (nt) { nt.value = draft; if (focus) nt.focus({ preventScroll: true }); nt.dispatchEvent(new Event('input')); }
+  n.h = n.el.offsetHeight;
+}
+function chatHTML(n) {
+  const m = MODELS[n.model];
+  const msgs = n.msgs.length ? n.msgs.map(x => x.r === 'u' ? `<div class="mu">${userText(x.t)}</div>` : `<div class="ma ${x.live ? 'live' : ''}">${x.t || '<p></p>'}</div>`).join('') : `<div class="cempty">${n.parent ? 'Starts with a summary of the chat it branched from.' : 'Ask anything.'}</div>`;
+  return `<div class="face"><div class="chat-h"><span class="md" style="--c:${m.c}"></span><span class="title">${esc(n.title)}</span>${chatMeta(n)}</div>
+    ${MODE === 'a' ? shelfHTML(n) : ''}
+    <div class="cbody">${msgs}</div>
+    <div class="compose"><textarea rows="1" placeholder="${MODE === 'b' ? 'Ask, and type @ to cite a source' : 'Ask a follow-up'}" aria-label="Message"></textarea><div class="cbar"><span class="meta">${composeMeta(n)}</span><button class="send" aria-label="Send" disabled>${I('arrow-up')}</button></div></div>
+    <div class="tools"><button class="tb" data-act="open" aria-label="Open big" data-tip="Open big">${I('maximize-2')}</button><button class="tb" data-act="branch" aria-label="Branch" data-tip="Branch">${I('git-branch')}</button></div></div>`;
+}
+function chatMeta(n) { if (n.streaming) return `<span class="meta live">Reading…</span>`; return `<span class="meta">${MODELS[n.model].name} · ${n.msgs.length} msgs</span>`; }
+function bind(n) {
+  const ta = n.el.querySelector('.compose textarea');
+  if (ta) {
+    const sb = n.el.querySelector('.send');
+    ta.addEventListener('input', () => { sb.disabled = !ta.value.trim(); ta.style.height = 'auto'; ta.style.height = Math.min(120, ta.scrollHeight) + 'px'; if (MODE === 'b') pickerInput(ta, n); });
+    const go = () => { const v = ta.value.trim(); if (!v) return; ta.value = ''; closePicker(); send(n, v); };
+    ta.addEventListener('keydown', e => { if (MODE === 'b' && pickerKey(e)) return; if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(); } });
+    sb.addEventListener('click', go);
+  }
+  n.el.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); b.dataset.act === 'open' ? openReader(n.id) : (() => { const c = branch(n.id); select(c.id); focusCompose(c); })(); }));
+  if (MODE === 'a') bindShelf(n);
+  if (MODE === 'b') bindCites(n.el);
+  bindTips(n.el); hydrate(n.el);
+}
+const focusCompose = n => setTimeout(() => n.el.querySelector('.compose textarea')?.focus({ preventScroll: true }), 40);
+function addLin(parent, child) {
+  const p = document.createElementNS(NS, 'path'), k1 = document.createElementNS(NS, 'circle'), k2 = document.createElementNS(NS, 'circle');
+  k1.setAttribute('r', 4); k2.setAttribute('r', 4); LN.append(p, k1, k2); lins.push({ parent, child, p, k1, k2 });
+}
+function branch(pid) {
+  const p = nodes.get(pid), kids = children(pid).length;
+  const d = { id: 'b' + (++uid), kind: 'chat', model: p.model, parent: pid, title: 'New branch', msgs: [], w: 380, shelf: [], hidden: new Set(), x: p.px.t + p.w + 120, y: p.py.t + 80 + kids * 70 };
+  const c = addNode(d, { pop: true }); c.el.style.zIndex = ++zTop; addLin(pid, c.id);
+  if (MODE === 'c') deskFor(c);
+  return c;
+}
+
+/* ---------- camera + pointer ---------- */
+const s2w = (x, y) => [(x - cam.x.x) / cam.z.x, (y - cam.y.x) / cam.z.x];
+function camSnap(x, y, z) { cam.x.snap(x); cam.y.snap(y); if (z !== undefined) cam.z.snap(z); }
+function zoomAt(px, py, nz, anim) { nz = Math.min(2, Math.max(.25, nz)); const z = anim ? cam.z.t : cam.z.x, bx = anim ? cam.x.t : cam.x.x, by = anim ? cam.y.t : cam.y.x; const nx = px - (px - bx) * nz / z, ny = py - (py - by) * nz / z; anim ? (cam.z.to(nz), cam.x.to(nx), cam.y.to(ny)) : camSnap(nx, ny, nz); }
+function fit(anim = true) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  nodes.forEach(n => { x0 = Math.min(x0, n.px.t - (MODE === 'c' ? 30 : 0)); y0 = Math.min(y0, n.py.t - 34); x1 = Math.max(x1, n.px.t + n.w + (MODE === 'c' ? 30 : 0)); y1 = Math.max(y1, n.py.t + n.h + 30); });
+  const left = MODE === 'b' ? 330 : 70, vw = innerWidth, vh = innerHeight, pad = 50, pt = 110, pb = 70;
+  const z = Math.min(1, (vw - left - pad * 2) / (x1 - x0), (vh - pt - pb) / (y1 - y0));
+  const x = left + pad + (vw - left - pad * 2 - (x1 - x0) * z) / 2 - x0 * z, y = pt + (vh - pt - pb - (y1 - y0) * z) / 2 - y0 * z;
+  anim ? (cam.x.to(x), cam.y.to(y), cam.z.to(z)) : camSnap(x, y, z);
+}
+function track(e, move, up) {
+  const id = e.pointerId; try { vp.setPointerCapture(id); } catch {}
+  const mv = ev => ev.pointerId === id && move(ev);
+  const u = ev => { if (ev.pointerId !== id) return; vp.removeEventListener('pointermove', mv); vp.removeEventListener('pointerup', u); vp.removeEventListener('pointercancel', u); up(ev); };
+  vp.addEventListener('pointermove', mv); vp.addEventListener('pointerup', u); vp.addEventListener('pointercancel', u);
+}
+function velocity(h) { const now = performance.now(), L = h[h.length - 1]; if (!L || now - L.t > 90) return [0, 0]; let i = h.length - 1; while (i > 0 && L.t - h[i - 1].t < 70) i--; const F = h[Math.max(0, i - 1)], dt = (L.t - F.t) / 1000 || 1; return [(L.x - F.x) / dt, (L.y - F.y) / dt]; }
+vp.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  const t = e.target, ce = t.closest('.card');
+  if (ce && t.closest('.cbody, .compose, .shelf')) { if (selected !== ce.dataset.id) select(ce.dataset.id); return; }
+  if (t.closest('button, textarea, input')) return;
+  if (ce) return startDrag(nodes.get(ce.dataset.id), e);
+  startPan(e);
+});
+let lastClick = { id: null, t: 0 };
+function startDrag(n, e) {
+  e.preventDefault(); getSelection()?.removeAllRanges();
+  const [wx, wy] = s2w(e.clientX, e.clientY), off = [wx - n.px.x, wy - n.py.x], sx = e.clientX, sy = e.clientY, hist = [];
+  let moved = false, target = null;
+  const group = MODE === 'c' && isChat(n) ? deskMembers(n.id).map(m => ({ m, dx: m.px.x - n.px.x, dy: m.py.x - n.py.x })) : [];
+  track(e, ev => {
+    if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 4) { moved = true; n.el.classList.add('lift'); n.el.style.zIndex = ++zTop; n.s.cfg(.25, 1).to(1.02); n.dragging = true; }
+    if (!moved) return;
+    const [x, y] = s2w(ev.clientX, ev.clientY); n.px.snap(x - off[0]); n.py.snap(y - off[1]);
+    group.forEach(g => { g.m.px.snap(n.px.x + g.dx); g.m.py.snap(n.py.x + g.dy); });
+    hist.push({ x: n.px.x, y: n.py.x, t: performance.now() }); if (hist.length > 12) hist.shift();
+    if (!isChat(n)) { const t2 = dropTargetAt(ev, n); if (t2 !== target) { setDrop(target, false); target = t2; setDrop(target, true); } }
+  }, () => {
+    n.dragging = false;
+    if (!moved) { const now = performance.now(); if (lastClick.id === n.id && now - lastClick.t < 320 && isChat(n)) { openReader(n.id); lastClick = { id: null }; } else { select(n.id); lastClick = { id: n.id, t: now }; } return; }
+    n.el.classList.remove('lift'); n.s.to(1); setDrop(target, false);
+    if (!isChat(n) && onDrop(n, target)) return;
+    const [vx, vy] = velocity(hist), damp = Math.hypot(vx, vy) > 350 ? .82 : 1;
+    n.px.cfg(.42, damp).to(n.px.x + project(vx), vx); n.py.cfg(.42, damp).to(n.py.x + project(vy), vy);
+    group.forEach(g => { g.m.px.cfg(.42, damp).to(n.px.t + g.dx, vx); g.m.py.cfg(.42, damp).to(n.py.t + g.dy, vy); });
+  });
+}
+function startPan(e) {
+  e.preventDefault();
+  const sx = e.clientX, sy = e.clientY, ox = cam.x.x, oy = cam.y.x, hist = []; let moved = false;
+  track(e, ev => { if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 3) { moved = true; vp.classList.add('panning'); } if (!moved) return; camSnap(ox + ev.clientX - sx, oy + ev.clientY - sy); hist.push({ x: cam.x.x, y: cam.y.x, t: performance.now() }); if (hist.length > 12) hist.shift(); },
+    () => { vp.classList.remove('panning'); if (!moved) return select(null); const [vx, vy] = velocity(hist); cam.x.cfg(.5, 1).to(cam.x.x + project(vx, .992), vx); cam.y.cfg(.5, 1).to(cam.y.x + project(vy, .992), vy); });
+}
+vp.addEventListener('wheel', e => {
+  const b = e.target.closest?.('.cbody'); if (b && !e.ctrlKey && b.scrollHeight > b.clientHeight) return;
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey) zoomAt(e.clientX, e.clientY, cam.z.x * Math.exp(-e.deltaY * .0105), false); else camSnap(cam.x.x - e.deltaX, cam.y.x - e.deltaY);
+}, { passive: false });
+function select(id) {
+  selected = id;
+  nodes.forEach(n => n.el.classList.toggle('selected', n.id === id));
+  const sel = id && nodes.get(id), rel = new Set();
+  if (sel && isChat(sel)) { rel.add(id); ancestors(id).forEach(a => rel.add(a.id)); children(id).forEach(c => rel.add(c.id)); if (MODE === 'c') { deskMembers(id).forEach(m => rel.add(m.id)); ancestors(id).forEach(a => deskMembers(a.id).forEach(m => rel.add(m.id))); } }
+  nodes.forEach(n => n.el.classList.toggle('faded', !!sel && isChat(sel) && !rel.has(n.id)));
+  if (MODE === 'c') desks.forEach(d => d.el.classList.toggle('faded', !!sel && isChat(sel) && !rel.has(d.chat)));
+  if (sel) sel.el.style.zIndex = ++zTop;
+}
+
+/* ---------- chat streaming ---------- */
+function contextNames(c) {
+  if (MODE === 'a') return ctxA(c.id).filter(x => !x.off).map(x => SRC[x.src].short);
+  if (MODE === 'b') return [...new Set(citesOf(c).map(x => SRC[x.src].short))];
+  return [...deskMembers(c.id), ...ancestors(c.id).flatMap(a => deskMembers(a.id))].map(m => SRC[m.src].short);
+}
+function send(c, text) {
+  c.msgs.push({ r: 'u', t: text }); const ai = { r: 'a', t: '', live: true }; c.msgs.push(ai); c.streaming = true;
+  render(c); scrollEnd(c); if (reader.id === c.id) renderThread(c);
+  const names = contextNames(c);
+  const full = `<p>${names.length ? `Reading ${names.slice(0, 3).join(', ')}${names.length > 3 ? ` and ${names.length - 3} more` : ''}: ` : 'With no sources in context: '}test the $12 plan with ten real users before you decide, and ask what they would pay before you show a number.</p>`;
+  const words = strip(full).split(' '); let i = 0;
+  const tick = () => {
+    i = Math.min(words.length, i + 2); ai.t = `<p>${esc(words.slice(0, i).join(' '))}</p>`;
+    const el = c.el.querySelector('.ma.live'); if (el) el.innerHTML = ai.t;
+    const r = reader.id === c.id && document.querySelector('#reader .rma.live'); if (r) r.innerHTML = ai.t;
+    scrollEnd(c);
+    if (i < words.length) setTimeout(tick, 50); else { ai.t = full; ai.live = false; c.streaming = false; render(c); scrollEnd(c); if (reader.id === c.id) { renderThread(c); renderRail(c); } }
+  };
+  setTimeout(tick, 500);
+}
+function scrollEnd(c) { const b = c.el.querySelector('.cbody'); if (b) { b.scrollTop = b.scrollHeight; b.classList.toggle('short', b.scrollHeight <= b.clientHeight + 2); } const r = reader.id === c.id && document.querySelector('#reader .r-scroll'); if (r) r.scrollTop = r.scrollHeight; }
+
+/* ======================= A · SHELVES ======================= */
+function ctxA(id) {
+  // effective context: own shelf + everything inherited from ancestors, minus what this chat hides
+  const c = nodes.get(id); if (!c) return [];
+  const own = (c.shelf || []).map(src => ({ src, owner: id, inherited: false, off: false }));
+  const parent = c.parent ? ctxA(c.parent).filter(x => !x.off) : [];
+  const inh = parent.filter(x => !own.some(o => o.src === x.src)).map(x => ({ src: x.src, owner: x.owner, inherited: true, off: c.hidden?.has(x.src) }));
+  return [...own, ...inh];
+}
+function shelfHTML(n) {
+  const ctx = ctxA(n.id), own = ctx.filter(x => !x.inherited), inh = ctx.filter(x => x.inherited);
+  const chip = x => x.inherited
+    ? `<button class="sch inh${x.off ? ' off' : ''}" data-src="${x.src}" data-owner="${x.owner}" title="From “${esc(nodes.get(x.owner)?.title)}”. Click to ${x.off ? 'include' : 'leave out'} here.">${srcIcon(x.src)}${esc(SRC[x.src].short)}<span class="up">↑</span></button>`
+    : `<button class="sch own${n.justAdded === x.src ? ' arrive' : ''}" data-src="${x.src}" data-owner="${n.id}">${srcIcon(x.src)}${esc(SRC[x.src].short)}<span class="x" data-undock="${x.src}" title="Take off the shelf">${I('x', 'var(--t2)')}</span></button>`;
+  return `<div class="shelf">${ctx.length ? `${own.map(chip).join('')}${inh.map(chip).join('')}` : `<span class="hint">Drop sources here. Branches below will read them too.</span>`}</div>`;
+}
+function bindShelf(n) {
+  n.justAdded = null;
+  n.el.querySelectorAll('.sch').forEach(b => {
+    const src = b.dataset.src, owner = b.dataset.owner;
+    b.addEventListener('pointerenter', () => flowHighlight(n.id, owner, src));
+    b.addEventListener('pointerleave', () => flowHighlight(null));
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      if (e.target.closest('[data-undock]')) return undock(n, src);
+      if (b.classList.contains('inh')) { n.hidden.has(src) ? n.hidden.delete(src) : n.hidden.add(src); refreshTree(n.id); }
+    });
+  });
+}
+function refreshTree(id) { const n = nodes.get(id); if (!n) return; render(n); children(id).forEach(c => refreshTree(c.id)); if (reader.id) renderRail(nodes.get(reader.id)); }
+let flowOn = null;
+function flowHighlight(at, owner, src) {
+  flowOn = at ? { at, owner } : null;
+  nodes.forEach(n => n.el.classList.toggle('lit', !!at && n.id === owner && owner !== at));
+}
+function undock(c, src) {
+  c.shelf = c.shelf.filter(s => s !== src);
+  const n = addNode({ id: src, kind: 'src', src, x: c.px.x - 400, y: c.py.x + 40 + Math.random() * 60 }, { pop: true });
+  n.el.style.zIndex = ++zTop; flowHighlight(null); refreshTree(c.id);
+}
+
+/* ======================= B · CITATIONS ======================= */
+const KEY = Object.fromEntries(Object.entries(SRC).map(([id, s]) => [s.key, id]));
+const CITE_RE = /@(\w+)(?:#([\w:.-]+))?/g;
+function userText(t) {
+  if (MODE !== 'b') return esc(t);
+  return esc(t).replace(CITE_RE, (m, k, loc) => {
+    const id = KEY[k]; if (!id) return m;
+    const ex = loc ? SRC[id].ex.find(e => e.id === loc) : null;
+    return `<span class="cite" data-src="${id}" data-ex="${ex ? ex.id : ''}">${srcIcon(id, 11)}${esc(SRC[id].short)}${ex && ex.loc ? ' · ' + esc(ex.loc) : ''}</span>`;
+  });
+}
+function citesOf(c) {
+  const out = []; c.msgs.filter(m => m.r === 'u').forEach(m => { for (const x of m.t.matchAll(CITE_RE)) { const id = KEY[x[1]]; if (id) out.push({ src: id, ex: x[2] || null }); } });
+  return out;
+}
+function buildDrawer() {
+  const d = document.createElement('aside'); d.id = 'drawer';
+  d.innerHTML = `<div class="dh"><b>LIBRARY · ${Object.keys(SRC).length} SOURCES</b><span class="meta">Click a line to cite it</span></div><div class="list">${Object.entries(SRC).map(([id, s]) => {
+    const [c, bg] = FAM[TYPES[s.type][1]];
+    return `<div class="dsrc" data-src="${id}"><div class="top"><span class="w" style="background:${s.type === 'note' ? '#3A3628' : bg}">${srcIcon(id, 16)}</span><div style="min-width:0;flex:1"><div class="title">${esc(s.title)}</div><div class="meta">${esc(s.meta)}</div></div><span class="key">@${s.key}</span></div>${s.ex.map(e => `<button class="dex" data-src="${id}" data-ex="${e.id}">${chipFor(id, e)}<span>${esc(e.t)}</span></button>`).join('')}</div>`;
+  }).join('')}</div>`;
+  document.body.appendChild(d); hydrate(d);
+  d.querySelectorAll('.dex').forEach(b => b.addEventListener('click', () => {
+    const c = nodes.get(selected) && isChat(nodes.get(selected)) ? nodes.get(selected) : nodes.get('main');
+    select(c.id); const ta = c.el.querySelector('.compose textarea');
+    const s = SRC[b.dataset.src], token = `@${s.key}${s.ex.length > 1 ? '#' + b.dataset.ex : ''} `;
+    ta.value = (ta.value && !ta.value.endsWith(' ') ? ta.value + ' ' : ta.value) + token; ta.dispatchEvent(new Event('input')); ta.focus();
+  }));
+}
+const OV = document.getElementById('overlay');
+function bindCites(root) {
+  root.querySelectorAll('.cite').forEach(c => {
+    c.addEventListener('pointerenter', () => showFootnote(c));
+    c.addEventListener('pointerleave', hideFootnote);
+  });
+}
+function showFootnote(c) {
+  const id = c.dataset.src, ex = c.dataset.ex;
+  const box = document.querySelector(`.dsrc[data-src="${id}"]`); if (!box) return;
+  const row = ex ? box.querySelector(`.dex[data-ex="${ex}"]`) : null;
+  box.classList.add('hot'); row?.classList.add('hot'); c.classList.add('hot');
+  box.scrollIntoView({ block: 'nearest', behavior: RM ? 'auto' : 'smooth' });
+  const draw = () => {
+    if (!c.classList.contains('hot')) return;
+    const a = c.getBoundingClientRect(), b = (row || box).getBoundingClientRect();
+    const x1 = a.left, y1 = a.top + a.height / 2, x2 = b.right + 2, y2 = b.top + b.height / 2;
+    OV.innerHTML = `<path d="M${x1},${y1} C${x1 - 80},${y1} ${x2 + 80},${y2} ${x2},${y2}"/><circle cx="${x2}" cy="${y2}" r="3.5"/><circle cx="${x1}" cy="${y1}" r="3"/>`;
+    requestAnimationFrame(draw);
+  };
+  draw();
+}
+function hideFootnote() { OV.innerHTML = ''; document.querySelectorAll('.hot').forEach(e => e.classList.remove('hot')); }
+// @ picker
+const PK = document.getElementById('picker'); let pk = { ta: null, items: [], i: 0, start: 0 };
+function pickerInput(ta, n) {
+  const pos = ta.selectionStart, before = ta.value.slice(0, pos), m = before.match(/@(\w*)$/);
+  if (!m) return closePicker();
+  const q = m[1].toLowerCase();
+  pk = { ta, i: 0, start: pos - m[0].length, items: [] };
+  Object.entries(SRC).forEach(([id, s]) => { if (!q || s.key.startsWith(q) || s.short.toLowerCase().startsWith(q)) s.ex.forEach(e => pk.items.push({ id, e })); });
+  if (!pk.items.length) return closePicker();
+  renderPicker();
+}
+function renderPicker() {
+  const r = pk.ta.getBoundingClientRect();
+  PK.innerHTML = `<div class="ph">Cite a source</div>` + pk.items.map((x, i) => `<button class="${i === pk.i ? 'act' : ''}" data-i="${i}"><span class="k">@${SRC[x.id].key}${SRC[x.id].ex.length > 1 ? '#' + x.e.id : ''}</span><span>${esc(x.e.t)}</span></button>`).join('');
+  PK.style.left = r.left + 'px'; PK.style.top = Math.min(innerHeight - 290, r.bottom + 8) + 'px'; PK.classList.add('open');
+  PK.querySelectorAll('button').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); pk.i = +b.dataset.i; choosePick(); }));
+}
+function pickerKey(e) {
+  if (!PK.classList.contains('open')) return false;
+  if (e.key === 'ArrowDown') { pk.i = (pk.i + 1) % pk.items.length; renderPicker(); e.preventDefault(); return true; }
+  if (e.key === 'ArrowUp') { pk.i = (pk.i - 1 + pk.items.length) % pk.items.length; renderPicker(); e.preventDefault(); return true; }
+  if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); choosePick(); return true; }
+  if (e.key === 'Escape') { closePicker(); e.preventDefault(); e.stopPropagation(); return true; }
+  return false;
+}
+function choosePick() {
+  const x = pk.items[pk.i], ta = pk.ta, tokn = `@${SRC[x.id].key}${SRC[x.id].ex.length > 1 ? '#' + x.e.id : ''} `;
+  ta.value = ta.value.slice(0, pk.start) + tokn + ta.value.slice(ta.selectionStart); closePicker(); ta.focus(); ta.dispatchEvent(new Event('input'));
+}
+function closePicker() { PK.classList.remove('open'); }
+
+/* ======================= C · DESKS ======================= */
+const desks = [];
+function deskFor(chat) {
+  const el = document.createElement('div'); el.className = 'desk'; el.innerHTML = `<div class="tab"></div>`; world.insertBefore(el, world.firstChild);
+  const d = { chat: chat.id, el, x0: new Spring(0, .4, 1), y0: new Spring(0, .4, 1), x1: new Spring(0, .4, 1), y1: new Spring(0, .4, 1), init: false };
+  desks.push(d); return d;
+}
+const deskMembers = id => [...nodes.values()].filter(n => !isChat(n) && n.desk === id);
+function deskBounds(d, excluding) {
+  const c = nodes.get(d.chat); if (!c) return null;
+  let x0 = c.px.x, y0 = c.py.x, x1 = c.px.x + c.w, y1 = c.py.x + c.h;
+  deskMembers(d.chat).forEach(m => { if (m === excluding) return; x0 = Math.min(x0, m.px.x); y0 = Math.min(y0, m.py.x); x1 = Math.max(x1, m.px.x + m.w); y1 = Math.max(y1, m.py.x + m.h); });
+  const P = 30; return [x0 - P, y0 - P, x1 + P, y1 + P];
+}
+
+/* ---------- mode-specific drop handling ---------- */
+function dropTargetAt(ev, n) {
+  if (MODE === 'a') { n.el.style.pointerEvents = 'none'; const u = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.card.chat'); n.el.style.pointerEvents = ''; return u ? nodes.get(u.dataset.id) : null; }
+  if (MODE === 'c') { const [x, y] = s2w(ev.clientX, ev.clientY); return desks.find(d => { const b = deskBounds(d, n); return b && x > b[0] && x < b[2] && y > b[1] && y < b[3]; }) || null; }
+  return null;
+}
+function setDrop(t, on) { if (!t) return; if (MODE === 'a') t.el.classList.toggle('drop', on); if (MODE === 'c') t.el.classList.toggle('hot', on); }
+function onDrop(n, target) {
+  if (MODE === 'a' && target) {
+    const sh = target.el.querySelector('.shelf').getBoundingClientRect(), [tx, ty] = s2w(sh.left + 10, sh.top);
+    n.px.cfg(.3, 1).to(tx); n.py.cfg(.3, 1).to(ty); n.s.cfg(.3, 1).to(.25); n.o.cfg(.25, 1).to(0);
+    setTimeout(() => { n.el.remove(); nodes.delete(n.id); target.shelf.push(n.src); target.justAdded = n.src; refreshTree(target.id); }, RM ? 0 : 230);
+    return true;
+  }
+  if (MODE === 'c') { n.desk = target ? target.chat : null; return false; }
+  return false;
+}
+
+/* ======================= full-screen ======================= */
+const R = document.getElementById('reader'), RI = R.querySelector('.in'), scrim = document.getElementById('scrim');
+const reader = { id: null, prog: new Spring(0, .46, 1), rect: null };
+const nodeRect = n => { const r = n.el.querySelector('.face').getBoundingClientRect(); return { l: r.left, t: r.top, r: innerWidth - r.right, b: innerHeight - r.bottom, rad: 12 * cam.z.x }; };
+function openReader(id) { const n = nodes.get(id); if (!n || !isChat(n)) return; select(id); reader.id = id; reader.rect = nodeRect(n); renderReader(n); R.style.display = 'block'; reader.prog.cfg(.46, 1).to(1); }
+function closeReader() { if (!reader.id) return; const n = nodes.get(reader.id); if (n) reader.rect = nodeRect(n); reader.prog.cfg(.36, 1).to(0); }
+function finishClose() { const n = nodes.get(reader.id); R.style.display = 'none'; scrim.style.opacity = 0; reader.id = null; reader.prog.snap(0); if (n) { n.el.style.opacity = ''; render(n); } }
+function renderReader(c) {
+  const p = c.parent && nodes.get(c.parent);
+  RI.innerHTML = `<div class="r-top"><button class="pb" data-close>${I('chevron-left')} Board <kbd>Esc</kbd></button><div class="r-crumb">${p ? `<span>${esc(p.title)}</span><span>/</span>` : ''}<strong>${esc(c.title)}</strong></div></div>
+    <aside class="rail"></aside><section class="r-main"><div class="r-scroll"><div class="r-th"></div></div>
+    <div class="r-compose"><textarea rows="1" placeholder="${MODE === 'b' ? 'Ask, and type @ to cite a source' : 'Ask a follow-up'}"></textarea><div class="cbar"><span class="meta">${composeMeta(c)}</span><button class="send" disabled>${I('arrow-up')}</button></div></div></section>`;
+  renderRail(c); renderThread(c);
+  RI.querySelector('[data-close]').onclick = closeReader;
+  const ta = RI.querySelector('textarea'), sb = RI.querySelector('.send');
+  const go = () => { const v = ta.value.trim(); if (!v) return; ta.value = ''; sb.disabled = true; closePicker(); send(c, v); };
+  ta.addEventListener('input', () => { sb.disabled = !ta.value.trim(); if (MODE === 'b') pickerInput(ta, c); });
+  ta.addEventListener('keydown', e => { if (MODE === 'b' && pickerKey(e)) return; if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(); } });
+  sb.onclick = go;
+}
+function railRow(src, sub, off) { const [c, bg] = FAM[TYPES[SRC[src].type][1]]; return `<div class="rs ${off ? 'off' : ''}"><span class="ic" style="background:${SRC[src].type === 'note' ? '#3A3628' : bg}">${srcIcon(src, 15)}</span><span class="tx"><b>${esc(SRC[src].title)}</b><span class="meta">${sub}</span></span></div>`; }
+function renderRail(c) {
+  const rail = RI.querySelector('.rail'); if (!rail) return;
+  let html = '', total = 600 + (c.parent ? 420 : 0);
+  if (MODE === 'a') {
+    const ctx = ctxA(c.id), own = ctx.filter(x => !x.inherited), inh = ctx.filter(x => x.inherited);
+    ctx.filter(x => !x.off).forEach(x => total += tok(x.src));
+    html = `<div><h4>ON ITS SHELF</h4>${own.map(x => railRow(x.src, `${(tok(x.src) / 1000).toFixed(1)}k tokens`)).join('') || '<p class="meta" style="white-space:normal">Nothing of its own.</p>'}</div>
+      <div><h4>INHERITED FROM ABOVE</h4>${inh.map(x => railRow(x.src, x.off ? 'Left out here' : `From ${esc(nodes.get(x.owner).title)}`, x.off)).join('') || '<p class="meta" style="white-space:normal">This is a root chat.</p>'}</div>`;
+  } else if (MODE === 'b') {
+    const cs = citesOf(c), by = {}; cs.forEach(x => { by[x.src] = by[x.src] || new Set(); by[x.src].add(x.ex || '*'); });
+    Object.entries(by).forEach(([src, set]) => total += set.size * 450);
+    html = `<div><h4>CITED IN THIS CHAT</h4>${Object.entries(by).map(([src, set]) => railRow(src, [...set].map(e => e === '*' ? 'whole source' : (SRC[src].ex.find(x => x.id === e)?.loc || e)).join(' · '))).join('') || '<p class="meta" style="white-space:normal">No citations yet. Type @ in a message.</p>'}</div>`;
+  } else {
+    const own = deskMembers(c.id), inh = ancestors(c.id).flatMap(a => deskMembers(a.id).map(m => ({ m, a })));
+    [...own, ...inh.map(x => x.m)].forEach(m => total += tok(m.src));
+    html = `<div><h4>ON ITS DESK</h4>${own.map(m => railRow(m.src, `${(tok(m.src) / 1000).toFixed(1)}k tokens`)).join('') || '<p class="meta" style="white-space:normal">Its desk is empty.</p>'}</div>${inh.length ? `<div><h4>FROM THE PARENT DESK</h4>${inh.map(x => railRow(x.m.src, `From ${esc(x.a.title)}`)).join('')}</div>` : ''}`;
+  }
+  rail.innerHTML = html + `<div class="budget"><div class="n">≈ ${(total / 1000).toFixed(1)}k</div><p>tokens sent with each message.</p></div>`;
+}
+function renderThread(c) {
+  const th = RI.querySelector('.r-th'); if (!th) return;
+  th.innerHTML = `<h2 class="r-title">${esc(c.title)}</h2>` + c.msgs.map(m => m.r === 'u' ? `<div class="rmu">${userText(m.t)}</div>` : `<div class="rma ${m.live ? 'live' : ''}">${m.t || '<p></p>'}</div>`).join('');
+  if (MODE === 'b') bindCites(th);
+}
+function composeMeta(c) {
+  if (MODE === 'a') { const ctx = ctxA(c.id).filter(x => !x.off); const own = ctx.filter(x => !x.inherited).length; return ctx.length ? `Reads ${ctx.length} · ${own} own, ${ctx.length - own} inherited` : 'Reads nothing yet'; }
+  if (MODE === 'b') { const n = new Set(citesOf(c).map(x => x.src)).size; return n ? `Cited ${n} source${n > 1 ? 's' : ''} so far` : 'No citations yet'; }
+  const n = deskMembers(c.id).length + ancestors(c.id).reduce((a, x) => a + deskMembers(x.id).length, 0); return n ? `Reads ${n} from its desk${c.parent ? ' and above' : ''}` : 'Desk is empty';
+}
+
+/* ---------- tooltips, rail, keys ---------- */
+const tip = document.getElementById('tip'); let tipT;
+function bindTips(root) { root.querySelectorAll('[data-tip]').forEach(b => { b.addEventListener('pointerenter', () => { clearTimeout(tipT); tipT = setTimeout(() => { tip.textContent = b.dataset.tip; const r = b.getBoundingClientRect(), side = !!b.closest('#rail'); tip.style.left = (side ? r.right + 10 : r.left + r.width / 2 - tip.offsetWidth / 2) + 'px'; tip.style.top = (side ? r.top + r.height / 2 - 13 : r.top - 32) + 'px'; tip.classList.add('show'); }, 380); }); b.addEventListener('pointerleave', () => { clearTimeout(tipT); tip.classList.remove('show'); }); }); }
+document.querySelectorAll('#zoom [data-z]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.z; k === 'fit' ? fit(true) : zoomAt(innerWidth / 2, innerHeight / 2, cam.z.t * (k === 'in' ? 1.25 : .8), true); }));
+document.addEventListener('keydown', e => {
+  const typing = e.target.closest?.('textarea, input');
+  if (e.key === 'Escape') { if (PK.classList.contains('open')) return closePicker(); if (reader.id) return closeReader(); if (typing) return e.target.blur(); return select(null); }
+  if (typing || reader.id) return;
+  if (e.key === 'Enter' && selected && isChat(nodes.get(selected) || {})) { e.preventDefault(); openReader(selected); }
+});
+document.querySelectorAll('#seg [data-mode]').forEach(b => { b.classList.toggle('on', b.dataset.mode === MODE); b.onclick = () => { location.hash = b.dataset.mode; location.reload(); }; });
+
+/* ======================= frame ======================= */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  const steps = Math.max(1, Math.ceil(dt * 240)), h = dt / steps;
+  for (let i = 0; i < steps; i++) springs.forEach(s => s.step(h));
+  const z = cam.z.x;
+  world.style.transform = `translate3d(${cam.x.x}px,${cam.y.x}px,0) scale(${z})`;
+  vp.style.backgroundSize = `${20 * z}px ${20 * z}px`; vp.style.backgroundPosition = `${cam.x.x}px ${cam.y.x}px`;
+  document.getElementById('zl').textContent = Math.round(z * 100) + '%';
+  nodes.forEach(n => { n.el.style.transform = `translate3d(${n.px.x}px,${n.py.x}px,0) scale(${n.s.x})`; if (reader.id === n.id) return; n.el.style.opacity = n.el.classList.contains('faded') ? '' : Math.max(0, Math.min(1, n.o.x)); });
+  // branch lines; in A, hovering a shelf chip lights the path it flows down
+  const flowPath = new Set();
+  if (flowOn && flowOn.owner !== flowOn.at) { let c = nodes.get(flowOn.at); while (c && c.id !== flowOn.owner && c.parent) { flowPath.add(c.parent + '>' + c.id); c = nodes.get(c.parent); } }
+  const selC = selected && nodes.get(selected) && isChat(nodes.get(selected)) ? selected : null;
+  lins.forEach(l => {
+    const A = nodes.get(l.parent), B = nodes.get(l.child); if (!A || !B) return;
+    const a = [A.px.x + A.w, A.py.x + 22], b = [B.px.x, B.py.x + 22], k = Math.max(40, Math.abs(b[0] - a[0]) * .5);
+    l.p.setAttribute('d', `M${a[0]},${a[1]} C${a[0] + k},${a[1]} ${b[0] - k},${b[1]} ${b[0]},${b[1]}`);
+    l.k1.setAttribute('cx', a[0]); l.k1.setAttribute('cy', a[1]); l.k2.setAttribute('cx', b[0]); l.k2.setAttribute('cy', b[1]);
+    const flow = flowPath.has(l.parent + '>' + l.child), on = selC && (l.parent === selC || l.child === selC || ancestors(selC).some(x => x.id === l.child));
+    l.p.setAttribute('class', flow ? 'flow' : on ? 'on' : selC ? 'faded' : '');
+    [l.k1, l.k2].forEach(k => k.setAttribute('class', flow ? 'flow' : ''));
+    l.p.style.opacity = Math.min(1, B.o.x);
+  });
+  if (MODE === 'c') desks.forEach(d => {
+    const c = nodes.get(d.chat); if (!c) return; const dragged = [...nodes.values()].find(n => n.dragging && !isChat(n));
+    const b = deskBounds(d, dragged && dragged.desk === d.chat ? dragged : null); if (!b) return;
+    if (!d.init) { d.x0.snap(b[0]); d.y0.snap(b[1]); d.x1.snap(b[2]); d.y1.snap(b[3]); d.init = true; } else { d.x0.to(b[0]); d.y0.to(b[1]); d.x1.to(b[2]); d.y1.to(b[3]); }
+    d.el.style.transform = `translate3d(${d.x0.x}px,${d.y0.x}px,0)`; d.el.style.width = (d.x1.x - d.x0.x) + 'px'; d.el.style.height = (d.y1.x - d.y0.x) + 'px';
+    const n = deskMembers(d.chat).length, tab = d.el.querySelector('.tab'), txt = `Desk · <b>${esc(c.title)}</b> · ${n} on desk${c.parent ? ' + parent desk' : ''}`;
+    if (tab.dataset.v !== txt) { tab.innerHTML = txt; tab.dataset.v = txt; }
+  });
+  if (reader.id) {
+    const p = Math.max(0, Math.min(1.02, reader.prog.x)), r = reader.rect, F = 12, L = (a, b) => a + (b - a) * p;
+    R.style.clipPath = `inset(${L(r.t, F)}px ${L(r.r, F)}px ${L(r.b, F)}px ${L(r.l, F)}px round ${L(r.rad, 16)}px)`;
+    const co = Math.max(0, Math.min(1, (p - .3) / .5)); RI.style.opacity = co; RI.style.transform = `translateY(${(1 - co) * 10}px)`;
+    scrim.style.opacity = Math.min(1, p); const n = nodes.get(reader.id); if (n) n.el.style.opacity = Math.max(0, 1 - p / .25);
+    if (reader.prog.t === 0 && reader.prog.x < .004 && Math.abs(reader.prog.v) < .05) finishClose();
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ======================= seeds per mode ======================= */
+const SUB = {
+  a: 'Each chat has a shelf. Whatever is on it is read by that chat and every branch below. Drag a source onto a chat; hover a chip to see where it flows from; click an inherited chip to leave it out here.',
+  b: 'No lines. Sources live in the library. Type @ in a message, or click a line in the library, to cite exactly that excerpt for that one question. Hover a citation to see where it points.',
+  c: 'Each chat has a desk. Whatever sits on its desk is its context. Drag sources in or out; move a chat and its desk moves with it.',
+};
+const HINT = { a: '<b>Try:</b> drag the podcast onto “Second opinion”, then hover its chip on “Value-based pricing”.', b: '<b>Try:</b> select a chat, type <b>@pri</b> and pick an excerpt, then hover a citation.', c: '<b>Try:</b> drag the podcast onto the top desk, then drag the top chat around.' };
+document.getElementById('sub').textContent = SUB[MODE] || SUB.a;
+document.getElementById('hint').innerHTML = HINT[MODE] || '';
+const chatSeed = (o) => Object.assign({ kind: 'chat', msgs: [], shelf: [], hidden: new Set() }, o);
+if (MODE === 'a') {
+  addNode(chatSeed({ id: 'main', model: 'claude', title: 'How should I price Context Tree?', x: 420, y: 40, shelf: ['video', 'pdf', 'note'], msgs: [{ r: 'u', t: 'Using what is on my shelf, what should a solo founder charge for Context Tree?' }, { r: 'a', t: A_MAIN }] }));
+  addNode(chatSeed({ id: 'side', model: 'gpt', parent: 'main', title: 'Value-based pricing', x: 960, y: -60, w: 360, msgs: [{ r: 'u', t: 'What does value-based pricing mean?' }, { r: 'a', t: A_SIDE }] }));
+  addNode(chatSeed({ id: 'second', model: 'gemini', parent: 'main', title: 'Second opinion', x: 960, y: 380, w: 380, shelf: ['web', 'interviews'], hidden: new Set(['video']), msgs: [{ r: 'u', t: 'Same question, but add the blog post and the interviews, and ignore the video.' }, { r: 'a', t: A_SECOND }] }));
+  addNode({ id: 'podcast', kind: 'src', src: 'podcast', x: 0, y: 80 });
+  addNode({ id: 'csv', kind: 'src', src: 'csv', x: 0, y: 290 });
+  addLin('main', 'side'); addLin('main', 'second');
+  document.getElementById('rail').style.display = 'none';
+}
+if (MODE === 'b') {
+  buildDrawer();
+  addNode(chatSeed({ id: 'main', model: 'claude', title: 'How should I price Context Tree?', x: 0, y: 40, msgs: [{ r: 'u', t: 'Given @survey#p7, @video#12:04 and @note, what should a solo founder charge?' }, { r: 'a', t: A_MAIN }] }));
+  addNode(chatSeed({ id: 'side', model: 'gpt', parent: 'main', title: 'Value-based pricing', x: 540, y: -60, w: 360, msgs: [{ r: 'u', t: 'What does value-based pricing mean?' }, { r: 'a', t: A_SIDE }] }));
+  addNode(chatSeed({ id: 'second', model: 'gemini', parent: 'main', title: 'Second opinion', x: 540, y: 360, w: 380, msgs: [{ r: 'u', t: 'Does @blog change your answer? And @interviews#p2 says Priya would pay more.' }, { r: 'a', t: A_SECOND }] }));
+  addLin('main', 'side'); addLin('main', 'second');
+  document.getElementById('rail').style.display = 'none';
+}
+if (MODE === 'c') {
+  const main = addNode(chatSeed({ id: 'main', model: 'claude', title: 'How should I price Context Tree?', x: 400, y: 30, msgs: [{ r: 'u', t: 'Using what is on this desk, what should a solo founder charge for Context Tree?' }, { r: 'a', t: A_MAIN }] }));
+  const side = addNode(chatSeed({ id: 'side', model: 'gpt', parent: 'main', title: 'Value-based pricing', x: 1300, y: -40, w: 360, msgs: [{ r: 'u', t: 'What does value-based pricing mean?' }, { r: 'a', t: A_SIDE }] }));
+  const second = addNode(chatSeed({ id: 'second', model: 'gemini', parent: 'main', title: 'Second opinion', x: 1320, y: 470, w: 380, msgs: [{ r: 'u', t: 'Same question, with the blog post and the interviews on my desk.' }, { r: 'a', t: A_SECOND }] }));
+  [['video', 0, 0, 'main'], ['pdf', 0, 150, 'main'], ['note', 0, 300, 'main'], ['web', 940, 470, 'second'], ['interviews', 940, 620, 'second'], ['podcast', 0, 560, null], ['csv', 420, 640, null]].forEach(([s, x, y, d]) => addNode({ id: s, kind: 'src', src: s, x, y, desk: d }));
+  [main, side, second].forEach(deskFor);
+  addLin('main', 'side'); addLin('main', 'second');
+  document.getElementById('rail').style.display = 'none';
+}
+requestAnimationFrame(() => { nodes.forEach(n => n.h = n.el.offsetHeight); fit(false); select(null); requestAnimationFrame(frame); });
+addEventListener('resize', () => fit(true));
+</script>
+</body>
+</html>
