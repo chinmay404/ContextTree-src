@@ -45,11 +45,13 @@ body.stringing, body.stringing * { cursor: crosshair !important; }
 #tubes .tube.faded, #tubes .wire.faded { opacity: .3; }
 #tubes .bub { stroke: #fff; stroke-dasharray: .1 12; opacity: 0; transition: opacity 200ms ease; } #tubes .bub.flow { opacity: 1; animation: bubbles .7s linear infinite; }
 #tubes .wire, #tubes .live { stroke-width: 5; }
+#tubes .wire.sel { stroke-width: 7; }
+#tubes .hit { stroke: transparent; stroke-width: 18; pointer-events: stroke; cursor: pointer; }
 #knobs { position: absolute; left: 0; top: 0; z-index: 3; }
-.wk { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 11px; background: #fff; box-shadow: inset 0 0 0 2px var(--kd); display: grid; place-items: center; transition: transform 140ms var(--ease-out), opacity 200ms ease; }
-.wk .i { --s: 11px; --c: var(--kd); opacity: 0; transition: opacity 120ms ease; }
-.wk.faded { opacity: .3; }
-@media (hover: hover) and (pointer: fine) { .wk:hover { transform: scale(1.18); } .wk:hover .i { opacity: 1; } }
+.wk { position: absolute; height: 30px; padding: 0 12px 0 8px; border-radius: 999px; background: #fff; box-shadow: var(--sh-float); display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transform: translate(-50%, -50%) scale(.94); transition: opacity 140ms ease-out, transform 160ms var(--ease-out); }
+.wk .i { --s: 13px; --c: var(--kd); }
+.wk.on { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%); }
+.wk:active { transform: translate(-50%, -50%) scale(.96); }
 
 /* desks */
 .desk { position: absolute; left: 0; top: 0; z-index: 0; border-radius: 36px; background: var(--pb-desk); pointer-events: none; transition: box-shadow 200ms ease, opacity 220ms ease; }
@@ -57,10 +59,11 @@ body.stringing, body.stringing * { cursor: crosshair !important; }
 .desk.empty::after { content: 'Drop sources here to add them to this question only'; position: absolute; left: 24px; right: 24px; bottom: 18px; text-align: center; font-size: 12px; color: var(--t3); }
 .desk.hot { box-shadow: 0 0 0 3px var(--pb-edge-strong); }
 .desk.faded { opacity: .45; }
-.desk .tab { position: absolute; left: 20px; top: -12px; height: 26px; padding: 0 10px 0 4px; border-radius: 999px; background: #fff; box-shadow: var(--sh-float); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.desk .tab { position: absolute; left: 20px; bottom: calc(100% - 15px); min-height: 28px; padding: 5px 10px 5px 12px; border-radius: 14px; background: #fff; box-shadow: var(--sh-float); display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; transform-origin: 0 100%; }
+.desk .tab .lb { min-width: 0; white-space: normal; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .qchip { font-size: 10px; font-weight: 700; background: var(--pb-ink); color: #fff; padding: 3px 7px; border-radius: 999px; text-decoration: underline; text-underline-offset: 2px; }
 .qchip.soft { background: var(--pb-lilac); color: var(--t1); }
-.desk .tab .lb { font-size: 11px; font-weight: 600; } .desk .tab .up { font-size: 11px; color: var(--t2); }
+.desk .tab .lb { font-size: 12px; font-weight: 700; }
 .dots { display: inline-flex; align-items: center; } .dots i { width: 10px; height: 10px; border-radius: 5px; border: 1.5px solid #fff; margin-left: -4px; } .dots i:first-child { margin-left: 0; }
 
 /* nodes */
@@ -82,16 +85,13 @@ body.stringing, body.stringing * { cursor: crosshair !important; }
 .sx { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
 .meta { font-size: 10px; font-weight: 600; color: var(--fd); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
 .meta .i { --s: 10px; --c: var(--fd); }
-.ttl { font-size: 13.5px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ttl { font-size: 13.5px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .exr { display: flex; gap: 6px; align-items: flex-start; margin-top: 2px; }
 .chipl { font-size: 9.5px; font-weight: 600; background: var(--fk); color: var(--fkt); padding: 2px 5px; border-radius: 6px; flex: none; }
 .exr span:last-child { font-size: 11.5px; line-height: 1.35; color: var(--fx); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .dsc { font-size: 11px; line-height: 1.3; color: var(--fx); opacity: .85; font-style: italic; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .ask-desc { align-self: flex-start; margin-top: 4px; font-size: 10.5px; font-weight: 600; color: var(--fd); text-decoration: underline; text-underline-offset: 2px; }
-.cyc { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; font-size: 10px; font-weight: 600; color: var(--fd); }
-.cyc i { width: 5px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--fd) 30%, transparent); transition: background-color 200ms ease, width 200ms var(--ease-out); }
-.cyc i.on { width: 12px; background: var(--fd); }
-.cyc span { margin-left: 3px; }
+.face.ghost { position: absolute; left: 0; top: 0; width: 100%; z-index: 5; pointer-events: none; }
 .note-in { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
 .note-in .n { font-size: 13.5px; line-height: 1.4; outline: none; cursor: text; user-select: text; -webkit-user-select: text; min-height: 38px; }
 .note-in .n:empty::before { content: 'Write a note…'; color: var(--t3); }
@@ -127,17 +127,17 @@ body.stringing, body.stringing * { cursor: crosshair !important; }
 .ic .i { --s: 12px; --c: var(--pb-ink); } .ic:active { transform: scale(.9); }
 @media (hover: hover) and (pointer: fine) { .ic:hover { background: var(--pb-lilac); } }
 
-/* knobs: plug a string in or pull one out (Pebble node system) */
-.port { position: absolute; width: 20px; height: 20px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 5px var(--kc, var(--pb-edge-strong)), 0 2px 6px -2px rgba(43,35,64,.3); z-index: 3; transition: transform 160ms var(--ease-out), box-shadow 160ms ease; }
+/* ports: the first board's pill handles — pull a string out of the right one, plug it into a chat's left one */
+.port { position: absolute; width: 10px; height: 18px; border-radius: 5px; background: var(--kc); z-index: 3; transition: transform 160ms var(--ease-out), box-shadow 160ms ease, background-color 160ms ease; }
 .port[data-port] { cursor: crosshair; }
-.port[data-port]::before { content: ''; position: absolute; inset: -9px; border-radius: 20px; }
-.port.out { right: -10px; } .port.in { left: -10px; }
-.src .port.out { top: calc(50% - 10px); --kc: var(--fd); }
-.chat .port.in { top: 30px; --kc: var(--pb-ink); } .chat .port.out { top: 12px; --kc: var(--pb-edge-strong); }
-.port.empty { box-shadow: none; border: 2px dashed #B3A9CC; }
-.port.hot { transform: scale(1.3); box-shadow: inset 0 0 0 5px var(--pb-ink), 0 0 0 5px rgba(43,35,64,.15); border: 0; }
-.port .plus { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transition: opacity 120ms ease; } .port .plus .i { --s: 10px; --c: var(--pb-ink); }
-@media (hover: hover) and (pointer: fine) { .port[data-port]:hover { transform: scale(1.22); } .port[data-port]:hover .plus { opacity: 1; } }
+.port[data-port]::before { content: ''; position: absolute; inset: -8px -10px; }
+.port.out { right: -6px; } .port.in { left: -6px; }
+.src .port.out { top: calc(50% - 9px); --kc: var(--fd); }
+.chat .port.in { top: 31px; --kc: var(--pb-ink); } .chat .port.out { top: 13px; --kc: var(--pb-edge-strong); }
+.port.free { background: #fff; box-shadow: inset 0 0 0 2px var(--kc); }
+.port.grab { transform: scale(1.35); background: var(--kc); box-shadow: 0 0 0 4px color-mix(in srgb, var(--kc) 22%, transparent); }
+.port.target { transform: scale(1.35); background: var(--pb-ink); box-shadow: 0 0 0 4px rgba(43,35,64,.18); }
+@media (hover: hover) and (pointer: fine) { .port[data-port]:hover { transform: scale(1.3); } }
 
 /* chat node */
 .chat .face { background: var(--pb-card); box-shadow: var(--sh-card); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
@@ -479,13 +479,13 @@ function tileHTML(n, big) {
 function metaOf(n) {
   if (n.status === 'processing') return esc(n.procText || 'Reading…');
   if (n.status === 'failed') return "Couldn't read";
-  const base = n.type === 'stack' ? `${n.members.every(m => m.type === 'pdf') ? 'PDF' : 'Mixed'} · ${n.members.length} files` : n.meta;
+  const base = n.type === 'stack' ? `${n.members.every(m => m.type === 'pdf') ? 'PDF' : 'Mixed'} · ${n.open ? `${n.members.length} files` : `${(n.front || 0) % n.members.length + 1} of ${n.members.length}`}` : n.meta;
   return esc(base) + (n.links.size ? ` · ${I('link')} ${n.links.size + (n.desk ? 1 : 0)} chats` : '');
 }
 function srcHTML(n) {
   const sheets = n.type === 'stack' ? '<div class="sheet s2"></div><div class="sheet s1"></div>' : '';
   if (size === 'S') return `${sheets}<div class="face"><div class="s">${tileHTML(n)}<span class="t">${esc(nameOf(n))}</span></div></div>`;
-  const port = n.status === 'ready' ? `<span class="port out ${n.links.size ? '' : 'empty'}" data-port="src" data-tip="Drag onto a chat to give it this"><span class="plus">${I('plus')}</span></span>` : '';
+  const port = n.status === 'ready' ? `<span class="port out ${n.links.size ? '' : 'free'}" data-port="src" data-tip="Drag onto a chat to connect"></span>` : '';
   const ic = (a, icon, tip) => `<button class="ic" data-act="${a}" data-tip="${tip}" aria-label="${tip}">${I(icon)}</button>`;
   const tools = n.status === 'processing' ? '' : `<div class="tools">${n.status === 'ready' ? ic('view', 'maximize-2', 'Open · double-click') : ''}${n.type !== 'note' && n.status === 'ready' ? ic('expand', n.open ? 'chevrons-down-up' : 'chevrons-up-down', n.open ? 'Done' : 'Excerpts and what it is for') : ''}${n.type === 'stack' ? ic('unstack', 'ungroup', 'Unpile') : ''}${ic('del', 'x', 'Remove')}</div>`;
   let body;
@@ -500,8 +500,8 @@ function srcHTML(n) {
       <textarea class="desc" rows="2" placeholder="What is this for? The AI reads this too.">${esc(n.desc || '')}</textarea>
       <div class="lfoot">${tot ? `<span class="upill">${onEx(n).length} of ${tot} used</span>` : ''}<span class="upill tk">${(tokensOf(n) / 1000).toFixed(1)}k tokens</span><button class="done" data-act="expand">Done</button></div></div>`;
   } else if (n.type === 'stack' && n.status === 'ready') {
-    const f = front(n), e = (f.ex || [])[0], i = (n.front || 0) % n.members.length;
-    body = `<div class="sn">${tileHTML(n)}<div class="sx"><div class="meta">${metaOf(n)}</div><div class="ttl">${esc(f.title)}</div>${e ? `<div class="exr">${e.loc ? `<span class="chipl">${esc(e.loc)}</span>` : ''}<span>${esc(e.t)}</span></div>` : ''}<div class="cyc" data-tip="Scroll over the pile to flip through">${n.members.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}<span>${i + 1} of ${n.members.length}</span></div></div></div>`;
+    const f = front(n), e = (f.ex || [])[0];
+    body = `<div class="sn" title="Scroll to flip through the pile">${tileHTML(n)}<div class="sx"><div class="meta">${metaOf(n)}</div><div class="ttl">${esc(f.title)}</div>${e ? `<div class="exr">${e.loc ? `<span class="chipl">${esc(e.loc)}</span>` : ''}<span>${esc(e.t)}</span></div>` : ''}</div></div>`;
   } else {
     const e = (n.ex || []).find(x => x.on) || (n.ex || [])[0];
     const line = n.status === 'processing' ? `<div class="prog"><i></i></div>`
@@ -528,8 +528,8 @@ function chatHTML(c) {
     ${c.msgs.length ? `<div class="cbody">${msgs}${think}</div>` : ''}
     <div class="compose"><textarea rows="1" placeholder="${c.msgs.length ? 'Ask a follow-up' : 'Type the question you want to ask…'}" aria-label="Message"></textarea><button class="send" aria-label="Send" disabled>${I('arrow-up')}</button></div>
     <div class="cfoot">${r.length ? dotsHTML(r) : ''}<span>${own} source${own === 1 ? '' : 's'}${up ? ` · ${up} from above` : ''}</span><span class="sp"></span>${stale ? '<span class="stale">Source changed</span>' : ''}</div>
-    <span class="port in ${incoming ? '' : 'empty'}" aria-hidden="true"></span>
-    <span class="port out ${kids(c.id).length ? '' : 'empty'}" data-port="chat" data-tip="Drag out to branch · drop on a chat to give it this answer"><span class="plus">${I('plus')}</span></span>
+    <span class="port in ${incoming ? '' : 'free'}" aria-hidden="true"></span>
+    <span class="port out ${kids(c.id).length || chats().some(x => x.uses.has(c.id)) ? '' : 'free'}" data-port="chat" data-tip="Drag out to branch · onto a chat to share this answer"></span>
   </div>`;
 }
 function bind(n) {
@@ -582,22 +582,26 @@ function stringPath(key, a, b, outA, inB) {
   return { d: `M${f(a[0])},${f(a[1])} C${f(a2[0])},${f(a2[1])} ${f(s.mx.x - (b2[0] - a2[0]) * .22)},${f(s.my.x)} ${f(s.mx.x)},${f(s.my.x)} S${f(b2[0])},${f(b2[1])} ${f(b[0])},${f(b[1])}`, m: [s.mx.x, s.my.x] };
 }
 function addTube(parent, child) { const p = document.createElementNS(NS, 'path'), b = document.createElementNS(NS, 'path'); TB.prepend(b); TB.prepend(p); tubes.push({ parent, child, p, b }); }
-const wires = new Map();
+// a hand-made string: click it to select it, then "Disconnect" appears at its middle
+const wires = new Map(); let selWire = null;
 function wireFor(key, color, deep) {
   let w = wires.get(key);
   if (!w) {
     const p = document.createElementNS(NS, 'path'); p.setAttribute('class', 'wire'); TB.appendChild(p);
-    const k = document.createElement('button'); k.className = 'wk'; k.innerHTML = I('unlink'); k.title = 'Disconnect'; k.setAttribute('aria-label', 'Disconnect'); KN.appendChild(k);
+    const hit = document.createElementNS(NS, 'path'); hit.setAttribute('class', 'hit'); TB.appendChild(hit);
+    hit.addEventListener('pointerdown', e => { e.stopPropagation(); closeMenu(); selWire = selWire === key ? null : key; });
+    const k = document.createElement('button'); k.className = 'wk'; k.innerHTML = I('unlink') + 'Disconnect'; KN.appendChild(k);
     k.addEventListener('pointerdown', e => e.stopPropagation());
     k.addEventListener('click', e => { e.stopPropagation(); disconnect(key); });
-    w = { p, k }; wires.set(key, w);
+    w = { p, hit, k }; wires.set(key, w);
   }
   w.p.style.stroke = color; w.k.style.setProperty('--kd', deep); w.seen = true; return w;
 }
 function disconnect(key) {
   const [kind, a, b] = key.split('|');
   if (kind === 's') nodes.get(a)?.links.delete(b); else nodes.get(b)?.uses.delete(a);
-  const w = wires.get(key); if (w) { w.p.remove(); w.k.remove(); wires.delete(key); }
+  const w = wires.get(key); if (w) { w.p.remove(); w.hit.remove(); w.k.remove(); wires.delete(key); }
+  if (selWire === key) selWire = null;
   const A = nodes.get(a); if (A) jiggle(A, .4);
   refreshChats();
 }
@@ -617,39 +621,40 @@ function freeSpot(x, y, w, h) {
 }
 function spotOnDesk(chat) { const own = deskOf(chat.id), x = chat.px.t - 240; for (let i = 0; i < 12; i++) { const y = chat.py.t + i * 96; if (!own.some(m => Math.abs(m.py.t - y) < 86 && Math.abs(m.px.t - x) < 200)) return [x, y]; } return [x - 230, chat.py.t]; }
 
-/* ================= pull a string out of a knob ================= */
+/* ================= pull a string out of a port (the first board's wiring) ================= */
 let live = null;
-const outPoint = (n, kind) => kind === 'src' ? [n.px.x + n.w + 10, n.py.x + n.h / 2] : [n.px.x + n.w + 10, n.py.x + 22];
+const outPoint = (n, kind) => kind === 'src' ? [n.px.x + n.w + 1, n.py.x + n.h / 2] : [n.px.x + n.w + 1, n.py.x + 22];
+function endLive() { if (!live) return; live.p.remove(); springs.delete(live.ex); springs.delete(live.ey); strs.delete('live'); live = null; }
 function canPlug(n, kind, chatId) {
   const c = nodes.get(chatId); if (!c) return false;
   if (kind === 'src') return n.desk !== chatId && !n.links.has(chatId);
   return chatId !== n.id && !c.uses.has(n.id) && !ancestors(n.id).some(a => a.id === chatId) && !ancestors(chatId).some(a => a.id === n.id);
 }
 function startString(n, kind, e) {
-  if (live) { live.p.remove(); live = null; }
-  strs.delete('live'); select(n.id);
+  endLive(); selWire = null; select(n.id);
   const p = document.createElementNS(NS, 'path'); p.setAttribute('class', 'live'); TB.appendChild(p);
   p.style.stroke = kind === 'src' ? STRING_COL[famOf(n)] : '#CFC3E8';
   document.body.classList.add('stringing');
-  const port = n.el.querySelector(`.port[data-port]`); port?.classList.add('hot');
-  const [wx, wy] = s2w(e.clientX, e.clientY);
-  live = { n, kind, p, ex: wx, ey: wy, sx: wx, sy: wy, target: null };
-  const setTarget = t => { if (t === live.target) return; live.target?.el.classList.remove('target'); live.target?.el.querySelector('.port.in')?.classList.remove('hot'); live.target = t; t?.el.classList.add('target'); t?.el.querySelector('.port.in')?.classList.add('hot'); };
+  n.el.querySelector('.port[data-port]')?.classList.add('grab');
+  const [wx, wy] = s2w(e.clientX, e.clientY), a = outPoint(n, kind);
+  live = { n, kind, p, ex: new Spring(wx, .3, 1), ey: new Spring(wy, .3, 1), target: null, retract: false };
+  const setTarget = t => { if (t === live.target) return; live.target?.el.classList.remove('target'); live.target?.el.querySelector('.port.in')?.classList.remove('target'); live.target = t; t?.el.classList.add('target'); t?.el.querySelector('.port.in')?.classList.add('target'); };
   track(e, ev => {
-    const [x, y] = s2w(ev.clientX, ev.clientY); live.ex = x; live.ey = y;
+    const [x, y] = s2w(ev.clientX, ev.clientY); live.ex.snap(x); live.ey.snap(y);
     const id = chatUnder(ev); setTarget(id && canPlug(n, kind, id) ? nodes.get(id) : null);
   }, ev => {
-    document.body.classList.remove('stringing'); n.el.querySelector('.port.hot')?.classList.remove('hot');
+    document.body.classList.remove('stringing'); n.el.querySelector('.port.grab')?.classList.remove('grab');
     const t = live.target; setTarget(null);
-    const [x, y] = s2w(ev.clientX, ev.clientY), moved = Math.hypot(x - live.sx, y - live.sy) > 40;
+    const end = [live.ex.x, live.ey.x], moved = Math.hypot(end[0] - a[0], end[1] - a[1]) > 40;
     if (t) {
       if (kind === 'src') n.links.add(t.id); else t.uses.add(n.id);
-      const key = kind === 'src' ? `s|${n.id}|${t.id}` : `a|${n.id}|${t.id}`, s = strs.get('live'); if (s) strs.set(key, s);
-      strs.delete('live'); live.p.remove(); live = null; jiggle(t, .5); jiggle(n, .3); refreshChats(); select(t.id); return;
+      const key = kind === 'src' ? `s|${n.id}|${t.id}` : `a|${n.id}|${t.id}`, s = strs.get('live'); if (s) { strs.delete('live'); strs.set(key, s); }
+      endLive(); jiggle(t, .5); jiggle(n, .3); refreshChats(); select(t.id); return;
     }
     const overCard = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.card');
-    if (kind === 'chat' && !overCard && moved) { live.p.remove(); live = null; strs.delete('live'); openDialog({ mode: 'branch', parent: n.id, at: [x + 10, y - 40] }); return; }
-    live.retract = true;   // nothing to plug into: the string springs back into its knob
+    if (kind === 'chat' && !overCard && moved) { endLive(); openDialog({ mode: 'branch', parent: n.id, at: [end[0] + 6, end[1] - 40] }); return; }
+    // nothing to plug into: the string springs back into its port
+    const back = outPoint(n, kind); live.retract = true; live.ex.cfg(.26, 1).to(back[0]); live.ey.cfg(.26, 1).to(back[1]);
   });
 }
 
@@ -666,9 +671,16 @@ function unstack(st) {
   st.el.remove(); nodes.delete(st.id); select(null); refreshChats();
 }
 let wheelAcc = 0, wheelT = 0;
+// flipping a pile: the front sheet slides off and the next one rises out of the stack
 function cyclePile(n, dir) {
+  const ghost = n.el.querySelector('.face').cloneNode(true);
+  ghost.classList.add('ghost'); ghost.querySelectorAll('.tools, .port').forEach(x => x.remove());
   n.front = ((n.front || 0) + dir + n.members.length) % n.members.length; render(n);
-  n.rot.cfg(.4, .35).kick(dir * 70); n.s.cfg(.35, .5).kick(-.7);
+  if (RM) return;
+  n.el.appendChild(ghost);
+  const ease = 'cubic-bezier(.23, 1, .32, 1)';
+  ghost.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${dir * 64}px, ${-10}px) rotate(${dir * 6}deg)`, opacity: 0 }], { duration: 260, easing: ease }).onfinish = () => ghost.remove();
+  n.el.querySelector('.face').animate([{ transform: 'translateY(9px) scale(.96)', filter: 'brightness(.93)' }, { transform: 'none', filter: 'none' }], { duration: 300, easing: ease });
 }
 
 /* ================= camera + pointer ================= */
@@ -693,10 +705,12 @@ function track(e, move, up) {
 function velocity(h) { const now = performance.now(), L = h[h.length - 1]; if (!L || now - L.t > 90) return [0, 0]; let i = h.length - 1; while (i > 0 && L.t - h[i - 1].t < 70) i--; const F = h[Math.max(0, i - 1)], dt = (L.t - F.t) / 1000 || 1; return [(L.x - F.x) / dt, (L.y - F.y) / dt]; }
 const deskAt = (x, y, ex) => desks.find(d => { const b = deskBounds(d, ex); return b && x > b[0] && x < b[2] && y > b[1] && y < b[3]; });
 function chatUnder(ev) { const [x, y] = s2w(ev.clientX, ev.clientY); const card = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.card'); const n = card && nodes.get(card.dataset.id); if (isChat(n)) return n.id; if (n && n.desk) return n.desk; return deskAt(x, y)?.chat || null; }
+let downOnCard = false;
 vp.addEventListener('pointerdown', e => {
   if (e.button !== 0) return;
   closeMenu(); closeLinkPop();
   const t = e.target, ce = t.closest('.card'), port = t.closest('.port[data-port]');
+  downOnCard = !!ce; if (!t.closest('.wk')) selWire = null;
   if (port && ce) { e.preventDefault(); return startString(nodes.get(ce.dataset.id), port.dataset.port, e); }
   if (ce && t.closest('.cbody, .compose, .note-in .n, .exl, .lfoot, .desc')) { if (selected !== ce.dataset.id) select(ce.dataset.id); return; }
   if (t.closest('button, textarea')) return;
@@ -706,7 +720,8 @@ vp.addEventListener('pointerdown', e => {
 });
 // pointer capture retargets dblclick to the viewport, so cards handle their own double-click inside drag()
 vp.addEventListener('dblclick', e => {
-  if (document.elementFromPoint(e.clientX, e.clientY)?.closest('.card, .wk')) return;
+  // only a double-click that started on empty board makes a note (a card's double-click opens it instead)
+  if (downOnCard || viewing || dlg || reader.id || document.elementFromPoint(e.clientX, e.clientY)?.closest('.card, .wk')) return;
   const [x, y] = s2w(e.clientX, e.clientY); spawnNote(x - 106, y - 30);
 });
 vp.addEventListener('contextmenu', e => { if (e.target.closest('.card')) return; e.preventDefault(); const [x, y] = s2w(e.clientX, e.clientY); openMenu(e.clientX, e.clientY, [x, y]); });
@@ -940,7 +955,7 @@ function openViewer(n, anchor, member) {
     <div class="vmain"><div class="vhead">${tileHTML(v, true)}<div class="sx"><div class="meta">${member ? `${esc(n.title)} · ` : ''}${esc(v.type === 'stack' ? `Pile · ${v.members.length} files` : v.meta || TYPES[v.type][2])}</div><h2>${esc(v.title || 'Note')}</h2></div></div>${viewBody(v)}</div>
     <aside class="vside">
       <div><h4>What is this for?</h4><textarea class="desc" id="v-desc" placeholder="Tell the AI why this matters, e.g. “Trust this over blog posts.”">${esc(v.desc || '')}</textarea></div>
-      <div><h4>Read by</h4><div class="used">${users.map(c => `<span><span class="mdot" style="--c:${MODELS[c.model][1]}"></span><span class="qchip soft">${qNum(c)}</span>${esc(cut(c.title, 24))}</span>`).join('') || '<span style="font-weight:500;color:var(--t2)">No question reads this yet. Drag its knob onto a chat, or drop it on a desk.</span>'}</div></div>
+      <div><h4>Read by</h4><div class="used">${users.map(c => `<span><span class="mdot" style="--c:${MODELS[c.model][1]}"></span><span class="qchip soft">${qNum(c)}</span>${esc(cut(c.title, 24))}</span>`).join('') || '<span style="font-weight:500;color:var(--t2)">No question reads this yet. Drag from its handle on the right onto a chat, or drop it on a desk.</span>'}</div></div>
       <div><h4>Size</h4><span class="upill" style="font-size:12px">${(tokensOf(v) / 1000).toFixed(1)}k tokens</span></div>
       ${member ? `<button class="btn" data-vback>${I('arrow-left', 'var(--pb-ink)', 14)}Back to the pile</button>` : ''}
     </aside>`;
@@ -1100,7 +1115,7 @@ ADD.onclick = e => { e.stopPropagation(); const r = ADD.getBoundingClientRect();
 document.addEventListener('pointerdown', e => { if (!e.target.closest('#menu, #add')) closeMenu(); if (!e.target.closest('#linkpop, #menu')) closeLinkPop(); });
 document.addEventListener('keydown', e => {
   const typing = e.target.closest?.('textarea, input, select, [contenteditable="true"]');
-  if (e.key === 'Escape') { if (MENU.classList.contains('on')) return closeMenu(); if (viewing) return closeViewer(); if (dlg) return closeDialog(); if (LP.classList.contains('on')) return closeLinkPop(); if (reader.id) return closeReader(); if (typing) return e.target.blur(); return select(null); }
+  if (e.key === 'Escape') { if (MENU.classList.contains('on')) return closeMenu(); if (viewing) return closeViewer(); if (dlg) return closeDialog(); if (LP.classList.contains('on')) return closeLinkPop(); if (reader.id) return closeReader(); if (typing) return e.target.blur(); if (selWire) { selWire = null; return; } return select(null); }
   if (typing || reader.id || dlg || viewing) return;
   if (e.key === 'Enter' && selected) { const n = nodes.get(selected); e.preventDefault(); isChat(n) ? openReader(n.id) : n && n.status === 'ready' && openViewer(n); }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1132,7 +1147,7 @@ function frame(now) {
   tubes.forEach(t => {
     const A = nodes.get(t.parent), B = nodes.get(t.child); if (!A || !B) return;
     const on = trailSet.has(t.child) && trailSet.has(t.parent), flow = flowing.has(t.child) && flowing.has(t.parent), w = tubeW(t.child) + (on || flow ? 1 : 0);
-    const { d } = stringPath('t|' + t.child, [A.px.x + A.w + 6, A.py.x + 22], [B.px.x - 6, B.py.x + 40], 1, -1);
+    const { d } = stringPath('t|' + t.child, [A.px.x + A.w + 1, A.py.x + 22], [B.px.x - 1, B.py.x + 40], 1, -1);
     t.p.setAttribute('d', d); t.b.setAttribute('d', d); t.p.style.strokeWidth = w; t.b.style.strokeWidth = Math.max(2, w * .45);
     t.p.setAttribute('class', ['tube', (on || flow) && 'trail', selChat && !on && 'faded'].filter(Boolean).join(' ')); t.b.setAttribute('class', 'bub' + (flow ? ' flow' : ''));
     t.p.style.opacity = clamp(B.o.x, 0, 1);
@@ -1141,18 +1156,17 @@ function frame(now) {
   wires.forEach(w => w.seen = false);
   const hang = (key, A, B, ay, color, deep, fade) => {
     const w = wireFor(key, color, deep), r = rightOf(A, B);
-    const a = [r ? A.px.x + A.w + 10 : A.px.x - 10, ay], b = [r ? B.px.x - 10 : B.px.x + B.w + 10, B.py.x + 40];
-    const p = stringPath(key, a, b, r ? 1 : -1, r ? -1 : 1); w.p.setAttribute('d', p.d); w.k.style.left = p.m[0] + 'px'; w.k.style.top = p.m[1] + 'px';
-    w.p.classList.toggle('faded', !!fade); w.k.classList.toggle('faded', !!fade);
+    const a = [r ? A.px.x + A.w + 1 : A.px.x - 1, ay], b = [r ? B.px.x - 1 : B.px.x + B.w + 1, B.py.x + 40];
+    const p = stringPath(key, a, b, r ? 1 : -1, r ? -1 : 1), on = selWire === key; w.p.setAttribute('d', p.d); w.hit.setAttribute('d', p.d); w.k.style.left = p.m[0] + 'px'; w.k.style.top = p.m[1] + 'px';
+    w.p.classList.toggle('faded', !!fade && !on); w.p.classList.toggle('sel', on); w.k.classList.toggle('on', on);
   };
   sources().forEach(s => s.links.forEach(cid => { const C = nodes.get(cid); if (!C) return; const fam = famOf(s); hang(`s|${s.id}|${cid}`, s, C, s.py.x + s.h / 2, STRING_COL[fam], FAMC[fam][1], selChat && selChat.id !== cid && !ancestors(cid).some(x => x.id === selChat.id)); }));
   chats().forEach(C => C.uses.forEach(aid => { const A = nodes.get(aid); if (!A) return; hang(`a|${aid}|${C.id}`, A, C, A.py.x + 22, STRING_COL.answer, '#6E6585', selChat && selChat.id !== C.id && selChat.id !== aid); }));
-  wires.forEach((w, key) => { if (!w.seen) { w.p.remove(); w.k.remove(); wires.delete(key); } });
+  wires.forEach((w, key) => { if (!w.seen) { w.p.remove(); w.hit.remove(); w.k.remove(); wires.delete(key); if (selWire === key) selWire = null; } });
   if (live) {
-    const a = outPoint(live.n, live.kind);
-    if (live.retract) { live.ex += (a[0] - live.ex) * .22; live.ey += (a[1] - live.ey) * .22; }
-    const p = stringPath('live', a, [live.ex, live.ey], 1, live.ex > a[0] ? -1 : 1); live.p.setAttribute('d', p.d);
-    if (live.retract && Math.hypot(live.ex - a[0], live.ey - a[1]) < 3) { live.p.remove(); live = null; strs.delete('live'); }
+    const a = outPoint(live.n, live.kind), e = [live.ex.x, live.ey.x];
+    const p = stringPath('live', a, e, 1, e[0] > a[0] ? -1 : 1); live.p.setAttribute('d', p.d);
+    if (live.retract && Math.hypot(e[0] - a[0], e[1] - a[1]) < 2) endLive();
   }
   strs.forEach((s, k) => { if (!s.seen && k !== 'live') { springs.delete(s.mx); springs.delete(s.my); strs.delete(k); } });
   const dragged = [...nodes.values()].find(n => n.dragging && !isChat(n));
@@ -1161,9 +1175,13 @@ function frame(now) {
     const b = deskBounds(d, dragged && dragged.desk === d.chat ? dragged : null);
     if (!d.init) { d.b.forEach((s, i) => s.snap(b[i])); d.init = true; } else d.b.forEach((s, i) => s.to(b[i]));
     d.el.style.transform = `translate3d(${d.b[0].x}px,${d.b[1].x}px,0)`; d.el.style.width = (d.b[2].x - d.b[0].x) + 'px'; d.el.style.height = (d.b[3].x - d.b[1].x) + 'px';
-    const own = deskOf(c.id), up = ctx(c.id).filter(x => x.inherited && !x.hidden).length; d.el.classList.toggle('empty', !own.length);
-    const key = qNum(c) + own.map(m => m.id + famOf(m)).join() + up + c.inheritDesk;
-    const tab = d.el.querySelector('.tab'); if (tab.dataset.v !== key) { tab.dataset.v = key; tab.innerHTML = `<span class="qchip">${qNum(c)}</span>${own.length ? dotsHTML(own) : ''}<span class="lb">${own.length ? `${own.length} on this desk` : 'Empty desk'}</span>${up ? `<span class="up">+${up} from above</span>` : c.parent && !c.inheritDesk ? '<span class="up">· fresh start</span>' : ''}`; }
+    const own = deskOf(c.id); d.el.classList.toggle('empty', !own.length);
+    const key = c.title + own.map(m => m.id + famOf(m)).join();
+    const tab = d.el.querySelector('.tab'); if (tab.dataset.v !== key) { tab.dataset.v = key; tab.innerHTML = `<span class="lb">${esc(c.title)}</span>${own.length ? dotsHTML(own) : ''}`; }
+    // zoomed out, the desk names grow so the board reads as a map of the thinking
+    // below 55% the name holds ~10–15px on screen, wraps to two lines, and never gets wider than its own desk
+    const want = z >= .55 ? 0 : 10 + (.55 - z) * 16, ts = Math.max(1, want / (12 * z)), dw = d.b[2].x - d.b[0].x;
+    tab.style.transform = ts > 1.01 ? `scale(${ts.toFixed(3)})` : ''; tab.style.maxWidth = Math.max(120, (dw - 40) / ts) + 'px';
   });
   if (reader.id) {
     const p = clamp(reader.prog.x, 0, 1.04), r = reader.rect, F = 4, L = (a, b) => a + (b - a) * p;
