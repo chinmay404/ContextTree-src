@@ -135,3 +135,51 @@ Below the existing size threshold (`size === 'S'`, z < .42), cards render as **n
 ---
 
 Order: R0 → P1 → P2 → R1 → P3 → P5 → P4 → P7. (P6 moved to the citations plan.)
+
+### Task T1: Apple-grey retheme (owner, 2026-10-20) — runs after R1, before P3
+
+Owner: "background like Apple … remove the purple, more white and mature like Apple". Picked: canvas A (Apple grey),
+accent A2 (Apple blue), Inter, toned-down source colours. Preview renders:
+`C:\Users\chinm\AppData\Local\Temp\claude\d--code-context-tree\872c9933-ef5b-407f-9dff-df9adb23f0fc\scratchpad\bg\A2-blue*.png`.
+pebble.css is no longer frozen for colour tokens (owner override) — change values, not structure.
+
+- Tokens (`.pb-root`): `--pb-canvas #F5F5F7`, `--pb-desk #EBEBF0`, `--pb-card #FFFFFF`, `--pb-lilac` → a neutral
+  `#F2F2F5` (rename the token to `--pb-fill` everywhere, keep an alias only if needed), `--pb-edge #D2D2D7`,
+  `--pb-edge-strong #0071E3` (the one accent: selected/trail strings, focus rings, reading outline, progress, thinking
+  dots, "Now", out-port), `--pb-ink #1D1D1F`, `--t1 #1D1D1F`, `--t2 #6E6E73`, `--t3 #86868B`.
+- Every other purple/lilac literal (pebble.css, chrome/*.css incl. welcome-tour.css, engine/*.ts inline styles):
+  `#3B3352→#3A3A3C`, `#DDD3EE→#E0E0E5`, `#D6CDE6→#D1D1D6`, `#E4DCF2→#E5E5EA`, `#3A2B55→#2C2C2E`,
+  `rgba(245,242,250,…)→rgba(245,245,247,…)`, the `.mock3` accent `#7A52D6→#0071E3`. Unconnected strings use
+  `--pb-edge` (grey); only the active/trail ones use the accent. No purple left in board UI (grep for the old hexes = 0).
+- Family colours toned down (same hues, lower saturation; keep text contrast ≥ 4.5:1 for `--fx`/`--fkt` on `--fc`):
+  media, docs, note, web, data, image (image moves from violet to a cool slate-blue), mixed (neutral grey).
+  Model colours in `lib/catalog.ts` are identity colours and stay.
+- Typeface: Inter via `next/font/google` (self-hosted at build, no runtime call), replacing Bricolage Grotesque in
+  `components/board/fonts.ts`; keep the `--pb-font` variable; check weights used (400/500/600/700/800) and tighten
+  display tracking (-0.02em on ≥ 20 px headings) since Inter runs wider.
+- Desk empty-state, drop overlay, scrims and the welcome tour use the same tokens.
+- Tests: a unit test that `pebble.css` + `chrome/*.css` contain none of the old purple hexes; the e2e suite + the 24 + 6
+  acceptance specs stay green; screenshots of board, focus view, branch sheet, viewer, tour for the owner.
+
+#### T1 addendum: materials and the dotted canvas (owner, 2026-10-20)
+
+Owner liked a "Materials" spec: "Depth comes from layering, not decoration. Controls float on frosted glass, cards cast
+soft shadows, and lines are 0.5px hairlines." Plus "canvas like Miro with dots on it".
+
+- **Glass** (floating controls: brand bar, Add + its menu, trail, zoom, board menu, the focus view's top bar and
+  composer, viewer/inspector toolbars): `background: rgba(255,255,255,.62); backdrop-filter: blur(30px) saturate(180%)`
+  (+ `-webkit-`), a 0.5px hairline `rgba(0,0,0,.08)`. `@media (prefers-reduced-transparency: reduce)` and no
+  `backdrop-filter` support → solid `#FFFFFF` with the same hairline.
+- **Card shadow**: `0 1px 2px rgba(0,0,0,.06), 0 8px 28px rgba(0,0,0,.08)` (the `--sh-card`/`--sh-node` tokens); lifted /
+  dragging cards keep a stronger variant of the same two layers. No coloured shadows.
+- **Hairlines**: 0.5px (`border: .5px solid` / `box-shadow: 0 0 0 .5px`) in `rgba(0,0,0,.08)`–`.12` replace 1px lines
+  on cards, rows, dividers and sheets; at DPR 1 browsers round to 1px — acceptable.
+- **Radii tokens**: `--r-tile: 10px` (symbol/type tiles), `--r-row: 14px` (rows, bubbles, chips), `--r-card: 18px`
+  (cards), `--r-sheet: 26px` (desks, sheets, focus view). Map existing radii onto these.
+- **Dotted canvas (Miro-style)**: `--pb-canvas` background with a dot grid — 1.5 px dots `#C7C7CC` every 24 world px,
+  drawn as a `radial-gradient` on the canvas layer whose `background-size`/`background-position` follow the camera
+  (pan + zoom) so the dots move with the board; below ~35% zoom the dots fade out (opacity tied to zoom), never
+  denser than ~8 screen px apart. Desks sit on top without dots (solid `--pb-desk`). Reduced motion: unchanged
+  (dots are static relative to the board).
+- Tests: the glass fallback rule exists; the dot layer's background-size/position change with `camSnap` zoom/pan;
+  screenshots of board (100% and 40%), focus view, branch sheet, viewer, tour.
