@@ -40,8 +40,8 @@ test('the logo lists boards; New board creates and opens it', async ({ page }) =
   await expect(menu).toContainText('Pricing study'); await expect(menu.locator('[data-current="true"]')).toHaveCount(1);
   await expect(menu).not.toContainText('API keys');
   await page.keyboard.press('Escape'); await expect(menu).toHaveAttribute('aria-hidden', 'true');
+  const seed = await page.locator('.pb-root').getAttribute('data-board');   // read BEFORE the click: the new board can already be shown right after it
   await page.click('[data-pb="brand"] .lg'); await menu.getByText('New board').click();
-  const seed = await page.locator('.pb-root').getAttribute('data-board');
   await page.waitForFunction((id) => document.querySelector('.pb-root')?.getAttribute('data-board') !== id && document.querySelectorAll('.card.chat').length === 1, seed);
   expect(await page.evaluate(() => window.__board!.calls().some((c) => c.method === 'createBoard'))).toBe(true);
 });

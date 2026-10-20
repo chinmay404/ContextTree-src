@@ -151,23 +151,23 @@ test.describe.serial('prototype v4test.js acceptance', () => {
       await p.evaluate(() => window.__board!.fit(false)); await p.evaluate(() => window.__board!.zoomAt(720, 450, .3, false)); await wait(p, 900);
       await shot(p, '11b-map');
       // tightened: the prototype only took the picture. At z .3 the board is in its small size and every card is size-s,
-      // except a note still being typed in (the prototype never re-renders it while it has focus, and the port keeps that).
+      // except the one holding focus (a note being typed in is never re-rendered, as in the prototype).
       // The brief said "12", but by this step the run has added a branch chat and two notes (15 cards on the board).
       const map = await p.evaluate(() => {
-        const cards = [...document.querySelectorAll<HTMLElement>('.card')], typing = document.activeElement;
-        return { size: window.__board!.size(), total: cards.length, small: cards.filter((c) => c.classList.contains('size-s')).length,
-          typingIn: cards.filter((c) => typing && c.contains(typing)).length, seed: cards.filter((c) => !c.dataset.id!.startsWith('c_')).length };
+        const cards = [...document.querySelectorAll<HTMLElement>('.card')], active = document.activeElement;
+        return { size: window.__board!.size(), total: cards.length, seed: cards.filter((c) => !c.dataset.id!.startsWith('c_')).length,
+          notSmall: cards.filter((c) => !(active && c.contains(active)) && !c.classList.contains('size-s')).map((c) => c.dataset.id) };
       });
-      expect(map.size, 'map view is in the small size').toBe('S');
-      expect(map.seed, 'the 12 seed cards are on the board').toBe(12);
-      expect(map.small, `map view: every card is size-s (${JSON.stringify(map)})`).toBe(map.total - map.typingIn);
+      expect.soft(map.size, 'map view is in the small size').toBe('S');
+      expect.soft(map.seed, 'the 12 seed cards are on the board').toBe(12);
+      expect.soft(map.notSmall, `map view: every card without focus is size-s (${JSON.stringify(map)})`).toEqual([]);
     });
 
     await test.step('11. focus view', async () => {
       await p.evaluate(() => window.__board!.fit(false)); await wait(p, 600);
       await p.evaluate(() => window.__board!.openFocus('second')); await wait(p, 1000);
       await shot(p, '12-focus');
-      expect(await p.evaluate(() => window.__board!.focus()), 'focus view shows "second"').toBe('second');
+      expect.soft(await p.evaluate(() => window.__board!.focus()), 'focus view shows "second"').toBe('second');
     });
 
     expect(errs).toEqual([]);
