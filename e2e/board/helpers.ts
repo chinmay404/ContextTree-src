@@ -2,7 +2,8 @@ import type { Page } from '@playwright/test';
 
 /** Opens the dev board (MockEngineApi seed), waits for the test hook and the 12 seed cards, then for the springs to rest. */
 export async function openBoard(page: Page, query = ''): Promise<void> {
-  await page.goto(`/board-dev${query}`);
+  // 'domcontentloaded': the readiness wait below is the real gate, and a slow subresource must not hold `load` for 60 s.
+  await page.goto(`/board-dev${query}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!window.__board && document.querySelectorAll('.card[data-id]').length >= 12);
   await page.evaluate(() => window.__board!.settle());
 }
