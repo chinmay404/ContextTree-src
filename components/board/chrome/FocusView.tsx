@@ -399,7 +399,6 @@ function FocusBody(p: {
             {stream?.error ? <div className="err" role="alert">{stream.error}</div> : null}
           </div>
         </div>
-        <div className="mfade" />
         <Composer key={c.id} chatId={c.id} streaming={streaming} webOn={webOn} model={mi} onSettings={openSettings} />
         <div className={`menu${menuOn ? ' on' : ''}`} data-pb="focusmenu" role="menu" inert={!menuOn} aria-hidden={!menuOn}
           style={menu ? { top: menu.top, right: menu.right, left: 'auto' } : undefined}>
@@ -449,6 +448,7 @@ function Composer(p: {
 
   return (
     <div className="fcomp">
+      <div className="mfade" aria-hidden="true" />
       <div className="box">
         <textarea ref={ta} rows={1} placeholder="Ask a follow-up" aria-label="Message" value={text} disabled={p.streaming}
           onChange={(e) => { setText(e.target.value); resize(); }}

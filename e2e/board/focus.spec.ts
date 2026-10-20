@@ -246,3 +246,28 @@ test('an answer carries no fake citations: no .cited note and no quote block', a
   await expect(page.locator(`${F} .cited`)).toHaveCount(0);
   await expect(page.locator(`${F} .quote`)).toHaveCount(0);
 });
+
+test('the answer fade stays above the composer however tall it grows', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  const ta = page.locator(`${F} .fcomp textarea`);
+  const fade = page.locator(`${F} .mfade`);
+  const gap = async () => page.evaluate((sel) => {
+    const f = document.querySelector(`${sel} .mfade`)!.getBoundingClientRect();
+    const b = document.querySelector(`${sel} .fcomp .box`)!.getBoundingClientRect();
+    return b.top - f.bottom;   // >= 0: the fade ends at or above the composer's top edge
+  }, F);
+  await expect(fade).toHaveCount(1);
+  expect(await gap()).toBeGreaterThanOrEqual(-0.5);
+  await ta.fill('first line\nsecond\nthird\nfourth');
+  await page.waitForTimeout(100);
+  expect(await gap()).toBeGreaterThanOrEqual(-0.5);
+  const hit = await page.evaluate((sel) => {
+    const t = document.querySelector(`${sel} .fcomp textarea`) as HTMLTextAreaElement;
+    const r = t.getBoundingClientRect();
+    const el = document.elementFromPoint(r.left + 20, r.top + 8);
+    const f = document.querySelector(`${sel} .mfade`)!.getBoundingClientRect();
+    return { onTa: el === t, fadeBottom: f.bottom, taTop: r.top };
+  }, F);
+  expect(hit.onTa).toBe(true);
+  expect(hit.fadeBottom).toBeLessThanOrEqual(hit.taTop);
+});
