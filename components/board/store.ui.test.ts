@@ -57,6 +57,13 @@ describe('branch dialog', () => {
     expect(snap().cards.get(id)!.forkedFromMessageId).toBe('seed_main_u');
   });
 
+  it('a first-question re-ask has no fork point even after carry changes', () => {
+    s.openDialog({ mode: 'branch', parentId: 'main', carry: 'fresh', noForkPoint: true });
+    s.setDraft({ carry: 'summary' });
+    const id = s.confirmDialog([0, 0])!;
+    expect(snap().cards.get(id)!.forkedFromMessageId).toBeNull();
+  });
+
   it('edit mode patches the chat', async () => {
     s.openDialog({ mode: 'edit', chatId: 'side' });
     expect(snap().ui.dialog!.draft).toMatchObject({ name: chat('side').name, persona: 'teacher' });

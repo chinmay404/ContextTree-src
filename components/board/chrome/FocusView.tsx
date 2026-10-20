@@ -252,7 +252,7 @@ function FocusBody(p: {
   const reask = (i: number, e: React.MouseEvent<HTMLElement>): void => {
     let before: Message | undefined;
     for (let k = i - 1; k >= 0; k--) if (msgs[k].role === 'assistant') { before = msgs[k]; break; }
-    store.openDialog({ mode: 'branch', parentId: c.id, first: msgs[i].content, forkedFromMessageId: before?.id ?? null, ...(before ? {} : { carry: 'fresh' as const }), anchor: e.currentTarget.getBoundingClientRect() });
+    store.openDialog({ mode: 'branch', parentId: c.id, first: msgs[i].content, forkedFromMessageId: before?.id ?? null, ...(before ? {} : { carry: 'fresh' as const, noForkPoint: true }), anchor: e.currentTarget.getBoundingClientRect() });
   };
   const copy = (m: Message): void => {
     void navigator.clipboard?.writeText(strip(renderMarkdown(m.content))).catch(() => undefined);

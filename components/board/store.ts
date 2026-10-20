@@ -18,7 +18,9 @@ export type StoreChange =
   | { kind: 'ui' } | { kind: 'board' };
 
 export interface BranchDraft { name: string; first: string; model: string /* engine id */; persona: string; personaText: string;
-  inheritDesk: boolean; carry: Carry; advanced: AdvancedSettings; advOpen: boolean }
+  inheritDesk: boolean; carry: Carry; advanced: AdvancedSettings; advOpen: boolean;
+  /** Set by a first-question re-ask: the new branch has no fork point whatever `carry` says. */
+  noForkPoint?: boolean }
 export interface DialogState { mode: 'branch' | 'root' | 'edit'; parentId: Id | null; chatId: Id | null;
   at: [number, number] | null; anchor: DOMRect | null; forkedFromMessageId: Id | null; draft: BranchDraft }
 export interface UiState { selected: Id | null; dialog: DialogState | null;
@@ -965,7 +967,7 @@ export class BoardStore {
 
   openDialog(o: {
     mode: DialogState['mode']; parentId?: Id | null; chatId?: Id | null; at?: [number, number] | null;
-    anchor?: DOMRect | null; first?: string; forkedFromMessageId?: Id | null; carry?: Carry;
+    anchor?: DOMRect | null; first?: string; forkedFromMessageId?: Id | null; carry?: Carry; noForkPoint?: boolean;
   }): void {
     const chat = o.mode === 'edit' && o.chatId ? this.cards.get(o.chatId) : undefined;
     if (o.mode === 'edit' && chat?.kind !== 'chat') return;
@@ -982,6 +984,7 @@ export class BoardStore {
       carry: o.carry ?? base?.carry ?? 'summary',
       advanced: { ...(base?.advanced ?? DEFAULT_ADVANCED) },
       advOpen: false,
+      ...(o.noForkPoint ? { noForkPoint: true } : {}),
     };
     if (o.mode === 'branch' && parent?.kind === 'chat' && !(this.messages.get(parent.id)?.length) && (parent.messageCount ?? 0) > 0) {
       const pid = parent.id;   // the fork point is the parent's last message: load it if the list is missing
@@ -1030,7 +1033,7 @@ export class BoardStore {
     const at: [number, number] = spot ?? d.at ?? (parent ? [parent.x + 528, parent.y + 160] : [0, 0]);
     const lastMsg = d.parentId ? this.messages.get(d.parentId)?.at(-1)?.id ?? null : null;
     return this.createChat({
-      parentId: d.parentId, x: at[0], y: at[1], forkedFromMessageId: d.forkedFromMessageId ?? (dr.carry === 'fresh' ? null : lastMsg),
+      parentId: d.parentId, x: at[0], y: at[1], forkedFromMessageId: d.forkedFromMessageId ?? (dr.carry === 'fresh' || dr.noForkPoint ? null : lastMsg),
       data: { ...fields, hide: [] },
     });
   }
