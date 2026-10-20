@@ -1,0 +1,3 @@
+.pb-root .pb-toast { opacity: 0; pointer-events: none; transition: opacity 180ms ease-out; }
+.pb-root .pb-toast.on { opacity: 1; pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) { .pb-root .pb-toast { transition: opacity 120ms linear; } }
