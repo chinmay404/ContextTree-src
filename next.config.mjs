@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  devIndicators: false,   // dev-only badge; it sat over the board's Add button
   // eslint: {
   //   ignoreDuringBuilds: true,
   // },

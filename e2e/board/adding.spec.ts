@@ -165,12 +165,18 @@ test('pasting text makes a note', async ({ page }) => {
   expect([c!.sourceType, (c!.data as { meta?: string }).meta, c!.deskId]).toEqual(['note', 'Note · pasted', 'main']);
 });
 
-test('pasting while typing in a field is left alone', async ({ page }) => {
+test('pasting into a focused text field is left alone', async ({ page }) => {
   await openBoard(page);
+  await page.keyboard.press('n');                      // a new note, its field focused; no overlay is open
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(() => window.__board!.dialog() === null && window.__board!.menuOpen() === false)).toBe(true);
   const n = await sourceCount(page);
-  await page.keyboard.press('q');
-  await page.locator('#d-first').focus();
-  await paste(page, 'https://example.com/x');
+  await page.evaluate(() => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', 'https://example.com/x');
+    document.activeElement!.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  });
+  await page.waitForTimeout(300);
   expect(await sourceCount(page)).toBe(n);
 });
 
@@ -221,4 +227,64 @@ test('the focus view Source button opens the picker for that desk', async ({ pag
   await page.waitForTimeout(300);
   const c = await page.evaluate(() => window.__board!.sources().find((x) => (x.data as { fileName?: string }).fileName === 'plan.txt'));
   expect(c?.deskId).toBe('main');
+});
+
+const deskPoint = (page: Page) => page.evaluate(() => {
+  const b = window.__board!, [x0, y0, x1, y1] = b.deskBox('second')!, c = b.cam();
+  return [((x0 + x1) / 2) * c.z + c.x, (y1 - 60) * c.z + c.y] as [number, number];
+});
+
+test('a file drop is ignored while a sheet is open', async ({ page }) => {
+  await openBoard(page);
+  const pt = await deskPoint(page);
+  await page.keyboard.press('q');
+  expect((await page.evaluate(() => window.__board!.dialog()))?.mode).toBe('root');
+  const n = await sourceCount(page);
+  await page.evaluate(([x, y]) => {
+    const dt = new DataTransfer();
+    dt.items.add(new File(['x'], 'late.md', { type: 'text/markdown' }));
+    window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+  }, pt);
+  await page.waitForTimeout(300);
+  expect(await sourceCount(page)).toBe(n);
+});
+
+test('a plain-text drag is not accepted', async ({ page }) => {
+  await openBoard(page);
+  const pt = await deskPoint(page);
+  const n = await sourceCount(page);
+  const prevented = await page.evaluate(([x, y]) => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', 'https://example.com/plain');
+    const over = new DragEvent('dragover', { dataTransfer: dt, clientX: x, clientY: y, bubbles: true, cancelable: true });
+    window.dispatchEvent(new DragEvent('dragenter', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    window.dispatchEvent(over);
+    window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+    return over.defaultPrevented;
+  }, pt);
+  await page.waitForTimeout(300);
+  expect(prevented).toBe(false);
+  await expect(page.locator('[data-pb="drop"].on')).toHaveCount(0);
+  expect(await sourceCount(page)).toBe(n);
+});
+
+test('dropping several files lands cards that do not overlap', async ({ page }) => {
+  await openBoard(page);
+  const pt = await deskPoint(page);
+  await page.evaluate(([x, y]) => {
+    const dt = new DataTransfer();
+    for (const name of ['one.md', 'two.md', 'three.md']) dt.items.add(new File(['# ' + name], name, { type: 'text/markdown' }));
+    window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+  }, pt);
+  await page.waitForTimeout(300);
+  await page.evaluate(() => window.__board!.settle());
+  const boxes = await page.evaluate(() => {
+    const b = window.__board!;
+    return b.sources().filter((c) => /^(one|two|three)\.md$/.test((c.data as { fileName?: string }).fileName ?? '')).map((c) => b.box(c.id));
+  });
+  expect(boxes).toHaveLength(3);
+  for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+    const [a, b] = [boxes[i], boxes[j]];
+    expect(a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3], `${i} overlaps ${j}`).toBe(false);
+  }
 });

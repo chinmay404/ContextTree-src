@@ -3,8 +3,6 @@ import type { Page } from '@playwright/test';
 /** Opens the dev board (MockEngineApi seed), waits for the test hook and the 12 seed cards, then for the springs to rest. */
 export async function openBoard(page: Page, query = ''): Promise<void> {
   await page.goto(`/board-dev${query}`);
-  // The dev-only Next.js badge sits over the Add button while pages compile and swallows clicks.
-  await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
   await page.waitForFunction(() => !!window.__board && document.querySelectorAll('.card[data-id]').length >= 12);
   await page.evaluate(() => window.__board!.settle());
 }
