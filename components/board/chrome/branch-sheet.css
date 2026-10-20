@@ -1,0 +1,4 @@
+.pb-root .pp.locked { opacity: .6; }
+.pb-root .pp.locked.on { opacity: 1; }
+.pb-root .pp:focus-visible, .pb-root .seg button:focus-visible, .pb-root .tog:focus-visible, .pb-root .adv summary:focus-visible { outline: 2px solid var(--pb-ink); outline-offset: 2px; }
+.pb-root .adv input[type=number]:disabled { opacity: .5; }
