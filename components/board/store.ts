@@ -905,7 +905,15 @@ export class BoardStore {
       const ready = live.filter((q) => this.cards.has(q.id));
       for (let i = 0; i < ready.length; i += 200) {
         try { await this.track(this.api.savePositions(this.boardId, ready.slice(i, i + 200))); }
-        catch (e) { this.toast(errorText(e, 'other')); }
+        catch (e) {
+          // back to the last server copy, silently: the engine still shows the move, so isDirty/collectMoved re-send it on the next settle
+          for (const q of ready.slice(i, i + 200)) {
+            const cur = this.cards.get(q.id), srv = this.lastServer.get(q.id);
+            if (cur && srv && cur.x === q.x && cur.y === q.y) this.cards.set(q.id, { ...cur, x: srv.x, y: srv.y });
+          }
+          this.snap = null;
+          this.toast(errorText(e, 'other'));
+        }
       }
     })();
   }
