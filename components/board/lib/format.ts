@@ -16,7 +16,7 @@ export const sizeOf = (b: number): string =>
 export const strip = (h: unknown): string => String(h || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
 /** `Mon 10:12`: short weekday plus local HH:MM. Empty for an unparseable date. */
-export const formatWhen = (iso: string, _now: Date = new Date()): string => {
+export const formatWhen = (iso: string): string => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   const hh = String(d.getHours()).padStart(2, '0');

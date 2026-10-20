@@ -49,6 +49,9 @@ export class BoardEngine {
   private disposed = false;
   private related: Set<Id> | null = null;
   private lastSelected: Id | null = null;
+  private lastReadBy = '|';
+  /** Source cards whose read state (the "reading" glow, the token figure) changed but whose face did not. */
+  private readonly liveSources = new Set<Id>();
   private pointer: PointerRouting | null = null;
   private ro: ResizeObserver | null = null;
   private unsub: (() => void) | null = null;
@@ -115,6 +118,14 @@ export class BoardEngine {
       for (const en of entries) { const id = (en.target as HTMLElement).dataset.id; const n = id ? this.ctx.nodes.get(id) : undefined; if (n) n.h = n.el.offsetHeight; }
     });
     this.unsub = this.store.onChange((c) => this.onChange(c));
+    // Delete asks the view for what only it knows: the front member of a pile, and a drop that has not been saved yet.
+    this.store.setViewProbe({
+      front: (id) => this.ctx.nodes.get(id)?.front ?? 0,
+      pos: (id) => {
+        const n = this.ctx.nodes.get(id);
+        return n && this.ctx.modules.persistence.isDirty(id) ? [Math.round(n.px.t * 10) / 10, Math.round(n.py.t * 10) / 10] : null;
+      },
+    });
     for (const c of this.store.graph().cards.values()) if (!c.pileId) this.ensureNode(c, false);
     for (const e of this.store.graph().edges.values()) this.edgeEnds.set(e.id, [e.from, e.to]);
     this.pointer = attachPointer(this.ctx);
@@ -128,6 +139,7 @@ export class BoardEngine {
     this.disposed = true;
     this.loop.stop();
     this.unsub?.();
+    this.store.setViewProbe(null);
     this.pointer?.dispose();
     this.ro?.disconnect();
     const m = this.ctx.modules;
@@ -161,6 +173,8 @@ export class BoardEngine {
       dead.n.o.cfg(.25, 1).to(1); dead.n.s.cfg(.42, 1).to(1);
       this.ctx.nodes.set(c.id, dead.n); this.ro?.observe(dead.n.el);
       dead.n.deskId = c.deskId;
+      dead.n.px.to(c.x); dead.n.py.to(c.y);
+      this.ctx.modules.persistence.markSynced(c.id, c.x, c.y);
       this.view.render(dead.n);
       return dead.n;
     }
@@ -209,7 +223,10 @@ export class BoardEngine {
     for (const ch of changes) {
       switch (ch.kind) {
         case 'card': this.cardChanged(ch.id, ch.fields); break;
-        case 'card-removed': this.removeNode(ch.id, true); this.lastStatus.delete(ch.id); break;
+        case 'card-removed':
+          // A pile member is not drawn: its pile's face (count, front file) is what changes.
+          if (!this.ctx.nodes.has(ch.id)) for (const n of this.ctx.nodes.values()) if (n.isPile) this.dirty.add(n.id);
+          this.removeNode(ch.id, true); this.lastStatus.delete(ch.id); break;
         case 'edge': {
           const e = g.edges.get(ch.id);
           if (e) { this.edgeEnds.set(e.id, [e.from, e.to]); this.dirty.add(e.from); this.dirty.add(e.to); }
@@ -224,7 +241,7 @@ export class BoardEngine {
         case 'stream': this.streamDirty.add(ch.chatId); break;
         case 'reads':
           this.dirty.add(ch.chatId);
-          for (const n of this.ctx.nodes.values()) if (!n.isChat) this.dirty.add(n.id);
+          for (const n of this.ctx.nodes.values()) if (!n.isChat) this.liveSources.add(n.id);   // in place: a redraw here would eat a click
           break;
         case 'ui': break;
         case 'board': this.maybeStart(); break;
@@ -234,6 +251,7 @@ export class BoardEngine {
   }
 
   private cardChanged(id: Id, fields: string[]): void {
+    if (fields.length && fields.every((f) => f === 'updatedAt')) return;   // the server's answer to our own write: nothing on the face changed
     const c = this.store.graph().cards.get(id);
     if (!c) { this.removeNode(id, true); return; }
     if (c.pileId) {   // pile members are never drawn; the pile's face shows them
@@ -283,7 +301,7 @@ export class BoardEngine {
       if (now !== this.streaming.has(id)) {
         if (now) this.streaming.add(id); else this.streaming.delete(id);
         this.dirty.add(id);
-        for (const n of nodes.values()) if (!n.isChat) this.dirty.add(n.id);
+        for (const n of nodes.values()) if (!n.isChat) this.liveSources.add(n.id);
       } else if (!this.dirty.has(id)) {
         const n = nodes.get(id);
         if (n && !this.view.updateStream(n)) this.dirty.add(id);
@@ -306,9 +324,17 @@ export class BoardEngine {
       const n = sel ? nodes.get(sel) : undefined;
       if (n) n.el.style.zIndex = String(++this.zTop);
     }
+    // An open card's token figure belongs to the selected or open chat. Only a change of that chat updates the pill, in place: a click on the card itself must not be lost to a redraw.
+    const readBy = `${selCard && isChat(selCard) ? sel : ''}|${snap.ui.focus ?? ''}`;
+    if (readBy !== this.lastReadBy) {
+      this.lastReadBy = readBy;
+      for (const o of nodes.values()) if (o.open && !o.isChat) this.view.refreshTokens(o);
+    }
 
     const dirty = this.dirty; this.dirty = new Set();
     for (const id of dirty) { const n = nodes.get(id); if (n) this.view.render(n); }
+    for (const id of this.liveSources) { const n = nodes.get(id); if (n && !dirty.has(id)) this.view.refreshLive(n); }
+    this.liveSources.clear();
     for (const n of nodes.values()) {
       if (dirty.has(n.id)) continue;
       n.el.classList.toggle('selected', n.id === sel);

@@ -10,7 +10,12 @@ export default defineConfig({
   // One worker: parallel page loads against the shared `next dev` on :3100 truncate chunks (ChunkLoadError).
   workers: 1,
   globalSetup: './e2e/global-setup.ts',
-  use: { baseURL, viewport: { width: 1440, height: 900 } },
+  use: {
+    baseURL,
+    viewport: { width: 1440, height: 900 },
+    // Every board test starts as a returning user, so the first-visit welcome tour stays shut. tour.spec.ts clears this.
+    storageState: { cookies: [], origins: [{ origin: new URL(baseURL).origin, localStorage: [{ name: 'ct-tour', value: JSON.stringify({ version: 1e6, at: 0, finished: true }) }] }] },
+  },
   webServer: process.env.PW_BASE_URL
     ? undefined
     : {

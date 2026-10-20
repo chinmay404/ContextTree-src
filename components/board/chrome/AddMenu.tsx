@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties, type KeyboardEvent, type ReactElement } from 'react';
 import { useBoard, useSnapshot } from '../context';
 import type { UiState } from '../store';
+import { clamp } from '../lib/util';
 import { Icon } from './Icon';
 import { useEscape } from './escape';
 
-const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
 const MENU_H = 232;
 type Item = { k: 'note' | 'chat' | 'file' | 'link'; label: string; icon: string; bg: string; fg: string; kbd: string };
 const ITEMS: Item[] = [

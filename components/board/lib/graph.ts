@@ -19,6 +19,8 @@ const byCreated = (a: Card, b: Card) =>
   a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 const all = (g: Graph) => [...g.cards.values()];
 
+/** Icon name for a card: chats and every source type. */
+export const iconOf = (c: Card): string => (isChat(c) ? 'message-circle' : TYPE_INFO[c.sourceType ?? 'pdf'].icon);
 export const chatsOf = (g: Graph): Card[] => all(g).filter((c) => isChat(c)).sort(byCreated);
 export const sourcesOf = (g: Graph): Card[] => all(g).filter((c) => !isChat(c) && !c.pileId);
 export const kids = (g: Graph, id: Id): Card[] => chatsOf(g).filter((c) => c.parentId === id);

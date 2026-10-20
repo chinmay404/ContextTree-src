@@ -47,7 +47,7 @@ test('a timeline step opens that question', async ({ page }) => {
 test('an inherited source can be left out here', async ({ page }) => {
   await openBoard(page); await openFocus(page, 'side');
   await page.locator(`${F} .srow`, { hasText: 'Pricing survey 2025' }).click();
-  expect(await page.evaluate(() => (window.__board!.card('side')!.data as any).hide)).toContain('pdf');
+  expect(await page.evaluate(() => (window.__board!.card('side')!.data as { hide?: string[] }).hide)).toContain('pdf');
   await expect(page.locator(`${F} .srow.off`)).toHaveCount(1);
   await page.locator(`${F} .srow`, { hasText: 'Pricing survey 2025' }).click();
   await expect(page.locator(`${F} .srow.off`)).toHaveCount(0);
@@ -56,7 +56,7 @@ test('an inherited source can be left out here', async ({ page }) => {
 test('leaving out a pile row hides the pile', async ({ page }) => {
   await openBoard(page); await openFocus(page, 'deep');
   await page.locator(`${F} .srow`, { hasText: 'Customer interviews' }).click();
-  expect(await page.evaluate(() => (window.__board!.card('deep')!.data as any).hide)).toContain('interviews');
+  expect(await page.evaluate(() => (window.__board!.card('deep')!.data as { hide?: string[] }).hide)).toContain('interviews');
   await expect(page.locator(`${F} .srow.off`)).toHaveCount(1);
 });
 
@@ -123,9 +123,9 @@ test('Branch from here and Settings open the sheet', async ({ page }) => {
 
 test('the Source chip asks for files for this desk', async ({ page }) => {
   await openBoard(page); await openFocus(page, 'main');
-  await page.evaluate(() => { window.addEventListener('pb:pickfiles', (e) => { (window as any).__pick = (e as CustomEvent).detail; }); });
+  await page.evaluate(() => { window.addEventListener('pb:pickfiles', (e) => { window.__pick = (e as CustomEvent).detail; }); });
   await page.locator(`${F} .fcomp .cp`, { hasText: 'Source' }).click();
-  expect(await page.evaluate(() => (window as any).__pick)).toEqual({ deskId: 'main' });
+  expect(await page.evaluate(() => window.__pick)).toEqual({ deskId: 'main' });
 });
 
 test('the more menu offers compare only with siblings', async ({ page }) => {
@@ -238,4 +238,60 @@ test('a pile counts as one source: the card face and the focus view agree for Q1
   await openFocus(page, 'second');
   await expect(page.locator(`${F} .ph .cnt`).first()).toHaveText(String(face));
   await expect(page.locator(`${F} .fmeta`)).toContainText(`${face} sources`);
+});
+
+test('an answer carries no fake citations: no .cited note and no quote block', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  await expect(page.locator(`${F} .art`).first()).toContainText('answered with');
+  await expect(page.locator(`${F} .cited`)).toHaveCount(0);
+  await expect(page.locator(`${F} .quote`)).toHaveCount(0);
+});
+
+test('the answer fade stays above the composer however tall it grows', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  const ta = page.locator(`${F} .fcomp textarea`);
+  const fade = page.locator(`${F} .mfade`);
+  const gap = async () => page.evaluate((sel) => {
+    const f = document.querySelector(`${sel} .mfade`)!.getBoundingClientRect();
+    const b = document.querySelector(`${sel} .fcomp .box`)!.getBoundingClientRect();
+    return b.top - f.bottom;   // >= 0: the fade ends at or above the composer's top edge
+  }, F);
+  await expect(fade).toHaveCount(1);
+  expect(await gap()).toBeGreaterThanOrEqual(-0.5);
+  await ta.fill('first line\nsecond\nthird\nfourth');
+  await page.waitForTimeout(100);
+  expect(await gap()).toBeGreaterThanOrEqual(-0.5);
+  const hit = await page.evaluate((sel) => {
+    const t = document.querySelector(`${sel} .fcomp textarea`) as HTMLTextAreaElement;
+    const r = t.getBoundingClientRect();
+    const el = document.elementFromPoint(r.left + 20, r.top + 8);
+    const f = document.querySelector(`${sel} .mfade`)!.getBoundingClientRect();
+    return { onTa: el === t, fadeBottom: f.bottom, taTop: r.top };
+  }, F);
+  expect(hit.onTa).toBe(true);
+  expect(hit.fadeBottom).toBeLessThanOrEqual(hit.taTop);
+});
+
+test('reply actions show on hover or focus-within only', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  const art = page.locator(`${F} .art`).first();
+  const copy = art.locator('[data-copy]'), branch = art.locator('[data-b]');
+  const op = (l: typeof copy) => l.evaluate((el) => Number(getComputedStyle(el).opacity));
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(250);
+  expect(await op(copy)).toBe(0); expect(await op(branch)).toBe(0);
+  const box0 = await copy.boundingBox();
+  await art.locator('.body').hover();
+  await page.waitForTimeout(250);
+  expect(await op(copy)).toBe(1); expect(await op(branch)).toBe(1);
+  expect(await copy.boundingBox()).toEqual(box0);   // no layout jump
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(250);
+  expect(await op(copy)).toBe(0);
+  await copy.focus();
+  await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab');   // reach it by keyboard
+  await page.waitForTimeout(250);
+  expect(await op(copy)).toBe(1);
+  const dur = await copy.evaluate((el) => getComputedStyle(el).transitionDuration);
+  expect(dur.split(',').every((d) => parseFloat(d) <= 0.15)).toBe(true);
 });

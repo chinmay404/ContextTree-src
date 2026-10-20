@@ -5,16 +5,16 @@ import { useCallback, useLayoutEffect, useRef, type CSSProperties, type ReactEle
 import type { Card, SourceData } from '../api/types';
 import { TYPE_INFO, modelInfo } from '../lib/catalog';
 import { cut } from '../lib/format';
-import { chatData, famOf, isChat, membersOf, qNum, tokensOf } from '../lib/graph';
-import { isRead } from '../lib/reads';
+import { chatData, famOf, isChat, membersOf, qNum } from '../lib/graph';
+import { isRead, tokensRead } from '../lib/reads';
 import { useBoard, useSnapshot } from '../context';
 import type { UiState } from '../store';
 import { Icon } from './Icon';
 import { useEscape } from './escape';
+import { clamp } from '../lib/util';
 import { ViewerBody } from './viewer-bodies';
 
 type Viewing = NonNullable<UiState['viewer']>;
-const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
 
 export function SourceViewer(): ReactElement {
   const { store, engine } = useBoard();
@@ -71,6 +71,10 @@ export function SourceViewer(): ReactElement {
     const ids = new Set(isPile ? members.map((m) => m.id) : [v.id]);
     const users = [...snap.cards.values()].filter((c) => isChat(c) && store.readsOf(c.id).items.some((i) => isRead(i) && ids.has(i.cardId)));
     const info = TYPE_INFO[v.sourceType ?? 'pdf'];
+    // The engine's figure for the chat that is open or selected; none when that chat does not read this.
+    const sel = snap.ui.selected ? snap.cards.get(snap.ui.selected) : undefined;
+    const readBy = snap.ui.focus ?? (sel && isChat(sel) ? sel.id : null);
+    const tokens = readBy ? tokensRead(g, store.engineReads(readBy)?.items ?? [], v) : null;
     const meta = isPile ? `Pile · ${members.length} files` : d.meta || info.label;
     content = (
       <div ref={boxRef} className={`sheetbox vw f-${family}`} role="dialog" aria-modal="true" aria-label={d.title || 'Note'} tabIndex={-1}>
@@ -104,7 +108,7 @@ export function SourceViewer(): ReactElement {
               )) : <span className="none">No question reads this yet. Drag from its handle on the right onto a chat, or drop it on a desk.</span>}
             </div>
           </div>
-          <div><h4>Size</h4><span className="upill big">{(tokensOf(g, v) / 1000).toFixed(1)}k tokens</span></div>
+          {tokens === null ? null : <div><h4>Size</h4><span className="upill big">{(tokens / 1000).toFixed(1)}k tokens</span></div>}
           {member ? <button type="button" className="btn" onClick={() => store.openViewer(pile.id, null, viewing.anchor)}><Icon name="arrow-left" size={14} />Back to the pile</button> : null}
         </aside>
       </div>

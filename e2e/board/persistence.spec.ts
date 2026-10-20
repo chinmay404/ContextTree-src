@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { center, dragPath, openBoard } from './helpers';
+import type { MockPeek } from './global';
 
 const saves = (page: import('@playwright/test').Page) =>
   page.evaluate(() => window.__board!.calls().filter((c) => c.method === 'savePositions'));
@@ -25,7 +26,7 @@ async function waitNextPoll(page: import('@playwright/test').Page): Promise<void
 }
 const serverMove = (page: import('@playwright/test').Page, id: string, x: number) =>
   page.evaluate(([i, v]) => {
-    const c = (window.__mock as any).boards.get('b_seed').cards.get(i as string);
+    const c = (window.__mock as unknown as MockPeek).boards.get('b_seed')!.cards.get(i as string)!;
     c.card.x = v; c.card.updatedAt = new Date(Date.now() + 5000).toISOString();
   }, [id, x] as const);
 async function openPolling(page: import('@playwright/test').Page): Promise<void> {
@@ -107,8 +108,8 @@ test('a reload of the same mock keeps the layout', async ({ page }) => {
   await dragPath(page, from, [from[0] + 150, from[1] + 20], 20);
   await page.evaluate(() => window.__board!.settle()); await page.waitForTimeout(800);
   const before = await page.evaluate(() => window.__board!.box('csv'));
-  await page.evaluate(() => { (window as any).__old = window.__board; window.__remount!(); });
-  await page.waitForFunction(() => !!window.__board && window.__board !== (window as any).__old && document.querySelectorAll('.card[data-id]').length >= 12);
+  await page.evaluate(() => { window.__old = window.__board; window.__remount!(); });
+  await page.waitForFunction(() => !!window.__board && window.__board !== window.__old && document.querySelectorAll('.card[data-id]').length >= 12);
   await page.evaluate(() => window.__board!.settle());
   const after = await page.evaluate(() => window.__board!.box('csv'));
   expect(Math.abs(after[0] - before[0])).toBeLessThan(1.5); expect(Math.abs(after[1] - before[1])).toBeLessThan(1.5);
@@ -164,8 +165,8 @@ test('a move inside the settle window survives an immediate board remount', asyn
   const from = await center(page, '[data-id="csv"] .meta');
   const start = await page.evaluate(() => window.__board!.box('csv'));
   await dragPath(page, from, [from[0] + 150, from[1] + 20], 20);
-  await page.evaluate(() => { (window as any).__old = window.__board; window.__remount!(); });
-  await page.waitForFunction(() => !!window.__board && window.__board !== (window as any).__old && document.querySelectorAll('.card[data-id]').length >= 12);
+  await page.evaluate(() => { window.__old = window.__board; window.__remount!(); });
+  await page.waitForFunction(() => !!window.__board && window.__board !== window.__old && document.querySelectorAll('.card[data-id]').length >= 12);
   await page.evaluate(() => window.__board!.settle());
   const after = await page.evaluate(() => window.__board!.box('csv'));
   expect(after[0] - start[0]).toBeGreaterThan(100);   // csv kept the drop (~150 px right), not its old spot
@@ -174,7 +175,7 @@ test('a move inside the settle window survives an immediate board remount', asyn
 
 test('a failed position save is retried on the next settle', async ({ page }) => {
   await openBoard(page); await page.evaluate(() => window.__board!.fit(false)); await page.waitForTimeout(300);
-  await page.evaluate(() => { const m = window.__mock as any; m.failNext('savePositions', new m.constructor.ApiError(500, 'boom')); });
+  await page.evaluate(() => { const m = window.__mock as unknown as MockPeek; m.failNext('savePositions', new m.constructor.ApiError(500, 'boom')); });
   const from = await center(page, '[data-id="csv"] .meta');
   await dragPath(page, from, [from[0] + 120, from[1] + 10], 20);
   await page.evaluate(() => window.__board!.settle()); await page.waitForTimeout(1000);

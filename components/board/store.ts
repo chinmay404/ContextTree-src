@@ -4,7 +4,7 @@ import type {
 } from './api/types';
 import { genMessageId, newId } from './api/ids';
 import { DEFAULT_ADVANCED, DEFAULT_MODEL_KEY, MODELS, PERSONAS, TYPE_INFO } from './lib/catalog';
-import { sizeOf } from './lib/format';
+import { cut, sizeOf } from './lib/format';
 import { canPlug, chatsOf, descendants, membersOf, nameOf, qNum, type Graph } from './lib/graph';
 import { deepEqual, mergeCard, reconcile, changedFields, type CardOverride } from './lib/merge';
 import { computeReads } from './lib/reads';
@@ -27,9 +27,11 @@ export interface UiState { selected: Id | null; dialog: DialogState | null;
   viewer: { cardId: Id; memberId: Id | null; anchor: DOMRect | null } | null; focus: Id | null;
   menu: { x: number; y: number; at: [number, number] | null; fromAdd: boolean } | null;
   linkPop: { x: number; y: number; at: [number, number] | null } | null;
-  confirm: { cardId: Id; text: string } | null;
+  confirm: { cardId: Id; text: string; pile?: { frontId: Id; front: string; count: number } } | null;
   toast: { id: number; text: string; undoCardId: Id | null } | null;
-  compare: Id | null; dropping: boolean; webSearch: Readonly<Record<Id, boolean>> }
+  compare: Id | null; dropping: boolean; webSearch: Readonly<Record<Id, boolean>>;
+  /** The first-visit welcome tour (chrome/WelcomeTour.tsx) is open. */
+  tour: boolean }
 
 export interface BoardSnapshot { version: number; status: 'loading' | 'ready' | 'error'; error: string | null;
   board: { id: Id; title: string; viewport: Board['viewport'] } | null;
@@ -37,18 +39,21 @@ export interface BoardSnapshot { version: number; status: 'loading' | 'ready' | 
   streaming: ReadonlyMap<Id, { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null }>;
   ui: UiState }
 
+/** What only the engine's view knows: a pile's front member, and a card's dragged position that is not saved yet. */
+export interface ViewProbe { front(pileId: Id): number; pos(id: Id): [number, number] | null }
+
 export interface StoreOptions { pollMs?: number; readsDebounceMs?: number; toastMs?: number }
 
 // ---- helpers ----
 
-/** True while any overlay is up: Tasks 9, 16 and 19 use it for "no overlay open". */
+/** True while any overlay is up. */
 export function overlayOpen(ui: UiState): boolean {
-  return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.linkPop || ui.confirm || ui.compare);
+  return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.linkPop || ui.confirm || ui.compare || ui.tour);
 }
 
 const initialUi = (): UiState => ({
   selected: null, dialog: null, viewer: null, focus: null, menu: null, linkPop: null, confirm: null, toast: null,
-  compare: null, dropping: false, webSearch: {},
+  compare: null, dropping: false, webSearch: {}, tour: false,
 });
 
 const FILE_TYPES: Record<string, [SourceType, Status]> = {
@@ -72,6 +77,7 @@ function errorText(err: unknown, ctx: ErrCtx): string {
 }
 
 class Silent extends Error {}
+class UnpileFailed extends Error {}
 
 const CHANGE_KEYS = ['data', 'status', 'deskId', 'pileId', 'parentId', 'created', 'messageCount', 'lastMessage'];
 const TITLE_LATCH_MS = 5000;
@@ -123,7 +129,8 @@ export class BoardStore {
   private titleTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly streams = new Map<Id, { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null }>();
   private readonly aborts = new Map<Id, AbortController>();
-  private readonly deleted = new Map<Id, { ids: Id[]; edges: Edge[]; done: Promise<boolean> }>();
+  private readonly deleted = new Map<Id, { ids: Id[]; roots: Id[]; edges: Edge[]; done: Promise<boolean>; dissolved?: { pile: Card; members: Id[]; added: Id[]; gone: Edge[] } }>();
+  private probe: ViewProbe | null = null;
   private disposed = false;
 
   private readonly changeListeners = new Set<(c: StoreChange[]) => void>();
@@ -388,6 +395,11 @@ export class BoardStore {
     }
   }
 
+  /** The engine's own reads for a chat (the last it sent, even while a newer fetch is due); null before any arrived. Figures such as tokens come from here only. */
+  engineReads(chatId: Id): Reads | null {
+    return this.serverReads.get(chatId) ?? null;
+  }
+
   readsOf(chatId: Id): Reads {
     const r = this.serverReads.get(chatId);
     if (r && !this.staleReads.has(chatId)) return r;
@@ -421,11 +433,6 @@ export class BoardStore {
   }
 
   // ---- creates ----
-
-  /** The create in flight for this card, if any: actions on the card await it first. */
-  whenCreated(id: Id): Promise<boolean> | null {
-    return this.pendingCards.get(id) ?? null;
-  }
 
   /** Resolves false when any of these cards has a create in flight that fails. */
   private async created(ids: (Id | null | undefined)[]): Promise<boolean> {
@@ -519,7 +526,7 @@ export class BoardStore {
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
     const host = u.hostname.toLowerCase();
     const yt = host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be';
-    const title = (host + u.pathname).length > 40 ? (host + u.pathname).slice(0, 39).trim() + '…' : host + u.pathname;
+    const title = cut(host + u.pathname, 40);
     const data: SourceData = yt
       ? { url, title: 'YouTube video', meta: 'YouTube', ...(desc ? { desc } : {}) }
       : { url, title, meta: host, ...(desc ? { desc } : {}) };
@@ -557,6 +564,8 @@ export class BoardStore {
   private removeCard(id: Id, after?: Promise<boolean>): Promise<boolean> {
     const card = this.cards.get(id);
     if (!card) return Promise.resolve(true);
+    if (this.debounced.has(id)) this.flushDebounced(id);   // the pending text goes out before the delete
+    const patches = this.patchQueue.get(id);
     const before = this.affected(id);
     const edges = [...this.edges.values()].filter((e) => e.from === id || e.to === id);
     this.cards.delete(id);
@@ -569,6 +578,7 @@ export class BoardStore {
       try {
         const wait = this.pendingCards.get(id);
         if (wait) await wait;
+        if (patches) await patches;
         if (after && !(await after)) throw new Silent();
         await this.track(this.api.deleteCard(this.boardId, id));
         return true;
@@ -717,7 +727,7 @@ export class BoardStore {
 
   // ---- edges ----
 
-  connect(kind: 'wire' | 'answer', from: Id, to: Id): Id | null {
+  connect(kind: 'wire' | 'answer', from: Id, to: Id, opts: { quiet?: boolean } = {}): Id | null {
     const f = this.cards.get(from);
     const g = this.graph();
     if (!f) return null;
@@ -733,8 +743,8 @@ export class BoardStore {
     this.emit([{ kind: 'edge', id }]);
     const p = (async (): Promise<boolean> => {
       try {
-        const waits = [this.pendingCards.get(from), this.pendingCards.get(to)].filter((x): x is Promise<boolean> => !!x);
-        if (waits.length && !(await Promise.all(waits)).every(Boolean)) throw new Silent();
+        const waits = [this.pendingCards.get(from), this.pendingCards.get(to), this.patchQueue.get(from)].filter((x): x is Promise<boolean> => !!x);
+        if (waits.length && !(await Promise.all(waits)).every(Boolean)) throw new Silent();   // e.g. the member's unpile PATCH must land first
         const res = await this.track(this.api.createEdge(this.boardId, { id, kind, from, to }));
         if (this.edges.has(id)) {
           const old = this.edges.get(id)!;
@@ -748,7 +758,7 @@ export class BoardStore {
           this.markStale(this.chatAndDesc(to));
           this.emit([{ kind: 'edge-removed', id }]);
         }
-        if (!(e instanceof Silent)) this.toast(errorText(e, 'edge'));
+        if (!(e instanceof Silent) && !opts.quiet) this.toast(errorText(e, 'edge'));
         return false;
       }
     })();
@@ -832,8 +842,13 @@ export class BoardStore {
   }
 
   unstack(pileId: Id, spots: [number, number][]): Id[] {
+    return this.unstackOps(pileId, spots).ids;
+  }
+
+  /** `done` resolves true once the members are loose and the pile is deleted on the server; false when it had to be put back. */
+  private unstackOps(pileId: Id, spots: [number, number][], carryTo?: Id[]): { ids: Id[]; done: Promise<boolean>; added: Id[]; gone: Edge[] } {
     const pile = this.cards.get(pileId);
-    if (!pile) return [];
+    if (!pile) return { ids: [], done: Promise.resolve(false), added: [], gone: [] };
     const members = membersOf(this.graph(), pileId);
     const wires = [...this.edges.values()].filter((e) => e.kind === 'wire' && e.from === pileId);
     const moved: { id: Id; x: number; y: number }[] = [];
@@ -845,7 +860,8 @@ export class BoardStore {
       ops.push(this.patch(m.id, { pileId: null, deskId: pile.deskId }));
     });
     const added: Id[] = [];
-    for (const e of wires) for (const m of members) { const id = this.connect('wire', m.id, e.to); if (id) added.push(id); }
+    // The pile's strings move to the members (or just those in `carryTo`); an error there never speaks over the caller's toast.
+    for (const e of wires) for (const m of members) { if (carryTo && !carryTo.includes(m.id)) continue; const id = this.connect('wire', m.id, e.to, { quiet: true }); if (id) added.push(id); }
 
     const gone = [...this.edges.values()].filter((e) => e.kind !== 'lineage' && (e.from === pileId || e.to === pileId));
     const before = this.affected(pileId);
@@ -871,22 +887,24 @@ export class BoardStore {
       this.emit([{ kind: 'card', id: pileId, fields: ['created'] }, ...gone.map((e): StoreChange => ({ kind: 'edge', id: e.id }))]);
       if (!(err instanceof Silent)) this.toast(errorText(err, 'other'));
     };
-    void (async () => {
+    const done = (async (): Promise<boolean> => {
       const results = await Promise.all(ops);
       if (!results.every(Boolean)) {
         restore(new Silent(), members.filter((_, i) => results[i]).map((m) => m.id));
-        return;
+        return false;
       }
       try {
         const wait = this.pendingCards.get(pileId);
         if (wait) await wait;
         await this.track(this.api.deleteCard(this.boardId, pileId));
       } catch (err) {
-        if (err instanceof ApiError && err.status === 404) return;
+        if (err instanceof ApiError && err.status === 404) return true;
         restore(err, members.map((m) => m.id));
+        return false;
       }
+      return true;
     })();
-    return members.map((m) => m.id);
+    return { ids: members.map((m) => m.id), done, added, gone };
   }
 
   // ---- positions, viewport, title ----
@@ -964,6 +982,9 @@ export class BoardStore {
   closeFocus(): void { if (this.ui.focus) this.setUi({ focus: null }); }
   openCompare(id: Id): void { this.setUi({ compare: id }); }
   closeCompare(): void { if (this.ui.compare) this.setUi({ compare: null }); }
+  /** The welcome tour sits above everything, so anything else that was open closes. */
+  openTour(): void { if (!this.ui.tour) this.setUi({ tour: true, menu: null, linkPop: null }); }
+  closeTour(): void { if (this.ui.tour) this.setUi({ tour: false }); }
   openMenu(m: UiState['menu']): void { this.setUi({ menu: m, linkPop: null }); }
   closeMenu(): void { if (this.ui.menu) this.setUi({ menu: null }); }
   openLinkPop(p: UiState['linkPop']): void { this.setUi({ linkPop: p, menu: null }); }
@@ -1185,9 +1206,20 @@ export class BoardStore {
 
   // ---- delete and undo ----
 
+  setViewProbe(p: ViewProbe | null): void { this.probe = p; }
+
   requestDelete(id: Id): void {
     const card = this.cards.get(id);
     if (!card) return;
+    if (card.sourceType === 'pile') {
+      const ms = membersOf(this.graph(), id);
+      if (ms.length) {
+        const front = ms[(this.probe?.front(id) ?? 0) % ms.length];
+        const text = `Delete the pile "${nameOf(this.graph(), card)}"?`;
+        this.setUi({ confirm: { cardId: id, text, pile: { frontId: front.id, front: nameOf(this.graph(), front), count: ms.length } } });
+        return;
+      }
+    }
     if (card.kind !== 'chat') { void this.deleteSet(id); return; }
     const g = this.graph();
     const n = descendants(g, id).length;
@@ -1200,26 +1232,52 @@ export class BoardStore {
 
   cancelConfirm(): void { if (this.ui.confirm) this.setUi({ confirm: null }); }
 
-  async confirmDelete(): Promise<void> {
+  /** `mode` only matters for a pile: its front member alone (the default), or the pile and every member. */
+  async confirmDelete(mode: 'one' | 'all' = 'one'): Promise<void> {
     const c = this.ui.confirm;
     if (!c) return;
     this.ui = { ...this.ui, confirm: null };
-    await this.deleteSet(c.cardId);
+    if (!c.pile) { await this.deleteSet(c.cardId); return; }
+    if (mode === 'all') { await this.deleteSet(c.cardId, membersOf(this.graph(), c.cardId).map((m) => m.id)); return; }
+    const pile = this.cards.get(c.cardId);
+    if (pile && c.pile.count <= 2) {   // one would be left alone in a pile: unpile first, then remove the front member
+      const ms = membersOf(this.graph(), c.cardId);
+      const spots = ms.map((m): [number, number] => (m.id === c.pile!.frontId ? [pile.x + 24, pile.y + 96] : [pile.x, pile.y]));
+      const u = this.unstackOps(c.cardId, spots, ms.filter((m) => m.id !== c.pile!.frontId).map((m) => m.id));   // strings go to the member that stays
+      // The member goes only once the unpile went through; Undo puts the pile back whole.
+      await this.deleteSet(c.pile.frontId, [], { after: u.done, dissolved: { pile, members: u.ids, added: u.added, gone: u.gone } });
+      return;
+    }
+    await this.deleteSet(c.pile.frontId);
   }
 
-  /** Hides the set at once, then tells the server; a failed delete brings everything back. */
-  private deleteSet(root: Id): Promise<boolean> {
+  /**
+   * Hides the set at once, then tells the server; a failed delete brings everything back.
+   * `extra`: more cards removed with the root (a pile's members), each deleted on the server before the root.
+   */
+  private deleteSet(root: Id, extra: Id[] = [], opts: { after?: Promise<boolean>; dissolved?: { pile: Card; members: Id[]; added: Id[]; gone: Edge[] } } = {}): Promise<boolean> {
     const card = this.cards.get(root);
     if (!card) return Promise.resolve(false);
     const g = this.graph();
     const isChat = card.kind === 'chat';
     const kidsOf = isChat ? descendants(g, root) : [];
     const label = isChat ? qNum(g, root) : nameOf(g, card);
-    const text = !isChat ? `Removed ${label}`
+    const text = !isChat ? (extra.length ? `Removed ${label} and its ${extra.length} ${extra.length === 1 ? 'file' : 'files'}` : `Removed ${label}`)
       : kidsOf.length ? `Deleted ${label} and ${kidsOf.length} ${kidsOf.length === 1 ? 'branch' : 'branches'}` : `Deleted ${label}`;
-    const ids = [root, ...kidsOf.map((c) => c.id)];
+    const ids = [root, ...kidsOf.map((c) => c.id), ...extra.filter((e) => this.cards.has(e))];
     const gone = new Set(ids);
-    const originals = ids.map((i) => this.cards.get(i)!);
+    // Pending writes go out first: a note's debounced text, and a card dragged a moment ago whose spot is not saved yet.
+    for (const i of ids) if (this.debounced.has(i)) this.flushDebounced(i);
+    const moved: { id: Id; x: number; y: number }[] = [];
+    const originals = ids.map((i) => {
+      const c = this.cards.get(i)!;
+      const p = this.probe?.pos(i);
+      if (!p || (c.x === p[0] && c.y === p[1])) return c;
+      moved.push({ id: i, x: p[0], y: p[1] });
+      return { ...c, x: p[0], y: p[1] };
+    });
+    const dis = opts.dissolved;
+    const patches = ids.map((i) => this.patchQueue.get(i)).filter((x): x is Promise<boolean> => !!x);
     const edges = [...this.edges.values()].filter((e) => gone.has(e.from) || gone.has(e.to));
     const detach = [...this.cards.values()].filter((c) => c.kind === 'source' && !gone.has(c.id)
       && ((c.deskId && gone.has(c.deskId)) || (c.pileId && gone.has(c.pileId))));
@@ -1260,17 +1318,32 @@ export class BoardStore {
     ]);
     this.toast(text, root);
 
+    const roots = [...extra.filter((e) => gone.has(e)), root];   // members first: the pile is deleted last
     const dropOverrides = () => { for (const t of toks) this.dropOverride(t.id, t.tok); };
     const done = (async (): Promise<boolean> => {
+      const sent: Id[] = [];
       try {
+        if (patches.length) await Promise.all(patches);
+        if (opts.after && !(await opts.after)) throw new UnpileFailed();
         if (!(await this.created(ids))) { dropOverrides(); return false; }
-        await this.track(this.api.deleteCard(this.boardId, root));
+        if (moved.length) { try { await this.track(this.api.savePositions(this.boardId, moved)); } catch { /* the delete still goes ahead */ } }
+        for (const r of roots) {
+          try { await this.track(this.api.deleteCard(this.boardId, r)); }
+          catch (e) { if (!(e instanceof ApiError && e.status === 404)) throw e; }
+          sent.push(r);
+        }
         dropOverrides();
         return true;
       } catch (e) {
         dropOverrides();
-        if (e instanceof ApiError && e.status === 404) return true;
-        for (const c of originals) { this.hiddenCards.delete(c.id); this.cards.set(c.id, c); }
+        for (const r of sent) { try { await this.track(this.api.restoreCard(this.boardId, r)); } catch { /* the next snapshot shows what the server has */ } }
+        for (const c of originals) {
+          this.hiddenCards.delete(c.id);
+          if (dis && dis.members.includes(c.id) && this.cards.has(dis.pile.id)) {   // the unpile was put back: so is this member
+            this.cards.set(c.id, { ...c, pileId: dis.pile.id, deskId: null, x: dis.pile.x, y: dis.pile.y });
+            void this.patch(c.id, { pileId: dis.pile.id, deskId: null });
+          } else this.cards.set(c.id, c);
+        }
         for (const ed of edges) { this.hiddenEdges.delete(ed.id); this.edges.set(ed.id, ed); }
         for (const c of detach) {
           const cur = this.cards.get(c.id);
@@ -1285,11 +1358,12 @@ export class BoardStore {
           ...detach.map((c): StoreChange => ({ kind: 'card', id: c.id, fields: ['deskId', 'pileId'] })),
           ...edges.map((ed): StoreChange => ({ kind: 'edge', id: ed.id })),
         ]);
-        this.toast(errorText(e, 'other'));
+        if (e instanceof Silent || e instanceof UnpileFailed) { if (this.ui.toast?.undoCardId === root) this.dismissToast(); }   // nothing was deleted: no Undo to offer
+        if (!(e instanceof Silent)) this.toast(errorText(e, 'other'));
         return false;
       }
     })();
-    this.deleted.set(root, { ids, edges, done });
+    this.deleted.set(root, { ids, roots, edges, done, dissolved: dis });
     return done;
   }
 
@@ -1299,12 +1373,20 @@ export class BoardStore {
     const rec = this.deleted.get(id);
     this.dismissToast();
     if (!rec || !(await rec.done)) return;
-    let restored: Id[];
-    try {
-      restored = await this.track(this.api.restoreCard(this.boardId, id));
-    } catch (e) {
-      this.toast(errorText(e, 'other'));
-      return;
+    const restored: Id[] = [];
+    const failed: Id[] = [];
+    let err: unknown = null;
+    for (const r of [id, ...rec.roots.filter((x) => x !== id)]) {   // every root gets its chance; one failure does not strand the rest
+      try { restored.push(...await this.track(this.api.restoreCard(this.boardId, r))); }
+      catch (e) { failed.push(r); err = e; }
+    }
+    const dis = rec.dissolved;
+    if (dis && !failed.length) {   // a pile that was unpiled to remove one member comes back as it was, with its own strings
+      try {
+        await this.track(this.api.restoreCard(this.boardId, dis.pile.id));
+        this.hiddenCards.delete(dis.pile.id);
+        for (const e of dis.gone) this.hiddenEdges.delete(e.id);
+      } catch (e) { err = e; }
     }
     this.deleted.delete(id);
     for (const x of restored) this.hiddenCards.delete(x);
@@ -1313,8 +1395,19 @@ export class BoardStore {
       const alive = (x: Id) => back.has(x) || this.cards.has(x);
       if (alive(e.from) && alive(e.to)) this.hiddenEdges.delete(e.id);
     }
-    if (this.refreshing) await this.refreshing;   // an older in-flight snapshot would not show the restore
-    await this.refresh();
+    if (restored.length || dis) {
+      if (this.refreshing) await this.refreshing;   // an older in-flight snapshot would not show the restore
+      await this.refresh();
+    }
+    if (dis && !failed.length && this.cards.has(dis.pile.id)) {
+      await Promise.all(dis.members.map((m) => this.patch(m, { pileId: dis.pile.id, deskId: null })));
+      for (const id of dis.added) this.disconnect(id);   // the strings carried to the members give way to the pile's own
+    }
+    if (failed.length) {
+      // The ones that did not come back keep an Undo of their own.
+      this.deleted.set(failed[0], { ids: rec.ids, roots: failed, edges: rec.edges, done: Promise.resolve(true), dissolved: rec.dissolved });
+      this.toast(errorText(err, 'other'), failed[0]);
+    }
   }
 
   // ---- small queries ----

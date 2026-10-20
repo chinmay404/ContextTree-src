@@ -1,3 +1,4 @@
+import { clamp } from '../lib/util';
 /** Damped springs ported from the prototype (lines 384-396). Period r (s), damping ratio d. */
 export class Spring {
   x: number;
@@ -36,7 +37,7 @@ export class SpringSystem {
 }
 
 export const project = (v: number, d = .99): number => (v / 1000) * d / (1 - d);
-export const clamp = (v: number, a: number, b: number): number => Math.max(a, Math.min(b, v));
+export { clamp };
 
 /** Pointer velocity (px/s) from recent history; zero when the last sample is older than 90 ms. */
 export function velocity(hist: { x: number; y: number; t: number }[], now: number): [number, number] {

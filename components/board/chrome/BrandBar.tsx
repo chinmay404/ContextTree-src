@@ -133,6 +133,9 @@ export function BrandBar(): ReactElement {
             <span className="c"><Icon name="sliders-horizontal" /></span>API keys
           </button>
         )}
+        <button type="button" role="menuitem" data-m="tour" onClick={() => { close(); store.openTour(); }}>
+          <span className="c"><Icon name="sparkles" /></span>Take the tour
+        </button>
       </div>
     </>
   );

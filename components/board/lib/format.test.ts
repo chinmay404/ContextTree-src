@@ -25,9 +25,9 @@ describe('strip and formatWhen', () => {
   });
   it('formatWhen gives weekday and HH:MM local', () => {
     const d = new Date(2026, 9, 19, 10, 12); // Mon 19 Oct 2026, local
-    expect(formatWhen(d.toISOString(), new Date(2026, 9, 19, 12, 0))).toBe('Mon 10:12');
+    expect(formatWhen(d.toISOString())).toBe('Mon 10:12');
   });
   it('formatWhen tolerates a bad date', () => {
-    expect(formatWhen('nope', new Date())).toBe('');
+    expect(formatWhen('nope')).toBe('');
   });
 });

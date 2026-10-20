@@ -17,6 +17,7 @@ import { BoardEngine } from './engine/board-engine';
 import { installTestHook } from './engine/test-hook';
 import { bricolage } from './fonts';
 import { BoardStore } from './store';
+import { typing } from './lib/util';
 import { AddMenu } from './chrome/AddMenu';
 import { BoardInput } from './chrome/BoardInput';
 import { BranchSheet } from './chrome/BranchSheet';
@@ -28,7 +29,9 @@ import { FocusView } from './chrome/FocusView';
 import { runEscape } from './chrome/escape';
 import { SourceViewer } from './chrome/SourceViewer';
 import { Toast } from './chrome/Toast';
-import { TrailBar } from './chrome/TrailBar';
+// import { TrailBar } from './chrome/TrailBar';   // Trail is parked while ChatBar holds the bottom centre
+import { ChatBar } from './chrome/ChatBar';
+import { WelcomeTour } from './chrome/WelcomeTour';
 import { ZoomControl } from './chrome/ZoomControl';
 
 export interface BoardProps {
@@ -46,9 +49,6 @@ export function Board(p: BoardProps): ReactElement {
   return <BoardShell key={p.boardId} {...p} />;
 }
 export default Board;
-
-const typing = (t: EventTarget | null): t is HTMLElement =>
-  t instanceof HTMLElement && !!t.closest('textarea, input, select, [contenteditable="true"]');
 
 function BoardShell(p: BoardProps): ReactElement {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -109,7 +109,8 @@ function Chrome(): ReactElement {
       )}
       {snap.status === 'ready' && (
         <>
-          <TrailBar />
+          {/* <TrailBar /> */}
+          <ChatBar />
           <ZoomControl />
           <AddMenu />
           <DropOverlay />
@@ -120,6 +121,7 @@ function Chrome(): ReactElement {
           <CompareSheet />
           <DeleteConfirm />
           <Toast />
+          <WelcomeTour />
         </>
       )}
       {props.topRight ? <div className="pb-topright">{props.topRight}</div> : null}

@@ -26,7 +26,7 @@ export interface BoardTestHook {
 }
 
 declare global {
-  interface Window { __board?: BoardTestHook; __toastText?: string }
+  interface Window { __board?: BoardTestHook }
 }
 
 export function installTestHook(engine: BoardEngine, store: BoardStore, api: EngineApi): () => void {
@@ -87,12 +87,7 @@ export function installTestHook(engine: BoardEngine, store: BoardStore, api: Eng
     calls: () => (api as unknown as { calls?: { method: string; args: unknown[] }[] }).calls ?? [],
   };
   window.__board = hook;
-  // window.__toastText mirrors the current toast so tests can read it before the Toast component exists.
-  const syncToast = () => { window.__toastText = ui().toast?.text; };
-  syncToast();
-  const unsub = store.subscribe(syncToast);
   return () => {
-    unsub();
-    if (window.__board === hook) { delete window.__board; delete window.__toastText; }
+    if (window.__board === hook) delete window.__board;
   };
 }

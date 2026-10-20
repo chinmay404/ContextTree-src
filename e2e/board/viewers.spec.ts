@@ -43,6 +43,7 @@ test('each type shows its body', async ({ page }) => {
   const V = '[data-pb="viewer"]';
   await open('video'); await expect(page.locator(`${V} .hero .dur`)).toHaveText('18:42'); await page.keyboard.press('Escape');
   await open('podcast'); await expect(page.locator(`${V} .hero.audio .bars i`)).toHaveCount(64); await page.keyboard.press('Escape');
+  await page.evaluate(() => window.__board!.select('main'));   // the Size figure is the selected chat's
   await open('pdf');
   await expect(page.locator(`${V} .pages .pg`)).toHaveCount(24); await expect(page.locator(`${V} .pages .pg.hit`)).toHaveCount(2);
   await expect(page.locator(`${V} .summary`)).toContainText('412 solo founders'); await expect(page.locator(`${V} .passages button`)).toHaveCount(3);

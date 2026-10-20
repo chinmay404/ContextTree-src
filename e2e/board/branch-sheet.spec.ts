@@ -12,7 +12,7 @@ test('Branch opens the sheet from that chat and creates the branch it describes'
   await page.fill('#d-name', 'Team pricing'); await page.click('[data-model="gemini"]'); await page.click('[data-persona="skeptic"]');
   await expect(page.locator('#d-persona')).toHaveValue('Push back. Look for what could be wrong and say how sure you are.');
   await page.click('#d-inherit'); await page.click('[data-carry="whole"]'); await page.click('#d-ok');
-  const c = await page.evaluate(() => window.__board!.chats().find(c => (c.data as any).name === 'Team pricing'));
+  const c = await page.evaluate(() => window.__board!.chats().find(c => (c.data as { name?: string }).name === 'Team pricing'));
   expect(c).toMatchObject({ parentId: 'main', data: { model: 'gemini/gemini-3-flash-preview', persona: 'skeptic', inheritDesk: false, carry: 'whole' } });
   await expect(page.locator('path.tube')).toHaveCount(tubes + 1);   // the string to the new chat
   expect(errs).toEqual([]);
@@ -24,8 +24,8 @@ test('Advanced controls map onto AdvancedSettings', async ({ page }) => {
   await page.locator('#d-temp').fill('1.2'); await page.selectOption('#d-max', '2000'); await page.selectOption('#d-hist', 'lastK');
   await page.fill('#d-k', '8'); await page.locator('#d-topk').fill('3'); await page.selectOption('#d-budget', '8000');
   await page.fill('#d-name', 'Tuned'); await page.click('#d-ok');
-  const c = await page.evaluate(() => window.__board!.chats().find(c => (c.data as any).name === 'Tuned'));
-  expect((c!.data as any).advanced).toEqual({ temperature: 1.2, maxOutputTokens: 2000, historyMode: 'lastK', lastKMessages: 8, externalContextTopK: 3, contextBudgetTokens: 8000 });
+  const c = await page.evaluate(() => window.__board!.chats().find(c => (c.data as { name?: string }).name === 'Tuned'));
+  expect((c!.data as { advanced?: unknown }).advanced).toEqual({ temperature: 1.2, maxOutputTokens: 2000, historyMode: 'lastK', lastKMessages: 8, externalContextTopK: 3, contextBudgetTokens: 8000 });
 });
 
 test('the estimate follows excerpts per question', async ({ page }) => {
@@ -41,7 +41,7 @@ test('settings edits an existing chat', async ({ page }) => {
   await expect(page.locator('#d-first')).toHaveCount(0); await expect(page.locator('#d-name')).toBeFocused();
   await page.fill('#d-name', 'Renamed side'); await page.press('#d-name', 'Enter');
   expect(await dialog(page)).toBeNull();
-  expect(await page.evaluate(() => (window.__board!.card('side')!.data as any).name)).toBe('Renamed side');
+  expect(await page.evaluate(() => (window.__board!.card('side')!.data as { name?: string }).name)).toBe('Renamed side');
 });
 
 test('a root question starts its own tree with no carry controls', async ({ page }) => {
@@ -54,7 +54,7 @@ test('a root question starts its own tree with no carry controls', async ({ page
 test('a first question is asked right away', async ({ page }) => {
   await openBoard(page); await page.evaluate(() => window.__board!.openSheet('branch', 'main'));
   await page.fill('#d-first', 'And agencies?'); await page.keyboard.press('Control+Enter');
-  await expect.poll(() => page.evaluate(() => window.__board!.calls().some(c => c.method === 'streamChat' && (c.args[0] as any).message === 'And agencies?')), { timeout: 2000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__board!.calls().some(c => c.method === 'streamChat' && (c.args[0] as { message?: string }).message === 'And agencies?')), { timeout: 2000 }).toBe(true);
   expect(await dialog(page)).toBeNull();
 });
 

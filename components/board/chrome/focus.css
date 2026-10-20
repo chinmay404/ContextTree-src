@@ -59,3 +59,13 @@
 .pb-root .cmp-foot { padding-right: 8px; }
 .pb-root .cmp-foot .btn { width: 100%; justify-content: center; }
 @media (max-width: 760px) { .pb-root .cmp-cols { grid-auto-flow: row; grid-auto-columns: auto; grid-auto-rows: minmax(0, 1fr); } }
+
+/* the answer fade hangs off the composer's own top edge, so it can never overlap the box however tall it grows */
+.pb-root [data-pb="focus"] .fcomp { position: relative; }
+.pb-root [data-pb="focus"] .fcomp > .mfade { bottom: 100%; z-index: 1; }
+
+/* reply actions: only while the pointer is over the reply or focus is inside it; they keep their place (no layout jump) */
+.pb-root [data-pb="focus"] .art .aacts button { opacity: 0; transition: opacity 120ms ease-out, background-color 150ms ease; }
+.pb-root [data-pb="focus"] .art:hover .aacts button,
+.pb-root [data-pb="focus"] .art:focus-within .aacts button { opacity: 1; }
+@media (hover: none) { .pb-root [data-pb="focus"] .art .aacts button { opacity: 1; } }

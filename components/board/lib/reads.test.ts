@@ -1,7 +1,7 @@
 import { seedBoard } from '../api/mock/seed';
 import type { Board, ChatData, SourceData } from '../api/types';
 import { graphOf } from './graph';
-import { computeReads, countSources, isRead } from './reads';
+import { computeReads, countSources, foldPiles, isRead, tokensRead } from './reads';
 
 const board = (): Board => seedBoard().board;
 const g = graphOf(board());
@@ -96,4 +96,29 @@ it('countSources counts a pile as one source, not its members (pile of 4 + 1 loo
   expect(countSources(fresh, items)).toBe(2);
   expect(countSources(fresh, computeReads(fresh, 'second').items, true)).toBe(2);   // inherited: pdf + note (video is soon)
   expect(computeReads(fresh, 'second').totalTokens).toBe(computeReads(fresh, 'second').items.filter(isRead).reduce((a, i) => a + i.tokens, 0));
+});
+
+describe('R1: engine token figures and one dot per pile', () => {
+  const r = computeReads(g, 'second');
+  const pile = g.cards.get('interviews')!;
+
+  it('tokensRead sums a pile over the members the chat reads, and is null for a card it does not read', () => {
+    const members = r.items.filter((i) => i.cardId.startsWith('interviews_') && !i.inherited);
+    expect(tokensRead(g, r.items, pile)).toBe(members.reduce((a, i) => a + i.tokens, 0));
+    expect(tokensRead(g, r.items, g.cards.get('web')!)).toBe(r.items.find((i) => i.cardId === 'web')!.tokens);
+    expect(tokensRead(g, r.items, g.cards.get('csv')!)).toBeNull();
+    expect(tokensRead(g, [], pile)).toBeNull();
+  });
+
+  it('a hidden or left-out item is not a read figure', () => {
+    const hidden = r.items.map((i) => (i.cardId === 'web' ? { ...i, hidden: true } : i));
+    expect(tokensRead(g, hidden, g.cards.get('web')!)).toBeNull();
+  });
+
+  it('foldPiles turns members into their pile, once', () => {
+    const read = r.items.filter(isRead).map((i) => g.cards.get(i.cardId)!);
+    const folded = foldPiles(g, read);
+    expect(folded.map((c) => c.id)).toEqual(['web', 'interviews', ...folded.map((c) => c.id).slice(2)]);
+    expect(folded.length).toBe(countSources(g, r.items));
+  });
 });

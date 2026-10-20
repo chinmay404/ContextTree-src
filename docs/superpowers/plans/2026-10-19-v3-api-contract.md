@@ -195,3 +195,34 @@ interface EngineApi {
 }
 class ApiError extends Error { status: number; code: string }   // thrown by both implementations
 ```
+
+## Amendment 2026-10-20: citations and source passages (owner request)
+
+Owner: "even if user click any citation we can open it at right with exact text they have referred to". Today the
+board's "N of M cited" and the quote block are decoration (the first read sources), not real citations; they are
+removed until this lands.
+
+```ts
+interface Citation {
+  n: number;              // the marker number used in the answer text: "[n]"
+  cardId: Id;             // the source card (or the chat whose answer was read)
+  loc: string | null;     // the passage locator, e.g. "p. 4", "§ 2", "rows 1–50"
+  page: number | null;    // 1-based PDF page when known
+  quote: string;          // the passage text as stored (≤ 1200 chars); the prompt copy has bracketed numbers like [12] rewritten as (12)
+}
+interface Message { /* … */ citations?: Citation[] }        // assistant messages; only markers the answer used, by n
+type StreamEvent = /* … */ | { type: 'citations'; citations: Citation[] };
+interface Passage { loc: string | null; page: number | null; text: string }
+// EngineApi
+getPassages(cardId: Id): Promise<Passage[]>;
+```
+
+- The engine numbers every passage block it puts in the prompt (file chunks, notes, linked answers) as `[1]`, `[2]`, …
+  and tells the model to cite with those markers right after the claim they support. `[2, 3]` is written as `[2][3]`.
+- After the last delta and before `[DONE]` the stream sends one frame `data: {"citations":[…]}` with the markers the
+  answer actually used that map to a sent passage (unknown numbers are dropped). The same list is stored with the
+  assistant message and returned by `GET …/messages`. No citations → the frame is `[]`.
+- `GET /files/{cardId}/passages` → 200 `{ passages: Passage[] }` in document order, for the user's own pdf, doc, web
+  and csv sources; 400 `invalid` for other kinds; 404 if not theirs. The side panel uses it for text sources; PDFs
+  render the original via `GET /files/{cardId}/raw` and highlight `quote` on `page`.
+- Fake-LLM mode emits `[1]` after its first sentence when any passage was sent, so tests have a citation.
