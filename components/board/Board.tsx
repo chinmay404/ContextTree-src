@@ -29,7 +29,8 @@ import { FocusView } from './chrome/FocusView';
 import { runEscape } from './chrome/escape';
 import { SourceViewer } from './chrome/SourceViewer';
 import { Toast } from './chrome/Toast';
-import { TrailBar } from './chrome/TrailBar';
+// import { TrailBar } from './chrome/TrailBar';   // Trail is parked while ChatBar holds the bottom centre
+import { ChatBar } from './chrome/ChatBar';
 import { WelcomeTour } from './chrome/WelcomeTour';
 import { ZoomControl } from './chrome/ZoomControl';
 
@@ -108,7 +109,8 @@ function Chrome(): ReactElement {
       )}
       {snap.status === 'ready' && (
         <>
-          <TrailBar />
+          {/* <TrailBar /> */}
+          <ChatBar />
           <ZoomControl />
           <AddMenu />
           <DropOverlay />

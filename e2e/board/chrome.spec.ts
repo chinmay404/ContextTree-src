@@ -14,7 +14,8 @@ test('resizing the window fits the board again', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 700 }); await page.waitForTimeout(900);
   expect(await page.evaluate(() => window.__board!.cam().z)).toBeLessThan(1.1);
 });
-test('the trail shows the path and flies to a step', async ({ page }) => {
+// The Trail is parked (ChatBar took its place, Board.tsx); re-enable when it comes back.
+test.skip('the trail shows the path and flies to a step', async ({ page }) => {
   await openBoard(page);
   await expect(page.locator('[data-pb="trail"]')).toContainText('Pick a chat to see the questions that led to it.');
   await page.evaluate(() => window.__board!.select('deep'));
@@ -60,4 +61,17 @@ test('N and Q are ignored while the board menu has focus', async ({ page }) => {
   expect(await page.locator('.card').count()).toBe(n);
   expect(await page.evaluate(() => window.__board!.dialog())).toBeNull();
   await page.keyboard.press('Escape'); await expect(page.locator('[data-pb="brand"] .lg')).toBeFocused();
+});
+test('the chat box takes typing without firing board keys', async ({ page }) => {
+  await openBoard(page);
+  const box = page.locator('[data-pb="chatbar"] textarea');
+  await expect(box).toBeVisible();
+  await expect(page.locator('[data-pb="chatbar"] .cb-send')).toBeDisabled();
+  const cards = await page.locator('.card[data-id]').count();
+  await box.click(); await page.keyboard.type('quick note');
+  await expect(box).toHaveValue('quick note');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await page.locator('.card[data-id]').count()).toBe(cards);
+  await page.keyboard.press('Enter');   // not wired yet: the text stays
+  await expect(box).toHaveValue('quick note');
 });
