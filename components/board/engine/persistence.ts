@@ -39,38 +39,51 @@ export class SettleTimer {
 /** Position and viewport saves after the springs settle. */
 export function createPersistence(ctx: EngineContext): PersistenceModule {
   const moved = () => collectMoved(ctx.nodes.values(), ctx.store.graph().cards);
-  const positions = new SettleTimer(600, () => {
+  const flushPositions = () => {
     const all = moved();
     for (let i = 0; i < all.length; i += CHUNK) ctx.store.savePositions(all.slice(i, i + CHUNK));
-  });
+  };
+  const positions = new SettleTimer(600, flushPositions);
 
   const cam = () => ({ x: ctx.camera.x.t, y: ctx.camera.y.t, zoom: ctx.camera.z.t });
-  let base = cam();
-  let prev = base;   // camera right after mount/fit: mount itself never saves
-  const viewport = new SettleTimer(1000, () => {
+  const same = (a: { x: number; y: number; zoom: number }, b: { x: number; y: number; zoom: number }) =>
+    Math.abs(a.x - b.x) <= MOVE_EPS && Math.abs(a.y - b.y) <= MOVE_EPS && Math.abs(a.zoom - b.zoom) <= .001;
+  const flushViewport = () => {
     const v = cam();
-    if (Math.abs(v.x - base.x) <= MOVE_EPS && Math.abs(v.y - base.y) <= MOVE_EPS && Math.abs(v.zoom - base.zoom) <= .001) return;
+    if (same(v, base)) return;
     base = v;
     ctx.store.saveViewport({ x: round1(v.x), y: round1(v.y), zoom: Math.round(v.zoom * 1000) / 1000 });
-  });
+  };
+  let base = cam();       // the camera the server already has (set explicitly: mount, each save)
+  let prevCam = base;     // camera targets on the previous frame: a change is activity even when springs snap
+  const prevCard = new Map<string, [number, number]>();   // card spring targets on the previous frame
+  const viewport = new SettleTimer(1000, flushViewport);
 
   return {
+    resetViewportBase() { base = cam(); prevCam = base; },
     frame() {
       let active = false;
+      const seen = new Set<string>();
       for (const n of ctx.nodes.values()) {
-        if (n.dragging || !n.px.settled() || !n.py.settled()) { active = true; break; }
+        seen.add(n.id);
+        const p = prevCard.get(n.id);
+        if (p && (p[0] !== n.px.t || p[1] !== n.py.t)) active = true;   // reduced motion snaps: the target moved
+        prevCard.set(n.id, [n.px.t, n.py.t]);
+        if (n.dragging || !n.px.settled() || !n.py.settled()) active = true;
       }
+      for (const id of prevCard.keys()) if (!seen.has(id)) prevCard.delete(id);
       positions.frame(active);
-      const c = ctx.camera;
+      const c = ctx.camera, now = cam();
+      const camMoved = now.x !== prevCam.x || now.y !== prevCam.y || now.zoom !== prevCam.zoom;
+      prevCam = now;
       // a pan drag snaps the camera (springs at rest), so a held pan counts as activity too
-      const camActive = !c.x.settled() || !c.y.settled() || !c.z.settled(.002) || ctx.viewport.classList.contains('panning');
-      if (!camActive && !viewport.pending) base = cam();   // snaps (mount, fit(false)) move the baseline silently
-      viewport.frame(camActive);
+      viewport.frame(camMoved || !c.x.settled() || !c.y.settled() || !c.z.settled(.002) || ctx.viewport.classList.contains('panning'));
     },
     isDirty(id) {
       const n = ctx.nodes.get(id), c = ctx.store.graph().cards.get(id);
       return !!n && !!c && (Math.abs(n.px.t - c.x) > MOVE_EPS || Math.abs(n.py.t - c.y) > MOVE_EPS);
     },
-    dispose() {},
+    /** Flush synchronously so a board switch inside the settle window loses nothing. */
+    dispose() { flushPositions(); flushViewport(); },
   };
 }

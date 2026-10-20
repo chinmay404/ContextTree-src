@@ -322,6 +322,7 @@ export class BoardEngine {
     this.ctx.nodes.forEach((n) => { n.h = n.el.offsetHeight; });
     const v = this.store.getSnapshot().board?.viewport;
     if (v) this.camSnap(v.x, v.y, v.zoom); else this.fit(false);
+    this.ctx.modules.persistence.resetViewportBase();   // mount itself never saves
     this.place();
   }
 
