@@ -64,7 +64,8 @@ export function BoardInput(): null {
     };
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || typing(e.target) || overlayOpen(ui())) return;
+      if (e.defaultPrevented || e.key === 'Escape' || typing(e.target) || overlayOpen(ui())) return;
+      if (e.target instanceof Element && e.target.closest('[data-pb="boardmenu"]')) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key.toLowerCase();
       if (e.key === 'Enter') {

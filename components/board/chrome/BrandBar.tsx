@@ -16,6 +16,8 @@ export function BrandBar(): ReactElement {
 
   const [editing, setEditing] = useState(false);
   const inRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLButtonElement>(null);
+  const refocusTitle = useRef(false);
   const done = useRef(false);
 
   const [open, setOpen] = useState(false);
@@ -24,19 +26,25 @@ export function BrandBar(): ReactElement {
   const logoRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const returnFocus = useRef(false);
+  const openRef = useRef(false);
+  openRef.current = open;
 
-  useEscape(editing, () => { done.current = true; setEditing(false); });
+  useEscape(editing, () => { done.current = true; refocusTitle.current = true; setEditing(false); });
   useEscape(open, () => { returnFocus.current = true; setOpen(false); });
 
   useLayoutEffect(() => {
-    if (!editing) return;
+    if (!editing) {
+      if (refocusTitle.current) { refocusTitle.current = false; titleRef.current?.focus({ preventScroll: true }); }
+      return;
+    }
     done.current = false;
     inRef.current?.focus({ preventScroll: true });
     inRef.current?.select();
   }, [editing]);
 
-  const commit = () => {
+  const commit = (viaKey = false) => {
     if (done.current) return;
+    if (viaKey) refocusTitle.current = true;
     done.current = true;
     const v = inRef.current?.value.trim() ?? '';
     setEditing(false);
@@ -58,7 +66,7 @@ export function BrandBar(): ReactElement {
   }, [open, api]);
 
   useLayoutEffect(() => {
-    if (open) { menuRef.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true }); return; }
+    if (open) { returnFocus.current = false; menuRef.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true }); return; }
     if (!returnFocus.current) return;
     returnFocus.current = false;
     const a = document.activeElement;
@@ -73,7 +81,7 @@ export function BrandBar(): ReactElement {
     try {
       const id = newId('b');
       await api.createBoard({ id, title: 'Untitled board' });
-      close();
+      if (openRef.current) close();
       onOpenBoard?.(id);
     } catch {
       store.toast("Couldn't create a board. Try again.");
@@ -99,10 +107,9 @@ export function BrandBar(): ReactElement {
         <b>Context Tree</b>
         {editing ? (
           <input ref={inRef} className="bt" defaultValue={title} aria-label="Board title" maxLength={120} autoComplete="off"
-            onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }} />
+            onBlur={() => commit()} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(true); } }} />
         ) : (
-          <span className="bt" role="button" tabIndex={board ? 0 : -1} title="Rename this board" onClick={() => board && setEditing(true)}
-            onKeyDown={(e) => { if (board && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setEditing(true); } }}>{title}</span>
+          <button ref={titleRef} type="button" className="bt" disabled={!board} title="Rename this board" onClick={() => setEditing(true)}>{title}</button>
         )}
       </div>
       <div ref={menuRef} className={`menu${open ? ' on' : ''}`} data-pb="boardmenu" role="menu" style={{ left: 16, top: 72 }}
@@ -116,9 +123,11 @@ export function BrandBar(): ReactElement {
         ))}
         {boards && boards.length === 0 && <div className="empty">No boards yet.</div>}
         <div className="sep" role="separator" />
-        <button type="button" role="menuitem" data-m="new" disabled={busy} onClick={() => { void create(); }}>
-          <span className="c"><Icon name="plus" /></span>New board
-        </button>
+        {onOpenBoard && (
+          <button type="button" role="menuitem" data-m="new" disabled={busy} onClick={() => { void create(); }}>
+            <span className="c"><Icon name="plus" /></span>New board
+          </button>
+        )}
         {onOpenSettings && (
           <button type="button" role="menuitem" data-m="keys" onClick={() => { close(); onOpenSettings(); }}>
             <span className="c"><Icon name="sliders-horizontal" /></span>API keys
