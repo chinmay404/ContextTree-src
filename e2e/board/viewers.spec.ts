@@ -98,7 +98,7 @@ test('a pile member can be switched off from the viewer', async ({ page }) => {
   await row.locator('[data-memoff]').click();
   expect(await page.evaluate(() => (window.__board!.card('interviews_2')!.data as { off?: boolean }).off)).toBe(true);
   await expect(row).toHaveClass(/off/); await expect(row.locator('[data-memoff]')).toHaveAttribute('aria-checked', 'false');
-  await expect(foot).toContainText(`${before - 1} source`);
+  await expect(foot).toContainText(`${before} source`);   // a pile counts once, whichever members are on
   await row.locator('[data-memoff]').click(); await expect(row).not.toHaveClass(/off/);
 });
 

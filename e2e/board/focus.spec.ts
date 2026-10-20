@@ -228,3 +228,14 @@ test('the compare sheet makes the focus view inert', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(page.locator(F)).toHaveJSProperty('inert', false);
 });
+
+test('a pile counts as one source: the card face and the focus view agree for Q1.2', async ({ page }) => {
+  await openBoard(page);
+  // second reads web + the 4-file pile on its desk (2 own) and pdf + note from above (2; the soon video is not read)
+  const foot = (await page.locator('[data-id="second"] .cfoot').innerText()).replace(/\s+/g, ' ');
+  expect(foot).toContain('2 sources · 2 from above');
+  const face = Number(/(\d+) source/.exec(foot)![1]) + Number(/(\d+) from above/.exec(foot)![1]);
+  await openFocus(page, 'second');
+  await expect(page.locator(`${F} .ph .cnt`).first()).toHaveText(String(face));
+  await expect(page.locator(`${F} .fmeta`)).toContainText(`${face} sources`);
+});

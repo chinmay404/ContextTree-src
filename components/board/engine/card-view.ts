@@ -7,7 +7,7 @@ import { FAMC, TYPE_INFO, modelInfo, personaLabel } from '../lib/catalog';
 import { cut, esc } from '../lib/format';
 import { answersInto, chatData, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, tokensOf, wiresInto, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
-import { isRead } from '../lib/reads';
+import { countSources, isRead } from '../lib/reads';
 import { icon } from './icons';
 import type { BoardStore } from '../store';
 import type { EngineContext, ViewNode } from './types';
@@ -122,7 +122,7 @@ export class CardView {
     const g = this.g, d = chatData(c), store = this.ctx.store, m = modelInfo(d.model);
     if (this.ctx.size() === 'S' || d.demoted) return `<div class="face" title="${esc(d.name)}"><div class="s blob"><span class="mdot" style="--c:${esc(m.color)}"></span></div></div>`;
     const items = store.readsOf(c.id).items, read = items.filter(isRead);
-    const own = read.filter((i) => !i.inherited).length, up = read.filter((i) => i.inherited).length;
+    const own = countSources(g, read, false), up = countSources(g, read, true), nRead = countSources(g, read);
     const readCards = read.map((i) => g.cards.get(i.cardId)).filter((x): x is Card => !!x);
     const snap = store.getSnapshot(), msgs: Message[] = snap.messages.get(c.id) ?? [], stream = snap.streaming.get(c.id);
     const streaming = store.isStreaming(c.id);
@@ -130,7 +130,7 @@ export class CardView {
     let live = '';
     if (stream?.error) live = `<p class="err">${esc(stream.error)}</p>`;
     else if (stream && stream.text) live = `<div class="ans live">${renderMarkdown(stream.text)}</div>`;
-    else if (streaming) live = `<div class="thinking"><i></i>Thinking with ${read.length} source${read.length === 1 ? '' : 's'}…</div><div class="skel"><i style="width:92%"></i><i style="width:76%"></i><i style="width:84%"></i></div>`;
+    else if (streaming) live = `<div class="thinking"><i></i>Thinking with ${nRead} source${nRead === 1 ? '' : 's'}…</div><div class="skel"><i style="width:92%"></i><i style="width:76%"></i><i style="width:84%"></i></div>`;
     const stale = chatStale(store, c.id);
     const ap = (a: string, ico: string, label: string) => `<button class="apill" data-act="${a}">${icon(ico)}${label}</button>`;
     const incoming = !!c.parentId || answersInto(g, c.id).length > 0 || wiresInto(g, c.id).length > 0;

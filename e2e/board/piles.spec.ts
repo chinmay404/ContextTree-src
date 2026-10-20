@@ -41,11 +41,17 @@ test('Unpile puts the members back on the board', async ({ page }) => {
   expect(await page.evaluate(() => window.__board!.card('interviews_1')!.deskId)).toBe('second');
 });
 
-test('switching a member off removes it from what the chat reads', async ({ page }) => {
+test('switching a member off removes it from what the chat reads (the pile still counts as one source)', async ({ page }) => {
   await openBoard(page); await page.evaluate(() => { window.__board!.select(null); window.__board!.camSnap(-500, 0, .9); }); await page.waitForTimeout(300);
   const foot = page.locator('[data-id="second"] .cfoot'); const num = async () => +(/^(\d+) source/.exec(await foot.innerText())?.[1] ?? NaN); const before = await num();
+  const tokens = async () => { await page.evaluate(() => window.__board!.openFocus('second')); await page.waitForTimeout(500);
+    const t = Number(/([\d.]+)k tokens/.exec(await page.locator('[data-pb="focus"] .fmeta').innerText())![1]);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(500); return t; };
+  const tok0 = await tokens();
   await page.locator('[data-id="interviews"]').hover(); await page.locator('[data-id="interviews"] [data-act="expand"]').click();
   await page.locator('[data-id="interviews"] [data-mem="1"]').click();
   expect(await page.evaluate(() => (window.__board!.card('interviews_2')!.data as { off?: boolean }).off)).toBe(true);
-  await expect.poll(num).toBe(before - 1);
+  await page.waitForTimeout(300);
+  expect(await num()).toBe(before);                 // the pile is still one source
+  expect(await tokens()).toBeLessThan(tok0);        // but the member's tokens are no longer read
 });
