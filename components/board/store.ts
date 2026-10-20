@@ -77,6 +77,7 @@ function errorText(err: unknown, ctx: ErrCtx): string {
 }
 
 class Silent extends Error {}
+class UnpileFailed extends Error {}
 
 const CHANGE_KEYS = ['data', 'status', 'deskId', 'pileId', 'parentId', 'created', 'messageCount', 'lastMessage'];
 const TITLE_LATCH_MS = 5000;
@@ -128,7 +129,7 @@ export class BoardStore {
   private titleTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly streams = new Map<Id, { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null }>();
   private readonly aborts = new Map<Id, AbortController>();
-  private readonly deleted = new Map<Id, { ids: Id[]; roots: Id[]; edges: Edge[]; done: Promise<boolean>; dissolved?: { pile: Card; members: Id[] } }>();
+  private readonly deleted = new Map<Id, { ids: Id[]; roots: Id[]; edges: Edge[]; done: Promise<boolean>; dissolved?: { pile: Card; members: Id[]; added: Id[]; gone: Edge[] } }>();
   private probe: ViewProbe | null = null;
   private disposed = false;
 
@@ -726,7 +727,7 @@ export class BoardStore {
 
   // ---- edges ----
 
-  connect(kind: 'wire' | 'answer', from: Id, to: Id): Id | null {
+  connect(kind: 'wire' | 'answer', from: Id, to: Id, opts: { quiet?: boolean } = {}): Id | null {
     const f = this.cards.get(from);
     const g = this.graph();
     if (!f) return null;
@@ -742,8 +743,8 @@ export class BoardStore {
     this.emit([{ kind: 'edge', id }]);
     const p = (async (): Promise<boolean> => {
       try {
-        const waits = [this.pendingCards.get(from), this.pendingCards.get(to)].filter((x): x is Promise<boolean> => !!x);
-        if (waits.length && !(await Promise.all(waits)).every(Boolean)) throw new Silent();
+        const waits = [this.pendingCards.get(from), this.pendingCards.get(to), this.patchQueue.get(from)].filter((x): x is Promise<boolean> => !!x);
+        if (waits.length && !(await Promise.all(waits)).every(Boolean)) throw new Silent();   // e.g. the member's unpile PATCH must land first
         const res = await this.track(this.api.createEdge(this.boardId, { id, kind, from, to }));
         if (this.edges.has(id)) {
           const old = this.edges.get(id)!;
@@ -757,7 +758,7 @@ export class BoardStore {
           this.markStale(this.chatAndDesc(to));
           this.emit([{ kind: 'edge-removed', id }]);
         }
-        if (!(e instanceof Silent)) this.toast(errorText(e, 'edge'));
+        if (!(e instanceof Silent) && !opts.quiet) this.toast(errorText(e, 'edge'));
         return false;
       }
     })();
@@ -845,9 +846,9 @@ export class BoardStore {
   }
 
   /** `done` resolves true once the members are loose and the pile is deleted on the server; false when it had to be put back. */
-  private unstackOps(pileId: Id, spots: [number, number][]): { ids: Id[]; done: Promise<boolean> } {
+  private unstackOps(pileId: Id, spots: [number, number][], carryTo?: Id[]): { ids: Id[]; done: Promise<boolean>; added: Id[]; gone: Edge[] } {
     const pile = this.cards.get(pileId);
-    if (!pile) return { ids: [], done: Promise.resolve(false) };
+    if (!pile) return { ids: [], done: Promise.resolve(false), added: [], gone: [] };
     const members = membersOf(this.graph(), pileId);
     const wires = [...this.edges.values()].filter((e) => e.kind === 'wire' && e.from === pileId);
     const moved: { id: Id; x: number; y: number }[] = [];
@@ -859,7 +860,8 @@ export class BoardStore {
       ops.push(this.patch(m.id, { pileId: null, deskId: pile.deskId }));
     });
     const added: Id[] = [];
-    for (const e of wires) for (const m of members) { const id = this.connect('wire', m.id, e.to); if (id) added.push(id); }
+    // The pile's strings move to the members (or just those in `carryTo`); an error there never speaks over the caller's toast.
+    for (const e of wires) for (const m of members) { if (carryTo && !carryTo.includes(m.id)) continue; const id = this.connect('wire', m.id, e.to, { quiet: true }); if (id) added.push(id); }
 
     const gone = [...this.edges.values()].filter((e) => e.kind !== 'lineage' && (e.from === pileId || e.to === pileId));
     const before = this.affected(pileId);
@@ -902,7 +904,7 @@ export class BoardStore {
       }
       return true;
     })();
-    return { ids: members.map((m) => m.id), done };
+    return { ids: members.map((m) => m.id), done, added, gone };
   }
 
   // ---- positions, viewport, title ----
@@ -1241,9 +1243,9 @@ export class BoardStore {
     if (pile && c.pile.count <= 2) {   // one would be left alone in a pile: unpile first, then remove the front member
       const ms = membersOf(this.graph(), c.cardId);
       const spots = ms.map((m): [number, number] => (m.id === c.pile!.frontId ? [pile.x + 24, pile.y + 96] : [pile.x, pile.y]));
-      const u = this.unstackOps(c.cardId, spots);
+      const u = this.unstackOps(c.cardId, spots, ms.filter((m) => m.id !== c.pile!.frontId).map((m) => m.id));   // strings go to the member that stays
       // The member goes only once the unpile went through; Undo puts the pile back whole.
-      await this.deleteSet(c.pile.frontId, [], { after: u.done, dissolved: { pile, members: u.ids } });
+      await this.deleteSet(c.pile.frontId, [], { after: u.done, dissolved: { pile, members: u.ids, added: u.added, gone: u.gone } });
       return;
     }
     await this.deleteSet(c.pile.frontId);
@@ -1253,7 +1255,7 @@ export class BoardStore {
    * Hides the set at once, then tells the server; a failed delete brings everything back.
    * `extra`: more cards removed with the root (a pile's members), each deleted on the server before the root.
    */
-  private deleteSet(root: Id, extra: Id[] = [], opts: { after?: Promise<boolean>; dissolved?: { pile: Card; members: Id[] } } = {}): Promise<boolean> {
+  private deleteSet(root: Id, extra: Id[] = [], opts: { after?: Promise<boolean>; dissolved?: { pile: Card; members: Id[]; added: Id[]; gone: Edge[] } } = {}): Promise<boolean> {
     const card = this.cards.get(root);
     if (!card) return Promise.resolve(false);
     const g = this.graph();
@@ -1322,7 +1324,7 @@ export class BoardStore {
       const sent: Id[] = [];
       try {
         if (patches.length) await Promise.all(patches);
-        if (opts.after && !(await opts.after)) throw new Silent();
+        if (opts.after && !(await opts.after)) throw new UnpileFailed();
         if (!(await this.created(ids))) { dropOverrides(); return false; }
         if (moved.length) { try { await this.track(this.api.savePositions(this.boardId, moved)); } catch { /* the delete still goes ahead */ } }
         for (const r of roots) {
@@ -1356,8 +1358,8 @@ export class BoardStore {
           ...detach.map((c): StoreChange => ({ kind: 'card', id: c.id, fields: ['deskId', 'pileId'] })),
           ...edges.map((ed): StoreChange => ({ kind: 'edge', id: ed.id })),
         ]);
+        if (e instanceof Silent || e instanceof UnpileFailed) { if (this.ui.toast?.undoCardId === root) this.dismissToast(); }   // nothing was deleted: no Undo to offer
         if (!(e instanceof Silent)) this.toast(errorText(e, 'other'));
-        else if (this.ui.toast?.undoCardId === root) this.dismissToast();   // nothing was deleted: no Undo to offer
         return false;
       }
     })();
@@ -1379,9 +1381,12 @@ export class BoardStore {
       catch (e) { failed.push(r); err = e; }
     }
     const dis = rec.dissolved;
-    if (dis && !failed.length) {   // a pile that was unpiled to remove one member comes back as it was
-      try { await this.track(this.api.restoreCard(this.boardId, dis.pile.id)); this.hiddenCards.delete(dis.pile.id); }
-      catch (e) { err = e; }
+    if (dis && !failed.length) {   // a pile that was unpiled to remove one member comes back as it was, with its own strings
+      try {
+        await this.track(this.api.restoreCard(this.boardId, dis.pile.id));
+        this.hiddenCards.delete(dis.pile.id);
+        for (const e of dis.gone) this.hiddenEdges.delete(e.id);
+      } catch (e) { err = e; }
     }
     this.deleted.delete(id);
     for (const x of restored) this.hiddenCards.delete(x);
@@ -1396,10 +1401,11 @@ export class BoardStore {
     }
     if (dis && !failed.length && this.cards.has(dis.pile.id)) {
       await Promise.all(dis.members.map((m) => this.patch(m, { pileId: dis.pile.id, deskId: null })));
+      for (const id of dis.added) this.disconnect(id);   // the strings carried to the members give way to the pile's own
     }
     if (failed.length) {
       // The ones that did not come back keep an Undo of their own.
-      this.deleted.set(failed[0], { ids: failed, roots: failed, edges: [], done: Promise.resolve(true) });
+      this.deleted.set(failed[0], { ids: rec.ids, roots: failed, edges: rec.edges, done: Promise.resolve(true), dissolved: rec.dissolved });
       this.toast(errorText(err, 'other'), failed[0]);
     }
   }

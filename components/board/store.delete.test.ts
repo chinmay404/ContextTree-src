@@ -1,5 +1,5 @@
 import { ApiError, type Reads, type SourceData } from './api/types';
-import { tokensRead } from './lib/reads';
+import { countSources, tokensRead } from './lib/reads';
 import { MockEngineApi } from './api/mock/mock-engine-api';
 import { BoardStore } from './store';
 
@@ -203,5 +203,88 @@ describe('R1 review round 1', () => {
     expect(board.cards.filter((c) => c.id.startsWith('interviews_'))).toHaveLength(2);
     expect(live().filter((c) => c.id.startsWith('interviews_'))).toHaveLength(2);
     expect(live().filter((c) => c.pileId === 'interviews')).toHaveLength(2);
+  });
+});
+
+
+describe('R1 review round 2', () => {
+  const reduceToTwo = async () => {
+    for (let i = 0; i < 2; i++) { s.requestDelete('interviews'); await s.confirmDelete('one'); await flush(); }
+  };
+  const wiresTo = async (to: string) => ({
+    local: [...snap().edges.values()].filter((e) => e.kind === 'wire' && e.to === to && e.from.startsWith('interviews')).map((e) => e.from).sort(),
+    server: (await m.getBoard('b_seed')).edges.filter((e) => e.kind === 'wire' && e.to === to && e.from.startsWith('interviews')).map((e) => e.from).sort(),
+  });
+  const readsOfMain = () => {
+    const r = s.readsOf('main');
+    return { items: r.items.filter((i) => i.cardId.startsWith('interviews')).map((i) => `${i.cardId}/${i.how}`).sort(), count: countSources(s.graph(), r.items) };
+  };
+
+  it('I-A: Delete one on a strung pile of two strings the staying member, keeps the Undo toast, and Undo puts the pile string back', async () => {
+    await reduceToTwo();
+    s.connect('wire', 'interviews', 'main'); await flush();
+    const before = { wires: await wiresTo('main'), reads: readsOfMain() };
+    expect(before.wires.local).toEqual(['interviews']);
+    s.requestDelete('interviews'); await s.confirmDelete('one'); await flush();
+    expect(snap().ui.toast).toMatchObject({ undoCardId: 'interviews_3' });
+    expect(snap().ui.toast!.text).toMatch(/^Removed /);
+    const mid = await wiresTo('main');
+    expect(mid.local).toEqual(['interviews_4']);
+    expect(mid.server).toEqual(['interviews_4']);          // never the removed member
+    await s.undo(); await flush();
+    expect((await wiresTo('main'))).toEqual(before.wires);   // the pile's own string, no member strings, here and on the server
+    expect(readsOfMain()).toEqual(before.reads);
+  });
+
+  it('plain unpile of a strung pile keeps its strings on the members, on the server too', async () => {
+    s.connect('wire', 'interviews', 'main'); await flush();
+    s.unstack('interviews', [[1000, 400], [1100, 400], [1200, 400], [1300, 400]]); await flush();
+    const w = await wiresTo('main');
+    expect(w.local).toEqual(['interviews_1', 'interviews_2', 'interviews_3', 'interviews_4']);
+    expect(w.server).toEqual(w.local);
+    expect(snap().ui.toast).toBeNull();
+  });
+
+  it('Minor 1+2: a retried Undo brings back the chat edges and the dissolved pile', async () => {
+    class Eng extends MockEngineApi {
+      failRestore = '';
+      async restoreCard(b: string, id: string): Promise<string[]> { if (id === this.failRestore) { this.failRestore = ''; throw new ApiError(500, 'internal'); } return super.restoreCard(b, id); }
+    }
+    const e = new Eng({ ingestMs: 10, firstTokenMs: 0, wordMs: 0 });
+    const st = new BoardStore(e, 'b_seed', { readsDebounceMs: 5, toastMs: 10000 });
+    await st.load();
+    const edgesOf = () => [...st.getSnapshot().edges.values()].filter((x) => x.from === 'deep' || x.to === 'deep').map((x) => `${x.kind}:${x.from}->${x.to}`).sort();
+    const before = edgesOf();
+    expect(before.length).toBeGreaterThan(0);
+    st.requestDelete('deep'); await st.confirmDelete(); await flush();
+    e.failRestore = 'deep'; await st.undo(); await flush();
+    await st.undo(); await flush();
+    expect(st.getSnapshot().cards.has('deep')).toBe(true);
+    expect(edgesOf()).toEqual(before);
+    st.dispose();
+  });
+
+  it('Minor 2: a retried Undo of Delete one on a pile of two restores the pile', async () => {
+    class Eng extends MockEngineApi {
+      failRestore = '';
+      async restoreCard(b: string, id: string): Promise<string[]> { if (id === this.failRestore) { this.failRestore = ''; throw new ApiError(500, 'internal'); } return super.restoreCard(b, id); }
+    }
+    const e = new Eng({ ingestMs: 10, firstTokenMs: 0, wordMs: 0 });
+    const st = new BoardStore(e, 'b_seed', { readsDebounceMs: 5, toastMs: 10000 });
+    await st.load();
+    for (let i = 0; i < 3; i++) { st.requestDelete('interviews'); await st.confirmDelete('one'); await flush(); }
+    e.failRestore = 'interviews_3'; await st.undo(); await flush();
+    await st.undo(); await flush();
+    const cs = [...st.getSnapshot().cards.values()];
+    expect(cs.some((c) => c.id === 'interviews')).toBe(true);
+    expect(cs.filter((c) => c.pileId === 'interviews').map((c) => c.id).sort()).toEqual(['interviews_3', 'interviews_4']);
+    st.dispose();
+  });
+
+  it('Minor 3: when the unpile fails, Delete one says so', async () => {
+    await reduceToTwo();
+    m.failNext('updateCard', new ApiError(500, 'internal'));
+    s.requestDelete('interviews'); await s.confirmDelete('one'); await flush();
+    expect(snap().ui.toast?.text).toBe("Couldn't save that. Try again.");
   });
 });

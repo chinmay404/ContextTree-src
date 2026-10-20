@@ -50,6 +50,8 @@ export class BoardEngine {
   private related: Set<Id> | null = null;
   private lastSelected: Id | null = null;
   private lastReadBy = '|';
+  /** Source cards whose read state (the "reading" glow, the token figure) changed but whose face did not. */
+  private readonly liveSources = new Set<Id>();
   private pointer: PointerRouting | null = null;
   private ro: ResizeObserver | null = null;
   private unsub: (() => void) | null = null;
@@ -221,7 +223,10 @@ export class BoardEngine {
     for (const ch of changes) {
       switch (ch.kind) {
         case 'card': this.cardChanged(ch.id, ch.fields); break;
-        case 'card-removed': this.removeNode(ch.id, true); this.lastStatus.delete(ch.id); break;
+        case 'card-removed':
+          // A pile member is not drawn: its pile's face (count, front file) is what changes.
+          if (!this.ctx.nodes.has(ch.id)) for (const n of this.ctx.nodes.values()) if (n.isPile) this.dirty.add(n.id);
+          this.removeNode(ch.id, true); this.lastStatus.delete(ch.id); break;
         case 'edge': {
           const e = g.edges.get(ch.id);
           if (e) { this.edgeEnds.set(e.id, [e.from, e.to]); this.dirty.add(e.from); this.dirty.add(e.to); }
@@ -236,7 +241,7 @@ export class BoardEngine {
         case 'stream': this.streamDirty.add(ch.chatId); break;
         case 'reads':
           this.dirty.add(ch.chatId);
-          for (const n of this.ctx.nodes.values()) if (!n.isChat) this.dirty.add(n.id);
+          for (const n of this.ctx.nodes.values()) if (!n.isChat) this.liveSources.add(n.id);   // in place: a redraw here would eat a click
           break;
         case 'ui': break;
         case 'board': this.maybeStart(); break;
@@ -246,6 +251,7 @@ export class BoardEngine {
   }
 
   private cardChanged(id: Id, fields: string[]): void {
+    if (fields.length && fields.every((f) => f === 'updatedAt')) return;   // the server's answer to our own write: nothing on the face changed
     const c = this.store.graph().cards.get(id);
     if (!c) { this.removeNode(id, true); return; }
     if (c.pileId) {   // pile members are never drawn; the pile's face shows them
@@ -295,7 +301,7 @@ export class BoardEngine {
       if (now !== this.streaming.has(id)) {
         if (now) this.streaming.add(id); else this.streaming.delete(id);
         this.dirty.add(id);
-        for (const n of nodes.values()) if (!n.isChat) this.dirty.add(n.id);
+        for (const n of nodes.values()) if (!n.isChat) this.liveSources.add(n.id);
       } else if (!this.dirty.has(id)) {
         const n = nodes.get(id);
         if (n && !this.view.updateStream(n)) this.dirty.add(id);
@@ -327,6 +333,8 @@ export class BoardEngine {
 
     const dirty = this.dirty; this.dirty = new Set();
     for (const id of dirty) { const n = nodes.get(id); if (n) this.view.render(n); }
+    for (const id of this.liveSources) { const n = nodes.get(id); if (n && !dirty.has(id)) this.view.refreshLive(n); }
+    this.liveSources.clear();
     for (const n of nodes.values()) {
       if (dirty.has(n.id)) continue;
       n.el.classList.toggle('selected', n.id === sel);

@@ -66,3 +66,17 @@ test('an open card stays clickable when selecting a chat changes its token figur
   await page.click('[data-id="pdf"] .lfoot .done');                                 // ONE click
   await expect(page.locator('[data-id="pdf"] .lfoot')).toHaveCount(0);
 });
+
+test('an open card is not redrawn under a click when reads change', async ({ page }) => {
+  await openBoard(page);
+  await page.click('.card[data-id="main"] .ttl');
+  await page.hover('[data-id="pdf"] .face'); await page.click('[data-id="pdf"] [data-act="expand"]');
+  const desc = page.locator('[data-id="pdf"] .desc');
+  await desc.click(); await page.keyboard.type(' more');
+  await page.evaluate(() => { (window as unknown as { __cardEl: Element | null }).__cardEl = document.querySelector('[data-id="pdf"] .done'); });
+  await expect.poll(() => page.evaluate(() => window.__board!.calls().filter((c) => c.method === 'getReads').length), { timeout: 4000 }).toBeGreaterThan(4);   // the reads refresh after the patch
+  const same = await page.evaluate(() => (window as unknown as { __cardEl: Element | null }).__cardEl === document.querySelector('[data-id="pdf"] .done'));
+  expect(same).toBe(true);                                                         // the Done button element survived the reads event
+  await page.click('[data-id="pdf"] .lfoot .done');
+  await expect(page.locator('[data-id="pdf"] .lfoot')).toHaveCount(0);
+});

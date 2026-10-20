@@ -78,6 +78,15 @@ export class CardView {
     return t === null ? '' : `<span class="upill tk">${t}</span>`;
   }
 
+  /** Read state changed (reads arrived, a chat started or stopped answering): update classes and the figure without redrawing the face. */
+  refreshLive(n: ViewNode): void {
+    const c = this.g.cards.get(n.id);
+    if (!c) return;
+    const cls = this.classes(n, c);
+    if (n.el.className !== cls) n.el.className = cls;
+    this.refreshTokens(n);
+  }
+
   /** The figure follows the selected chat: change it in place, so a click that is landing on the open card is not lost to a redraw. */
   refreshTokens(n: ViewNode): void {
     const c = this.g.cards.get(n.id), foot = n.el.querySelector('.lfoot');
