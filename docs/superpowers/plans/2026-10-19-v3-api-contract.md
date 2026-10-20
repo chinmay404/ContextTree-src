@@ -208,7 +208,7 @@ interface Citation {
   cardId: Id;             // the source card (or the chat whose answer was read)
   loc: string | null;     // the passage locator, e.g. "p. 4", "§ 2", "rows 1–50"
   page: number | null;    // 1-based PDF page when known
-  quote: string;          // the exact passage text the engine sent to the model (≤ 1200 chars)
+  quote: string;          // the passage text as stored (≤ 1200 chars); the prompt copy has bracketed numbers like [12] rewritten as (12)
 }
 interface Message { /* … */ citations?: Citation[] }        // assistant messages; only markers the answer used, by n
 type StreamEvent = /* … */ | { type: 'citations'; citations: Citation[] };
