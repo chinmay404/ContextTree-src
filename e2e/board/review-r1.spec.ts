@@ -52,3 +52,17 @@ for (const [act, check] of [['del', 'Removed'], ['view', 'viewer']] as const) {
     expect(errs).toEqual([]);
   });
 }
+
+test('an open card stays clickable when selecting a chat changes its token figure', async ({ page }) => {
+  await openBoard(page);
+  await page.click('.card[data-id="main"] .ttl');
+  await expect.poll(() => page.evaluate(() => window.__board!.selected())).toBe('main');
+  await page.hover('[data-id="pdf"] .face'); await page.click('[data-id="pdf"] [data-act="expand"]');
+  await expect(page.locator('[data-id="pdf"] .lfoot .upill.tk')).toHaveCount(1);
+  await page.locator('[data-id="pdf"] .desc').click();
+  await expect(page.locator('[data-id="pdf"] .desc')).toBeFocused();
+  await expect(page.locator('[data-id="pdf"] .lfoot .upill.tk')).toHaveCount(0);   // pdf itself is selected now: no chat reads
+  await page.click('.card[data-id="main"] .ttl');
+  await page.click('[data-id="pdf"] .lfoot .done');                                 // ONE click
+  await expect(page.locator('[data-id="pdf"] .lfoot')).toHaveCount(0);
+});

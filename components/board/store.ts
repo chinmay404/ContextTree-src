@@ -128,7 +128,7 @@ export class BoardStore {
   private titleTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly streams = new Map<Id, { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null }>();
   private readonly aborts = new Map<Id, AbortController>();
-  private readonly deleted = new Map<Id, { ids: Id[]; roots: Id[]; edges: Edge[]; done: Promise<boolean> }>();
+  private readonly deleted = new Map<Id, { ids: Id[]; roots: Id[]; edges: Edge[]; done: Promise<boolean>; dissolved?: { pile: Card; members: Id[] } }>();
   private probe: ViewProbe | null = null;
   private disposed = false;
 
@@ -392,6 +392,11 @@ export class BoardStore {
     if (!this.disposed && this.staleReads.size && !this.readsTimer && this.inflight > 0) {
       this.readsTimer = setTimeout(() => { this.readsTimer = null; void this.flushReads(); }, this.readsDebounceMs);
     }
+  }
+
+  /** The engine's own reads for a chat (the last it sent, even while a newer fetch is due); null before any arrived. Figures such as tokens come from here only. */
+  engineReads(chatId: Id): Reads | null {
+    return this.serverReads.get(chatId) ?? null;
   }
 
   readsOf(chatId: Id): Reads {
@@ -836,8 +841,13 @@ export class BoardStore {
   }
 
   unstack(pileId: Id, spots: [number, number][]): Id[] {
+    return this.unstackOps(pileId, spots).ids;
+  }
+
+  /** `done` resolves true once the members are loose and the pile is deleted on the server; false when it had to be put back. */
+  private unstackOps(pileId: Id, spots: [number, number][]): { ids: Id[]; done: Promise<boolean> } {
     const pile = this.cards.get(pileId);
-    if (!pile) return [];
+    if (!pile) return { ids: [], done: Promise.resolve(false) };
     const members = membersOf(this.graph(), pileId);
     const wires = [...this.edges.values()].filter((e) => e.kind === 'wire' && e.from === pileId);
     const moved: { id: Id; x: number; y: number }[] = [];
@@ -875,22 +885,24 @@ export class BoardStore {
       this.emit([{ kind: 'card', id: pileId, fields: ['created'] }, ...gone.map((e): StoreChange => ({ kind: 'edge', id: e.id }))]);
       if (!(err instanceof Silent)) this.toast(errorText(err, 'other'));
     };
-    void (async () => {
+    const done = (async (): Promise<boolean> => {
       const results = await Promise.all(ops);
       if (!results.every(Boolean)) {
         restore(new Silent(), members.filter((_, i) => results[i]).map((m) => m.id));
-        return;
+        return false;
       }
       try {
         const wait = this.pendingCards.get(pileId);
         if (wait) await wait;
         await this.track(this.api.deleteCard(this.boardId, pileId));
       } catch (err) {
-        if (err instanceof ApiError && err.status === 404) return;
+        if (err instanceof ApiError && err.status === 404) return true;
         restore(err, members.map((m) => m.id));
+        return false;
       }
+      return true;
     })();
-    return members.map((m) => m.id);
+    return { ids: members.map((m) => m.id), done };
   }
 
   // ---- positions, viewport, title ----
@@ -1229,7 +1241,10 @@ export class BoardStore {
     if (pile && c.pile.count <= 2) {   // one would be left alone in a pile: unpile first, then remove the front member
       const ms = membersOf(this.graph(), c.cardId);
       const spots = ms.map((m): [number, number] => (m.id === c.pile!.frontId ? [pile.x + 24, pile.y + 96] : [pile.x, pile.y]));
-      this.unstack(c.cardId, spots);
+      const u = this.unstackOps(c.cardId, spots);
+      // The member goes only once the unpile went through; Undo puts the pile back whole.
+      await this.deleteSet(c.pile.frontId, [], { after: u.done, dissolved: { pile, members: u.ids } });
+      return;
     }
     await this.deleteSet(c.pile.frontId);
   }
@@ -1238,7 +1253,7 @@ export class BoardStore {
    * Hides the set at once, then tells the server; a failed delete brings everything back.
    * `extra`: more cards removed with the root (a pile's members), each deleted on the server before the root.
    */
-  private deleteSet(root: Id, extra: Id[] = []): Promise<boolean> {
+  private deleteSet(root: Id, extra: Id[] = [], opts: { after?: Promise<boolean>; dissolved?: { pile: Card; members: Id[] } } = {}): Promise<boolean> {
     const card = this.cards.get(root);
     if (!card) return Promise.resolve(false);
     const g = this.graph();
@@ -1259,6 +1274,7 @@ export class BoardStore {
       moved.push({ id: i, x: p[0], y: p[1] });
       return { ...c, x: p[0], y: p[1] };
     });
+    const dis = opts.dissolved;
     const patches = ids.map((i) => this.patchQueue.get(i)).filter((x): x is Promise<boolean> => !!x);
     const edges = [...this.edges.values()].filter((e) => gone.has(e.from) || gone.has(e.to));
     const detach = [...this.cards.values()].filter((c) => c.kind === 'source' && !gone.has(c.id)
@@ -1306,6 +1322,7 @@ export class BoardStore {
       const sent: Id[] = [];
       try {
         if (patches.length) await Promise.all(patches);
+        if (opts.after && !(await opts.after)) throw new Silent();
         if (!(await this.created(ids))) { dropOverrides(); return false; }
         if (moved.length) { try { await this.track(this.api.savePositions(this.boardId, moved)); } catch { /* the delete still goes ahead */ } }
         for (const r of roots) {
@@ -1318,7 +1335,13 @@ export class BoardStore {
       } catch (e) {
         dropOverrides();
         for (const r of sent) { try { await this.track(this.api.restoreCard(this.boardId, r)); } catch { /* the next snapshot shows what the server has */ } }
-        for (const c of originals) { this.hiddenCards.delete(c.id); this.cards.set(c.id, c); }
+        for (const c of originals) {
+          this.hiddenCards.delete(c.id);
+          if (dis && dis.members.includes(c.id) && this.cards.has(dis.pile.id)) {   // the unpile was put back: so is this member
+            this.cards.set(c.id, { ...c, pileId: dis.pile.id, deskId: null, x: dis.pile.x, y: dis.pile.y });
+            void this.patch(c.id, { pileId: dis.pile.id, deskId: null });
+          } else this.cards.set(c.id, c);
+        }
         for (const ed of edges) { this.hiddenEdges.delete(ed.id); this.edges.set(ed.id, ed); }
         for (const c of detach) {
           const cur = this.cards.get(c.id);
@@ -1333,11 +1356,12 @@ export class BoardStore {
           ...detach.map((c): StoreChange => ({ kind: 'card', id: c.id, fields: ['deskId', 'pileId'] })),
           ...edges.map((ed): StoreChange => ({ kind: 'edge', id: ed.id })),
         ]);
-        this.toast(errorText(e, 'other'));
+        if (!(e instanceof Silent)) this.toast(errorText(e, 'other'));
+        else if (this.ui.toast?.undoCardId === root) this.dismissToast();   // nothing was deleted: no Undo to offer
         return false;
       }
     })();
-    this.deleted.set(root, { ids, roots, edges, done });
+    this.deleted.set(root, { ids, roots, edges, done, dissolved: dis });
     return done;
   }
 
@@ -1348,11 +1372,16 @@ export class BoardStore {
     this.dismissToast();
     if (!rec || !(await rec.done)) return;
     const restored: Id[] = [];
-    try {
-      for (const r of [id, ...rec.roots.filter((x) => x !== id)]) restored.push(...await this.track(this.api.restoreCard(this.boardId, r)));
-    } catch (e) {
-      this.toast(errorText(e, 'other'));
-      if (!restored.length) return;
+    const failed: Id[] = [];
+    let err: unknown = null;
+    for (const r of [id, ...rec.roots.filter((x) => x !== id)]) {   // every root gets its chance; one failure does not strand the rest
+      try { restored.push(...await this.track(this.api.restoreCard(this.boardId, r))); }
+      catch (e) { failed.push(r); err = e; }
+    }
+    const dis = rec.dissolved;
+    if (dis && !failed.length) {   // a pile that was unpiled to remove one member comes back as it was
+      try { await this.track(this.api.restoreCard(this.boardId, dis.pile.id)); this.hiddenCards.delete(dis.pile.id); }
+      catch (e) { err = e; }
     }
     this.deleted.delete(id);
     for (const x of restored) this.hiddenCards.delete(x);
@@ -1361,8 +1390,18 @@ export class BoardStore {
       const alive = (x: Id) => back.has(x) || this.cards.has(x);
       if (alive(e.from) && alive(e.to)) this.hiddenEdges.delete(e.id);
     }
-    if (this.refreshing) await this.refreshing;   // an older in-flight snapshot would not show the restore
-    await this.refresh();
+    if (restored.length || dis) {
+      if (this.refreshing) await this.refreshing;   // an older in-flight snapshot would not show the restore
+      await this.refresh();
+    }
+    if (dis && !failed.length && this.cards.has(dis.pile.id)) {
+      await Promise.all(dis.members.map((m) => this.patch(m, { pileId: dis.pile.id, deskId: null })));
+    }
+    if (failed.length) {
+      // The ones that did not come back keep an Undo of their own.
+      this.deleted.set(failed[0], { ids: failed, roots: failed, edges: [], done: Promise.resolve(true) });
+      this.toast(errorText(err, 'other'), failed[0]);
+    }
   }
 
   // ---- small queries ----

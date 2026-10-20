@@ -74,7 +74,7 @@ export function SourceViewer(): ReactElement {
     // The engine's figure for the chat that is open or selected; none when that chat does not read this.
     const sel = snap.ui.selected ? snap.cards.get(snap.ui.selected) : undefined;
     const readBy = snap.ui.focus ?? (sel && isChat(sel) ? sel.id : null);
-    const tokens = readBy ? tokensRead(g, store.readsOf(readBy).items, v) : null;
+    const tokens = readBy ? tokensRead(g, store.engineReads(readBy)?.items ?? [], v) : null;
     const meta = isPile ? `Pile · ${members.length} files` : d.meta || info.label;
     content = (
       <div ref={boxRef} className={`sheetbox vw f-${family}`} role="dialog" aria-modal="true" aria-label={d.title || 'Note'} tabIndex={-1}>

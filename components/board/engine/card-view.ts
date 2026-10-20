@@ -65,12 +65,27 @@ export class CardView {
   }
 
   /** The engine's figure for the chat that is selected or open; no figure when that chat does not read the card. */
-  private tokensPill(c: Card): string {
+  private tokensText(c: Card): string | null {
     const ui = this.ctx.store.getSnapshot().ui, g = this.g;
     const sel = ui.selected ? g.cards.get(ui.selected) : undefined;
     const chat = ui.focus ?? (sel && isChat(sel) ? sel.id : null);
-    const t = chat ? tokensRead(g, this.ctx.store.readsOf(chat).items, c) : null;
-    return t === null ? '' : `<span class="upill tk">${(t / 1000).toFixed(1)}k tokens</span>`;
+    const t = chat ? tokensRead(g, this.ctx.store.engineReads(chat)?.items ?? [], c) : null;   // engine figures only, never the mock estimate
+    return t === null ? null : `${(t / 1000).toFixed(1)}k tokens`;
+  }
+
+  private tokensPill(c: Card): string {
+    const t = this.tokensText(c);
+    return t === null ? '' : `<span class="upill tk">${t}</span>`;
+  }
+
+  /** The figure follows the selected chat: change it in place, so a click that is landing on the open card is not lost to a redraw. */
+  refreshTokens(n: ViewNode): void {
+    const c = this.g.cards.get(n.id), foot = n.el.querySelector('.lfoot');
+    if (!c || !foot) return;
+    const t = this.tokensText(c), cur = foot.querySelector('.tk');
+    if (t === null) cur?.remove();
+    else if (cur) cur.textContent = t;
+    else { const pill = document.createElement('span'); pill.className = 'upill tk'; pill.textContent = t; foot.querySelector('.done')?.before(pill); }
   }
 
   private metaOf(n: ViewNode, c: Card): string {

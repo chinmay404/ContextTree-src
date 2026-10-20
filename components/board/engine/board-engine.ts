@@ -318,11 +318,11 @@ export class BoardEngine {
       const n = sel ? nodes.get(sel) : undefined;
       if (n) n.el.style.zIndex = String(++this.zTop);
     }
-    // An open card's token figure belongs to the selected or open chat. Only a change of that chat redraws: a click on the card itself must not.
+    // An open card's token figure belongs to the selected or open chat. Only a change of that chat updates the pill, in place: a click on the card itself must not be lost to a redraw.
     const readBy = `${selCard && isChat(selCard) ? sel : ''}|${snap.ui.focus ?? ''}`;
     if (readBy !== this.lastReadBy) {
       this.lastReadBy = readBy;
-      for (const o of nodes.values()) if (o.open && !o.isChat) this.dirty.add(o.id);
+      for (const o of nodes.values()) if (o.open && !o.isChat) this.view.refreshTokens(o);
     }
 
     const dirty = this.dirty; this.dirty = new Set();
