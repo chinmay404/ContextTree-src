@@ -150,12 +150,40 @@ export class CardView {
     return `${sheets}<div class="face">${body}${tools}${port}</div>`;
   }
 
+  /** What the footer of a chat shows: one dot per source, the counts, and "Source changed". */
+  private footInner(c: Card): string {
+    const g = this.g, store = this.ctx.store;
+    const read = store.readsOf(c.id).items.filter(isRead);
+    const own = countSources(g, read, false), up = countSources(g, read, true);
+    const readCards = read.map((i) => g.cards.get(i.cardId)).filter((x): x is Card => !!x);
+    const stale = chatStale(store, c.id);
+    return `${readCards.length ? dotsHTML(g, foldPiles(g, readCards)) : ''}<span>${own} source${own === 1 ? '' : 's'}${up ? ` · ${up} from above` : ''}</span><span class="sp"></span>${stale ? '<span class="stale">Source changed</span>' : ''}`;
+  }
+
+  /** Reads changed: the footer, the thinking line, the ports and the class name follow, without a redraw that would eat a click. */
+  refreshChatFoot(n: ViewNode): void {
+    const c = this.g.cards.get(n.id);
+    if (!c) return;
+    const cls = this.classes(n, c);
+    if (n.el.className !== cls) n.el.className = cls;
+    const foot = n.el.querySelector('.cfoot');
+    if (!foot) return;   // zoomed-out or demoted face: nothing to update
+    const html = this.footInner(c);
+    if (foot.innerHTML !== html) foot.innerHTML = html;
+    const g = this.g;
+    const incoming = !!c.parentId || answersInto(g, c.id).length > 0 || wiresInto(g, c.id).length > 0;
+    const outgoing = kids(g, c.id).length > 0 || edgesFrom(g, c.id).some((e) => e.kind === 'answer');
+    n.el.querySelector('.port.in')?.classList.toggle('free', !incoming);
+    n.el.querySelector('.port.out[data-port="chat"]')?.classList.toggle('free', !outgoing);
+    const th = n.el.querySelector('.thinking');
+    if (th) { const k = countSources(g, this.ctx.store.readsOf(c.id).items.filter(isRead)); th.lastChild!.textContent = `Thinking with ${k} source${k === 1 ? '' : 's'}…`; }
+  }
+
   private chatHTML(_n: ViewNode, c: Card): string {
     const g = this.g, d = chatData(c), store = this.ctx.store, m = modelInfo(d.model);
     if (this.ctx.size() === 'S' || d.demoted) return `<div class="face" title="${esc(d.name)}"><div class="s blob"><span class="mdot" style="--c:${esc(m.color)}"></span></div></div>`;
     const items = store.readsOf(c.id).items, read = items.filter(isRead);
-    const own = countSources(g, read, false), up = countSources(g, read, true), nRead = countSources(g, read);
-    const readCards = read.map((i) => g.cards.get(i.cardId)).filter((x): x is Card => !!x);
+    const nRead = countSources(g, read);
     const snap = store.getSnapshot(), msgs: Message[] = snap.messages.get(c.id) ?? [], stream = snap.streaming.get(c.id);
     const streaming = store.isStreaming(c.id);
     const body = msgs.map((x) => x.role === 'user' ? `<div class="qb">${esc(x.content)}</div>` : x.content ? `<div class="ans">${renderMarkdown(x.content)}</div>` : '').join('');
@@ -163,7 +191,6 @@ export class CardView {
     if (stream?.error) live = `<p class="err">${esc(stream.error)}</p>`;
     else if (stream && stream.text) live = `<div class="ans live">${renderMarkdown(stream.text)}</div>`;
     else if (streaming) live = `<div class="thinking"><i></i>Thinking with ${nRead} source${nRead === 1 ? '' : 's'}…</div><div class="skel"><i style="width:92%"></i><i style="width:76%"></i><i style="width:84%"></i></div>`;
-    const stale = chatStale(store, c.id);
     const ap = (a: string, ico: string, label: string) => `<button class="apill" data-act="${a}">${icon(ico)}${label}</button>`;
     const incoming = !!c.parentId || answersInto(g, c.id).length > 0 || wiresInto(g, c.id).length > 0;
     const outgoing = kids(g, c.id).length > 0 || edgesFrom(g, c.id).some((e) => e.kind === 'answer');
@@ -174,7 +201,7 @@ export class CardView {
     <div class="ttl">${esc(d.name)}${persona ? ` <span class="ptag">${esc(persona)}</span>` : ''}</div>
     ${body || live ? `<div class="cbody">${body}${live}</div>` : ''}
     <div class="compose"><textarea rows="1" placeholder="${hasMsgs ? 'Ask a follow-up' : 'Type the question you want to ask…'}" aria-label="Message"></textarea><button class="send" aria-label="Send" disabled>${icon('arrow-up')}</button></div>
-    <div class="cfoot">${readCards.length ? dotsHTML(g, foldPiles(g, readCards)) : ''}<span>${own} source${own === 1 ? '' : 's'}${up ? ` · ${up} from above` : ''}</span><span class="sp"></span>${stale ? '<span class="stale">Source changed</span>' : ''}</div>
+    <div class="cfoot">${this.footInner(c)}</div>
     <span class="port in ${incoming ? '' : 'free'}" aria-hidden="true"></span>
     <span class="port out ${outgoing ? '' : 'free'}" data-port="chat" data-tip="Drag out to branch · onto a chat to share this answer"></span>
   </div>`;

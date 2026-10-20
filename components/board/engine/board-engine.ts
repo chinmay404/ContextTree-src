@@ -52,6 +52,7 @@ export class BoardEngine {
   private lastReadBy = '|';
   /** Source cards whose read state (the "reading" glow, the token figure) changed but whose face did not. */
   private readonly liveSources = new Set<Id>();
+  private readonly liveChats = new Set<Id>();
   private pointer: PointerRouting | null = null;
   private ro: ResizeObserver | null = null;
   private unsub: (() => void) | null = null;
@@ -240,7 +241,7 @@ export class BoardEngine {
         case 'messages': this.dirty.add(ch.chatId); break;
         case 'stream': this.streamDirty.add(ch.chatId); break;
         case 'reads':
-          this.dirty.add(ch.chatId);
+          this.liveChats.add(ch.chatId);   // footer in place: a redraw between mouse down and up would eat the click
           for (const n of this.ctx.nodes.values()) if (!n.isChat) this.liveSources.add(n.id);   // in place: a redraw here would eat a click
           break;
         case 'ui': break;
@@ -335,6 +336,8 @@ export class BoardEngine {
     for (const id of dirty) { const n = nodes.get(id); if (n) this.view.render(n); }
     for (const id of this.liveSources) { const n = nodes.get(id); if (n && !dirty.has(id)) this.view.refreshLive(n); }
     this.liveSources.clear();
+    for (const id of this.liveChats) { const n = nodes.get(id); if (n && !dirty.has(id)) this.view.refreshChatFoot(n); }
+    this.liveChats.clear();
     for (const n of nodes.values()) {
       if (dirty.has(n.id)) continue;
       n.el.classList.toggle('selected', n.id === sel);

@@ -80,3 +80,17 @@ test('an open card is not redrawn under a click when reads change', async ({ pag
   await page.click('[data-id="pdf"] .lfoot .done');
   await expect(page.locator('[data-id="pdf"] .lfoot')).toHaveCount(0);
 });
+
+for (const [wait, act, check] of [[400, 'open', 'focus'], [550, 'branch', 'sheet']] as const) {
+  test(`a chat's ${act} button lands a normal click while reads are being refreshed (${wait} ms after typing)`, async ({ page }) => {
+    await openBoard(page);
+    await page.hover('[data-id="pdf"] .face'); await page.click('[data-id="pdf"] [data-act="expand"]');   // pdf is read by main
+    await page.locator('[data-id="pdf"] .desc').click(); await page.keyboard.type(' more');
+    await page.waitForTimeout(wait);
+    const b = await page.locator(`.card[data-id="main"] [data-act="${act}"]`).boundingBox();
+    await page.mouse.move(b!.x + b!.width / 2, b!.y + b!.height / 2);
+    await page.mouse.down(); await page.waitForTimeout(120); await page.mouse.up();
+    if (check === 'focus') await expect.poll(() => page.evaluate(() => window.__board!.focus())).toBe('main');
+    else await expect.poll(() => page.evaluate(() => window.__board!.dialog()?.mode)).toBe('branch');
+  });
+}
