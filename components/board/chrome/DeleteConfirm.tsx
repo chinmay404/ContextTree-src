@@ -39,14 +39,22 @@ export function DeleteConfirm(): ReactElement {
       const gone = !!id && !store.getSnapshot().cards.has(id);   // the deleted card's own element may still hold focus
       if (a && a !== document.body && !box.contains(a) && !a.closest('[inert]') && !(gone && a.closest(`.card[data-id="${CSS.escape(id)}"]`))) return;   // something else took focus
       const root = box.closest<HTMLElement>('.pb-root');
-      const focusEl = store.getSnapshot().ui.focus ? root?.querySelector<HTMLElement>('[data-pb="focus"] [data-act="more"], [data-pb="focus"]') : null;
+      const live = store.getSnapshot().cards;
+      // An element inside a card that is no longer on the board is dying (its fade keeps it connected a moment).
+      const usable = (el: HTMLElement | null | undefined): el is HTMLElement => {
+        if (!el || !el.isConnected || el.closest('[inert]')) return false;
+        const host = el.closest<HTMLElement>('.card[data-id]');
+        return !host || live.has(host.dataset.id!);
+      };
+      const hasFocus = !!store.getSnapshot().ui.focus;
+      const more = hasFocus ? root?.querySelector<HTMLElement>('[data-pb="focus"] [data-act="more"]') : null;
+      const focusEl = more ?? (hasFocus ? root?.querySelector<HTMLElement>('[data-pb="focus"]') : null);
       const card = id && !gone ? root?.querySelector<HTMLElement>(`.card[data-id="${CSS.escape(id)}"]`) : null;
-      const target = [o, focusEl, card].find((el) => el && el.isConnected && !el.closest('[inert]'));
       const toRoot = (): void => { if (root) { if (!root.hasAttribute('tabindex')) root.tabIndex = -1; root.focus({ preventScroll: true }); } };
-      if (target) { target.focus({ preventScroll: true }); return; }
-      toRoot();
-      // The focus view's close can hand focus to an element that is about to go; check once more next frame.
-      requestAnimationFrame(() => { const x = document.activeElement; if (!x || x === document.body || x.closest('[inert]') || !x.isConnected) toRoot(); });
+      const target = [o, focusEl, card].find(usable);
+      if (target) target.focus({ preventScroll: true }); else toRoot();
+      // The focus view's close or a card's fade can take the focus away a moment later; check once more next frame.
+      requestAnimationFrame(() => { const x = document.activeElement; if (!x || x === document.body || !usable(x as HTMLElement)) toRoot(); });
     }
   }, [isOpen, store]);
 

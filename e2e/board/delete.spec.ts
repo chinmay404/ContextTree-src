@@ -93,7 +93,7 @@ test('focus returns to the card after Escape, into the focus view after Cancel, 
   await page.locator('[data-pb="focusmenu"]').getByRole('menuitem', { name: 'Delete question' }).click();
   await expect(page.locator(C)).toHaveClass(/on/);
   await confirmBtn(page, 'Cancel').click();
-  expect(await page.evaluate(() => !!document.activeElement?.closest('[data-pb="focus"]'))).toBe(true);
+  await expect(page.locator('[data-pb="focus"] [data-act="more"]')).toBeFocused();
 
   await page.click('[data-pb="focus"] [data-act="more"]');
   await page.locator('[data-pb="focusmenu"]').getByRole('menuitem', { name: 'Delete question' }).click();
@@ -101,6 +101,18 @@ test('focus returns to the card after Escape, into the focus view after Cancel, 
   await expect(page.locator('.card[data-id="deep"]')).toHaveCount(0);
   expect(await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 120))).toContain('pb-root');
 });
+
+for (const how of ['Enter', 'the Delete button'] as const) {
+  test(`after a confirmed Delete-key delete (${how}) focus rests on the board root`, async ({ page }) => {
+    await openBoard(page);
+    await page.click('.card[data-id="deep"] .face'); await page.keyboard.press('Delete');
+    await expect(page.locator(C)).toHaveClass(/on/);
+    if (how === 'Enter') await page.keyboard.press('Enter'); else await confirmBtn(page, 'Delete').click();
+    await expect(page.locator('.card[data-id="deep"]')).toHaveCount(0);
+    await page.waitForTimeout(500);
+    expect(await page.evaluate(() => document.activeElement?.classList.contains('pb-root'))).toBe(true);
+  });
+}
 
 test('deleting a chat that is answering stops it', async ({ page }) => {
   await openBoard(page, '?firstTokenMs=2000&wordMs=5');
