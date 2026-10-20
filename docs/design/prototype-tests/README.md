@@ -12,3 +12,7 @@ are rewritten against the DOM.
   nudged, desks push each other apart.
 
 Run: `node v4test.js <url-of-prototype> <screenshot-prefix>` from `ContextTree-src/` (Playwright is a dev dependency).
+
+## Ported to the V3 board
+
+Both scripts are ported step by step to Playwright specs that run against the `/board-dev` page (the mock engine), with the prototype's globals replaced by `window.__board`: `e2e/board/v4.spec.ts` (the 24 checks) and `e2e/board/room.spec.ts` (the 6 room checks). Every `ok()` is an `expect.soft`, so a run lists all of them; screenshots land in `test-results/board/` under the prototype's names (`v4-1-board.png` ... `v4-12-focus.png`, `room-room.png` ...). Two checks that always passed in the prototype are tightened (`main` to `deep` must be refused; the map and focus views are asserted). Run with the dev server up (`npx next dev --port 3100`): `PW_BASE_URL=http://localhost:3100 npx playwright test e2e/board/v4.spec.ts e2e/board/room.spec.ts`. For side-by-side reference shots, run the original scripts as above and write them to `test-results/proto/`.

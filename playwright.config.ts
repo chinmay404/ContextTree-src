@@ -9,6 +9,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   // One worker: parallel page loads against the shared `next dev` on :3100 truncate chunks (ChunkLoadError).
   workers: 1,
+  globalSetup: './e2e/global-setup.ts',
   use: { baseURL, viewport: { width: 1440, height: 900 } },
   webServer: process.env.PW_BASE_URL
     ? undefined

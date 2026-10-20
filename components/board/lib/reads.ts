@@ -48,3 +48,14 @@ export function computeReads(g: Graph, chatId: Id): Reads {
   const items = [...own, ...up];
   return { chatId, items, totalTokens: items.filter(isRead).reduce((a, i) => a + i.tokens, 0) };
 }
+
+/** How many sources a chat reads: a pile is ONE source however many members it has (the prototype's unit), soon/left-out ones are not read.
+ *  `inherited` narrows to inherited (true) or own (false) items. Tokens are NOT counted this way: they still sum over members. */
+export function countSources(g: Graph, items: ReadItem[], inherited?: boolean): number {
+  const units = new Set<Id>();
+  for (const i of items) {
+    if (!isRead(i) || (inherited !== undefined && i.inherited !== inherited)) continue;
+    units.add(g.cards.get(i.cardId)?.pileId ?? i.cardId);
+  }
+  return units.size;
+}

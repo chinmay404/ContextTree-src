@@ -67,7 +67,8 @@ export function BranchSheet(): ReactElement {
     const chat = dlg.chatId ? snap.cards.get(dlg.chatId) : undefined;
     const parent = dlg.parentId ? snap.cards.get(dlg.parentId) : undefined;
     const parentReads = parent ? store.readsOf(parent.id) : null;
-    const above = parentReads ? parentReads.items.filter(isRead).map((i) => snap.cards.get(i.cardId)).filter((c): c is NonNullable<typeof c> => !!c) : [];
+    // One entry per source: a pile counts once (its members' tokens are still in the estimate).
+    const above = parentReads ? [...new Map(parentReads.items.filter(isRead).map((i) => { const m = snap.cards.get(i.cardId); return m && (m.pileId ? snap.cards.get(m.pileId) ?? m : m); }).filter((c): c is NonNullable<typeof c> => !!c).map((c) => [c.id, c] as const)).values()] : [];
     const setAdv = (patch: Partial<AdvancedSettings>): void => store.setDraft({ advanced: { ...d.advanced, ...patch } });
     const est = estimateTokens(d, parent && parentReads ? { reads: parentReads, messages: snap.messages.get(parent.id) ?? [] } : null);
     const a = d.advanced;

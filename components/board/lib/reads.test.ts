@@ -1,7 +1,7 @@
 import { seedBoard } from '../api/mock/seed';
 import type { Board, ChatData, SourceData } from '../api/types';
 import { graphOf } from './graph';
-import { computeReads, isRead } from './reads';
+import { computeReads, countSources, isRead } from './reads';
 
 const board = (): Board => seedBoard().board;
 const g = graphOf(board());
@@ -85,4 +85,15 @@ it('a pile member wired into the chat that holds its pile is listed and counted 
   expect(mine).toHaveLength(1);
   expect(mine[0].how).toBe('desk');
   expect(r.totalTokens).toBe(computeReads(g, 'second').totalTokens);
+});
+
+it('countSources counts a pile as one source, not its members (pile of 4 + 1 loose → 2)', () => {
+  const b = board();
+  for (const c of b.cards) if (c.pileId) (c.data as SourceData).off = false;   // other tests switch a member off on the shared seed data
+  const fresh = graphOf(b);
+  const items = computeReads(fresh, 'second').items.filter((i) => !i.inherited);
+  expect(items.length).toBe(5);                       // web + the 4 members
+  expect(countSources(fresh, items)).toBe(2);
+  expect(countSources(fresh, computeReads(fresh, 'second').items, true)).toBe(2);   // inherited: pdf + note (video is soon)
+  expect(computeReads(fresh, 'second').totalTokens).toBe(computeReads(fresh, 'second').items.filter(isRead).reduce((a, i) => a + i.tokens, 0));
 });
