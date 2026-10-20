@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<!--
+  CONTEXT TREE V3 — APP SHELL MOCKUPS (design round, mockups only, no product code)
+  =================================================================================
+  Brief: the board canvas is finished and is the visual source of truth. Everything around it
+  (landing, sign-in, boards home, account menu, API keys, board chrome) must feel like the same
+  product. Slashspace is the quality bar (DECISIONS row 14), never the template (row 23).
+
+  DESIGN PLAN
+  -----------
+  Palette (all from components/board/pebble.css, nothing new):
+    Board lilac   #EDE8F5  --pb-canvas      landing page + board canvas + every mini-map window
+    Desk          #F5F2FA  --pb-desk        section slabs on the landing, boards-home background, sheet side panels
+    Card          #FFFFFF  --pb-card        cards, sheets, menus, floating chrome pills
+    Lilac         #EFE9F8  --pb-lilac       question bubbles, quiet buttons, menu icon circles
+    Edge          #CFC3E8 / Edge strong #A594D1   strings, focus rings, chips
+    Ink           #2B2340  --pb-ink / --t1  text and the single primary-button colour
+    Text 2 / 3    #6E6585 / #9A92AD          secondary copy / hints
+    Families (content only, never decoration): media #FFD9C7/#E0673A, docs #FFF0B3/#B8860B,
+    note #FFE1EA/#D1467E, web #C9ECFF/#2A86C4, data #D4F2C9/#3F9A2E, image #E6DBFF/#7A52D6.
+    States: ready #3FAE5A, stale #E2A72A, failed #E5486B (+ ring #FFC2CF, tile #FFE1EA).
+
+  Type: Bricolage Grotesque only (the board's face, opsz 12..96), tabular numbers.
+    Display  800, -0.04em, 56-96px, lh .95  (landing H1, greeting)
+    Heading  700-800, -0.02em, 22-48px      (section heads, sheet titles — same as the board's .dlg h2)
+    Body     400-500, 15-19px, lh 1.5       (copy; t2 only at >=15px on lilac for contrast)
+    Meta     600, 10-13px                   (card meta, counts, timestamps — straight from the card styles)
+
+  Layout per screen:
+    A Landing  — the page IS a board: lilac canvas, floating brand pill top-left like the board.
+                 Pain line as the user's own question bubble -> left-aligned outcome H1 + right column
+                 copy/CTA -> the real Pebble board rendered live under the hero (no bezel, no fake
+                 screenshot) -> 4 features on desks of different sizes (wide / 7+5 split / wide
+                 mirrored), each a small live board + one bold line + one sentence -> proof desk
+                 (honest, empty, dashed like an empty desk) -> founder's note as a pinned Note card
+                 -> plain pricing (free BYOK / hosted coming soon) -> FAQ -> footer.
+    B Sign-in  — one white sheet (40px radius, like the board's sheets) on the lilac canvas, faint
+                 pebble map behind, Continue with Google, one data line, back pill top-left.
+    C Home     — owner's reference structure: greeting in display type, "Start something new" row
+                 (Blank board + starter boards as pebble maps), "Jump back in" recents with
+                 search / sort / grid-list toggle, "..." menu, empty state that asks the first question.
+    D Account  — avatar pill top-right (same 56px height as the brand pill), menu in the board's
+                 .menu language (28px radius, 36px icon circles).
+    E API keys — a board sheet: nav | providers list | "what the model picker shows" side panel.
+    F Board    — existing chrome untouched; avatar pill mirrors the brand pill at top-right.
+
+  Signature element: PEBBLE MAPS. Wherever a board appears outside the canvas (landing features,
+  starter boards, recents, sign-in backdrop) it is drawn as its own zoomed-out map — desks, colour
+  pebbles and strings generated from card positions — exactly the board's below-42% zoom mode
+  (DECISIONS: "zoomed out, cards become plain colour pebbles; only desk names are written").
+  Second-order: landing sections are desks with desk tabs, so the marketing page reads as a board.
+
+  Anti-goal check:
+    - purple-on-black: no dark surfaces at all; ink is only text + primary buttons on light lilac. PASS
+    - gradient text: none. Only gradient in the file is the existing mask fade on long chat bodies. PASS
+    - three identical feature cards: four features on desks of three different shapes (12 / 7+5 / 12
+      mirrored), each with a different live mini-board. PASS
+    - Slashspace clone: no centred nav pill, no off-white + orange, no dotted orange wires, no bottom
+      dock, no name pills above nodes, no detached reply box, no screenshot thumbnails (previews are
+      pebble maps), no product video in a macOS window. Pricing is free/BYOK not $89/yr. PASS
+    - Content is realistic; people are fictional ("Sam Rivera", example.com). Founder's note is a
+      draft in the owner's voice for the owner to rewrite and sign.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V3 App Shell Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --pb-canvas: #EDE8F5; --pb-desk: #F5F2FA; --pb-card: #FFFFFF; --pb-lilac: #EFE9F8; --pb-edge: #CFC3E8; --pb-edge-strong: #A594D1; --pb-ink: #2B2340;
+  --t1: #2B2340; --t2: #6E6585; --t3: #9A92AD; --hair: #E6DFF0;
+  --ready: #3FAE5A; --stale: #E2A72A; --failed: #E5486B; --failed-ring: #FFC2CF; --failed-tile: #FFE1EA;
+  --sh-node: 0 10px 24px -12px rgba(43,35,64,.28); --sh-card: 0 18px 40px -18px rgba(43,35,64,.32); --sh-float: 0 8px 24px -10px rgba(43,35,64,.22); --sh-lift: 0 26px 50px -18px rgba(43,35,64,.42);
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+}
+* { box-sizing: border-box; }
+html { background: #DCD6E6; }
+body { margin: 0; padding: 56px 48px 120px; min-width: 1540px; background: #DCD6E6; font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-variant-numeric: tabular-nums; color: var(--t1); -webkit-font-smoothing: antialiased; font-optical-sizing: auto; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--pb-edge-strong); outline-offset: 3px; }
+svg.i { width: var(--s, 16px); height: var(--s, 16px); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; display: inline-block; vertical-align: middle; }
+
+/* ---------- presentation chrome (not product) ---------- */
+.doc-head { max-width: 1440px; margin: 0 0 56px; }
+.doc-head h1 { margin: 0; font-size: 40px; font-weight: 800; letter-spacing: -.03em; }
+.doc-head p { margin: 10px 0 0; font-size: 16px; line-height: 1.5; color: #4E4566; max-width: 900px; }
+.fw { margin: 0 0 88px; }
+.fw .flabel { display: flex; align-items: baseline; gap: 12px; margin: 0 0 14px; font-size: 15px; color: #4E4566; }
+.fw .flabel b { font-size: 13px; font-weight: 800; background: var(--pb-ink); color: #fff; padding: 4px 10px; border-radius: 999px; }
+.fw .flabel strong { font-size: 18px; font-weight: 700; color: var(--t1); }
+.row-frames { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; }
+.frame { position: relative; overflow: hidden; background: var(--pb-canvas); border-radius: 12px; box-shadow: 0 40px 80px -40px rgba(43,35,64,.45); container-type: inline-size; }
+.frame.d { width: 1440px; height: 900px; }
+.frame.m { width: 390px; height: 844px; border-radius: 28px; }
+.frame.full { width: 1440px; height: auto; }
+.frame.mfull { width: 390px; height: auto; border-radius: 28px; }
+
+/* ===================== PEBBLE BOARD (ported from pebble.css, scoped .pb) ===================== */
+.pb .f-media { --fc: #FFD9C7; --fd: #E0673A; --fk: #FF9566; --fkt: #FFFFFF; --fx: #7A4A38; }
+.pb .f-docs { --fc: #FFF0B3; --fd: #B8860B; --fk: #F5C93A; --fkt: #5A4300; --fx: #6B5A1E; }
+.pb .f-note { --fc: #FFE1EA; --fd: #D1467E; --fk: #F59AB8; --fkt: #FFFFFF; --fx: #7A2E4E; }
+.pb .f-web { --fc: #C9ECFF; --fd: #2A86C4; --fk: #8FD0F5; --fkt: #14466A; --fx: #2A5A7A; }
+.pb .f-data { --fc: #D4F2C9; --fd: #3F9A2E; --fk: #5CC24A; --fkt: #FFFFFF; --fx: #3C6A30; }
+.pb .f-image { --fc: #E6DBFF; --fd: #7A52D6; --fk: #B9A0F5; --fkt: #FFFFFF; --fx: #4F3A8A; }
+.world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.tubes { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; z-index: 1; pointer-events: none; }
+.tubes path { fill: none; stroke-linecap: round; }
+.tubes .bub { stroke: #fff; stroke-dasharray: .1 12; animation: pb-bubbles .7s linear infinite; }
+@keyframes pb-bubbles { to { stroke-dashoffset: -28; } }
+@keyframes pb-caret { 50% { opacity: 0; } }
+.desk { position: absolute; z-index: 0; border-radius: 36px; background: var(--pb-desk); box-shadow: inset 0 0 0 1.5px #E4DCF2; }
+.desk.faded { opacity: .5; }
+.desk .tab, .tabx { position: absolute; left: 20px; bottom: calc(100% - 15px); min-height: 28px; padding: 5px 10px 5px 12px; border-radius: 14px; background: #fff; box-shadow: var(--sh-float); display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 12px; font-weight: 700; }
+.dots { display: inline-flex; align-items: center; }
+.dots i { width: 10px; height: 10px; border-radius: 5px; border: 1.5px solid #fff; margin-left: -4px; }
+.dots i:first-child { margin-left: 0; }
+.card { position: absolute; z-index: 2; }
+.card.muted { opacity: .45; filter: saturate(.6); }
+.face { position: relative; border-radius: 20px; box-shadow: var(--sh-node); }
+.src .face { background: var(--fc); }
+.sn { display: flex; gap: 10px; padding: 12px; }
+.tile { width: 44px; height: 44px; flex: none; border-radius: 12px; background: #fff; display: grid; place-items: center; position: relative; color: var(--fd); }
+.tile .badge { position: absolute; right: -5px; top: -5px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--pb-ink); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+.sx { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.meta { font-size: 10px; font-weight: 600; color: var(--fd); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+.ttl { font-size: 13.5px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.exr { display: flex; gap: 6px; align-items: flex-start; margin-top: 2px; }
+.chipl { font-size: 9.5px; font-weight: 600; background: var(--fk); color: var(--fkt); padding: 2px 5px; border-radius: 6px; flex: none; }
+.exr span:last-child { font-size: 11.5px; line-height: 1.35; color: var(--fx); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dsc { font-size: 11px; line-height: 1.3; color: var(--fx); opacity: .85; font-style: italic; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.soon-pill { font-size: 9.5px; font-weight: 600; background: #fff; color: var(--fd); padding: 2px 7px; border-radius: 999px; align-self: flex-start; white-space: nowrap; margin-top: 2px; }
+.note-in { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.note-in .n { font-size: 13.5px; line-height: 1.4; }
+.pile-sheet { position: absolute; border-radius: 20px; background: var(--fc); }
+.pile-sheet.s2 { left: 8px; right: 8px; top: 14px; bottom: -14px; filter: brightness(.86); }
+.pile-sheet.s1 { left: 4px; right: 4px; top: 7px; bottom: -7px; filter: brightness(.93); }
+.port { position: absolute; width: 10px; height: 18px; border-radius: 5px; background: var(--kc); z-index: 3; }
+.port.out { right: -6px; } .port.in { left: -6px; }
+.src .port.out { top: calc(50% - 9px); --kc: var(--fd); }
+.chat .port.in { top: 31px; --kc: var(--pb-ink); }
+.chat .port.out { top: 13px; --kc: var(--pb-edge-strong); }
+.port.free { background: #fff; box-shadow: inset 0 0 0 2px var(--kc); }
+.chat .face { background: #fff; box-shadow: var(--sh-card); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.card.chat.selected .face { box-shadow: 0 0 0 2px var(--pb-ink), var(--sh-card); }
+.card.reading .face { box-shadow: 0 0 0 3px var(--pb-edge-strong), var(--sh-node); }
+.chd { display: flex; align-items: center; gap: 6px; min-height: 20px; }
+.mdot { width: 9px; height: 9px; border-radius: 5px; background: var(--c); flex: none; display: inline-block; }
+.mtag { font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.mtag u { text-underline-offset: 2px; }
+.ptag { font-size: 9.5px; font-weight: 600; background: var(--pb-lilac); color: var(--t2); padding: 2px 6px; border-radius: 999px; white-space: nowrap; }
+.chd .sp { flex: 1; }
+.apill { display: inline-flex; gap: 3px; align-items: center; font-size: 9.5px; font-weight: 500; padding: 3px 6px; border-radius: 999px; border: 1px solid var(--pb-lilac); background: #fff; white-space: nowrap; }
+.chat .ttl { font-size: 15px; font-weight: 700; line-height: 1.25; -webkit-line-clamp: 3; }
+.cbody { max-height: 280px; overflow: hidden; display: flex; flex-direction: column; gap: 10px; -webkit-mask-image: linear-gradient(#000 calc(100% - 22px), transparent); mask-image: linear-gradient(#000 calc(100% - 22px), transparent); }
+.cbody.short { -webkit-mask-image: none; mask-image: none; }
+.qb { background: var(--pb-lilac); border-radius: 14px; padding: 9px 12px; font-size: 11.5px; line-height: 1.45; }
+.ans { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; line-height: 1.5; color: var(--t2); }
+.ans h3 { margin: 4px 0 0; font-size: 11.5px; font-weight: 700; color: var(--t1); }
+.ans h3:first-child { margin-top: 0; }
+.ans p { margin: 0; }
+.ans ol { margin: 0; padding-left: 16px; }
+.ans b { color: var(--t1); font-weight: 600; }
+.ans.live p:last-child::after { content: ''; display: inline-block; width: 6px; height: 12px; margin-left: 2px; vertical-align: -2px; border-radius: 2px; background: var(--pb-edge-strong); animation: pb-caret 900ms steps(1) infinite; }
+.cfoot { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--t2); }
+.tokchip { margin-left: auto; font-size: 10px; font-weight: 700; background: var(--pb-lilac); color: var(--t1); padding: 3px 8px; border-radius: 999px; }
+
+/* board chrome (from pebble.css [data-pb=...]) */
+.float { background: #fff; box-shadow: var(--sh-float); }
+.c-brand { position: absolute; top: 16px; left: 16px; z-index: 20; display: flex; align-items: center; gap: 12px; border-radius: 999px; padding: 8px 20px 8px 8px; }
+.lg { width: 40px; height: 40px; border-radius: 20px; background: var(--pb-ink); display: grid; place-items: center; color: #fff; flex: none; }
+.c-brand b { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+.c-brand span { font-size: 16px; color: var(--t2); }
+.c-add { position: absolute; left: 16px; bottom: 16px; z-index: 20; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 22px 0 8px; border-radius: 999px; font-size: 16px; font-weight: 600; }
+.c-add .pl { width: 40px; height: 40px; border-radius: 20px; background: var(--pb-ink); display: grid; place-items: center; color: #fff; }
+.c-trail { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 10px; border-radius: 999px; padding: 10px 20px; white-space: nowrap; font-size: 14px; }
+.c-trail .lb { font-size: 16px; font-weight: 700; color: var(--t2); }
+.c-trail .here { font-weight: 600; }
+.c-trail .arr { color: var(--t3); }
+.c-trail u { font-size: 12px; font-weight: 700; text-underline-offset: 2px; margin-right: 4px; }
+.c-zoom { position: absolute; right: 16px; bottom: 16px; z-index: 20; display: flex; align-items: center; gap: 20px; border-radius: 28px; padding: 12px 22px; color: var(--pb-ink); }
+.c-zoom .z { font-size: 18px; font-weight: 600; min-width: 48px; text-align: center; }
+
+/* account avatar pill — new, mirrors the brand pill: same 56px height, same float material */
+.c-acct { position: absolute; top: 16px; right: 16px; z-index: 20; height: 56px; border-radius: 999px; padding: 8px; display: flex; align-items: center; gap: 8px; }
+.c-acct.on { box-shadow: 0 0 0 2px var(--pb-ink), var(--sh-float); }
+.av { width: 40px; height: 40px; border-radius: 20px; background: #C9ECFF; color: #14466A; display: grid; place-items: center; font-size: 15px; font-weight: 700; flex: none; letter-spacing: .01em; }
+.av.lg2 { width: 48px; height: 48px; border-radius: 24px; font-size: 17px; }
+
+/* menus (pebble .menu) */
+.menu { position: absolute; z-index: 65; min-width: 250px; padding: 8px; border-radius: 28px; background: #fff; box-shadow: var(--sh-card); }
+.menu .mi { width: 100%; display: flex; align-items: center; gap: 12px; padding: 6px 12px 6px 6px; border-radius: 999px; font-size: 14px; font-weight: 600; text-align: left; }
+.menu .mi.hov { background: var(--pb-desk); }
+.menu .mi .c { width: 36px; height: 36px; border-radius: 18px; display: grid; place-items: center; flex: none; background: var(--pb-lilac); color: var(--pb-ink); }
+.menu .mi .r { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--t3); }
+.menu .mi.danger { color: #B4244A; }
+.menu .mi.danger .c { background: var(--failed-tile); color: var(--failed); }
+.menu .sep { height: 2px; border-radius: 1px; background: var(--pb-lilac); margin: 6px 12px; }
+
+/* buttons (pebble .btn) */
+.btn { height: 44px; padding: 0 20px; border-radius: 999px; font-size: 14px; font-weight: 600; background: var(--pb-lilac); display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; transition: transform 120ms var(--ease-out); }
+.btn.primary { background: var(--pb-ink); color: #fff; }
+.btn.white { background: #fff; box-shadow: var(--sh-float); }
+.btn.big { height: 54px; padding: 0 26px; font-size: 16px; }
+.btn.sm { height: 34px; padding: 0 14px; font-size: 13px; }
+.btn:active { transform: scale(.96); }
+
+/* ===================== A · LANDING ===================== */
+.lp { background: var(--pb-canvas); position: relative; }
+.lp .wrap { max-width: 1288px; margin: 0 auto; padding: 0 24px; }
+.lp-nav { display: flex; justify-content: space-between; align-items: center; padding: 16px; position: relative; z-index: 5; }
+.lp-nav .c-brand { position: static; }
+.lp-links { display: flex; align-items: center; gap: 4px; border-radius: 999px; padding: 8px 8px 8px 12px; }
+.lp-links a { font-size: 15px; font-weight: 600; color: var(--t2); text-decoration: none; padding: 10px 14px; border-radius: 999px; }
+.lp-links a.si { color: var(--t1); }
+.lp-links .btn { height: 40px; }
+.hero-top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 56px; align-items: end; padding-top: 88px; }
+.pain { display: inline-block; margin: 0 0 28px; background: #fff; border-radius: 22px 22px 22px 6px; padding: 12px 18px; font-size: 17px; line-height: 1.4; color: var(--t2); box-shadow: var(--sh-float); }
+.pain b { color: var(--t1); font-weight: 600; }
+.lp h1 { margin: 0; font-size: 96px; font-weight: 800; letter-spacing: -.032em; line-height: .94; text-wrap: balance; }
+.hero-copy p { margin: 0 0 26px; font-size: 19px; line-height: 1.5; color: var(--t2); max-width: 30em; }
+.hero-copy p b { color: var(--t1); font-weight: 600; }
+.ctas { display: flex; gap: 10px; flex-wrap: wrap; }
+.micro { margin-top: 16px; font-size: 13px; font-weight: 600; color: var(--t3); display: flex; gap: 8px; flex-wrap: wrap; }
+.micro i { font-style: normal; color: var(--pb-edge-strong); }
+.hero-board { position: relative; height: 780px; margin-top: 40px; }
+.keyline { text-align: center; font-size: 15px; color: var(--t2); margin: 8px 0 0; }
+.keyline b { color: var(--t1); font-weight: 600; }
+.sec { padding-top: 140px; }
+.sec-head { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 56px; }
+.eyebrow { position: static; display: inline-flex; }
+.lp h2 { margin: 0; font-size: 52px; font-weight: 800; letter-spacing: -.035em; line-height: 1; max-width: 16ch; text-wrap: balance; }
+.sec-head p { margin: 0; font-size: 18px; line-height: 1.5; color: var(--t2); max-width: 40em; }
+.feats { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 40px 28px; }
+.slab { position: relative; background: var(--pb-desk); border-radius: 36px; box-shadow: inset 0 0 0 1.5px #E4DCF2; padding: 36px 28px 28px; }
+.slab > .tabx { left: 24px; bottom: auto; top: -14px; }
+.slab.wide { grid-column: span 12; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 40px; align-items: center; }
+.slab.wide.flip { grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); }
+.slab.s7 { grid-column: span 7; }
+.slab.s5 { grid-column: span 5; }
+.mini { position: relative; overflow: hidden; border-radius: 24px; background: var(--pb-canvas); }
+.ft h3 { margin: 0 0 10px; font-size: 28px; font-weight: 800; letter-spacing: -.025em; line-height: 1.1; }
+.ft p { margin: 0; font-size: 17px; line-height: 1.5; color: var(--t2); max-width: 30em; }
+.slab.s7 .ft, .slab.s5 .ft { margin-top: 24px; padding: 0 4px; }
+.proof { margin-top: 0; border-radius: 36px; padding: 64px 32px; text-align: center; background: transparent; box-shadow: inset 0 0 0 2px #DDD3EE; position: relative; }
+.proof .tabx { left: 24px; top: -14px; bottom: auto; }
+.proof h3 { margin: 0 0 10px; font-size: 28px; font-weight: 800; letter-spacing: -.025em; }
+.proof p { margin: 0 auto; font-size: 17px; line-height: 1.55; color: var(--t2); max-width: 36em; }
+.proof .slots { display: flex; gap: 16px; justify-content: center; margin-top: 32px; }
+.proof .slots i { width: 212px; height: 84px; border-radius: 20px; box-shadow: inset 0 0 0 2px #DDD3EE; background: rgba(255,255,255,.35); }
+.founder { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 56px; align-items: start; }
+.founder .side h2 { font-size: 44px; }
+.founder .side p { margin: 16px 0 0; font-size: 16px; color: var(--t2); line-height: 1.5; }
+.fnote { --fc: #FFE1EA; --fd: #D1467E; --fx: #7A2E4E; background: var(--fc); border-radius: 28px; padding: 32px 36px 30px; box-shadow: var(--sh-card); transform: rotate(-.6deg); }
+.fnote .meta { font-size: 12px; margin-bottom: 14px; }
+.fnote p { margin: 0 0 16px; font-size: 19px; line-height: 1.6; color: var(--t1); text-wrap: pretty; }
+.fnote .sig { margin: 22px 0 0; font-size: 17px; font-weight: 700; color: var(--fx); }
+.fnote .sig span { font-weight: 500; color: var(--fx); opacity: .8; }
+.price { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; }
+.pcard { border-radius: 36px; padding: 36px; position: relative; }
+.pcard.free { background: #fff; box-shadow: var(--sh-card); }
+.pcard.soon { background: var(--pb-desk); box-shadow: inset 0 0 0 2px #DDD3EE; }
+.pcard .nm { font-size: 15px; font-weight: 700; color: var(--t2); display: flex; gap: 8px; align-items: center; }
+.pcard .amt { margin: 10px 0 6px; font-size: 64px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+.pcard .amt small { font-size: 18px; font-weight: 600; color: var(--t2); letter-spacing: 0; }
+.pcard .lead { font-size: 17px; color: var(--t2); line-height: 1.5; margin: 0 0 22px; }
+.pcard ul { list-style: none; margin: 0 0 28px; padding: 0; display: grid; gap: 10px; font-size: 16px; }
+.pcard li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.4; }
+.pcard li svg { margin-top: 2px; color: var(--ready); }
+.pcard.soon li svg { color: var(--pb-edge-strong); }
+.soonchip { font-size: 11px; font-weight: 700; background: #fff; color: var(--t1); padding: 3px 9px; border-radius: 999px; }
+.faq { display: grid; grid-template-columns: 1fr 1fr; gap: 0 56px; margin-top: 72px; }
+.faq div { padding: 22px 0; border-top: 2px solid #E0D8EE; }
+.faq h4 { margin: 0 0 6px; font-size: 17px; font-weight: 700; }
+.faq p { margin: 0; font-size: 15.5px; line-height: 1.55; color: var(--t2); }
+.lp-foot { margin-top: 120px; padding: 28px 0 40px; display: flex; align-items: center; gap: 24px; font-size: 14px; color: var(--t2); border-top: 2px solid #E0D8EE; }
+.lp-foot .bl { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--t1); font-size: 16px; }
+.lp-foot .bl .lg { width: 32px; height: 32px; }
+.lp-foot nav { display: flex; gap: 22px; margin-left: auto; }
+.lp-foot a { color: var(--t2); text-decoration: none; font-weight: 600; }
+
+/* feature 3 — open any card big */
+.focusmini { position: absolute; inset: 22px 22px 22px 22px; background: #fff; border-radius: 22px; box-shadow: var(--sh-lift); display: grid; grid-template-columns: 34% 1fr; gap: 14px; padding: 10px; transform-origin: 18% 30%; animation: morph 7s var(--ease-out) infinite; }
+.focusmini .tlp { min-width: 0; overflow: hidden; background: var(--pb-desk); border-radius: 16px; padding: 12px 10px; display: flex; flex-direction: column; gap: 8px; }
+.focusmini .tlp h5 { margin: 0; font-size: 10px; font-weight: 700; color: var(--t2); }
+.focusmini .fst { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 7px; font-size: 10.5px; line-height: 1.3; }
+.focusmini .fst i { width: 8px; height: 8px; border-radius: 4px; border: 2px solid var(--pb-edge-strong); margin-top: 3px; }
+.focusmini .fst.now { background: #fff; border-radius: 10px; padding: 7px; font-weight: 700; box-shadow: 0 6px 16px -10px rgba(43,35,64,.3); }
+.focusmini .fst.now i { border: 0; background: var(--pb-ink); }
+.focusmini .fst small { display: block; font-weight: 500; color: var(--t3); font-size: 9.5px; }
+.focusmini .rd { min-width: 0; padding: 6px 8px; display: flex; flex-direction: column; gap: 9px; }
+.focusmini .back { align-self: flex-start; font-size: 10px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: #fff; box-shadow: var(--sh-float); display: inline-flex; gap: 4px; align-items: center; }
+.focusmini .rt { font-size: 17px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+.focusmini .rp { font-size: 11.5px; line-height: 1.55; color: #3B3352; margin: 0; }
+.focusmini .ub { align-self: flex-end; background: var(--pb-lilac); border-radius: 12px 12px 4px 12px; padding: 6px 10px; font-size: 10.5px; }
+@keyframes morph { 0%, 62% { transform: none; opacity: 1; } 72% { transform: translate(-6%, 4%) scale(.34); opacity: 0; } 82% { transform: translate(-6%, 4%) scale(.34); opacity: 0; } 94%, 100% { transform: none; opacity: 1; } }
+
+/* feature 4 — model picker */
+.pick { position: absolute; z-index: 30; width: 250px; padding: 8px; border-radius: 22px; background: #fff; box-shadow: var(--sh-card); }
+.pick h6 { margin: 4px 8px 6px; font-size: 10.5px; font-weight: 700; color: var(--t3); }
+.pick .pr { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 12px; font-size: 12.5px; font-weight: 600; }
+.pick .pr.on { background: var(--pb-desk); }
+.pick .pr .r { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--t3); display: inline-flex; gap: 4px; align-items: center; }
+.pick .pr.lock { color: var(--t3); }
+.pick .pr.lock .mdot { opacity: .45; }
+.pick .pr .ok { color: var(--ready); }
+.carry { white-space: nowrap; position: absolute; z-index: 30; display: inline-flex; gap: 8px; align-items: center; padding: 8px 14px 8px 8px; border-radius: 999px; background: #fff; box-shadow: var(--sh-float); font-size: 12.5px; font-weight: 600; }
+.carry .c { width: 26px; height: 26px; border-radius: 13px; background: var(--pb-ink); color: #fff; display: grid; place-items: center; }
+
+/* gentle "live" motion: reading pulse on desk sources (feature 1), branch growing (feature 2) */
+@keyframes readpulse { 0%, 100% { box-shadow: var(--sh-node); } 12%, 22% { box-shadow: 0 0 0 3px var(--pb-edge-strong), var(--sh-node); } 34% { box-shadow: var(--sh-node); } }
+.pulse .face { animation: readpulse 4.5s ease-in-out infinite; }
+.pulse.p2 .face { animation-delay: .5s; } .pulse.p3 .face { animation-delay: 1s; }
+@keyframes grow { 0%, 55% { opacity: 1; transform: none; } 62% { opacity: 0; transform: scale(.92); } 74% { opacity: 0; transform: scale(.92); } 84%, 100% { opacity: 1; transform: none; } }
+.growing { animation: grow 7s var(--ease-out) infinite; transform-origin: 0 40px; }
+@keyframes drawt { 0%, 55% { stroke-dashoffset: 0; opacity: 1; } 62% { opacity: 0; stroke-dashoffset: 900; } 70% { opacity: 1; stroke-dashoffset: 900; } 84%, 100% { stroke-dashoffset: 0; opacity: 1; } }
+.tubes .draw { stroke-dasharray: 900; animation: drawt 7s var(--ease-out) infinite; }
+.desk.growing { transform-origin: 0 50%; }
+
+/* landing — narrow (390) */
+@container (max-width: 700px) {
+  .lp .wrap { padding: 0 16px; }
+  .lp-nav { padding: 12px; }
+  .lp-nav .c-brand { padding: 6px 14px 6px 6px; gap: 8px; }
+  .lp-nav .c-brand b { font-size: 17px; }
+  .lp-nav .c-brand .lg { width: 34px; height: 34px; }
+  .lp-links a { display: none; }
+  .lp-links a.si { display: inline-block; padding: 8px 10px; font-size: 14px; }
+  .lp-links { padding: 6px 6px 6px 6px; }
+  .lp-links .btn { height: 36px; padding: 0 14px; font-size: 13px; }
+  .lp-links .btn .lbl-long { display: none; }
+  .lp-links .btn .lbl-short { display: inline !important; }
+  .hero-top { grid-template-columns: 1fr; gap: 24px; padding-top: 44px; }
+  .pain { font-size: 15px; margin-bottom: 20px; }
+  .lp h1 { font-size: 52px; letter-spacing: -.04em; }
+  .hero-copy p { font-size: 17px; }
+  .ctas .btn { width: 100%; }
+  .hero-board { height: 330px; margin-top: 28px; }
+  .keyline { font-size: 14px; text-align: left; padding: 0 16px; }
+  .micro i { display: none; }
+  .micro { gap: 4px 14px; }
+  .focusmini { inset: 12px; grid-template-columns: 40% 1fr; gap: 8px; padding: 8px; }
+  .focusmini .fst { font-size: 9.5px; }
+  .focusmini .fst small { font-size: 8.5px; }
+  .focusmini .rt { font-size: 14px; }
+  .focusmini .rp { font-size: 10px; }
+  .focusmini .ub { font-size: 9.5px; }
+  .sec { padding-top: 96px; }
+  .lp h2 { font-size: 36px; }
+  .sec-head { margin-bottom: 40px; }
+  .sec-head p { font-size: 16px; }
+  .feats { grid-template-columns: 1fr; gap: 40px; }
+  .slab.wide, .slab.wide.flip { grid-column: auto; grid-template-columns: 1fr; gap: 22px; padding: 30px 16px 22px; }
+  .slab.wide.flip .ft { order: 2; }
+  .slab.s7, .slab.s5 { grid-column: auto; padding: 30px 16px 22px; }
+  .ft h3 { font-size: 23px; }
+  .ft p { font-size: 15.5px; }
+  .proof { padding: 48px 20px; }
+  .proof .slots { display: none; }
+  .proof h3 { font-size: 23px; }
+  .proof p { font-size: 15.5px; }
+  .founder { grid-template-columns: 1fr; gap: 28px; }
+  .founder .side h2 { font-size: 34px; }
+  .fnote { padding: 24px 22px; transform: none; }
+  .fnote p { font-size: 16.5px; }
+  .price { grid-template-columns: 1fr; gap: 20px; }
+  .pcard { padding: 28px 22px; }
+  .pcard .amt { font-size: 52px; }
+  .pcard .amt small { display: block; margin-top: 10px; font-size: 15px; }
+  .mini .pick { display: none; }
+  .faq { grid-template-columns: 1fr; margin-top: 48px; }
+  .lp-foot { flex-direction: column; align-items: flex-start; gap: 14px; margin-top: 80px; }
+  .lp-foot nav { margin-left: 0; flex-wrap: wrap; gap: 16px; }
+}
+
+/* ===================== B · SIGN-IN ===================== */
+.si-bg { position: absolute; inset: 0; opacity: .55; }
+.si-bg svg { width: 100%; height: 100%; display: block; }
+.si-back { position: absolute; top: 20px; left: 20px; display: inline-flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 600; padding: 10px 18px 10px 14px; border-radius: 999px; z-index: 3; }
+.si-sheet { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 480px; background: #fff; border-radius: 40px; box-shadow: var(--sh-lift); padding: 44px 44px 30px; z-index: 3; text-align: center; }
+.si-sheet .lg { width: 56px; height: 56px; border-radius: 28px; margin: 0 auto 22px; }
+.si-sheet h2 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; }
+.si-sheet .sub { margin: 10px 0 30px; font-size: 16px; line-height: 1.5; color: var(--t2); }
+.gbtn { width: 100%; height: 56px; border-radius: 999px; background: var(--pb-ink); color: #fff; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 0 8px; position: relative; }
+.gbtn .g { position: absolute; left: 8px; width: 40px; height: 40px; border-radius: 20px; background: #fff; display: grid; place-items: center; }
+.si-data { margin: 22px 0 0; padding: 14px 16px; background: var(--pb-desk); border-radius: 18px; font-size: 13.5px; line-height: 1.5; color: var(--t2); display: flex; gap: 10px; text-align: left; }
+.si-data svg { color: var(--pb-edge-strong); margin-top: 1px; }
+.si-legal { margin: 22px 0 0; font-size: 12.5px; color: var(--t3); }
+.si-legal a { color: var(--t2); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+
+/* ===================== C · BOARDS HOME ===================== */
+.home { position: absolute; inset: 0; background: var(--pb-desk); overflow: hidden; }
+.home.scroll { position: relative; inset: auto; height: 100%; }
+.home .c-brand { padding-right: 22px; }
+.home .hin { max-width: 1216px; margin: 0 auto; padding: 112px 24px 40px; }
+.home .hin.e { padding-top: 96px; }
+.greet { margin: 0; text-align: center; font-size: 64px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+.greet-sub { text-align: center; margin: 14px 0 0; font-size: 16px; color: var(--t2); }
+.greet-sub b { color: var(--t1); font-weight: 600; }
+.rowh { display: flex; align-items: center; gap: 10px; margin: 56px 0 18px; }
+.rowh h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.015em; }
+.rowh .chip { font-size: 11px; font-weight: 700; background: var(--pb-lilac); color: var(--t2); padding: 3px 9px; border-radius: 999px; }
+.rowh .sp { flex: 1; }
+.starters { display: flex; gap: 16px; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, #000 90%, transparent); mask-image: linear-gradient(90deg, #000 90%, transparent); padding: 4px 4px 8px; margin: -4px -4px -8px; }
+.st { flex: none; width: 214px; }
+.st .pv { height: 136px; border-radius: 24px; background: var(--pb-canvas); overflow: hidden; position: relative; transition: transform 160ms var(--ease-out), box-shadow 160ms ease; }
+.st .pv svg { width: 100%; height: 100%; display: block; }
+.st.hov .pv { box-shadow: 0 0 0 2px var(--pb-ink); }
+.st .nm { margin-top: 10px; font-size: 14.5px; font-weight: 700; line-height: 1.25; }
+.st .ds { margin-top: 2px; font-size: 12.5px; color: var(--t2); line-height: 1.35; }
+.st.blank .pv { background: #fff; box-shadow: inset 0 0 0 2px #DDD3EE; display: grid; place-items: center; }
+.st.blank .pv span { width: 48px; height: 48px; border-radius: 24px; background: var(--pb-ink); color: #fff; display: grid; place-items: center; }
+.tools { display: flex; align-items: center; gap: 8px; }
+.search { display: flex; align-items: center; gap: 8px; height: 40px; width: 280px; padding: 0 14px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--hair); color: var(--t3); font-size: 14px; }
+.sortp { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--hair); font-size: 14px; font-weight: 600; }
+.sortp span { color: var(--t3); font-weight: 500; }
+.seg { display: flex; padding: 4px; border-radius: 999px; background: var(--pb-lilac); gap: 2px; }
+.seg button { width: 36px; height: 32px; border-radius: 999px; display: grid; place-items: center; color: var(--t2); }
+.seg button.on { background: #fff; color: var(--t1); box-shadow: var(--sh-float); }
+.bgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.bc { position: relative; background: #fff; border-radius: 28px; padding: 8px; box-shadow: var(--sh-node); }
+.bc .pv { height: 168px; border-radius: 22px; background: var(--pb-canvas); overflow: hidden; }
+.bc .pv svg { width: 100%; height: 100%; display: block; }
+.bc .info { display: flex; align-items: flex-start; gap: 8px; padding: 12px 8px 6px 10px; }
+.bc .info .tx { min-width: 0; flex: 1; }
+.bc .info b { display: block; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bc .info span { display: block; margin-top: 3px; font-size: 12.5px; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bc .info span.when { margin-top: 1px; color: var(--t3); }
+.more { width: 32px; height: 32px; border-radius: 16px; display: grid; place-items: center; color: var(--t2); flex: none; }
+.more.on { background: var(--pb-lilac); color: var(--t1); }
+.blist { background: #fff; border-radius: 28px; box-shadow: var(--sh-node); padding: 6px 8px; }
+.lr { display: grid; grid-template-columns: 76px minmax(0, 1fr) 200px 140px 40px; gap: 16px; align-items: center; padding: 10px 10px; border-top: 1.5px solid var(--pb-lilac); }
+.lr:first-child { border-top: 0; }
+.lr.head { font-size: 12px; font-weight: 700; color: var(--t3); padding: 10px 10px 8px; }
+.lr .th { width: 76px; height: 50px; border-radius: 12px; background: var(--pb-canvas); overflow: hidden; }
+.lr .th svg { width: 100%; height: 100%; display: block; }
+.lr b { font-size: 15px; font-weight: 700; }
+.lr .s { display: block; font-size: 12.5px; color: var(--t2); margin-top: 2px; }
+.lr .w { font-size: 14px; color: var(--t2); }
+.dotrow { display: inline-flex; gap: 4px; }
+.dotrow i { width: 9px; height: 9px; border-radius: 5px; }
+.bmenu { right: auto; width: 230px; min-width: 0; }
+.emptyd { position: relative; border-radius: 36px; box-shadow: inset 0 0 0 2px #DDD3EE; padding: 44px 24px 30px; display: grid; place-items: center; text-align: center; }
+.emptyd .tabx { left: 24px; top: -14px; bottom: auto; }
+.firstq { width: 520px; max-width: 100%; background: #fff; border-radius: 20px; box-shadow: var(--sh-card); padding: 16px; text-align: left; display: flex; flex-direction: column; gap: 12px; position: relative; }
+.firstq .chd { font-size: 10.5px; font-weight: 600; }
+.firstq .box { display: flex; align-items: flex-end; gap: 8px; }
+.firstq .ta { flex: 1; min-height: 44px; border-radius: 14px; background: #fff; outline: 1.5px dashed var(--pb-edge); outline-offset: -1.5px; padding: 12px 14px; font-size: 15px; color: var(--t1); }
+.firstq .ta .caret { display: inline-block; width: 2px; height: 18px; background: var(--pb-ink); vertical-align: -3px; animation: pb-caret 1s steps(1) infinite; }
+.firstq .ta span.ph { color: var(--t3); }
+.firstq .send { width: 36px; height: 36px; border-radius: 18px; background: var(--pb-ink); color: #fff; display: grid; place-items: center; flex: none; margin-bottom: 4px; }
+.firstq .port.in { left: -6px; top: 31px; --kc: var(--pb-ink); background: #fff; box-shadow: inset 0 0 0 2px var(--kc); }
+.emptyd h3 { margin: 24px 0 6px; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.emptyd p { margin: 0; font-size: 15px; color: var(--t2); line-height: 1.5; max-width: 34em; }
+.keynag { display: inline-flex; align-items: center; gap: 10px; margin-top: 18px; padding: 6px 6px 6px 14px; border-radius: 999px; background: #fff; box-shadow: var(--sh-float); font-size: 13.5px; font-weight: 600; }
+.keynag::before { content: ''; width: 8px; height: 8px; border-radius: 4px; background: var(--stale); }
+.keynag .btn { height: 32px; padding: 0 14px; font-size: 13px; }
+
+/* account menu */
+.acctm { top: 80px; right: 16px; width: 316px; transform-origin: 100% 0; }
+.acctm .who { display: flex; gap: 12px; align-items: center; padding: 10px 10px 12px; }
+.acctm .who b { display: block; font-size: 15px; font-weight: 700; }
+.acctm .who .wt span { display: block; font-size: 13px; color: var(--t2); margin-top: 1px; }
+.acctm .plan { margin: 0 6px 6px; padding: 10px 12px; border-radius: 18px; background: var(--pb-desk); font-size: 12.5px; color: var(--t2); display: flex; align-items: center; gap: 8px; }
+.acctm .plan b { color: var(--t1); font-weight: 700; }
+.acctm .ver { padding: 4px 12px 6px 14px; font-size: 11.5px; color: var(--t3); display: flex; justify-content: space-between; }
+.acctm .ver a { color: var(--t3); text-decoration: none; }
+.keystat { display: inline-flex; align-items: center; gap: 5px; }
+.keystat::before { content: ''; width: 7px; height: 7px; border-radius: 4px; background: var(--stale); }
+
+/* home — narrow (390) */
+@container (max-width: 700px) {
+  .home .c-brand { top: 12px; left: 12px; padding: 6px 14px 6px 6px; gap: 8px; }
+  .home .c-brand b { font-size: 17px; }
+  .home .c-brand .lg { width: 34px; height: 34px; }
+  .home .c-acct { top: 12px; right: 12px; height: 48px; padding: 6px; }
+  .home .c-acct .av { width: 36px; height: 36px; font-size: 13px; }
+  .home .hin { padding: 104px 16px 32px; }
+  .greet { font-size: 40px; text-align: left; }
+  .greet-sub { text-align: left; font-size: 15px; }
+  .rowh { margin: 36px 0 14px; flex-wrap: wrap; }
+  .rowh h2 { font-size: 18px; }
+  .rowh .btn { height: 36px; padding: 0 12px; font-size: 13px; }
+  .rowh .chip { display: none; }
+  .st { width: 150px; }
+  .st .pv { height: 104px; border-radius: 20px; }
+  .st .ds { display: none; }
+  .tools .search { width: auto; flex: 1; }
+  .tools .sortp, .tools .seg { display: none; }
+  .rowh.rec .tools { width: 100%; order: 3; }
+  .lr { grid-template-columns: 60px minmax(0, 1fr) 32px; gap: 12px; padding: 10px 4px; }
+  .lr .th { width: 60px; height: 44px; }
+  .lr .w, .lr .dr, .lr.head { display: none; }
+  .lr b { font-size: 14.5px; }
+  .blist { padding: 4px 10px; }
+}
+
+/* ===================== E · SETTINGS / API KEYS SHEET ===================== */
+.scrim { position: absolute; inset: 0; background: rgba(43,35,64,.24); z-index: 60; }
+.keys { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 70; width: 1240px; height: 836px; background: #fff; border-radius: 40px; box-shadow: var(--sh-lift); display: grid; grid-template-columns: 216px minmax(0, 1fr) 316px; overflow: hidden; }
+.knav { padding: 28px 14px; display: flex; flex-direction: column; gap: 4px; border-right: 2px solid var(--pb-lilac); }
+.knav h3 { margin: 0 0 18px 10px; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.knav .ni { display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--t2); }
+.knav .ni .c { width: 32px; height: 32px; border-radius: 16px; display: grid; place-items: center; background: var(--pb-lilac); color: var(--t1); }
+.knav .ni.on { background: var(--pb-ink); color: #fff; }
+.knav .ni.on .c { background: rgba(255,255,255,.14); color: #fff; }
+.knav .grow { flex: 1; }
+.knav .signout { color: #B4244A; }
+.knav .signout .c { background: var(--failed-tile); color: var(--failed); }
+.kmain { padding: 30px 30px 24px; overflow: hidden; display: flex; flex-direction: column; }
+.khead { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 18px; }
+.khead h2 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.khead p { margin: 6px 0 0; font-size: 14px; color: var(--t2); line-height: 1.45; }
+.khead .cnt { margin-left: auto; font-size: 13px; font-weight: 700; background: var(--pb-desk); padding: 8px 12px; border-radius: 999px; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+.khead .cnt i { width: 8px; height: 8px; border-radius: 4px; background: var(--ready); }
+.prow { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 11px 12px 11px 11px; border-radius: 22px; background: var(--pb-desk); margin-bottom: 8px; }
+.prow .pt { width: 44px; height: 44px; border-radius: 13px; background: #fff; display: grid; place-items: center; font-size: 17px; font-weight: 800; color: var(--pc); position: relative; }
+.prow .pt::after { content: ''; position: absolute; right: -3px; bottom: -3px; width: 12px; height: 12px; border-radius: 6px; background: var(--pc); border: 2.5px solid var(--pb-desk); }
+.prow .pn { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+.prow .ms { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+.prow .ms span { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #fff; color: var(--t1); display: inline-flex; gap: 4px; align-items: center; }
+.prow .ms span.lk { color: var(--t3); background: transparent; box-shadow: inset 0 0 0 1.5px var(--hair); }
+.prow .acts { display: flex; gap: 6px; align-items: center; }
+.ks { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ks.ok { background: #E3F4E7; color: #2F7A43; }
+.ks.ok::before { content: ''; width: 6px; height: 6px; border-radius: 3px; background: var(--ready); }
+.ks.none { background: #fff; color: var(--t3); }
+.ks.bad { background: var(--failed-tile); color: #B4244A; }
+.ks.bad::before { content: ''; width: 6px; height: 6px; border-radius: 3px; background: var(--failed); }
+.ks code { font: inherit; letter-spacing: .04em; }
+.prow.bad { background: #fff; box-shadow: 0 0 0 2px var(--failed-ring); }
+.prow.bad .pt { background: var(--failed-tile); }
+.prow .why { margin-top: 5px; font-size: 12.5px; color: var(--t2); line-height: 1.4; }
+.prow.open { background: #fff; box-shadow: 0 0 0 2px var(--pb-ink), var(--sh-node); grid-template-columns: 44px minmax(0, 1fr); }
+.prow.open .pt::after { border-color: #fff; }
+.prow .addf { grid-column: 2 / -1; display: flex; gap: 8px; align-items: center; }
+.prow .fi { flex: 1; height: 44px; border-radius: 16px; background: var(--pb-desk); display: flex; align-items: center; padding: 0 14px; font-size: 14px; color: var(--t1); box-shadow: 0 0 0 2px var(--pb-ink); letter-spacing: .02em; }
+.prow .fi .caret { display: inline-block; width: 2px; height: 18px; background: var(--pb-ink); margin-left: 1px; animation: pb-caret 1s steps(1) infinite; }
+.prow .help { grid-column: 2 / -1; font-size: 12.5px; color: var(--t2); margin-top: -4px; }
+.prow .help a { color: var(--t1); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.kside { background: var(--pb-desk); padding: 30px 22px 24px; display: flex; flex-direction: column; gap: 14px; position: relative; }
+.kside h4 { margin: 0; font-size: 13px; font-weight: 700; color: var(--t2); }
+.kside .pick { position: static; width: auto; box-shadow: var(--sh-node); }
+.kside .pick .grp { margin: 8px 8px 4px; font-size: 10.5px; font-weight: 700; color: var(--t3); }
+.kside .pick .pr .r svg { color: var(--t3); }
+.kside .priv { margin-top: auto; background: #fff; border-radius: 18px; padding: 14px 16px; font-size: 13px; line-height: 1.5; color: var(--t2); display: flex; gap: 10px; }
+.kside .priv svg { color: var(--pb-edge-strong); margin-top: 1px; }
+.kside .priv b { color: var(--t1); font-weight: 600; }
+.kclose { position: absolute; top: 18px; right: 18px; width: 36px; height: 36px; border-radius: 18px; display: grid; place-items: center; background: #fff; box-shadow: var(--sh-float); z-index: 3; }
+
+/* annotation callouts (presentation only) */
+.note-call { position: absolute; z-index: 90; background: var(--pb-ink); color: #fff; font-size: 12.5px; font-weight: 600; line-height: 1.35; padding: 8px 12px; border-radius: 14px; max-width: 250px; box-shadow: var(--sh-card); }
+.note-call::before { content: ''; position: absolute; width: 10px; height: 10px; background: var(--pb-ink); transform: rotate(45deg); }
+.note-call.up::before { top: -4px; right: 28px; }
+.note-call.left::before { left: -4px; top: 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tubes .bub, .ans.live p:last-child::after, .pulse .face, .growing, .tubes .draw, .focusmini, .caret { animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ======================= ICON SPRITE (lucide shapes) ======================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-git-fork" viewBox="0 0 24 24"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-maximize-2" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+  <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+  <symbol id="i-sticky-note" viewBox="0 0 24 24"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+  <symbol id="i-sheet" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+  <symbol id="i-audio" viewBox="0 0 24 24"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-git-branch" viewBox="0 0 24 24"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></symbol>
+</svg>
+
+<header class="doc-head">
+  <h1>Context Tree V3 — app shell mockups</h1>
+  <p>Every screen around the board, in the board's own Pebble language. Frames are 1440×900 (desktop) and 390 wide (mobile). The board canvas is unchanged; everything else borrows its lilac canvas, desks, white cards, ink buttons, 28–40px radii and floating pills. Boards outside the canvas are always drawn as their own zoomed-out <b>pebble map</b>, generated from card positions. People and emails are fictional.</p>
+</header>
+
+<!-- A ===================================================================== -->
+<section class="fw">
+  <div class="flabel"><b>A</b><strong>Landing — contexttree.tech</strong> 1440 wide, full page. The page is a board: lilac canvas, sections on desks, the real board under the hero.</div>
+  <div class="frame full pb" id="A"></div>
+</section>
+<section class="fw">
+  <div class="flabel"><b>A·m</b><strong>Landing — mobile</strong> 390 wide, same markup (container queries).</div>
+  <div class="frame mfull pb" id="Am"></div>
+</section>
+
+<!-- B ===================================================================== -->
+<section class="fw">
+  <div class="flabel"><b>B</b><strong>Sign in</strong> One calm sheet. Google only. One line on data.</div>
+  <div class="frame d pb" id="B">
+    <div class="si-bg" id="B-bg"></div>
+    <a class="si-back float" href="#A" style="color:inherit;text-decoration:none"><svg class="i" style="--s:15px"><use href="#i-arrow-left"/></svg>contexttree.tech</a>
+    <div class="si-sheet">
+      <div class="lg"><svg class="i" style="--s:24px"><use href="#i-git-fork"/></svg></div>
+      <h2>Sign in to Context Tree</h2>
+      <p class="sub">Your boards are where you left them.<br>New here? The same button makes your account.</p>
+      <button class="gbtn"><span class="g"><svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg></span>Continue with Google</button>
+      <div class="si-data"><svg class="i" style="--s:17px"><use href="#i-shield"/></svg><span>We store your boards and your encrypted API keys. Never sold, never used for training.</span></div>
+      <p class="si-legal"><a href="#">Privacy</a> &nbsp;·&nbsp; <a href="#">Terms</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- C ===================================================================== -->
+<section class="fw">
+  <div class="flabel"><b>C</b><strong>Boards home — grid</strong> Greeting · start something new (blank + starter boards) · jump back in. "…" menu open on a card.</div>
+  <div class="frame d pb" id="C"></div>
+</section>
+<section class="fw">
+  <div class="flabel"><b>C·list</b><strong>Boards home — list view</strong> Same page, list toggle on. Name + counts, last opened, "…".</div>
+  <div class="frame d pb" id="Cl"></div>
+</section>
+<section class="fw">
+  <div class="flabel"><b>C·empty</b><strong>Boards home — first visit</strong> No boards yet: the recents area becomes an empty desk that asks the first question.</div>
+  <div class="frame d pb" id="Ce"></div>
+</section>
+<section class="fw">
+  <div class="flabel"><b>C·m</b><strong>Boards home — mobile</strong> 390 × 844.</div>
+  <div class="frame m pb" id="Cm"></div>
+</section>
+
+<!-- D ===================================================================== -->
+<section class="fw">
+  <div class="flabel"><b>D</b><strong>Account menu</strong> From the avatar, top-right — same component on the boards home (shown) and on the board (frame F).</div>
+  <div class="frame d pb" id="D"></div>
+</section>
+
+<!-- E ===================================================================== -->
+<section class="fw">
+  <div class="flabel"><b>E</b><strong>Settings — API keys</strong> A board sheet over whatever you were doing. Status per provider, what each key unlocks, what the model picker will show.</div>
+  <div class="frame d pb" id="E"></div>
+</section>
+
+<!-- F ===================================================================== -->
+<section class="fw">
+  <div class="flabel"><b>F</b><strong>The board, with the account avatar</strong> Brand top-left · avatar top-right · Add bottom-left · Trail bottom-centre · Zoom bottom-right.</div>
+  <div class="frame d pb" id="F"></div>
+</section>
+
+<!-- ======================= LANDING TEMPLATE ======================= -->
+<template id="tpl-landing">
+<div class="lp">
+  <nav class="lp-nav">
+    <div class="c-brand float"><span class="lg"><svg class="i" style="--s:18px"><use href="#i-git-fork"/></svg></span><b>Context Tree</b></div>
+    <div class="lp-links float">
+      <a href="#">How it works</a><a href="#">Pricing</a><a href="#">Founder's note</a><a href="#B" class="si">Sign in</a>
+      <a class="btn primary" href="#C" style="color:#fff;text-decoration:none;padding:0 18px;display:inline-flex"><span class="lbl-long">Start a board</span><span class="lbl-short" hidden>Start</span></a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <div class="hero-top">
+      <div>
+        <p class="pain">Forty messages in, the chat has <b>forgotten the PDF</b> you gave it.</p>
+        <h1>Give every question its own desk.</h1>
+      </div>
+      <div class="hero-copy">
+        <p>Pin PDFs, links and notes beside a question. <b>Its chat reads what's on that desk and nothing else.</b> Branch to ask it another way — every branch remembers the question it grew from.</p>
+        <div class="ctas">
+          <a class="btn primary big" href="#C" style="text-decoration:none">Start a board — it's free <svg class="i" style="--s:17px"><use href="#i-arrow-right"/></svg></a>
+          <a class="btn white big" href="#" style="text-decoration:none;color:inherit">See how it works</a>
+        </div>
+        <div class="micro"><span>Runs in your browser</span><i>●</i><span>Free with your own API key</span><i>●</i><span>No card</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-board" data-board="heat"></div>
+  <p class="keyline">Bring a key from <b>Anthropic</b>, <b>OpenAI</b>, <b>Google</b>, <b>Groq</b>, <b>DeepSeek</b>, <b>Mistral</b> or <b>Moonshot</b>. Every branch can use a different one.</p>
+
+  <div class="wrap">
+    <section class="sec">
+      <div class="sec-head">
+        <span class="tabx eyebrow">How it works <span class="dots"><i style="background:#F5C93A"></i><i style="background:#8FD0F5"></i><i style="background:#F59AB8"></i></span></span>
+        <h2>What a board does that a chat window can't.</h2>
+      </div>
+      <div class="feats">
+        <div class="slab wide">
+          <span class="tabx">Desks <span class="dots"><i style="background:#F5C93A"></i><i style="background:#8FD0F5"></i><i style="background:#F59AB8"></i></span></span>
+          <div class="mini" style="height:380px" data-board="f1"></div>
+          <div class="ft">
+            <h3>What's on the desk is what the chat reads.</h3>
+            <p>Drop a PDF, a link or a note beside a question and that chat reads those — nothing from the other desks — so answers stay on topic and each question sends fewer tokens.</p>
+          </div>
+        </div>
+        <div class="slab s7">
+          <span class="tabx">Branches</span>
+          <div class="mini" style="height:400px" data-board="f2"></div>
+          <div class="ft">
+            <h3>Branch from any answer.</h3>
+            <p>Ask the same desk a different question, or add one source and see what changes. The string thickens toward the question it grew from.</p>
+          </div>
+        </div>
+        <div class="slab s5">
+          <span class="tabx">Focus</span>
+          <div class="mini" style="height:400px" data-board="f3"></div>
+          <div class="ft">
+            <h3>Open any card big.</h3>
+            <p>Long answers get a full page, with the questions that led there on the left. Esc puts you back on the board.</p>
+          </div>
+        </div>
+        <div class="slab wide flip">
+          <span class="tabx">Your keys</span>
+          <div class="ft">
+            <h3>Ask the next question on another AI.</h3>
+            <p>Each branch picks its own model — Claude, GPT, Gemini and more — and the desk and the trail come with it. You pay the provider directly; we add nothing on top.</p>
+          </div>
+          <div class="mini" style="height:380px" data-board="f4"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="proof">
+        <span class="tabx">What people say</span>
+        <h3>This desk is empty on purpose.</h3>
+        <p>Context Tree V3 is new. When the first people using it have something to say, their words get pinned here — with their names and their permission. No logo wall until there's something true to put on it.</p>
+        <div class="slots"><i></i><i></i><i></i></div>
+      </div>
+    </section>
+
+    <section class="sec founder">
+      <div class="side">
+        <span class="tabx eyebrow" style="margin-bottom:16px">Founder's note</span>
+        <h2>Why this exists.</h2>
+        <p>One person builds Context Tree. This is the note pinned to the first board.</p>
+      </div>
+      <div class="fnote">
+        <div class="meta"><svg class="i" style="--s:11px"><use href="#i-sticky-note"/></svg>Note · Founder</div>
+        <p>I started this in 2025 because my best questions kept getting lost. I'd ask something good, the chat would wander, and forty messages later the model had half-forgotten the paper I'd given it at the start.</p>
+        <p>I wanted a board instead of a scroll. Each question gets a desk. Whatever sits on the desk is what that chat reads. When I want a second angle I branch, and the branch remembers where it came from.</p>
+        <p>It runs in your browser and it's free with your own API keys, because I'd rather you pay the people who make the models than pay me a markup. If something breaks or feels wrong, write to me. I read every message.</p>
+        <p class="sig">— [Founder's name] <span>· building Context Tree</span></p>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <span class="tabx eyebrow">Pricing</span>
+        <h2>Free while you bring your own keys.</h2>
+      </div>
+      <div class="price">
+        <div class="pcard free">
+          <div class="nm">Free</div>
+          <div class="amt">€0 <small>for as long as you use your own keys</small></div>
+          <p class="lead">Everything on the board. You pay each AI provider for what you use, at their price.</p>
+          <ul>
+            <li><svg class="i" style="--s:17px"><use href="#i-check"/></svg>Unlimited boards, desks, cards and branches</li>
+            <li><svg class="i" style="--s:17px"><use href="#i-check"/></svg>Seven providers: Anthropic, OpenAI, Google, Groq, DeepSeek, Mistral, Moonshot</li>
+            <li><svg class="i" style="--s:17px"><use href="#i-check"/></svg>PDFs, documents, links and notes as sources</li>
+            <li><svg class="i" style="--s:17px"><use href="#i-check"/></svg>Export any board as Markdown</li>
+          </ul>
+          <a class="btn primary big" href="#C" style="text-decoration:none">Start a board <svg class="i" style="--s:17px"><use href="#i-arrow-right"/></svg></a>
+        </div>
+        <div class="pcard soon">
+          <div class="nm">Hosted <span class="soonchip">Coming soon</span></div>
+          <div class="amt" style="font-size:40px;margin-top:18px">No keys needed</div>
+          <p class="lead">Models included, for people who'd rather not manage API keys. Priced when it's ready — not before.</p>
+          <ul>
+            <li><svg class="i" style="--s:17px"><use href="#i-sparkle"/></svg>Everything in Free</li>
+            <li><svg class="i" style="--s:17px"><use href="#i-sparkle"/></svg>Video and audio reading</li>
+            <li><svg class="i" style="--s:17px"><use href="#i-sparkle"/></svg>Share a board with a link</li>
+          </ul>
+          <a class="btn white big" href="#" style="text-decoration:none;color:inherit">Tell me when it's ready</a>
+        </div>
+      </div>
+      <div class="faq">
+        <div><h4>Do I need an API key?</h4><p>Yes, for now. Paste one from any of the seven providers in Settings; it takes about a minute. You can add more later.</p></div>
+        <div><h4>Where is my key kept?</h4><p>Encrypted on our server. It's never sent back to your browser after you save it, and you can remove it at any time.</p></div>
+        <div><h4>Do I have to install anything?</h4><p>No. Context Tree runs in your browser, on any computer you sign in from.</p></div>
+        <div><h4>Can I take my boards with me?</h4><p>Yes. Any board exports as Markdown, with each question, its answer and the sources it read.</p></div>
+      </div>
+    </section>
+
+    <footer class="lp-foot">
+      <span class="bl"><span class="lg"><svg class="i" style="--s:15px"><use href="#i-git-fork"/></svg></span>Context Tree</span>
+      <span>Think in branches. Keep your sources in sight.</span>
+      <nav><a href="#">Founder's note</a><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Contact</a><span>© 2026</span></nav>
+    </footer>
+  </div>
+</div>
+</template>
+
+<script>
+/* ============================== helpers ============================== */
+const ic = (n, s = 16) => `<svg class="i" style="--s:${s}px"><use href="#i-${n}"/></svg>`;
+const FAM = {
+  media: { fc: '#FFD9C7', fd: '#E0673A', fk: '#FF9566' }, docs: { fc: '#FFF0B3', fd: '#B8860B', fk: '#F5C93A' },
+  note: { fc: '#FFE1EA', fd: '#D1467E', fk: '#F59AB8' }, web: { fc: '#C9ECFF', fd: '#2A86C4', fk: '#8FD0F5' },
+  data: { fc: '#D4F2C9', fd: '#3F9A2E', fk: '#5CC24A' }, image: { fc: '#E6DBFF', fd: '#7A52D6', fk: '#B9A0F5' },
+};
+const M = { claude: ['Claude', '#E0673A'], gpt: ['GPT', '#3FAE5A'], gemini: ['Gemini', '#2A86C4'], deepseek: ['DeepSeek', '#7A52D6'] };
+const dots = (fs) => `<span class="dots">${fs.map(f => `<i style="background:${FAM[f].fk}"></i>`).join('')}</span>`;
+
+/* ============================== board renderer ============================== */
+function srcCard(o) {
+  const pile = o.pile ? '<div class="pile-sheet s2"></div><div class="pile-sheet s1"></div>' : '';
+  let inner;
+  if (o.note) inner = `<div class="note-in"><div class="meta">${ic('sticky-note', 10)} ${o.meta}</div><div class="n">${o.text}</div></div>`;
+  else inner = `<div class="sn"><div class="tile">${ic(o.icon, 18)}${o.badge ? `<span class="badge">${o.badge}</span>` : ''}</div><div class="sx"><div class="meta">${o.meta}</div><div class="ttl">${o.title}</div>${o.chip ? `<div class="exr"><span class="chipl">${o.chip}</span><span>${o.ex}</span></div>` : ''}${o.dsc ? `<div class="dsc">${o.dsc}</div>` : ''}${o.soon ? '<span class="soon-pill">Coming soon</span>' : ''}</div></div>`;
+  return `<div class="card src f-${o.fam}${o.muted ? ' muted' : ''}${o.cls ? ' ' + o.cls : ''}" data-id="${o.id}" style="left:${o.x}px;top:${o.y}px;width:212px">${pile}<div class="face">${inner}</div><i class="port out${o.linked ? '' : ' free'}"></i></div>`;
+}
+function chatCard(o) {
+  const [mn, mc] = M[o.m];
+  return `<div class="card chat${o.sel ? ' selected' : ''}${o.cls ? ' ' + o.cls : ''}" data-id="${o.id}" style="left:${o.x}px;top:${o.y}px;width:${o.w || 320}px"><div class="face">
+    <div class="chd"><i class="mdot" style="--c:${mc}"></i><span class="mtag"><u>${o.q}</u> · ${mn}</span><span class="sp"></span><span class="apill">${ic('maximize-2', 9)}Open</span><span class="apill">${ic('git-branch', 9)}Branch</span></div>
+    <div class="ttl">${o.title}</div>${o.ptag ? `<div style="margin-top:-6px"><span class="ptag">${o.ptag}</span></div>` : ''}
+    <div class="cbody${o.short ? ' short' : ''}"><div class="qb">${o.ask}</div><div class="ans${o.live ? ' live' : ''}">${o.ans}</div></div>
+    <div class="cfoot">${o.dots ? dots(o.dots) : ''}<span>${o.foot}</span>${o.tok ? `<span class="tokchip">${o.tok}</span>` : ''}</div>
+  </div><i class="port in${o.inFree ? ' free' : ''}"></i><i class="port out${o.outFree ? ' free' : ''}"></i></div>`;
+}
+function renderBoard(el, data, scale, ox, oy) {
+  const cards = data.cards.map(c => c.kind === 'chat' ? chatCard(c) : srcCard(c)).join('');
+  el.innerHTML = `<div class="world" style="transform:translate(${ox}px,${oy}px) scale(${scale})"><svg class="tubes"></svg>${cards}${data.extra || ''}</div>`;
+  const world = el.firstElementChild, svg = world.querySelector('.tubes');
+  const box = id => { const n = world.querySelector(`[data-id="${id}"]`); return { x: n.offsetLeft, y: n.offsetTop, w: n.offsetWidth, h: n.offsetHeight, n }; };
+  // desks fit around their cards (padding 30, extra bottom room like the real board)
+  (data.desks || []).forEach(d => {
+    const bs = d.fit.map(box);
+    const x0 = Math.min(...bs.map(b => b.x)) - 30, y0 = Math.min(...bs.map(b => b.y)) - 30;
+    const x1 = Math.max(...bs.map(b => b.x + b.w)) + 30, y1 = Math.max(...bs.map(b => b.y + b.h)) + (d.pb || 40);
+    const div = document.createElement('div');
+    div.className = 'desk' + (d.cls ? ' ' + d.cls : '');
+    div.style.cssText = `left:${x0}px;top:${y0}px;width:${x1 - x0}px;height:${y1 - y0}px`;
+    div.innerHTML = `<div class="tab"><span class="lb">${d.label}</span>${d.dots ? dots(d.dots) : ''}</div>`;
+    world.insertBefore(div, world.firstChild);
+  });
+  let paths = '';
+  (data.strings || []).forEach(s => {
+    const a = box(s.from), b = box(s.to);
+    const aChat = a.n.classList.contains('chat');
+    const x1 = a.x + a.w + 1, y1 = aChat ? a.y + 22 : a.y + a.h / 2;
+    const x2 = b.x - 1, y2 = b.y + 40;
+    const dx = Math.max(50, Math.abs(x2 - x1) * .5);
+    const d = `M${x1} ${y1} C${x1 + dx} ${y1 + 18}, ${x2 - dx} ${y2 + 18}, ${x2} ${y2}`;
+    const col = s.color || '#CFC3E8';
+    paths += `<path d="${d}" stroke="${col}" stroke-width="${s.w || 6}" class="${s.cls || ''}"/>`;
+    if (s.flow) paths += `<path d="${d}" stroke-width="${(s.w || 6) * .55}" class="bub"/>`;
+  });
+  svg.innerHTML = paths;
+}
+
+/* ============================== board data ============================== */
+const HEAT = {
+  cards: [
+    { id: 'pdf', fam: 'docs', icon: 'file-text', x: 40, y: 80, meta: 'PDF · 48 pages', title: 'Heat pump field trial, final report', chip: 'p.31', ex: '1930s semis averaged a seasonal efficiency of 2.8', dsc: 'The main evidence' },
+    { id: 'web', fam: 'web', icon: 'globe', x: 40, y: 212, meta: 'Web page · 9 min read', title: 'Old radiators, not old houses', chip: '§3', ex: 'Most cold rooms were undersized radiators' },
+    { id: 'note', fam: 'note', note: true, x: 40, y: 330, meta: 'Note · You', text: 'Gas last winter: €1,640. House from 1934, 92 m², cavity walls filled in 2019.' },
+    { kind: 'chat', id: 'q1', m: 'claude', q: 'Q1', x: 290, y: 80, title: 'Should we swap the gas boiler for a heat pump?', ask: "Using what's on this desk: is it worth it for our house?", dots: ['docs', 'web', 'note'], foot: '3 sources', inFree: true,
+      ans: '<h3>Probably yes — after the loft</h3><p>The trial\'s 1930s homes averaged a seasonal efficiency of 2.8. At your usage that is roughly a fifth off the €1,640 gas bill.</p><h3>What would change it</h3><p>The article\'s point: cold rooms came from <b>undersized radiators</b>, not the age of the house. Check the two smallest rooms first.</p>' },
+    { kind: 'chat', id: 'q11', m: 'gpt', q: 'Q1.1', x: 800, y: 40, ptag: 'Same desk', title: 'What would we save in year one?', ask: "Same desk — what's the saving in the first year?", foot: '0 sources · 3 from above', live: true, short: true, outFree: true,
+      ans: '<p>Around <b>€300–€380</b>, if the unit holds 2.8 and you move to a heat-pump tariff. The install cost is still the open question</p>' },
+    { id: 'survey', fam: 'docs', icon: 'file-text', x: 1150, y: 430, meta: 'PDF · 9 pages', title: 'Insulation survey, 12 Oct', chip: 'p.4', ex: 'Heat loss at −3 °C: 6.1 kW', linked: false },
+    { kind: 'chat', id: 'q12', m: 'gemini', q: 'Q1.2', x: 800, y: 430, ptag: 'Skeptic', title: 'Does the insulation survey change it?', ask: 'Same question, with the survey on my desk too.', dots: ['docs'], foot: '1 source · 3 from above', short: true, outFree: true,
+      ans: '<p><b>Yes — for the better.</b> A 6.1 kW heat loss means a smaller, cheaper unit than the trial assumed, and the loft is already the weak spot.</p>' },
+  ],
+  desks: [
+    { fit: ['pdf', 'web', 'note', 'q1'], label: 'Should we swap the gas boiler for a heat pump?', dots: ['docs', 'web', 'note'] },
+    { fit: ['q11'], label: 'What would we save in year one?' },
+    { fit: ['q12', 'survey'], label: 'Does the insulation survey change it?', dots: ['docs'] },
+  ],
+  strings: [{ from: 'q1', to: 'q11', w: 7, flow: true }, { from: 'q1', to: 'q12', w: 7 }],
+};
+
+const F1 = {
+  cards: [
+    { id: 'a1', fam: 'docs', icon: 'file-text', x: 40, y: 70, meta: 'PDF · 48 pages', title: 'Heat pump field trial', chip: 'p.31', ex: 'Seasonal efficiency of 2.8', cls: 'pulse' },
+    { id: 'a2', fam: 'web', icon: 'globe', x: 40, y: 180, meta: 'Web page', title: 'Old radiators, not old houses', chip: '§3', ex: 'Undersized radiators', cls: 'pulse p2' },
+    { id: 'a3', fam: 'note', note: true, x: 40, y: 290, meta: 'Note · You', text: 'Gas last winter: €1,640. 92 m², 1934.', cls: 'pulse p3' },
+    { kind: 'chat', id: 'c1', m: 'claude', q: 'Q1', x: 290, y: 70, w: 330, title: 'Is a heat pump worth it for our house?', ask: "Using what's on this desk — is it worth it?", short: true, dots: ['docs', 'web', 'note'], foot: '3 sources', tok: 'Sends 5.8k tokens', inFree: true, outFree: true,
+      ans: '<p><b>Probably yes, after the loft.</b> The trial\'s 1930s homes averaged 2.8 — about a fifth off your €1,640 gas bill.</p>' },
+    { id: 'b1', fam: 'docs', icon: 'file-text', x: 720, y: 120, meta: 'PDF · 6 pages', title: 'Mortgage offer, October', chip: 'p.2', ex: 'Overpayments up to 10% a year', muted: true },
+    { kind: 'chat', id: 'c2', m: 'gpt', q: 'Q2', x: 970, y: 120, w: 300, title: 'Can we afford it this year?', ask: 'Using the offer — could we overpay less and fund it?', short: true, dots: ['docs'], foot: '1 source', inFree: true, outFree: true, cls: 'muted',
+      ans: '<p>Yes, if you drop the overpayment to 6% for one year.</p>' },
+  ],
+  desks: [
+    { fit: ['a1', 'a2', 'a3', 'c1'], label: 'Is a heat pump worth it for our house?', dots: ['docs', 'web', 'note'] },
+    { fit: ['b1', 'c2'], label: 'Can we afford it this year?', dots: ['docs'], cls: 'faded' },
+  ],
+  strings: [],
+};
+
+const F2 = {
+  cards: [
+    { kind: 'chat', id: 'r', m: 'claude', q: 'Q1', x: 40, y: 190, w: 300, title: 'How should I price Context Tree?', ask: 'What should a solo founder charge?', short: true, dots: ['docs', 'note'], foot: '2 sources', inFree: true,
+      ans: '<p>Start at <b>$12 a month</b> with hosted models; keep a free tier for your own keys.</p>' },
+    { kind: 'chat', id: 'b1', m: 'gpt', q: 'Q1.1', x: 520, y: 50, w: 300, ptag: 'Teacher', title: 'What does value-based pricing mean?', ask: 'Same desk, different question.', short: true, foot: '0 sources · 2 from above', outFree: true,
+      ans: '<p>Price from what it saves the customer, not from what it costs you.</p>' },
+    { kind: 'chat', id: 'b2', m: 'gemini', q: 'Q1.2', x: 520, y: 340, w: 300, ptag: 'Skeptic', title: 'Second opinion with real customers', ask: 'Same question, plus the interviews.', short: true, dots: ['web', 'docs'], foot: '2 sources · 2 from above', outFree: true, cls: 'growing',
+      ans: '<p>Start at <b>$15</b>. Both new sources point above the first answer.</p>' },
+  ],
+  desks: [
+    { fit: ['r'], label: 'How should I price Context Tree?', dots: ['docs', 'note'] },
+    { fit: ['b1'], label: 'What does value-based pricing mean?' },
+    { fit: ['b2'], label: 'Second opinion with real customers', dots: ['web', 'docs'], cls: 'growing' },
+  ],
+  strings: [{ from: 'r', to: 'b1', w: 9 }, { from: 'r', to: 'b2', w: 9, cls: 'draw' }],
+};
+
+const F3 = {
+  cards: [
+    { kind: 'chat', id: 'x', m: 'gemini', q: 'Q1.2', x: 40, y: 50, w: 300, title: 'Second opinion with real customers', ask: 'Same question, plus the interviews.', short: true, dots: ['web', 'docs'], foot: '2 sources', inFree: true, sel: true,
+      ans: '<p>Start at <b>$15</b>. Both new sources point above the first answer.</p>' },
+    { id: 'y', fam: 'web', icon: 'globe', x: 40, y: 330, meta: 'harbor.dev', title: 'Why we doubled our price', chip: '§2', ex: 'Doubling lost only 6% of users' },
+  ],
+  extra: '',
+};
+const F3_FOCUS = `<div class="focusmini">
+  <div class="tlp"><h5>Timeline</h5>
+    <div class="fst"><i></i><span>How should I price Context Tree?<small>Q1 · Claude · 2 sources</small></span></div>
+    <div class="fst now"><i></i><span>Second opinion with real customers<small>Q1.2 · Gemini · 4 sources</small></span></div>
+    <h5 style="margin-top:6px">Connected sources</h5>
+    <div class="fst"><i style="border-color:#2A86C4"></i><span>Why we doubled our price<small>harbor.dev</small></span></div>
+    <div class="fst"><i style="border-color:#B8860B"></i><span>Customer interviews<small>4 files</small></span></div>
+  </div>
+  <div class="rd"><span class="back">${ic('arrow-left', 10)}Board · Esc</span>
+    <span class="ub">Same question, with the blog post and the interviews too.</span>
+    <div class="rt">Start at $15 a month.</div>
+    <p class="rp">The two new sources both point above the $12 the first answer suggested. The blog post reports that doubling the price lost only 6% of users, and two of three interviewees said they would pay $15.</p>
+  </div></div>`;
+
+const F4 = {
+  cards: [
+    { id: 's1', fam: 'docs', icon: 'layers', x: 40, y: 60, meta: 'Mixed · 1 of 4', title: 'Customer interviews', chip: 'p.2', ex: 'Would pay $15 without thinking', badge: 4, pile: true },
+    { id: 's2', fam: 'web', icon: 'globe', x: 40, y: 200, meta: 'harbor.dev', title: 'Why we doubled our price', chip: '§2', ex: 'Doubling lost only 6% of users' },
+    { kind: 'chat', id: 'c', m: 'claude', q: 'Q1.2', x: 290, y: 60, w: 310, title: 'Second opinion with real customers', ask: 'Same question, with the interviews on my desk.', short: true, dots: ['docs', 'web'], foot: '2 sources · 2 from above', inFree: true, sel: true,
+      ans: '<p>Start at <b>$15 a month</b>. Two of three interviewees said they would pay it.</p>' },
+  ],
+  desks: [{ fit: ['s1', 's2', 'c'], label: 'Second opinion with real customers', dots: ['docs', 'web'], pb: 60 }],
+  extra: `<div class="pick" style="left:640px;top:40px">
+      <h6>Run this branch on</h6>
+      <div class="pr"><i class="mdot" style="--c:#E0673A"></i>Claude Sonnet<span class="r"><svg class="i ok" style="--s:13px"><use href="#i-check"/></svg></span></div>
+      <div class="pr on"><i class="mdot" style="--c:#3FAE5A"></i>GPT-5<span class="r">Your key</span></div>
+      <div class="pr"><i class="mdot" style="--c:#7A52D6"></i>DeepSeek V3<span class="r">Your key</span></div>
+      <div class="pr lock"><i class="mdot" style="--c:#2A86C4"></i>Gemini 2.5 Pro<span class="r">${ic('lock', 11)}Add a Google key</span></div>
+      <div class="pr lock"><i class="mdot" style="--c:#D1467E"></i>Kimi K2<span class="r">${ic('lock', 11)}Add a Moonshot key</span></div>
+    </div>
+    <div class="carry" style="left:290px;top:340px"><span class="c">${ic('arrow-right', 13)}</span>Continue on GPT-5 — the desk and trail come along</div>`,
+};
+
+const PRICING = {
+  cards: [
+    { id: 'vid', fam: 'media', icon: 'play', x: 92, y: 423, meta: 'YouTube · 18:42', title: 'How to price a developer tool', chip: '12:04', ex: 'Developers pay for time saved, not features', soon: true },
+    { id: 'pdf', fam: 'docs', icon: 'file-text', x: 92, y: 560, meta: 'PDF · 24 pages', title: 'Pricing survey 2025', chip: 'p.5', ex: 'Solo-dev tools cluster between $8 and $15', dsc: '"Our main benchmark"' },
+    { id: 'note', fam: 'note', note: true, x: 92, y: 690, meta: 'Note · You', text: 'Costs ≈ $0.40 per active user a month. Never go below $8.' },
+    { id: 'pod', fam: 'media', icon: 'audio', x: 92, y: 900, meta: 'Podcast · 38:10', title: 'The pricing episode', chip: '21:40', ex: 'Raise prices before you think you should', soon: true, muted: true },
+    { kind: 'chat', id: 'q1', m: 'claude', q: 'Q1', x: 344, y: 426, title: 'How should I price Context Tree?', ask: 'Using what is on this desk, what should a solo founder charge?', dots: ['media', 'docs', 'note'], foot: '3 sources', inFree: true,
+      ans: '<h3>Start from your floor</h3><p>Your note puts costs near $0.40 per active user a month, and you said never below $8.</p><h3>What the desk says</h3><p>The survey\'s median is $12. The video\'s point: people pay for time saved, not features.</p><h3>So</h3><ol><li><b>Free</b> with your own key.</li><li><b>$12 a month</b> with hosted models.</li><li><b>$59 once</b> for the first 300.</li></ol>' },
+    { kind: 'chat', id: 'q11', m: 'gpt', q: 'Q1.1', x: 874, y: 250, ptag: 'Teacher', title: 'What does value-based pricing mean?', ask: 'Same desk, different question: what does value-based pricing mean?', short: true, foot: '0 sources · 2 from above',
+      ans: '<p>Price from what it\'s worth to the customer, not from what it costs you. If it saves two hours a week, that time is your anchor.</p>' },
+    { kind: 'chat', id: 'q12', m: 'gemini', q: 'Q1.2', x: 874, y: 735, ptag: 'Skeptic', sel: true, title: 'Second opinion with real customers', ask: 'Same question, with the blog post and the interviews on my desk too.', dots: ['web', 'docs'], foot: '2 sources · 2 from above', outFree: true,
+      ans: '<p>Start at $15 a month. The two new sources both point above the $12 the first answer suggested.</p><h3>What the new sources add</h3><p>The blog post reports that doubling the price lost only 6% of users. Two of three interviewees said they would pay $15.</p><h3>Where it lands</h3><ol><li><b>Free</b> with your own key, as before.</li><li><b>$15 a month</b> with hosted models and sync.</li></ol>' },
+    { id: 'web', fam: 'web', icon: 'globe', x: 1236, y: 735, meta: 'harbor.dev', title: 'Why we doubled our price', chip: '§2', ex: 'Doubling the price lost only 6% of users', linked: true },
+    { id: 'pile', fam: 'docs', icon: 'layers', x: 1236, y: 850, meta: 'Mixed · 1 of 4', title: 'Priya, indie developer', chip: 'p.2', ex: 'Would pay $15 without thinking', badge: 4, pile: true },
+    { kind: 'chat', id: 'q121', m: 'gemini', q: 'Q1.2.1', x: 1680, y: 770, title: 'Would a team plan change this?', ask: 'Marco wants a team plan. Would that change the price?', short: true, dots: ['web', 'data', 'image'], foot: '2 sources · 4 from above', outFree: true,
+      ans: '<p>A team plan at $12 a seat lets you keep $15 for individuals without losing agencies.</p>' },
+    { id: 'img', fam: 'image', icon: 'image', x: 2062, y: 770, meta: 'Image · PNG', title: 'Pricing page screenshot', ex: 'Three tiers; the middle one is highlighted', chip: '', dsc: '"A competitor page"', soon: true },
+    { id: 'csv', fam: 'data', icon: 'sheet', x: 1400, y: 1135, meta: 'CSV · 18 rows', title: 'Competitor prices', chip: 'B2–D14', ex: 'Median $12 across 18 tools', linked: true },
+  ],
+  desks: [
+    { fit: ['vid', 'pdf', 'note', 'q1'], label: 'How should I price Context Tree?', dots: ['media', 'docs', 'note'] },
+    { fit: ['q11'], label: 'What does value-based pricing mean?', pb: 70 },
+    { fit: ['q12', 'web', 'pile'], label: 'Second opinion with real customers', dots: ['web', 'docs'] },
+    { fit: ['q121', 'img'], label: 'Would a team plan change this?', dots: ['image'] },
+  ],
+  strings: [
+    { from: 'q1', to: 'q11', w: 8 }, { from: 'q1', to: 'q12', w: 10, color: '#A594D1' }, { from: 'q11', to: 'q121', w: 6 },
+    { from: 'web', to: 'q121', w: 5, color: '#8FD0F5' }, { from: 'csv', to: 'q121', w: 5, color: '#5CC24A' },
+  ],
+};
+
+/* ============================== pebble maps (signature) ==============================
+   A board drawn the way the canvas draws itself below 42% zoom: desks, colour pebbles, strings.
+   Spec: desks [{id,x,y,src:[fam..],label,parent}], loose [{x,y,fam,to}] — laid out exactly like the
+   board lays out a desk (sources stacked left, chat right). */
+function pmap(spec, W, H, opts = {}) {
+  const P = [], D = [], S = [], chats = {};
+  spec.desks.forEach(d => {
+    const n = d.src.length, hasS = n > 0;
+    const chH = Math.max(230, n * 104 - 14), cx = d.x + (hasS ? 272 : 30), cy = d.y + 30;
+    const w = hasS ? 602 : 360, h = chH + 70;
+    D.push({ x: d.x, y: d.y, w, h, label: d.label, faded: d.faded });
+    d.src.forEach((f, i) => P.push({ x: d.x + 30, y: d.y + 30 + i * 104, w: 212, h: 90, fill: FAM[f].fc, rim: FAM[f].fk }));
+    P.push({ x: cx, y: cy, w: 300, h: chH, chat: true });
+    chats[d.id] = { x: cx, y: cy, w: 300 };
+    if (d.parent) S.push([d.parent, d.id]);
+  });
+  const lines = S.map(([a, b]) => { const A = chats[a], B = chats[b]; return [A.x + A.w, A.y + 22, B.x, B.y + 40, '#CFC3E8']; });
+  (spec.loose || []).forEach(l => { P.push({ x: l.x, y: l.y, w: 212, h: 80, fill: FAM[l.fam].fc }); const B = chats[l.to]; lines.push([l.x + 212, l.y + 40, B.x, B.y + 40, FAM[l.fam].fk]); });
+  const xs = D.map(d => d.x).concat(P.map(p => p.x)), ys = D.map(d => d.y - 30).concat(P.map(p => p.y));
+  const xe = D.map(d => d.x + d.w).concat(P.map(p => p.x + p.w)), ye = D.map(d => d.y + d.h).concat(P.map(p => p.y + p.h));
+  const pad = opts.pad ?? 70;
+  const bx = Math.min(...xs) - pad, by = Math.min(...ys) - pad, bw = Math.max(...xe) - bx + pad, bh = Math.max(...ye) - by + pad;
+  const k = Math.min(W / bw, H / bh);
+  const sw = Math.max(7, 1.8 / k), lab = opts.labels;
+  let o = `<svg viewBox="${bx} ${by} ${bw} ${bh}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`;
+  D.forEach(d => { o += `<rect x="${d.x}" y="${d.y}" width="${d.w}" height="${d.h}" rx="36" fill="#F5F2FA" stroke="#E2D9F0" stroke-width="${Math.max(2, 1 / k)}" opacity="${d.faded ? .5 : 1}"/>`; });
+  lines.forEach(([x1, y1, x2, y2, c]) => { const dx = Math.max(60, Math.abs(x2 - x1) * .5); o += `<path d="M${x1} ${y1} C${x1 + dx} ${y1 + 20}, ${x2 - dx} ${y2 + 20}, ${x2} ${y2}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`; });
+  P.forEach(p => {
+    if (p.chat) {
+      o += `<rect x="${p.x}" y="${p.y + 8}" width="${p.w}" height="${p.h}" rx="20" fill="rgba(43,35,64,.07)"/><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="20" fill="#fff"/>`;
+      if (opts.detail !== false) o += `<rect x="${p.x + 22}" y="${p.y + 24}" width="170" height="16" rx="8" fill="#2B2340" opacity=".85"/><rect x="${p.x + 22}" y="${p.y + 58}" width="256" height="44" rx="14" fill="#EFE9F8"/>` + [0, 1, 2].map(i => `<rect x="${p.x + 22}" y="${p.y + 122 + i * 26}" width="${[250, 220, 160][i]}" height="10" rx="5" fill="#E4DCF2"/>`).join('');
+    } else o += `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="20" fill="${p.fill}"/>` + (opts.detail !== false ? `<rect x="${p.x + 14}" y="${p.y + 14}" width="44" height="44" rx="12" fill="#fff"/><rect x="${p.x + 70}" y="${p.y + 20}" width="110" height="11" rx="5.5" fill="#fff" opacity=".9"/><rect x="${p.x + 70}" y="${p.y + 42}" width="80" height="9" rx="4.5" fill="#fff" opacity=".7"/>` : '');
+  });
+  if (lab) D.forEach(d => {
+    const fs = 11 / k, th = 22 / k, maxPx = Math.max(d.w * k - 6, 72), need = d.label.length * 6.3 + 22;
+    const txt = need > maxPx ? d.label.slice(0, Math.max(3, Math.floor((maxPx - 30) / 6.3))) + '…' : d.label;
+    const tw = (Math.min(need, maxPx)) / k;
+    o += `<rect x="${d.x + 14}" y="${d.y - th / 2}" width="${tw}" height="${th}" rx="${th / 2}" fill="#fff"/><text x="${d.x + 14 + 10 / k}" y="${d.y + fs * .36}" font-size="${fs}" font-weight="700" fill="#2B2340" font-family="Bricolage Grotesque, sans-serif">${txt}</text>`;
+  });
+  return o + '</svg>';
+}
+
+const MAPS = {
+  pricing: { desks: [{ id: 'a', x: 0, y: 0, src: ['media', 'docs', 'note'], label: 'Price it' }, { id: 'b', x: 760, y: -220, src: [], label: 'Value?', parent: 'a' }, { id: 'c', x: 760, y: 280, src: ['web', 'docs'], label: 'Customers', parent: 'a' }, { id: 'd', x: 1500, y: 300, src: ['image'], label: 'Team plan', parent: 'c' }], loose: [{ x: 1250, y: 720, fam: 'data', to: 'd' }] },
+  heat: { desks: [{ id: 'a', x: 0, y: 0, src: ['docs', 'web', 'note'], label: 'Boiler?' }, { id: 'b', x: 760, y: -150, src: [], label: 'Year one', parent: 'a' }, { id: 'c', x: 760, y: 300, src: ['docs'], label: 'Survey', parent: 'a' }] },
+  thesis: { desks: [{ id: 'a', x: 0, y: 0, src: ['docs', 'docs', 'docs', 'web'], label: 'Commons' }, { id: 'b', x: 760, y: -380, src: ['docs'], label: 'Ostrom' }, { id: 'c', x: 760, y: 120, src: ['docs', 'image'], label: 'Cities', parent: 'a' }, { id: 'd', x: 1500, y: -380, src: [], label: 'Rules', parent: 'b' }, { id: 'e', x: 1500, y: 40, src: [], label: 'Gaps', parent: 'c' }, { id: 'f', x: 1500, y: 420, src: ['data'], label: 'Survey', parent: 'c' }], loose: [{ x: 420, y: -300, fam: 'note', to: 'b' }] },
+  berlin: { desks: [{ id: 'a', x: 0, y: 0, src: ['web', 'web'], label: 'Where to stay' }, { id: 'b', x: 760, y: 80, src: ['note'], label: '3 days', parent: 'a' }] },
+  book: { desks: [{ id: 'a', x: 0, y: 0, src: ['docs', 'note'], label: 'Chapter notes' }, { id: 'b', x: 760, y: 20, src: [], label: 'Parkways', parent: 'a' }] },
+  untitled: { desks: [{ id: 'a', x: 0, y: 0, src: [], label: 'Untitled board' }] },
+  s_pdf2: { desks: [{ id: 'a', x: 0, y: 0, src: ['docs'], label: 'Summarise the paper' }, { id: 'b', x: 760, y: -170, src: [], label: 'On Claude', parent: 'a' }, { id: 'c', x: 760, y: 200, src: [], label: 'On GPT', parent: 'a' }] },
+  s_research: { desks: [{ id: 'a', x: 0, y: 0, src: ['web', 'docs', 'media'], label: 'The question' }, { id: 'b', x: 760, y: 40, src: ['web'], label: 'One more source', parent: 'a' }] },
+  s_compare: { desks: [{ id: 'a', x: 0, y: 0, src: ['note'], label: 'One question' }, { id: 'b', x: 760, y: -330, src: [], label: 'Claude', parent: 'a' }, { id: 'c', x: 760, y: 0, src: [], label: 'GPT', parent: 'a' }, { id: 'd', x: 760, y: 330, src: [], label: 'Gemini', parent: 'a' }] },
+  s_plan: { desks: [{ id: 'a', x: 0, y: 0, src: ['note', 'note', 'note'], label: 'Your notes' }, { id: 'b', x: 760, y: 90, src: ['data'], label: 'The plan', parent: 'a' }] },
+};
+
+/* ============================== home (C / D) ============================== */
+const STARTERS = [
+  ['s_pdf2', 'Read a PDF with two AIs', 'One desk, two branches, two models.'],
+  ['s_research', 'Research a topic', 'Pin sources, then add one and compare.'],
+  ['s_compare', 'Compare answers', 'Same question on three AIs.'],
+  ['s_plan', 'Plan from notes', 'Turn loose notes into a plan.'],
+  ['pricing', 'Example: Pricing study', 'A finished board to poke at.'],
+];
+const RECENTS = [
+  ['pricing', 'Pricing study', '12 cards · 4 questions', '2 hours ago', ['media', 'docs', 'note', 'web']],
+  ['heat', 'Heat pump for the house', '7 cards · 3 questions', 'Yesterday', ['docs', 'web', 'note']],
+  ['thesis', 'Thesis ch. 3 — literature map', '19 cards · 6 questions', 'Mon 14 Oct', ['docs', 'image', 'data']],
+  ['berlin', 'Berlin in March', '5 cards · 2 questions', '2 Oct', ['web', 'note']],
+  ['book', 'Reading: The Power Broker', '4 cards · 2 questions', '21 Sep', ['docs', 'note']],
+  ['untitled', 'Untitled board', '1 card · 1 question', '18 Sep', []],
+];
+function home(opt = {}) {
+  const narrow = opt.narrow;
+  const starters = `<div class="st blank${opt.hovBlank ? ' hov' : ''}"><div class="pv"><span>${ic('plus', 22)}</span></div><div class="nm">Blank board</div><div class="ds">An empty desk and a question.</div></div>` +
+    STARTERS.map(([k, n, d]) => `<div class="st"><div class="pv">${pmap(MAPS[k], 214, 136, { pad: 90 })}</div><div class="nm">${n}</div><div class="ds">${d}</div></div>`).join('');
+  let recents;
+  if (opt.empty) {
+    recents = `<div class="emptyd"><span class="tabx">Your boards</span>
+      <div class="firstq"><i class="port in"></i><div class="chd"><i class="mdot" style="--c:#E0673A"></i><span class="mtag"><u>Q1</u> · Claude</span></div>
+        <div class="box"><div class="ta"><span class="caret"></span><span class="ph">What are you trying to figure out?</span></div><span class="send">${ic('arrow-up', 16)}</span></div></div>
+      <h3>Your first board starts with a question.</h3>
+      <p>Type it above and we'll make the board. Then drop PDFs, links or notes on its desk — that's what it will read.</p>
+      <span class="keynag">Answers need an API key from any provider<a class="btn primary" href="#E" style="text-decoration:none">Add a key</a></span>
+    </div>`;
+  } else if (opt.view === 'list' || narrow) {
+    recents = `<div class="blist"><div class="lr head"><span></span><span>Name</span><span>Sources</span><span>Last opened</span><span></span></div>` +
+      RECENTS.map(([k, n, s, w, f]) => `<div class="lr"><div class="th">${pmap(MAPS[k], 76, 50, { pad: 120, detail: false })}</div><div><b>${n}</b><span class="s">${s}${narrow ? ' · ' + w : ''}</span></div><span class="dr dotrow">${f.map(x => `<i style="background:${FAM[x].fk}"></i>`).join('') || '<span class="w">—</span>'}</span><span class="w">${w}</span><span class="more">${ic('more', 18)}</span></div>`).join('') + '</div>';
+  } else {
+    recents = `<div class="bgrid">` + RECENTS.map(([k, n, s, w], i) => `<div class="bc"><div class="pv">${pmap(MAPS[k], 280, 168, { labels: true, pad: 80 })}</div><div class="info"><div class="tx"><b>${n}</b><span>${s}</span><span class="when">Opened ${w.replace('Yesterday', 'yesterday')}</span></div><span class="more${opt.menuOn === i ? ' on' : ''}">${ic('more', 18)}</span></div>${opt.menuOn === i ? `<div class="menu bmenu" style="right:-10px;bottom:62px"><div class="mi hov"><span class="c">${ic('pencil', 16)}</span>Rename</div><div class="mi"><span class="c">${ic('copy', 16)}</span>Duplicate</div><div class="sep"></div><div class="mi danger"><span class="c">${ic('trash', 16)}</span>Delete board</div></div>` : ''}</div>`).join('') + '</div>';
+  }
+  return `<div class="home">
+    <div class="c-brand float"><span class="lg">${ic('git-fork', 18)}</span><b>Context Tree</b></div>
+    <button class="c-acct float${opt.acct ? ' on' : ''}" aria-label="Account"><span class="av">SR</span></button>
+    ${opt.acct ? acctMenu() : ''}
+    <div class="hin${opt.empty ? ' e' : ''}">
+      <h1 class="greet">${opt.empty ? 'Welcome, Sam' : 'Good evening, Sam'}</h1>
+      <p class="greet-sub">${opt.empty ? 'Start from a blank board, or open a starter board to see how desks and branches work.' : 'You were last on <b>Pricing study</b>, two hours ago.'}</p>
+      <div class="rowh"><h2>Start something new</h2><span class="chip">Starter boards</span><span class="sp"></span><a class="btn primary" href="#F" style="text-decoration:none">${ic('plus', 16)}New board</a></div>
+      <div class="starters">${starters}</div>
+      ${opt.empty ? '<div style="height:44px"></div>' : `<div class="rowh rec"><h2>Jump back in</h2><span class="sp"></span><div class="tools"><div class="search">${ic('search', 16)}Search boards</div><div class="sortp"><span>Sort:</span>Last opened ${ic('chev', 14)}</div><div class="seg"><button class="${opt.view === 'list' ? '' : 'on'}" aria-label="Grid">${ic('grid', 15)}</button><button class="${opt.view === 'list' ? 'on' : ''}" aria-label="List">${ic('list', 15)}</button></div></div></div>`}
+      ${recents}
+    </div>
+  </div>`;
+}
+function acctMenu() {
+  return `<div class="menu acctm">
+    <div class="who"><div class="av lg2">SR</div><div class="wt"><b>Sam Rivera</b><span>sam.rivera@example.com</span></div></div>
+    <div class="plan">${ic('key', 14)}<span><b>Free plan</b> · runs on your own keys</span></div>
+    <div class="mi hov"><span class="c">${ic('key', 16)}</span>API keys<span class="r keystat">2 of 7 working</span></div>
+    <div class="mi"><span class="c">${ic('settings', 16)}</span>Settings</div>
+    <div class="mi"><span class="c">${ic('download', 16)}</span>Export my boards</div>
+    <div class="mi"><span class="c">${ic('help', 16)}</span>Help &amp; feedback</div>
+    <div class="sep"></div>
+    <div class="mi danger"><span class="c">${ic('log-out', 16)}</span>Sign out</div>
+    <div class="ver"><span>Context Tree V3</span><a href="#">Privacy · Terms</a></div>
+  </div>`;
+}
+
+/* ============================== board frame (E / F) ============================== */
+function boardChrome(opt = {}) {
+  return `<div class="c-brand float"><span class="lg">${ic('git-fork', 18)}</span><b>Context Tree</b><span>Pricing study</span></div>
+    <button class="c-acct float${opt.acct ? ' on' : ''}" aria-label="Account"><span class="av">SR</span></button>
+    <div class="c-add float"><span class="pl">${ic('plus', 18)}</span>Add</div>
+    <div class="c-trail float"><span class="lb">Trail</span><span><u>Q1</u>How should I price Context Tree?</span><span class="arr">›</span><span class="here"><u>Q1.2</u>Second opinion with real customers</span></div>
+    <div class="c-zoom float">${ic('minus', 16)}<span class="z">61%</span>${ic('plus', 16)}${ic('maximize', 16)}</div>`;
+}
+function keysSheet() {
+  const row = (letter, color, name, status, models, acts, extra = '', cls = '') => `<div class="prow ${cls}" style="--pc:${color}"><div class="pt">${letter}</div><div><div class="pn">${name} ${status}</div>${models}${extra}</div>${acts}</div>`;
+  const chips = (arr, locked) => `<div class="ms">${arr.map(m => `<span class="${locked ? 'lk' : ''}">${locked ? ic('lock', 10) : ''}${m}</span>`).join('')}</div>`;
+  const repl = `<div class="acts"><button class="btn sm white">Replace</button><button class="btn sm" style="background:transparent;color:var(--t2)">Remove</button></div>`;
+  const add = `<div class="acts"><button class="btn sm primary">${ic('plus', 14)}Add key</button></div>`;
+  return `<div class="scrim"></div>
+  <div class="keys">
+    <button class="kclose" aria-label="Close">${ic('x', 16)}</button>
+    <nav class="knav"><h3>Settings</h3>
+      <div class="ni on"><span class="c">${ic('key', 15)}</span>API keys</div>
+      <div class="ni"><span class="c">${ic('user', 15)}</span>Account</div>
+      <div class="ni"><span class="c">${ic('sparkle', 15)}</span>Defaults</div>
+      <div class="ni"><span class="c">${ic('download', 15)}</span>Export &amp; data</div>
+      <div class="ni"><span class="c">${ic('help', 15)}</span>Help &amp; feedback</div>
+      <div class="grow"></div>
+      <div class="ni signout"><span class="c">${ic('log-out', 15)}</span>Sign out</div>
+    </nav>
+    <section class="kmain">
+      <div class="khead"><div><h2>API keys</h2><p>Your boards run on your own keys. You pay each provider directly; we add nothing on top.</p></div><span class="cnt"><i></i>2 of 7 working</span></div>
+      ${row('A', '#E0673A', 'Anthropic', '<span class="ks ok">Saved <code>•••• 9fQe</code></span>', chips(['Claude Opus', 'Claude Sonnet', 'Claude Haiku']), repl)}
+      ${row('O', '#3FAE5A', 'OpenAI', '<span class="ks ok">Saved <code>•••• 4kTn</code></span>', chips(['GPT-5', 'GPT-5 mini', 'GPT-4.1']), repl)}
+      <div class="prow open" style="--pc:#2A86C4"><div class="pt">G</div><div><div class="pn">Google <span class="ks none">Not set</span></div>${chips(['Gemini 2.5 Pro', 'Gemini 2.5 Flash'], true)}</div>
+        <div class="addf"><div class="fi">AIzaSyD3x…<span class="caret"></span></div><button class="btn primary">Save key</button><button class="btn" style="background:transparent;color:var(--t2)">Cancel</button></div>
+        <div class="help">Make one at <a href="#">aistudio.google.com/apikey</a> — it takes about a minute. We check it with Google before saving.</div></div>
+      ${row('D', '#7A52D6', 'DeepSeek', '<span class="ks bad">Key rejected</span>', '', repl, '<div class="why">DeepSeek turned this key down on 18 Oct — it may have been revoked or run out of credit. Replace it to use DeepSeek again.</div>', 'bad')}
+      ${row('G', '#D1467E', 'Groq', '<span class="ks none">Not set</span>', chips(['Llama 3.3 70B', 'Qwen 3 32B'], true), add)}
+      ${row('M', '#B8860B', 'Mistral', '<span class="ks none">Not set</span>', chips(['Mistral Large', 'Mistral Medium'], true), add)}
+      ${row('K', '#2B2340', 'Moonshot', '<span class="ks none">Not set</span>', chips(['Kimi K2'], true), add)}
+    </section>
+    <aside class="kside">
+      <h4>What the model picker will show</h4>
+      <div class="pick">
+        <div class="grp">Ready</div>
+        <div class="pr on"><i class="mdot" style="--c:#E0673A"></i>Claude Sonnet<span class="r">Default</span></div>
+        <div class="pr"><i class="mdot" style="--c:#E0673A"></i>Claude Opus</div>
+        <div class="pr"><i class="mdot" style="--c:#3FAE5A"></i>GPT-5</div>
+        <div class="pr"><i class="mdot" style="--c:#3FAE5A"></i>GPT-5 mini</div>
+        <div class="grp">Needs a key</div>
+        <div class="pr lock"><i class="mdot" style="--c:#2A86C4"></i>Gemini 2.5 Pro<span class="r">${ic('lock', 11)}Google</span></div>
+        <div class="pr lock"><i class="mdot" style="--c:#7A52D6"></i>DeepSeek V3<span class="r">${ic('lock', 11)}Fix key</span></div>
+        <div class="pr lock"><i class="mdot" style="--c:#D1467E"></i>Llama 3.3 70B<span class="r">${ic('lock', 11)}Groq</span></div>
+        <div class="pr lock" style="padding-bottom:4px"><span style="padding-left:17px;font-size:11.5px">+ 3 more locked models</span></div>
+      </div>
+      <div class="priv">${ic('shield', 17)}<span><b>How keys are kept:</b> encrypted on our server and never sent back to your browser after you save them. Requests go from our server straight to the provider.</span></div>
+    </aside>
+  </div>`;
+}
+
+/* ============================== mount ============================== */
+function fitBoard(el, data, opts) {
+  const cw = el.clientWidth;
+  const s = Math.min(opts.max, (cw - (opts.margin || 0)) / opts.worldW);
+  const ox = opts.center ? (cw - opts.worldW * s) / 2 : (opts.ox || 0) * s + (opts.left || 0);
+  renderBoard(el, data, s, ox, (opts.oy || 0) * s + (opts.top || 0));
+}
+function mountLanding(frame) {
+  frame.appendChild(document.getElementById('tpl-landing').content.cloneNode(true));
+  const narrow = frame.clientWidth < 700;
+  const hero = frame.querySelector('[data-board="heat"]');
+  if (narrow) renderBoard(hero, HEAT, .52, -4, 22);
+  else fitBoard(hero, HEAT, { max: .98, worldW: 1420, center: true, oy: 30, top: 20 });
+  const f1 = frame.querySelector('[data-board="f1"]'), f2 = frame.querySelector('[data-board="f2"]'), f3 = frame.querySelector('[data-board="f3"]'), f4 = frame.querySelector('[data-board="f4"]');
+  if (narrow) { f1.style.height = '240px'; f2.style.height = '250px'; f3.style.height = '260px'; f4.style.height = '250px'; }
+  fitBoard(f1, F1, { max: .9, worldW: 860, left: 4, top: 24 });
+  fitBoard(f2, F2, { max: .62, worldW: 860, left: 30, top: 10 });
+  renderBoard(f3, F3, narrow ? .58 : .7, 0, 6);
+  f3.insertAdjacentHTML('beforeend', F3_FOCUS);
+  if (narrow) { renderBoard(f4, F4, .5, -6, 20); } else fitBoard(f4, F4, { max: .82, worldW: 910, left: 8, top: 22 });
+}
+
+document.fonts.ready.then(() => {
+  mountLanding(document.getElementById('A'));
+  mountLanding(document.getElementById('Am'));
+
+  // B — sign-in backdrop: a big faint pebble map
+  document.getElementById('B-bg').innerHTML = pmap(MAPS.thesis, 1440, 900, { pad: 40, detail: true });
+
+  // C — boards home
+  document.getElementById('C').innerHTML = home({ menuOn: 1 });
+  document.getElementById('Cl').innerHTML = home({ view: 'list' });
+  document.getElementById('Ce').innerHTML = home({ empty: true, hovBlank: false });
+  document.getElementById('Cm').innerHTML = home({ narrow: true });
+  // D — account menu on the boards home
+  document.getElementById('D').innerHTML = home({ acct: true });
+
+  // F — the board with the avatar
+  const F = document.getElementById('F');
+  F.innerHTML = '<div class="bd" style="position:absolute;inset:0"></div>' + boardChrome();
+  renderBoard(F.querySelector('.bd'), PRICING, .61, -20, -80);
+  F.insertAdjacentHTML('beforeend', `<div class="note-call up" style="top:84px;right:14px">New: account avatar. Same 56px float pill as the brand bar, so the top edge is symmetric. Opens the menu in D.</div>`);
+
+  // E — API keys sheet over the board
+  const E = document.getElementById('E');
+  E.innerHTML = '<div class="bd" style="position:absolute;inset:0"></div>' + boardChrome({ acct: true }) + keysSheet();
+  renderBoard(E.querySelector('.bd'), PRICING, .61, -20, -80);
+
+  document.body.dataset.ready = '1';
+});
+</script>
+</body>
+</html>
