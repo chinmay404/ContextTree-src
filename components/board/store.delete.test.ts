@@ -5,7 +5,6 @@ import { BoardStore } from './store';
 const flush = async () => { for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0)); };
 let m: MockEngineApi;
 let s: BoardStore;
-const calls = (name: string) => m.calls.filter((c) => c.method === name);
 const snap = () => s.getSnapshot();
 const live = () => [...snap().cards.values()];
 

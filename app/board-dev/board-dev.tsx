@@ -8,7 +8,6 @@ export interface BoardDevParams {
   firstTokenMs?: number;
   wordMs?: number;
   latencyMs?: number;
-  toastMs?: number;
 }
 
 declare global {

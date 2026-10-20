@@ -2,19 +2,19 @@
 /** The branch / new question / chat settings sheet (prototype openDialog, renderDialog, confirmDialog, lines 895-977). */
 import './branch-sheet.css';
 import { useCallback, useLayoutEffect, useRef, type CSSProperties, type KeyboardEvent, type ReactElement } from 'react';
-import type { AdvancedSettings, Carry } from '../api/types';
+import type { AdvancedSettings, Card, Carry } from '../api/types';
 import { FAMC, PERSONAS } from '../lib/catalog';
 import { cut } from '../lib/format';
 import { chatData, famOf, qNum } from '../lib/graph';
-import { isRead } from '../lib/reads';
+import { foldPiles, isRead } from '../lib/reads';
 import { useBoard, useSnapshot } from '../context';
 import type { DialogState } from '../store';
+import { clamp } from '../lib/util';
 import { Icon } from './Icon';
 import { ModelPicker } from './ModelPicker';
 import { estimateTokens } from './branch-estimate';
 import { useEscape } from './escape';
 
-const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
 const TITLE = { branch: 'New branch', root: 'New question', edit: 'Chat settings' } as const;
 const BUTTON = { branch: 'Create branch', root: 'Create', edit: 'Save' } as const;
 const CARRY: [Carry, string][] = [['summary', 'Summary + last 2'], ['whole', 'Whole chat'], ['fresh', 'Fresh start']];
@@ -68,7 +68,7 @@ export function BranchSheet(): ReactElement {
     const parent = dlg.parentId ? snap.cards.get(dlg.parentId) : undefined;
     const parentReads = parent ? store.readsOf(parent.id) : null;
     // One entry per source: a pile counts once (its members' tokens are still in the estimate).
-    const above = parentReads ? [...new Map(parentReads.items.filter(isRead).map((i) => { const m = snap.cards.get(i.cardId); return m && (m.pileId ? snap.cards.get(m.pileId) ?? m : m); }).filter((c): c is NonNullable<typeof c> => !!c).map((c) => [c.id, c] as const)).values()] : [];
+    const above = parentReads ? foldPiles(g, parentReads.items.filter(isRead).map((i) => snap.cards.get(i.cardId)).filter((c): c is Card => !!c)) : [];
     const setAdv = (patch: Partial<AdvancedSettings>): void => store.setDraft({ advanced: { ...d.advanced, ...patch } });
     const est = estimateTokens(d, parent && parentReads ? { reads: parentReads, messages: snap.messages.get(parent.id) ?? [] } : null);
     const a = d.advanced;

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { center, dragPath, openBoard } from './helpers';
+import type { MockPeek } from './global';
 
 const stringPodcastToSide = async (page: import('@playwright/test').Page) => {
   await page.evaluate(() => window.__board!.camSnap(60, 260, .62)); await page.waitForTimeout(300);
@@ -44,10 +45,10 @@ test('clicking a string shows Disconnect; Disconnect removes it', async ({ page 
 });
 test('a refused string disappears with a toast', async ({ page }) => {
   await openBoard(page);
-  await page.evaluate(() => { const m = (window as any).__mock; m.failNext('createEdge', new m.constructor.ApiError(409, 'not_allowed')); });
+  await page.evaluate(() => { const m = window.__mock as unknown as MockPeek; m.failNext('createEdge', new m.constructor.ApiError(409, 'not_allowed')); });
   await stringPodcastToSide(page);
   await expect.poll(() => page.evaluate(() => window.__board!.hasWire('podcast', 'side')), { timeout: 1000 }).toBe(false);
-  expect(await page.evaluate(() => (window as any).__toastText)).toBe("Those two can't be strung together.");
+  await expect(page.locator('.pb-toast')).toHaveText("Those two can't be strung together.");
 });
 test('branch strings sway', async ({ page }) => {
   await openBoard(page); const s = await page.evaluate(async () => { const b = window.__board!; b.snapBy('second', 0, 200); await new Promise((r) => setTimeout(r, 60)); return b.stringMid('t|second'); });

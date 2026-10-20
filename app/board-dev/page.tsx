@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import BoardDev, { type BoardDevParams } from './board-dev';
 
-const KEYS = ['ingestMs', 'firstTokenMs', 'wordMs', 'latencyMs', 'toastMs'] as const;
+const KEYS = ['ingestMs', 'firstTokenMs', 'wordMs', 'latencyMs'] as const;
 
 export default async function Page({
   searchParams,

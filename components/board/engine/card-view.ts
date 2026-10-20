@@ -5,7 +5,7 @@
 import type { Card, ChatData, Id, Message, SourceData } from '../api/types';
 import { FAMC, TYPE_INFO, modelInfo, personaLabel } from '../lib/catalog';
 import { cut, esc } from '../lib/format';
-import { answersInto, chatData, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, wiresInto, type Graph } from '../lib/graph';
+import { answersInto, chatData, iconOf, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, wiresInto, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
 import { countSources, foldPiles, isRead, tokensRead } from '../lib/reads';
 import { icon } from './icons';
@@ -40,7 +40,6 @@ export function chatStale(store: BoardStore, chatId: Id): boolean {
 const dotsHTML = (g: Graph, list: Card[]): string =>
   `<span class="dots">${list.slice(0, 6).map((c) => `<i style="background:${FAMC[famOf(g, c)][1]}"></i>`).join('')}</span>`;
 
-const iconOf = (c: Card): string => (isChat(c) ? 'message-circle' : TYPE_INFO[c.sourceType ?? 'pdf'].icon);
 const wireCount = (g: Graph, id: Id): number => edgesFrom(g, id).filter((e) => e.kind === 'wire').length;
 
 export class CardView {

@@ -3,11 +3,9 @@
 import './delete-confirm.css';
 import { useCallback, useEffect, useLayoutEffect, useRef, type ReactElement } from 'react';
 import { useBoard, useSnapshot } from '../context';
+import { typing } from '../lib/util';
 import { overlayOpen } from '../store';
 import { useEscape } from './escape';
-
-const typing = (t: EventTarget | null): boolean =>
-  t instanceof HTMLElement && !!t.closest('textarea, input, select, [contenteditable="true"]');
 
 export function DeleteConfirm(): ReactElement {
   const { store } = useBoard();

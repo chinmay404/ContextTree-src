@@ -2,10 +2,9 @@
 /** Window-level input for adding things: drag and drop, paste, N / Q / Enter, double-click and right-click on the board. */
 import { useEffect } from 'react';
 import { useBoard } from '../context';
+import { typing } from '../lib/util';
 import { overlayOpen } from '../store';
 
-const typing = (t: EventTarget | null): boolean =>
-  t instanceof HTMLElement && !!t.closest('textarea, input, select, [contenteditable="true"]');
 const hasFiles = (e: DragEvent): boolean => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
 const hasLink = (e: DragEvent): boolean => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('text/uri-list');
 const isUrl = (s: string): boolean => /^https?:\/\//i.test(s);

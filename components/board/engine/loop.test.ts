@@ -16,8 +16,7 @@ describe('FrameLoop', () => {
     l.start(); cb!(16); expect(frames).toEqual([16]); l.stop(); expect(caf).toHaveBeenCalledWith(7);
   });
   it('stop() inside onFrame is not overridden by rescheduling', () => {
-    const raf = vi.fn((_c: FrameRequestCallback) => 1); let l!: FrameLoop;
-    l = new FrameLoop(new SpringSystem(false), () => l.stop(), raf, () => {});
+    const raf = vi.fn((_c: FrameRequestCallback) => 1); const l = new FrameLoop(new SpringSystem(false), () => l.stop(), raf, () => {});
     l.start(); const cb = raf.mock.calls[0][0]; cb(16);
     expect(raf).toHaveBeenCalledTimes(1);
   });
@@ -34,8 +33,8 @@ describe('FrameLoop', () => {
   });
   it('stop() then start() inside onFrame keeps a single rAF chain', () => {
     const cbs: FrameRequestCallback[] = []; const raf = vi.fn((c: FrameRequestCallback) => { cbs.push(c); return cbs.length; });
-    let restart = true; let l!: FrameLoop;
-    l = new FrameLoop(new SpringSystem(false), () => { if (restart) { restart = false; l.stop(); l.start(); } }, raf, () => {});
+    let restart = true;
+    const l: FrameLoop = new FrameLoop(new SpringSystem(false), () => { if (restart) { restart = false; l.stop(); l.start(); } }, raf, () => {});
     l.start(); cbs[0](16);
     expect(raf).toHaveBeenCalledTimes(2);          // the first start + the restart, not a third from the old chain
     cbs[1](32); expect(raf).toHaveBeenCalledTimes(3);

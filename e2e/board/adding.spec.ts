@@ -8,7 +8,6 @@ const paste = (page: Page, text: string) => page.evaluate((t) => {
   dt.setData('text/plain', t);
   document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
 }, text);
-const toast = (page: Page) => page.evaluate(() => (window as unknown as { __toastText?: string }).__toastText);
 const upload = async (page: Page, file: { name: string; mimeType: string; buffer: Buffer }) => {
   await page.click('[data-pb="add"]');
   const chooser = page.waitForEvent('filechooser');
@@ -126,11 +125,11 @@ test('rejected uploads leave no card and say why', async ({ page }) => {
   await upload(page, { name: 'big.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(5 * 1024 * 1024) });
   await page.waitForTimeout(1000);
   expect(await sourceCount(page)).toBe(n);
-  expect(await toast(page)).toBe('That file is over 4 MB.');
+  await expect(page.locator('.pb-toast')).toHaveText('That file is over 4 MB.');
   await upload(page, { name: 'clip.mov', mimeType: 'video/quicktime', buffer: Buffer.from('x') });
   await page.waitForTimeout(1000);
   expect(await sourceCount(page)).toBe(n);
-  expect(await toast(page)).toBe("Can't read that kind of file yet.");
+  await expect(page.locator('.pb-toast')).toHaveText("Can't read that kind of file yet.");
 });
 
 test('a file that fails offers Retry and Paste text', async ({ page }) => {
@@ -183,7 +182,7 @@ test('pasting into a focused text field is left alone', async ({ page }) => {
 test('dropping files on a desk gives them to that question', async ({ page }) => {
   await openBoard(page);
   const pt = await page.evaluate(() => {
-    const b = window.__board!, [x0, y0, x1, y1] = b.deskBox('second')!, c = b.cam();
+    const b = window.__board!, [x0, , x1, y1] = b.deskBox('second')!, c = b.cam();
     return [((x0 + x1) / 2) * c.z + c.x, (y1 - 60) * c.z + c.y];   // low in the desk, clear of its cards
   });
   const send = (type: string) => page.evaluate(([t, x, y]) => {
@@ -204,7 +203,7 @@ test('dropping files on a desk gives them to that question', async ({ page }) =>
 test('dropping a link makes a card on the desk under it', async ({ page }) => {
   await openBoard(page);
   const pt = await page.evaluate(() => {
-    const b = window.__board!, [x0, y0, x1, y1] = b.deskBox('second')!, c = b.cam();
+    const b = window.__board!, [x0, , x1, y1] = b.deskBox('second')!, c = b.cam();
     return [((x0 + x1) / 2) * c.z + c.x, (y1 - 60) * c.z + c.y];
   });
   await page.evaluate(([x, y]) => {
@@ -230,7 +229,7 @@ test('the focus view Source button opens the picker for that desk', async ({ pag
 });
 
 const deskPoint = (page: Page) => page.evaluate(() => {
-  const b = window.__board!, [x0, y0, x1, y1] = b.deskBox('second')!, c = b.cam();
+  const b = window.__board!, [x0, , x1, y1] = b.deskBox('second')!, c = b.cam();
   return [((x0 + x1) / 2) * c.z + c.x, (y1 - 60) * c.z + c.y] as [number, number];
 });
 

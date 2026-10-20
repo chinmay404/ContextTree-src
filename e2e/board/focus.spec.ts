@@ -47,7 +47,7 @@ test('a timeline step opens that question', async ({ page }) => {
 test('an inherited source can be left out here', async ({ page }) => {
   await openBoard(page); await openFocus(page, 'side');
   await page.locator(`${F} .srow`, { hasText: 'Pricing survey 2025' }).click();
-  expect(await page.evaluate(() => (window.__board!.card('side')!.data as any).hide)).toContain('pdf');
+  expect(await page.evaluate(() => (window.__board!.card('side')!.data as { hide?: string[] }).hide)).toContain('pdf');
   await expect(page.locator(`${F} .srow.off`)).toHaveCount(1);
   await page.locator(`${F} .srow`, { hasText: 'Pricing survey 2025' }).click();
   await expect(page.locator(`${F} .srow.off`)).toHaveCount(0);
@@ -56,7 +56,7 @@ test('an inherited source can be left out here', async ({ page }) => {
 test('leaving out a pile row hides the pile', async ({ page }) => {
   await openBoard(page); await openFocus(page, 'deep');
   await page.locator(`${F} .srow`, { hasText: 'Customer interviews' }).click();
-  expect(await page.evaluate(() => (window.__board!.card('deep')!.data as any).hide)).toContain('interviews');
+  expect(await page.evaluate(() => (window.__board!.card('deep')!.data as { hide?: string[] }).hide)).toContain('interviews');
   await expect(page.locator(`${F} .srow.off`)).toHaveCount(1);
 });
 
@@ -123,9 +123,9 @@ test('Branch from here and Settings open the sheet', async ({ page }) => {
 
 test('the Source chip asks for files for this desk', async ({ page }) => {
   await openBoard(page); await openFocus(page, 'main');
-  await page.evaluate(() => { window.addEventListener('pb:pickfiles', (e) => { (window as any).__pick = (e as CustomEvent).detail; }); });
+  await page.evaluate(() => { window.addEventListener('pb:pickfiles', (e) => { window.__pick = (e as CustomEvent).detail; }); });
   await page.locator(`${F} .fcomp .cp`, { hasText: 'Source' }).click();
-  expect(await page.evaluate(() => (window as any).__pick)).toEqual({ deskId: 'main' });
+  expect(await page.evaluate(() => window.__pick)).toEqual({ deskId: 'main' });
 });
 
 test('the more menu offers compare only with siblings', async ({ page }) => {

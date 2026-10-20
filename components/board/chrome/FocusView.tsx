@@ -12,7 +12,7 @@ import {
 import type { Card, ChatData, Id, Message } from '../api/types';
 import { FAMC, TYPE_INFO, modelInfo, personaLabel } from '../lib/catalog';
 import { formatWhen, strip } from '../lib/format';
-import { ancestors, chatData, chatsOf, famOf, isChat, membersOf, nameOf, qNum, sourceData, type Graph } from '../lib/graph';
+import { ancestors, chatData, chatsOf, famOf, iconOf, isChat, membersOf, nameOf, qNum, sourceData, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
 import { isRead } from '../lib/reads';
 import { clamp } from '../engine/spring';
@@ -46,7 +46,6 @@ function rowMeta(g: Graph, r: SourceRow): string {
   return d.meta || TYPE_INFO[c.sourceType ?? 'pdf'].label;
 }
 
-const iconOf = (c: Card): string => (isChat(c) ? 'message-circle' : TYPE_INFO[c.sourceType ?? 'pdf'].icon);
 const safeUrl = (u?: string): string | null => (u && /^https?:\/\//i.test(u) ? u : null);
 const host = (u?: string): string => { try { return u ? new URL(u).host : ''; } catch { return ''; } };
 

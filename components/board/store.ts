@@ -4,7 +4,7 @@ import type {
 } from './api/types';
 import { genMessageId, newId } from './api/ids';
 import { DEFAULT_ADVANCED, DEFAULT_MODEL_KEY, MODELS, PERSONAS, TYPE_INFO } from './lib/catalog';
-import { sizeOf } from './lib/format';
+import { cut, sizeOf } from './lib/format';
 import { canPlug, chatsOf, descendants, membersOf, nameOf, qNum, type Graph } from './lib/graph';
 import { deepEqual, mergeCard, reconcile, changedFields, type CardOverride } from './lib/merge';
 import { computeReads } from './lib/reads';
@@ -46,7 +46,7 @@ export interface StoreOptions { pollMs?: number; readsDebounceMs?: number; toast
 
 // ---- helpers ----
 
-/** True while any overlay is up: Tasks 9, 16 and 19 use it for "no overlay open". */
+/** True while any overlay is up. */
 export function overlayOpen(ui: UiState): boolean {
   return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.linkPop || ui.confirm || ui.compare || ui.tour);
 }
@@ -428,11 +428,6 @@ export class BoardStore {
 
   // ---- creates ----
 
-  /** The create in flight for this card, if any: actions on the card await it first. */
-  whenCreated(id: Id): Promise<boolean> | null {
-    return this.pendingCards.get(id) ?? null;
-  }
-
   /** Resolves false when any of these cards has a create in flight that fails. */
   private async created(ids: (Id | null | undefined)[]): Promise<boolean> {
     const waits = ids.map((i) => (i ? this.pendingCards.get(i) : undefined)).filter((x): x is Promise<boolean> => !!x);
@@ -525,7 +520,7 @@ export class BoardStore {
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
     const host = u.hostname.toLowerCase();
     const yt = host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be';
-    const title = (host + u.pathname).length > 40 ? (host + u.pathname).slice(0, 39).trim() + '…' : host + u.pathname;
+    const title = cut(host + u.pathname, 40);
     const data: SourceData = yt
       ? { url, title: 'YouTube video', meta: 'YouTube', ...(desc ? { desc } : {}) }
       : { url, title, meta: host, ...(desc ? { desc } : {}) };

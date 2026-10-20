@@ -64,11 +64,6 @@ export const DEFAULT_ADVANCED: AdvancedSettings = {
   temperature: null, maxOutputTokens: null, historyMode: 'auto', lastKMessages: 6, externalContextTopK: 5, contextBudgetTokens: null,
 };
 
-// Prototype DEFAULT_ADV key -> contract AdvancedSettings key; the branch sheet binds controls through it.
-export const ADV_FIELD_MAP = {
-  temp: 'temperature', maxOut: 'maxOutputTokens', hist: 'historyMode', k: 'lastKMessages', topK: 'externalContextTopK', budget: 'contextBudgetTokens',
-} as const;
-
 export function defaultChatData(name: string, model: string = MODELS[DEFAULT_MODEL_KEY].engineId): ChatData {
   return {
     name, model, persona: 'none', systemPrompt: '', inheritDesk: true, carry: 'summary',

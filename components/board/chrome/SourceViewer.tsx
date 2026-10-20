@@ -11,10 +11,10 @@ import { useBoard, useSnapshot } from '../context';
 import type { UiState } from '../store';
 import { Icon } from './Icon';
 import { useEscape } from './escape';
+import { clamp } from '../lib/util';
 import { ViewerBody } from './viewer-bodies';
 
 type Viewing = NonNullable<UiState['viewer']>;
-const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
 
 export function SourceViewer(): ReactElement {
   const { store, engine } = useBoard();

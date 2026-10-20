@@ -17,6 +17,7 @@ import { BoardEngine } from './engine/board-engine';
 import { installTestHook } from './engine/test-hook';
 import { bricolage } from './fonts';
 import { BoardStore } from './store';
+import { typing } from './lib/util';
 import { AddMenu } from './chrome/AddMenu';
 import { BoardInput } from './chrome/BoardInput';
 import { BranchSheet } from './chrome/BranchSheet';
@@ -47,9 +48,6 @@ export function Board(p: BoardProps): ReactElement {
   return <BoardShell key={p.boardId} {...p} />;
 }
 export default Board;
-
-const typing = (t: EventTarget | null): t is HTMLElement =>
-  t instanceof HTMLElement && !!t.closest('textarea, input, select, [contenteditable="true"]');
 
 function BoardShell(p: BoardProps): ReactElement {
   const rootRef = useRef<HTMLDivElement>(null);
