@@ -28,3 +28,5 @@ next-env.d.ts
 # board tests
 /test-results/
 /playwright-report/
+
+.superpowers/
