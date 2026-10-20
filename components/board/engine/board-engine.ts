@@ -115,6 +115,14 @@ export class BoardEngine {
       for (const en of entries) { const id = (en.target as HTMLElement).dataset.id; const n = id ? this.ctx.nodes.get(id) : undefined; if (n) n.h = n.el.offsetHeight; }
     });
     this.unsub = this.store.onChange((c) => this.onChange(c));
+    // Delete asks the view for what only it knows: the front member of a pile, and a drop that has not been saved yet.
+    this.store.setViewProbe({
+      front: (id) => this.ctx.nodes.get(id)?.front ?? 0,
+      pos: (id) => {
+        const n = this.ctx.nodes.get(id);
+        return n && this.ctx.modules.persistence.isDirty(id) ? [Math.round(n.px.t * 10) / 10, Math.round(n.py.t * 10) / 10] : null;
+      },
+    });
     for (const c of this.store.graph().cards.values()) if (!c.pileId) this.ensureNode(c, false);
     for (const e of this.store.graph().edges.values()) this.edgeEnds.set(e.id, [e.from, e.to]);
     this.pointer = attachPointer(this.ctx);
@@ -128,6 +136,7 @@ export class BoardEngine {
     this.disposed = true;
     this.loop.stop();
     this.unsub?.();
+    this.store.setViewProbe(null);
     this.pointer?.dispose();
     this.ro?.disconnect();
     const m = this.ctx.modules;
@@ -161,6 +170,8 @@ export class BoardEngine {
       dead.n.o.cfg(.25, 1).to(1); dead.n.s.cfg(.42, 1).to(1);
       this.ctx.nodes.set(c.id, dead.n); this.ro?.observe(dead.n.el);
       dead.n.deskId = c.deskId;
+      dead.n.px.to(c.x); dead.n.py.to(c.y);
+      this.ctx.modules.persistence.markSynced(c.id, c.x, c.y);
       this.view.render(dead.n);
       return dead.n;
     }

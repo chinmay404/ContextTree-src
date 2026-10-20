@@ -1,3 +1,4 @@
 .pb-root .dconfirm { width: min(440px, calc(100vw - 32px)); padding: 28px; }
 .pb-root .dconfirm h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; line-height: 1.25; }
-.pb-root .dconfirm .row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.pb-root .dconfirm .row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.pb-root .dconfirm .row .btn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

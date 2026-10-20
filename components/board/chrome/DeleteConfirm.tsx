@@ -15,12 +15,14 @@ export function DeleteConfirm(): ReactElement {
   const open = snap.ui.confirm;
   const boxRef = useRef<HTMLDivElement>(null);
   const okRef = useRef<HTMLButtonElement>(null);
+  const allRef = useRef<HTMLButtonElement>(null);
   const opener = useRef<HTMLElement | null>(null);
-  const shown = useRef<string>('');   // the text stays while the sheet fades out
-  if (open) shown.current = open.text;
+  const shown = useRef<{ text: string; pile?: { front: string; count: number } }>({ text: '' });   // the text stays while the sheet fades out
+  if (open) shown.current = { text: open.text, pile: open.pile };
 
   const cancel = useCallback(() => { store.cancelConfirm(); }, [store]);
-  const ok = useCallback(() => { void store.confirmDelete(); }, [store]);
+  const ok = useCallback(() => { void store.confirmDelete('one'); }, [store]);
+  const all = useCallback(() => { void store.confirmDelete('all'); }, [store]);
   useEscape(!!open, cancel);
 
   const isOpen = !!open;
@@ -63,6 +65,11 @@ export function DeleteConfirm(): ReactElement {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
       const ui = store.getSnapshot().ui;
       if (ui.confirm) {
+        if (ui.confirm.pile && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {   // between "Delete <front>" and "Delete all"
+          e.preventDefault();
+          (e.key === 'ArrowRight' ? allRef : okRef).current?.focus({ preventScroll: true });
+          return;
+        }
         // Enter confirms; on a focused button the browser's own click does the job.
         if (e.key === 'Enter' && !(e.target instanceof HTMLElement && e.target.closest('button'))) { e.preventDefault(); ok(); }
         return;
@@ -78,14 +85,20 @@ export function DeleteConfirm(): ReactElement {
     return () => document.removeEventListener('keydown', onKey);
   }, [store, ok]);
 
+  const pile = shown.current.pile;
   return (
     <div className={`wrap${open ? ' on' : ''}`} data-pb="confirm" inert={!open} aria-hidden={!open}
       onMouseDown={(e) => { if (e.target === e.currentTarget) cancel(); }}>
       <div ref={boxRef} className="sheetbox dconfirm" role="alertdialog" aria-modal="true" aria-labelledby="pb-confirm-h">
-        <h2 id="pb-confirm-h">{shown.current}</h2>
+        <h2 id="pb-confirm-h">{shown.current.text}</h2>
         <div className="row">
           <button type="button" className="btn" onClick={cancel}>Cancel</button>
-          <button type="button" ref={okRef} className="btn primary" onClick={ok}>Delete</button>
+          {pile ? (
+            <>
+              <button type="button" ref={okRef} className="btn primary" onClick={ok}>{`Delete "${pile.front}"`}</button>
+              <button type="button" ref={allRef} className="btn primary" onClick={all}>{`Delete all ${pile.count}`}</button>
+            </>
+          ) : <button type="button" ref={okRef} className="btn primary" onClick={ok}>Delete</button>}
         </div>
       </div>
     </div>
