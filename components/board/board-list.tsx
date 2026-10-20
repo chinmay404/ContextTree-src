@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, type ReactElement } from 'rea
 import { useRouter } from 'next/navigation';
 import { bricolage } from './fonts';
 import { newId } from './api/ids';
-import type { BoardSummary, EngineApi } from './api/types';
+import { ApiError, type BoardSummary, type EngineApi } from './api/types';
 
 const UNDO_MS = 10_000;
 
@@ -19,6 +19,9 @@ const ago = (iso: string): string => {
   if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
   return new Date(iso).toLocaleDateString();
 };
+
+const hasKeepalive = (a: EngineApi): a is EngineApi & { deleteBoardKeepalive(id: string): void } =>
+  typeof (a as { deleteBoardKeepalive?: unknown }).deleteBoardKeepalive === 'function';
 
 type Pending = { board: BoardSummary; timer: ReturnType<typeof setTimeout> };
 
@@ -39,10 +42,14 @@ export function BoardList({ api, query = '' }: { api: EngineApi; query?: string 
       const list = await api.listBoards();
       // Boards waiting on their Undo window stay hidden even if the server still lists them.
       setBoards(list.filter((b) => !pending.current.has(b.id)).sort(newestFirst));
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        router.replace('/auth/signin?callbackUrl=%2Fboards');
+        return;
+      }
       setError(true);
     }
-  }, [api]);
+  }, [api, router]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -54,6 +61,39 @@ export function BoardList({ api, query = '' }: { api: EngineApi; query?: string 
       map.clear();
     };
   }, [api]);
+
+  // Closing the tab inside the Undo window still deletes: a keepalive DELETE survives unload.
+  useEffect(() => {
+    const onHide = () => {
+      for (const p of pending.current.values()) {
+        clearTimeout(p.timer);
+        if (hasKeepalive(api)) api.deleteBoardKeepalive(p.board.id);
+        else void api.deleteBoard(p.board.id).catch(() => {});
+      }
+      pending.current.clear();
+    };
+    window.addEventListener('pagehide', onHide);
+    return () => window.removeEventListener('pagehide', onHide);
+  }, [api]);
+
+  // Confirm sheet: focus goes in, Escape and Tab stay inside, focus returns to where it was.
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const open = confirm !== null;
+  useEffect(() => {
+    if (!open) return;
+    const from = document.activeElement as HTMLElement | null;
+    cancelRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); setConfirm(null); return; }
+      if (e.key !== 'Tab') return;
+      const first = cancelRef.current, last = confirmRef.current;
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('keydown', onKey); from?.focus?.(); };
+  }, [open]);
 
   const create = async () => {
     if (creating) return;
@@ -148,8 +188,8 @@ export function BoardList({ api, query = '' }: { api: EngineApi; query?: string 
           <div className="bl-sheet" role="dialog" aria-modal="true" aria-label="Delete board" onClick={(e) => e.stopPropagation()}>
             <p>Delete &ldquo;{confirm.title}&rdquo;? You can undo for 10 seconds.</p>
             <div className="bl-sheet-actions">
-              <button className="btn" onClick={() => setConfirm(null)}>Cancel</button>
-              <button className="btn primary" onClick={() => remove(confirm)}>Delete board</button>
+              <button ref={cancelRef} className="btn" onClick={() => setConfirm(null)}>Cancel</button>
+              <button ref={confirmRef} className="btn primary" onClick={() => remove(confirm)}>Delete board</button>
             </div>
           </div>
         </div>

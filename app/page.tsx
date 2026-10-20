@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Plus, LayoutGrid, Network } from "lucide-react";
 import { CanvasView } from "@/components/canvas/canvas";
@@ -35,16 +35,9 @@ const normalizeCanvases = (canvases: any): CanvasData[] =>
 // session so a canvas the user force-exited stays in tree view on revisit.
 const LINEAR_EXIT_STORAGE_KEY = "context-tree-linear-exited";
 
-export default function ContextTreePage() {
+function V2Studio() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const isMobile = useIsMobile();
-  const router = useRouter();
-  const boardV3 = process.env.NEXT_PUBLIC_BOARD_V3 === "1";
-
-  // V3: signed-in users land on their boards.
-  useEffect(() => {
-    if (boardV3 && isAuthenticated) router.replace("/boards");
-  }, [boardV3, isAuthenticated, router]);
 
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedNodeName, setSelectedNodeName] = useState<string>();
@@ -509,7 +502,6 @@ export default function ContextTreePage() {
   }
 
   if (!isAuthenticated) return <Landing />;
-  if (boardV3) return null; // redirecting to /boards
 
   const showRightPanel = !!selectedNode;
 
@@ -800,3 +792,22 @@ export default function ContextTreePage() {
     </motion.div>
   );
 }
+
+/**
+ * V3 flag: with NEXT_PUBLIC_BOARD_V3=1 signed-in users go to /boards before any V2 studio hook or effect runs
+ * (no canvas loading or creation for them). Flag unset: the V2 studio, unchanged.
+ */
+function V3Redirect() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  useEffect(() => {
+    if (isAuthenticated) router.replace("/boards");
+  }, [isAuthenticated, router]);
+  if (isLoading || isAuthenticated) return <BrandLoader variant="pulse" size={72} />;
+  return <Landing />;
+}
+
+export default function ContextTreePage() {
+  return process.env.NEXT_PUBLIC_BOARD_V3 === "1" ? <V3Redirect /> : <V2Studio />;
+}
+

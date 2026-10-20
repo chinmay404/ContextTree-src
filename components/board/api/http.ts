@@ -59,6 +59,10 @@ export class HttpEngineApi implements EngineApi {
     await this.req('PATCH', `/boards/${enc(boardId)}`, patch);
   }
   async deleteBoard(boardId: Id): Promise<void> { await this.req('DELETE', `/boards/${enc(boardId)}`); }
+  /** Best-effort DELETE that survives page unload (pagehide flush of a deferred board delete). */
+  deleteBoardKeepalive(boardId: Id): void {
+    void fetch(`${this.base}/boards/${enc(boardId)}`, { method: 'DELETE', keepalive: true }).catch(() => {});
+  }
   createCard(boardId: Id, input: CardCreate) { return this.req<Card>('POST', `/boards/${enc(boardId)}/cards`, input); }
   updateCard(boardId: Id, cardId: Id, patch: CardPatch) {
     return this.req<Card>('PATCH', `/boards/${enc(boardId)}/cards/${enc(cardId)}`, patch);

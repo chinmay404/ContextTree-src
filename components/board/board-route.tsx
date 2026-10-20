@@ -9,15 +9,24 @@ import { useAuth } from '@/hooks/use-auth';
 import { Board } from './Board';
 import { BoardList } from './board-list';
 import { HttpEngineApi } from './api/http';
-import { getSharedMockApi } from './api/dev-mock';
-import { ApiError, type EngineApi } from './api/types';
+import { guardFirstLoad } from './first-load-guard';
+import type { ApiError, EngineApi } from './api/types';
 import './board-route.css';
 
 /** Pebble board token (--pb-canvas): the board paints only inside .pb-root, so the page behind it must match. */
 const PB_CANVAS = '#EDE8F5';
 
-function useEngineApi(mock: boolean): EngineApi {
-  return useMemo(() => (mock ? getSharedMockApi() : new HttpEngineApi()), [mock]);
+/** null while the dev mock is still loading. The mock is a dynamic import that production builds drop. */
+function useEngineApi(mock: boolean): EngineApi | null {
+  const real = useMemo(() => new HttpEngineApi(), []);
+  const [mockApi, setMockApi] = useState<EngineApi | null>(null);
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production' || !mock) return;
+    let live = true;
+    void import('./api/dev-mock').then((m) => { if (live) setMockApi(m.getSharedMockApi()); });
+    return () => { live = false; };
+  }, [mock]);
+  return mock ? mockApi : real;
 }
 
 /**
@@ -90,38 +99,31 @@ export function BoardRoute({ boardId, mock = false }: { boardId: string; mock?: 
   const router = useRouter();
   const gate = useSessionGate(mock, `/b/${boardId}`);
   const base = useEngineApi(mock);
-  const [fail, setFail] = useState<ApiError | null>(null);
+  // The failure is tied to its board id, so navigating to another board starts clean.
+  const [failure, setFailure] = useState<{ boardId: string; err: ApiError } | null>(null);
+  const fail = failure && failure.boardId === boardId ? failure.err : null;
   const [attempt, setAttempt] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const q = mock ? '?api=mock' : '';
 
-  // Same API, but a failed first load of this board is reported to the route (Board itself shows only a generic retry).
-  const api = useMemo<EngineApi>(
-    () =>
-      new Proxy(base, {
-        get(t, k, r) {
-          const v = Reflect.get(t, k, r);
-          if (typeof v !== 'function') return v;
-          if (k !== 'getBoard') return v.bind(t);
-          return async (id: string) => {
-            try {
-              return await t.getBoard(id);
-            } catch (e) {
-              if (e instanceof ApiError && id === boardId) setFail(e);
-              throw e;
-            }
-          };
-        },
-      }),
+  // Same API, but a failed FIRST load of this board is reported to the route (Board itself shows only a generic retry).
+  const api = useMemo<EngineApi | null>(
+    () => (base ? guardFirstLoad(base, boardId, (err) => setFailure({ boardId, err })) : null),
+    // attempt: "Try again" gets a fresh guard (and so a fresh first load)
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [base, boardId, attempt],
   );
+
+  const signedOut = fail?.status === 401;
+  useEffect(() => {
+    if (signedOut) router.replace(`/auth/signin?callbackUrl=${encodeURIComponent(`/b/${boardId}`)}`);
+  }, [signedOut, router, boardId]);
 
   const onOpenBoard = useCallback((id: string) => router.push(`/b/${id}${q}`), [router, q]);
   const onOpenSettings = useCallback(() => setSettingsOpen(true), []);
 
   let body: ReactElement;
-  if (gate === 'loading') body = <Splash />;
+  if (gate === 'loading' || !api || signedOut) body = <Splash />;
   else if (fail?.status === 404) {
     body = (
       <Message text="This board doesn't exist or isn't yours.">
@@ -131,7 +133,7 @@ export function BoardRoute({ boardId, mock = false }: { boardId: string; mock?: 
   } else if (fail?.status === 503) {
     body = (
       <Message text="Can't reach Context Tree right now.">
-        <button className="br-btn" onClick={() => { setFail(null); setAttempt((n) => n + 1); }}>Try again</button>
+        <button className="br-btn" onClick={() => { setFailure(null); setAttempt((n) => n + 1); }}>Try again</button>
       </Message>
     );
   } else {
@@ -148,5 +150,5 @@ export function BoardRoute({ boardId, mock = false }: { boardId: string; mock?: 
 export function BoardsRoute({ mock = false }: { mock?: boolean }): ReactElement {
   const gate = useSessionGate(mock, '/boards');
   const api = useEngineApi(mock);
-  return <LightScope>{gate === 'loading' ? <Splash /> : <BoardList api={api} query={mock ? '?api=mock' : ''} />}</LightScope>;
+  return <LightScope>{gate === 'loading' || !api ? <Splash /> : <BoardList api={api} query={mock ? '?api=mock' : ''} />}</LightScope>;
 }

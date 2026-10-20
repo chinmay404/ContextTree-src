@@ -48,3 +48,47 @@ test('rename, delete with confirm, and Undo', async ({ page }) => {
   await expect(rows).toHaveCount(before);
   await expect(page.getByText('Renamed by test')).toBeVisible();
 });
+
+const deletes = (page: import('@playwright/test').Page) =>
+  page.evaluate(() => window.__mock!.calls.filter((c) => c.method === 'deleteBoard').length);
+
+async function deleteFirstRow(page: import('@playwright/test').Page) {
+  const rows = page.locator('[data-board-row]');
+  await expect(rows.first()).toBeVisible();
+  await rows.first().getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('button', { name: 'Delete board' }).click();
+}
+
+test('the Undo window expiring sends exactly one DELETE', async ({ page }) => {
+  await page.clock.install();
+  await page.goto('/boards?api=mock');
+  await deleteFirstRow(page);
+  expect(await deletes(page)).toBe(0);
+  await page.clock.runFor(9_000);
+  expect(await deletes(page)).toBe(0);
+  await page.clock.runFor(1_500);
+  await expect.poll(() => deletes(page)).toBe(1);
+  await page.clock.runFor(20_000);
+  expect(await deletes(page)).toBe(1);
+});
+
+test('leaving /boards inside the Undo window flushes the DELETE once', async ({ page }) => {
+  await page.clock.install();
+  await page.goto('/boards?api=mock');
+  await deleteFirstRow(page);
+  expect(await deletes(page)).toBe(0);
+  await page.getByRole('button', { name: 'New board' }).click();
+  await expect(page).toHaveURL(/\/b\/b_[a-z0-9]+_[a-z0-9]{6}/);
+  expect(await deletes(page)).toBe(1);
+  await page.clock.runFor(20_000);
+  expect(await deletes(page)).toBe(1);
+});
+
+test('Escape closes the delete confirm sheet without deleting', async ({ page }) => {
+  await page.goto('/boards?api=mock');
+  await page.locator('[data-board-row]').first().getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await deletes(page)).toBe(0);
+});
