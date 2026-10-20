@@ -239,3 +239,10 @@ test('a pile counts as one source: the card face and the focus view agree for Q1
   await expect(page.locator(`${F} .ph .cnt`).first()).toHaveText(String(face));
   await expect(page.locator(`${F} .fmeta`)).toContainText(`${face} sources`);
 });
+
+test('an answer carries no fake citations: no .cited note and no quote block', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  await expect(page.locator(`${F} .art`).first()).toContainText('answered with');
+  await expect(page.locator(`${F} .cited`)).toHaveCount(0);
+  await expect(page.locator(`${F} .quote`)).toHaveCount(0);
+});

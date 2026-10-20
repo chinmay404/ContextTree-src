@@ -9,13 +9,12 @@ import {
   useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState,
   type CSSProperties, type KeyboardEvent, type ReactElement,
 } from 'react';
-import type { Card, ChatData, Id, Message, SourceData } from '../api/types';
+import type { Card, ChatData, Id, Message } from '../api/types';
 import { FAMC, TYPE_INFO, modelInfo, personaLabel } from '../lib/catalog';
-import { formatWhen, strip, esc } from '../lib/format';
+import { formatWhen, strip } from '../lib/format';
 import { ancestors, chatData, chatsOf, famOf, isChat, membersOf, nameOf, qNum, sourceData, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
 import { isRead } from '../lib/reads';
-import { iconSvg } from '../engine/icons';
 import { clamp } from '../engine/spring';
 import { useBoard, useSnapshot } from '../context';
 import { Icon } from './Icon';
@@ -50,18 +49,6 @@ function rowMeta(g: Graph, r: SourceRow): string {
 const iconOf = (c: Card): string => (isChat(c) ? 'message-circle' : TYPE_INFO[c.sourceType ?? 'pdf'].icon);
 const safeUrl = (u?: string): string | null => (u && /^https?:\/\//i.test(u) ? u : null);
 const host = (u?: string): string => { try { return u ? new URL(u).host : ''; } catch { return ''; } };
-
-/** The quote block after the first answer: the first read source's first excerpt that is on. */
-function quoteHtml(g: Graph, rows: SourceRow[]): string {
-  const src = rows.find((r) => !isChat(r.card) && r.card.sourceType !== 'pile' && r.card.status === 'ready' && (sourceData(r.card).excerpts?.length ?? 0) > 0);
-  if (!src) return '';
-  const d: SourceData = sourceData(src.card), ex = d.excerpts!;
-  const e = ex.find((x) => x.on) ?? ex[0];
-  const meta = [d.title, d.meta, e.loc].filter(Boolean).map(esc).join(' · ');
-  return `<div class="quote f-${famOf(g, src.card)}"><span class="tile"><span class="i" aria-hidden="true">${iconSvg(iconOf(src.card))}</span></span><div><div class="q1">“${esc(e.text)}”</div><div class="q2">${meta}</div></div></div>`;
-}
-
-const withQuote = (html: string, quote: string): string => (quote ? html.replace('</p>', `</p>${quote}`) : html);
 
 export function FocusView(): ReactElement {
   const { store, engine } = useBoard();
@@ -229,9 +216,6 @@ function FocusBody(p: {
   const streaming = store.isStreaming(c.id);
   const siblings = c.parentId ? chatsOf(g).filter((x) => x.parentId === c.parentId && x.id !== c.id) : [];
   const path = [...ancestors(g, c.id)].reverse().concat(c);
-  const firstAnswer = msgs.findIndex((m) => m.role === 'assistant');
-  const quote = quoteHtml(g, read);
-  const cited = read.slice(0, 3).map((r) => r.card);
   const [copied, setCopied] = useState<string | null>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
@@ -380,7 +364,7 @@ function FocusBody(p: {
                   </div>
                 );
               }
-              const html = withQuote(renderMarkdown(m.content), i === firstAnswer ? quote : '');
+              const html = renderMarkdown(m.content);
               return (
                 <div key={m.id} className="amsg">
                   {webRows(webMap.get(m.id))}
@@ -391,7 +375,6 @@ function FocusBody(p: {
                       <button type="button" data-copy onClick={() => copy(m)}><Icon name="copy" />{copied === m.id ? 'Copied' : 'Copy'}</button>
                       <button type="button" data-b onClick={(e) => store.openDialog({ mode: 'branch', parentId: c.id, forkedFromMessageId: m.id, anchor: e.currentTarget.getBoundingClientRect() })}>
                         <Icon name="git-branch" />Branch from here</button>
-                      {cited.length ? <span className="cited"><Dots g={g} cards={cited} />{cited.length} of {read.length} cited</span> : null}
                     </div>
                   </article>
                 </div>
