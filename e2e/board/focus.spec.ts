@@ -1,0 +1,208 @@
+import { test, expect, type Page } from '@playwright/test';
+import { openBoard, trackErrors } from './helpers';
+
+const F = '[data-pb="focus"]';
+const openFocus = async (page: Page, id: string) => { await page.evaluate((i) => window.__board!.openFocus(i), id); await page.waitForTimeout(700); };
+const more = (page: Page) => page.click(`${F} [data-act="more"]`);
+
+test('opening a chat shows its timeline and connected sources', async ({ page }) => {
+  const errs = trackErrors(page);
+  await openBoard(page); await openFocus(page, 'deep');
+  await expect(page.locator(`${F} .tl .cur`)).toContainText('Q1.2.1');
+  await expect(page.locator(`${F} .tl button.st`)).toHaveCount(2);
+  await expect(page.locator(`${F} .tl .ev`).first()).toContainText('Branched');
+  // own 3 (desk shot, wire csv, answer side) + web + one pile row + main's 3
+  await expect(page.locator(`${F} .srow`)).toHaveCount(8);
+  const pile = page.locator(`${F} .srow`, { hasText: 'Customer interviews' });
+  await expect(pile).toContainText('4 files');
+  await expect(pile.locator('.qchip')).toHaveText('Q1.2');
+  await expect(page.locator(`${F} .ftitle`)).toHaveText('Would a team plan change this?');
+  await expect(page.locator(`${F} .fmeta`)).toContainText('tokens per question');
+  await expect(page.locator(`${F} .ub`)).toHaveCount(1);
+  expect(errs).toEqual([]);
+});
+
+test('a soon source says Coming soon, and an own source opens the viewer', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  await expect(page.locator(`${F} .srow`, { hasText: 'Coming soon' })).toHaveCount(1);
+  await page.locator(`${F} .srow`, { hasText: 'Pricing survey 2025' }).click();
+  expect((await page.evaluate(() => window.__board!.viewer()))?.cardId).toBe('pdf');
+  await page.keyboard.press('Escape');
+  expect(await page.evaluate(() => window.__board!.focus())).toBe('main');
+});
+
+test('an answer row switches the focus to that chat', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'deep');
+  await page.locator(`${F} .srow`, { hasText: 'Q1.1 answer' }).click();
+  expect(await page.evaluate(() => window.__board!.focus())).toBe('side');
+  await expect(page.locator(`${F} .tl .cur`)).toContainText('Q1.1');
+});
+
+test('a timeline step opens that question', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'deep');
+  await page.locator(`${F} .tl button.st`).last().click();
+  expect(await page.evaluate(() => window.__board!.focus())).toBe('second');
+});
+
+test('an inherited source can be left out here', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'side');
+  await page.locator(`${F} .srow`, { hasText: 'Pricing survey 2025' }).click();
+  expect(await page.evaluate(() => (window.__board!.card('side')!.data as any).hide)).toContain('pdf');
+  await expect(page.locator(`${F} .srow.off`)).toHaveCount(1);
+  await page.locator(`${F} .srow`, { hasText: 'Pricing survey 2025' }).click();
+  await expect(page.locator(`${F} .srow.off`)).toHaveCount(0);
+});
+
+test('leaving out a pile row hides the pile', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'deep');
+  await page.locator(`${F} .srow`, { hasText: 'Customer interviews' }).click();
+  expect(await page.evaluate(() => (window.__board!.card('deep')!.data as any).hide)).toContain('interviews');
+  await expect(page.locator(`${F} .srow.off`)).toHaveCount(1);
+});
+
+test('a follow-up streams into the focus view', async ({ page }) => {
+  await openBoard(page, '?firstTokenMs=100&wordMs=5'); await openFocus(page, 'main');
+  await page.locator(`${F} .fcomp textarea`).fill('And annual?'); await page.keyboard.press('Enter');
+  await expect(page.locator(`${F} .art`).last()).toContainText('try $12 a month', { timeout: 5000 });
+  await expect(page.locator(`${F} .ub`).last()).toHaveText('And annual?');
+  await expect(page.locator(`${F} .fcomp textarea`)).toBeEnabled();
+});
+
+test('the composer is locked while an answer streams', async ({ page }) => {
+  await openBoard(page, '?firstTokenMs=1500&wordMs=5'); await openFocus(page, 'main');
+  await page.locator(`${F} .fcomp textarea`).fill('Hold on'); await page.keyboard.press('Enter');
+  await expect(page.locator(`${F} .fcomp textarea`)).toBeDisabled();
+  await expect(page.locator(`${F} .art .skel`)).toHaveCount(1);
+  await expect(page.locator(`${F} .fcomp textarea`)).toBeEnabled({ timeout: 6000 });
+});
+
+test('web search shows its results first', async ({ page }) => {
+  await openBoard(page, '?firstTokenMs=100&wordMs=5'); await openFocus(page, 'main');
+  const web = page.locator(`${F} .fcomp .cp`, { hasText: 'Web' });
+  await expect(web).not.toHaveClass(/on/); await web.click(); await expect(web).toHaveClass(/on/);
+  await page.locator(`${F} .fcomp textarea`).fill('Compare pricing pages'); await page.keyboard.press('Enter');
+  await expect(page.locator(`${F} .webrow`)).toContainText('Pricing pages compared');
+  await expect(page.locator(`${F} .art`).last()).toContainText('try $12 a month', { timeout: 5000 });
+  await expect(page.locator(`${F} .webrow`)).toHaveCount(1);   // it stays above its answer
+});
+
+test('re-ask a question in a new branch', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  await page.locator(`${F} .ub`).first().hover();
+  await page.getByRole('button', { name: 'Ask again in a new branch' }).click();
+  expect(await page.evaluate(() => window.__board!.dialog())).toMatchObject({ mode: 'branch', parentId: 'main' });
+  await expect(page.locator('#d-first')).toHaveValue('Using what is on this desk, what should a solo founder charge?');
+});
+
+test('re-asking a later question forks from the answer before it', async ({ page }) => {
+  await openBoard(page, '?firstTokenMs=50&wordMs=5'); await openFocus(page, 'main');
+  await page.locator(`${F} .fcomp textarea`).fill('And annual?'); await page.keyboard.press('Enter');
+  await expect(page.locator(`${F} .art`)).toHaveCount(2, { timeout: 5000 });
+  await expect(page.locator(`${F} .fcomp textarea`)).toBeEnabled({ timeout: 5000 });
+  await page.locator(`${F} .ub`).last().hover();
+  await page.getByRole('button', { name: 'Ask again in a new branch' }).last().click();
+  await expect(page.locator('#d-first')).toHaveValue('And annual?');
+  await page.click('#d-ok');
+  const c = await page.evaluate(() => window.__board!.chats().find((x) => x.parentId === 'main' && x.forkedFromMessageId && x.id !== 'side' && x.id !== 'second'));
+  expect(c!.forkedFromMessageId).toMatch(/_a$/);
+});
+
+test('Branch from here and Settings open the sheet', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  await page.locator(`${F} [data-b]`).first().click();
+  expect(await page.evaluate(() => window.__board!.dialog())).toMatchObject({ mode: 'branch', parentId: 'main' });
+  await page.keyboard.press('Escape');
+  await page.locator(`${F} .mtop [data-settings]`).click();
+  expect(await page.evaluate(() => window.__board!.dialog())).toMatchObject({ mode: 'edit' });
+  await page.keyboard.press('Escape');
+  await page.locator(`${F} .fcomp [data-settings]`).click();   // the model chip
+  expect(await page.evaluate(() => window.__board!.dialog())).toMatchObject({ mode: 'edit' });
+  await page.keyboard.press('Escape');
+  expect(await page.evaluate(() => window.__board!.focus())).toBe('main');
+});
+
+test('the Source chip asks for files for this desk', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  await page.evaluate(() => { window.addEventListener('pb:pickfiles', (e) => { (window as any).__pick = (e as CustomEvent).detail; }); });
+  await page.locator(`${F} .fcomp .cp`, { hasText: 'Source' }).click();
+  expect(await page.evaluate(() => (window as any).__pick)).toEqual({ deskId: 'main' });
+});
+
+test('the more menu offers compare only with siblings', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  await more(page);
+  await expect(page.locator(`${F} [data-pb="focusmenu"]`)).toHaveClass(/on/);
+  await expect(page.locator(`${F} [data-pb="focusmenu"] button`, { hasText: 'Compare with siblings' })).toHaveCount(0);
+  await expect(page.locator(`${F} [data-pb="focusmenu"] button`, { hasText: 'Bring back' })).toHaveCount(0);
+  await expect(page.locator(`${F} [data-pb="focusmenu"] button`, { hasText: 'Delete question' })).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator(`${F} [data-pb="focusmenu"]`)).not.toHaveClass(/on/);
+  expect(await page.evaluate(() => window.__board!.focus())).toBe('main');   // Escape closed the menu first
+});
+
+test('compare keeps one sibling and folds the other', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'side');
+  await more(page); await page.getByText('Compare with siblings').click();
+  await expect(page.locator('[data-pb="compare"] .cmp-col')).toHaveCount(2);
+  await page.locator('[data-pb="compare"] .cmp-col', { hasText: 'What does value-based pricing mean?' }).getByText('Keep this one').click();
+  await expect(page.locator('.card[data-id="second"]')).toHaveClass(/demoted/);
+  await expect(page.locator('[data-pb="compare"]')).not.toHaveClass(/on/);
+  await more(page); await expect(page.locator(`${F} [data-pb="focusmenu"] button`, { hasText: 'Bring back' })).toHaveCount(0);
+});
+
+test('a folded chat can be brought back from the focus view', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'side');
+  await more(page); await page.getByText('Compare with siblings').click();
+  await page.locator('[data-pb="compare"] .cmp-col', { hasText: 'Second opinion with real customers' }).getByText('Keep this one').click();
+  await expect(page.locator('.card[data-id="side"]')).toHaveClass(/demoted/);
+  await more(page); await page.getByText('Bring back').click();
+  await expect(page.locator('.card[data-id="side"]')).not.toHaveClass(/demoted/);
+});
+
+test('compare closes on Escape and returns focus to the more button', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'side');
+  await more(page); await page.getByText('Compare with siblings').click();
+  await expect(page.locator('[data-pb="compare"]')).toHaveClass(/on/);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-pb="compare"]')).not.toHaveClass(/on/);
+  await expect(page.locator('[data-pb="compare"]')).toHaveJSProperty('inert', true);
+  await expect(page.locator(`${F} [data-act="more"]`)).toBeFocused();
+  expect(await page.evaluate(() => window.__board!.focus())).toBe('side');
+});
+
+test('compare columns scroll together', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'side');
+  await more(page); await page.getByText('Compare with siblings').click();
+  const cols = page.locator('[data-pb="compare"] .cmp-body');
+  for (const i of [0, 1]) await cols.nth(i).evaluate((el) => { const k = document.createElement('div'); k.style.height = '3000px'; el.appendChild(k); });
+  await cols.first().evaluate((el) => { el.scrollTop = 400; });
+  await expect.poll(() => cols.nth(1).evaluate((el) => el.scrollTop)).toBeGreaterThan(100);
+});
+
+test('Back and Escape return to the board', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  await expect(page.locator(F)).toHaveJSProperty('inert', false);
+  await page.keyboard.press('Escape'); await page.waitForTimeout(800);
+  expect(await page.evaluate(() => window.__board!.focus())).toBeNull();
+  await expect(page.locator(F)).toHaveJSProperty('inert', true); await expect(page.locator(F)).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.locator(F)).toHaveCSS('display', 'none');
+  await expect(page.locator('.card[data-id="main"]')).toHaveCSS('opacity', '1');
+  await openFocus(page, 'main'); await page.getByRole('button', { name: /Board/ }).click(); await page.waitForTimeout(800);
+  expect(await page.evaluate(() => window.__board!.focus())).toBeNull();
+});
+
+test('the board behind is inert while the focus view is open', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  await expect(page.locator('.pb-vp')).toHaveJSProperty('inert', true);
+  await page.keyboard.press('Escape'); await page.waitForTimeout(800);
+  await expect(page.locator('.pb-vp')).toHaveJSProperty('inert', false);
+});
+
+test('focus returns to the card button that opened it', async ({ page }) => {
+  await openBoard(page); await page.evaluate(() => window.__board!.fit(false)); await page.waitForTimeout(250);
+  await page.locator('[data-id="main"]').hover(); await page.locator('[data-id="main"] [data-act="open"]').focus();
+  await page.keyboard.press('Enter'); await page.waitForTimeout(700);
+  expect(await page.evaluate(() => window.__board!.focus())).toBe('main');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(800);
+  await expect(page.locator('[data-id="main"] [data-act="open"]')).toBeFocused();
+});
