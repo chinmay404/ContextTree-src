@@ -1,0 +1,25 @@
+/* Source viewer additions (pebble.css is frozen after Task 6). Scoped under .pb-root. */
+
+.pb-root .vw:focus { outline: none; }
+.pb-root .vw .vhead .tile { display: grid; place-items: center; flex: none; }
+.pb-root .vw .vhead .sx { min-width: 0; }
+.pb-root .vside .used .none { font-weight: 500; color: var(--t2); background: transparent; padding: 0; }
+.pb-root .vside .upill.big { font-size: 12px; }
+.pb-root .vside .btn { align-self: flex-start; }
+.pb-root .vaudio { width: 100%; flex: none; }
+
+/* A doc is shown as it was read: same card as the note editor, not editable. */
+.pb-root .editor.ro { white-space: pre-wrap; overflow: auto; outline-offset: -2px; }
+
+/* Pile rows: the open button and the read switch sit side by side (a switch cannot nest inside a button). */
+.pb-root .members .mrow { display: flex; gap: 8px; align-items: center; }
+.pb-root .members .mrow > button { flex: 1; min-width: 0; }
+.pb-root .members .mrow .sx { min-width: 0; display: flex; flex-direction: column; }
+.pb-root .members .mrow > button { transition: opacity 200ms ease; }
+.pb-root .members .mrow.off > button { opacity: .45; }
+.pb-root .members .mrow.off .ttl { text-decoration: line-through; }
+.pb-root .msw { flex: none; width: 38px; height: 22px; border-radius: 11px; background: var(--pb-edge); position: relative; cursor: pointer; transition: background-color 180ms ease; }
+.pb-root .msw i { position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform 200ms var(--ease-out); }
+.pb-root .msw[aria-checked="true"] { background: var(--pb-ink); }
+.pb-root .msw[aria-checked="true"] i { transform: translateX(16px); }
+.pb-root .msw:focus-visible { outline: 2px solid var(--pb-ink); outline-offset: 2px; }
