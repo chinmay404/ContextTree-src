@@ -341,3 +341,42 @@ describe('write ordering', () => {
     expect(gs.getSnapshot().board!.title).toBe('New title');
   });
 });
+
+describe('piles merge', () => {
+  it('a pile dropped on a pile adds its members and the source pile goes away', async () => {
+    const p = s.makePile('web', 'pdf', [0, 0]);
+    const into = s.makePile(p, 'interviews', [0, 0]);
+    expect(into).toBe('interviews');
+    const c = s.getSnapshot().cards;
+    expect(c.has(p)).toBe(false);
+    for (const id of ['web', 'pdf']) expect(c.get(id)).toMatchObject({ pileId: 'interviews', deskId: null });
+    expect([...c.values()].filter((x) => x.pileId === 'interviews')).toHaveLength(6);
+    await flush();
+    const srv = await m.getBoard('b_seed');
+    expect(srv.cards.some((x) => x.id === p)).toBe(false);
+    expect(srv.cards.filter((x) => x.pileId === 'interviews')).toHaveLength(6);
+  });
+
+  it('a pile dropped on a plain source makes a new ready pile with every member', async () => {
+    const id = s.makePile('interviews', 'csv', [5, 6]);
+    const c = s.getSnapshot().cards;
+    expect(id).not.toBe('interviews');
+    expect(c.has('interviews')).toBe(false);
+    expect(c.get(id)).toMatchObject({ sourceType: 'pile', status: 'ready', x: 5, y: 6 });
+    expect([...c.values()].filter((x) => x.pileId === id).map((x) => x.id).sort()).toEqual(['csv', 'interviews_1', 'interviews_2', 'interviews_3', 'interviews_4']);
+    await flush();
+    const srv = await m.getBoard('b_seed');
+    expect(srv.cards.some((x) => x.id === 'interviews')).toBe(false);
+    expect(srv.cards.filter((x) => x.pileId === id)).toHaveLength(5);
+  });
+
+  it('a wire that would reach the pile\'s own desk chat is dropped, not moved', async () => {
+    expect(s.connect('wire', 'csv', 'main')).toBeTruthy();
+    const pile = s.makePile('csv', 'pdf', [0, 0]);
+    await flush();
+    const wires = [...s.getSnapshot().edges.values()].filter((e) => e.kind === 'wire');
+    expect(wires.some((e) => e.from === 'csv' && e.to === 'main')).toBe(false);
+    expect(wires.some((e) => e.from === pile && e.to === 'main')).toBe(false);
+    expect(wires.some((e) => e.from === pile && e.to === 'deep')).toBe(true);
+  });
+});

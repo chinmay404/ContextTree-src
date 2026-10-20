@@ -551,7 +551,8 @@ export class BoardStore {
   }
 
   /** Removes a card locally at once and on the server; a failed delete brings it back. */
-  private removeCard(id: Id): Promise<boolean> {
+  /** `after`: the delete is sent only once this resolves true; on false the card comes back without a toast. */
+  private removeCard(id: Id, after?: Promise<boolean>): Promise<boolean> {
     const card = this.cards.get(id);
     if (!card) return Promise.resolve(true);
     const before = this.affected(id);
@@ -566,6 +567,7 @@ export class BoardStore {
       try {
         const wait = this.pendingCards.get(id);
         if (wait) await wait;
+        if (after && !(await after)) throw new Silent();
         await this.track(this.api.deleteCard(this.boardId, id));
         return true;
       } catch (e) {
@@ -575,7 +577,7 @@ export class BoardStore {
         for (const ed of edges) { this.hiddenEdges.delete(ed.id); this.edges.set(ed.id, ed); }
         this.markStale(this.affected(id));
         this.emit([{ kind: 'card', id, fields: ['created'] }, ...edges.map((ed): StoreChange => ({ kind: 'edge', id: ed.id }))]);
-        this.toast(errorText(e, 'other'));
+        if (!(e instanceof Silent)) this.toast(errorText(e, 'other'));
         return false;
       }
     })();
@@ -789,27 +791,36 @@ export class BoardStore {
     }
   }
 
+  /** Source onto source makes a pile; either side may itself be a pile (members merge, the prototype's asMembers). */
   makePile(srcId: Id, targetId: Id, at: [number, number]): Id {
     const src = this.cards.get(srcId);
     const target = this.cards.get(targetId);
-    if (!src || !target || src.sourceType === 'pile') return targetId;   // pile into pile: Task 12
-    if (target.sourceType === 'pile') {
-      void this.patch(srcId, { pileId: targetId, deskId: null });
-      this.moveWires(srcId, targetId);
-      return targetId;
+    if (!src || !target || srcId === targetId) return targetId;
+    const srcPile = src.sourceType === 'pile';
+    const joining = srcPile ? membersOf(this.graph(), srcId) : [src];
+    let pileId = targetId;
+    let members = joining;
+    if (target.sourceType !== 'pile') {
+      const same = src.sourceType === target.sourceType;
+      const title = same ? `${TYPE_INFO[target.sourceType ?? 'pdf'].label} pile` : 'Mixed pile';
+      members = [target, ...joining];
+      const data: SourceData = { title, meta: `${members.length} files` };
+      const pile = this.blankSource('pile', at[0], at[1], target.deskId, 'ready', data);
+      pileId = pile.id;
+      this.create(pile, () => this.api.createCard(this.boardId, {
+        id: pile.id, kind: 'source', sourceType: 'pile', x: at[0], y: at[1], deskId: target.deskId, status: 'ready', data,
+      }), 'other');
     }
-    const same = src.sourceType === target.sourceType;
-    const title = same ? `${TYPE_INFO[target.sourceType ?? 'pdf'].label} pile` : 'Mixed pile';
-    const data: SourceData = { title, meta: '2 files' };
-    const pile = this.blankSource('pile', at[0], at[1], target.deskId, 'ready', data);
-    this.create(pile, () => this.api.createCard(this.boardId, {
-      id: pile.id, kind: 'source', sourceType: 'pile', x: at[0], y: at[1], deskId: target.deskId, status: 'ready', data,
-    }), 'other');
-    for (const m of [target, src]) {
-      void this.patch(m.id, { pileId: pile.id, deskId: null });
-      this.moveWires(m.id, pile.id);
+    const moves: Promise<boolean>[] = [];
+    for (const m of members) {
+      moves.push(this.patch(m.id, { pileId, deskId: null }));
+      this.moveWires(m.id, pileId);
     }
-    return pile.id;
+    if (srcPile) {
+      this.moveWires(srcId, pileId);
+      void this.removeCard(srcId, Promise.all(moves).then((r) => r.every(Boolean)));
+    }
+    return pileId;
   }
 
   unstack(pileId: Id, spots: [number, number][]): Id[] {
