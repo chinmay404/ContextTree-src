@@ -271,3 +271,27 @@ test('the answer fade stays above the composer however tall it grows', async ({ 
   expect(hit.onTa).toBe(true);
   expect(hit.fadeBottom).toBeLessThanOrEqual(hit.taTop);
 });
+
+test('reply actions show on hover or focus-within only', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  const art = page.locator(`${F} .art`).first();
+  const copy = art.locator('[data-copy]'), branch = art.locator('[data-b]');
+  const op = (l: typeof copy) => l.evaluate((el) => Number(getComputedStyle(el).opacity));
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(250);
+  expect(await op(copy)).toBe(0); expect(await op(branch)).toBe(0);
+  const box0 = await copy.boundingBox();
+  await art.locator('.body').hover();
+  await page.waitForTimeout(250);
+  expect(await op(copy)).toBe(1); expect(await op(branch)).toBe(1);
+  expect(await copy.boundingBox()).toEqual(box0);   // no layout jump
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(250);
+  expect(await op(copy)).toBe(0);
+  await copy.focus();
+  await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab');   // reach it by keyboard
+  await page.waitForTimeout(250);
+  expect(await op(copy)).toBe(1);
+  const dur = await copy.evaluate((el) => getComputedStyle(el).transitionDuration);
+  expect(dur.split(',').every((d) => parseFloat(d) <= 0.15)).toBe(true);
+});
