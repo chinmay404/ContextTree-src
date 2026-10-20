@@ -17,7 +17,8 @@ export interface SourceRow {
 }
 
 /** One row per card, members of a pile folded into their pile. Own rows first, in read order. */
-export function sourceRows(g: Graph, items: ReadItem[]): SourceRow[] {
+/** `hide` is the chat's own leave-out list: an inherited row's toggle state comes from it alone, never from members switched off at their source. */
+export function sourceRows(g: Graph, items: ReadItem[], hide?: string[]): SourceRow[] {
   const rows = new Map<string, SourceRow>();
   for (const it of items) {
     const c = g.cards.get(it.cardId);
@@ -29,7 +30,7 @@ export function sourceRows(g: Graph, items: ReadItem[]): SourceRow[] {
     rows.set(card.id, { card, hideId: card.id, items: [it], inherited: it.inherited, hidden: false, how: it.how, via: it.via });
   }
   const out = [...rows.values()];
-  for (const r of out) r.hidden = r.items.every((i) => i.hidden);
+  for (const r of out) r.hidden = hide && r.inherited ? hide.includes(r.hideId) : r.items.every((i) => i.hidden);
   return out;
 }
 

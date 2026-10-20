@@ -186,6 +186,7 @@ export function FocusView(): ReactElement {
   const g = store.graph();
   const stream = id ? snap.streaming.get(id) : undefined;
   const msgs: Message[] = id ? snap.messages.get(id) ?? [] : [];
+  // Keyed `<messageId>_a`: the id the engine gives the assistant message of this stream (api contract), so the list finds its answer after the stream ends.
   useEffect(() => { if (stream?.web) webMap.current.set(`${stream.messageId}_a`, stream.web); });
 
   let body: ReactElement | null = null;
@@ -218,7 +219,7 @@ function FocusBody(p: {
   const d = chatData(c) as ChatData;
   const mi = modelInfo(d.model);
   const reads = store.readsOf(c.id);
-  const rows = sourceRows(g, reads.items);
+  const rows = sourceRows(g, reads.items, d.hide ?? []);
   const read = readRows(rows);
   const total = 600 + (c.parentId ? (d.carry === 'summary' ? 720 : d.carry === 'whole' ? 1800 : 0) : 0)
     + reads.items.filter(isRead).reduce((a, i) => a + i.tokens, 0);
@@ -251,7 +252,7 @@ function FocusBody(p: {
   const reask = (i: number, e: React.MouseEvent<HTMLElement>): void => {
     let before: Message | undefined;
     for (let k = i - 1; k >= 0; k--) if (msgs[k].role === 'assistant') { before = msgs[k]; break; }
-    store.openDialog({ mode: 'branch', parentId: c.id, first: msgs[i].content, forkedFromMessageId: before?.id ?? null, anchor: e.currentTarget.getBoundingClientRect() });
+    store.openDialog({ mode: 'branch', parentId: c.id, first: msgs[i].content, forkedFromMessageId: before?.id ?? null, ...(before ? {} : { carry: 'fresh' as const }), anchor: e.currentTarget.getBoundingClientRect() });
   };
   const copy = (m: Message): void => {
     void navigator.clipboard?.writeText(strip(renderMarkdown(m.content))).catch(() => undefined);
@@ -299,7 +300,7 @@ function FocusBody(p: {
           <div className="tl">
             {path.map((s, i) => {
               const isHere = s.id === c.id, sd = chatData(s), sm = modelInfo(sd.model);
-              const sr = sourceRows(g, store.readsOf(s.id).items);
+              const sr = sourceRows(g, store.readsOf(s.id).items, sd.hide ?? []);
               const asked = readRows(sr).length;
               const added = sr.filter((r) => !r.inherited);
               const head = (

@@ -206,3 +206,25 @@ test('focus returns to the card button that opened it', async ({ page }) => {
   await page.keyboard.press('Escape'); await page.waitForTimeout(800);
   await expect(page.locator('[data-id="main"] [data-act="open"]')).toBeFocused();
 });
+
+test('re-asking the first question starts a fresh branch that still inherits the desk', async ({ page }) => {
+  await openBoard(page, '?firstTokenMs=50&wordMs=5'); await openFocus(page, 'main');
+  const before = await page.evaluate(() => window.__board!.chats().length);
+  await page.locator(`${F} .ub`).first().hover();
+  await page.getByRole('button', { name: 'Ask again in a new branch' }).first().click();
+  await expect(page.locator('#d-first')).toHaveValue('Using what is on this desk, what should a solo founder charge?');
+  await page.click('#d-ok');
+  await expect.poll(() => page.evaluate(() => window.__board!.chats().length)).toBe(before + 1);
+  const c = await page.evaluate(() => window.__board!.chats().find((x) => x.parentId === 'main' && x.id !== 'side' && x.id !== 'second')!);
+  expect(c.data).toMatchObject({ carry: 'fresh', inheritDesk: true });
+  expect(c.forkedFromMessageId).toBeNull();
+  await expect.poll(async () => (await page.evaluate((id) => window.__board!.card(id)!.messageCount, c.id)) ?? 0, { timeout: 6000 }).toBeGreaterThan(0);
+});
+
+test('the compare sheet makes the focus view inert', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'side');
+  await more(page); await page.getByText('Compare with siblings').click();
+  await expect(page.locator(F)).toHaveJSProperty('inert', true);
+  await page.keyboard.press('Escape');
+  await expect(page.locator(F)).toHaveJSProperty('inert', false);
+});

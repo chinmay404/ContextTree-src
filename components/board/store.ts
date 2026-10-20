@@ -965,7 +965,7 @@ export class BoardStore {
 
   openDialog(o: {
     mode: DialogState['mode']; parentId?: Id | null; chatId?: Id | null; at?: [number, number] | null;
-    anchor?: DOMRect | null; first?: string; forkedFromMessageId?: Id | null;
+    anchor?: DOMRect | null; first?: string; forkedFromMessageId?: Id | null; carry?: Carry;
   }): void {
     const chat = o.mode === 'edit' && o.chatId ? this.cards.get(o.chatId) : undefined;
     if (o.mode === 'edit' && chat?.kind !== 'chat') return;
@@ -979,7 +979,7 @@ export class BoardStore {
       persona: base?.persona ?? 'none',
       personaText: base?.systemPrompt ?? '',
       inheritDesk: base?.inheritDesk ?? true,
-      carry: base?.carry ?? 'summary',
+      carry: o.carry ?? base?.carry ?? 'summary',
       advanced: { ...(base?.advanced ?? DEFAULT_ADVANCED) },
       advOpen: false,
     };
@@ -1030,7 +1030,7 @@ export class BoardStore {
     const at: [number, number] = spot ?? d.at ?? (parent ? [parent.x + 528, parent.y + 160] : [0, 0]);
     const lastMsg = d.parentId ? this.messages.get(d.parentId)?.at(-1)?.id ?? null : null;
     return this.createChat({
-      parentId: d.parentId, x: at[0], y: at[1], forkedFromMessageId: d.forkedFromMessageId ?? lastMsg,
+      parentId: d.parentId, x: at[0], y: at[1], forkedFromMessageId: d.forkedFromMessageId ?? (dr.carry === 'fresh' ? null : lastMsg),
       data: { ...fields, hide: [] },
     });
   }

@@ -26,6 +26,14 @@ export function CompareSheet(): ReactElement {
   useEscape(!!open, close);
 
   const isOpen = !!open;
+  // The focus view behind is out of reach while compare is open.
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const f = document.querySelector<HTMLElement>('[data-pb="focus"]');
+    if (!f || f.inert) return;
+    f.inert = true;
+    return () => { f.inert = f.getAttribute('aria-hidden') === 'true'; };
+  }, [isOpen]);
   useLayoutEffect(() => {
     if (isOpen) {
       if (!opener.current) opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
