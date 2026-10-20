@@ -137,7 +137,7 @@ export function FocusView(): ReactElement {
     const set: HTMLElement[] = [];
     for (const el of Array.from(root.children)) {
       if (!(el instanceof HTMLElement) || el.inert) continue;
-      if (el.dataset.pb === 'focus' || el.dataset.pb === 'scrim' || el.classList.contains('wrap') || el.classList.contains('pb-toast') || el.classList.contains('pb-confirm')) continue;
+      if (el.dataset.pb === 'focus' || el.dataset.pb === 'scrim' || el.dataset.pb === 'filein' || el.classList.contains('wrap') || el.classList.contains('pb-toast') || el.classList.contains('pb-confirm')) continue;
       el.inert = true; set.push(el);
     }
     return () => { set.forEach((el) => { el.inert = false; }); };

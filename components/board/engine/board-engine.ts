@@ -415,7 +415,11 @@ export class BoardEngine {
   // ---- focus helpers ----
 
   focusCompose(id: Id): void { this.later(() => this.ctx.nodes.get(id)?.el.querySelector<HTMLElement>('.compose textarea')?.focus({ preventScroll: true }), 50); }
-  focusNote(id: Id): void { this.later(() => this.ctx.nodes.get(id)?.el.querySelector<HTMLElement>('.note-in .n')?.focus({ preventScroll: true }), 40); }
+  focusNote(id: Id): void {
+    const field = () => this.ctx.nodes.get(id)?.el.querySelector<HTMLElement>('.note-in .n');
+    field()?.focus({ preventScroll: true });   // at once, so typing right after a click is not lost
+    this.later(() => { const f = field(); if (f && document.activeElement !== f) f.focus({ preventScroll: true }); }, 40);
+  }
   focusDesc(id: Id): void { this.later(() => this.ctx.nodes.get(id)?.el.querySelector<HTMLElement>('.desc')?.focus({ preventScroll: true }), 60); }
 
   // ---- placement and creation ----
@@ -433,6 +437,48 @@ export class BoardEngine {
     this.store.select(id);
     this.focusNote(id);
     return id;
+  }
+
+  /** Raises a card that was just created and clears room around it (prototype addDetected, 1112). */
+  land(id: Id): void {
+    const n = this.ctx.nodes.get(id);
+    if (!n) return;
+    n.el.style.zIndex = String(++this.zTop);
+    this.ctx.modules.desks.onCardDropped(n);
+  }
+
+  /** One card per file; the API decides what each is. `at` is a world point, else the desk's next spot or the centre. */
+  addFiles(files: File[], at: [number, number] | null, deskId: Id | null): Id[] {
+    const ids = files.map((f, i) => {
+      const id = this.store.createSourceFromFile(f, this.placeFor(deskId, i, at), deskId, files.length === 1 ? 'single' : 'multi');
+      this.land(id);
+      return id;
+    });
+    return ids;
+  }
+
+  /** A link card (YouTube becomes a coming-soon video); false when `text` is not an http(s) URL. */
+  addLink(text: string, deskId: Id | null, at: [number, number] | null): boolean {
+    const id = this.store.createSourceFromLink(text.trim(), this.placeFor(deskId, 0, at), deskId);
+    if (!id) return false;
+    this.land(id);
+    this.store.select(id);
+    return true;
+  }
+
+  /** Pasted text becomes a note with the first 600 characters (prototype 1153). */
+  addPastedNote(text: string, deskId: Id | null): Id {
+    const [x, y] = this.placeFor(deskId, 0, null);
+    const id = this.store.createNote({ x, y, deskId, text: text.slice(0, 600), meta: 'Note · pasted' });
+    this.land(id);
+    this.store.select(id);
+    return id;
+  }
+
+  /** The desk a paste or link goes to when nothing was pointed at: the selected chat's, or the selected source's. */
+  selectedDesk(): Id | null {
+    const g = this.store.graph(), sel = this.store.getSnapshot().ui.selected, c = sel ? g.cards.get(sel) : undefined;
+    return !c ? null : c.kind === 'chat' ? c.id : c.deskId;
   }
 
   /** Confirms the open sheet; a new chat goes to the sheet's spot or a free one, then is asked its first question (959-976). */
