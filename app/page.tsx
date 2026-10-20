@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, LayoutGrid, Network } from "lucide-react";
 import { CanvasView } from "@/components/canvas/canvas";
@@ -37,6 +38,13 @@ const LINEAR_EXIT_STORAGE_KEY = "context-tree-linear-exited";
 export default function ContextTreePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const isMobile = useIsMobile();
+  const router = useRouter();
+  const boardV3 = process.env.NEXT_PUBLIC_BOARD_V3 === "1";
+
+  // V3: signed-in users land on their boards.
+  useEffect(() => {
+    if (boardV3 && isAuthenticated) router.replace("/boards");
+  }, [boardV3, isAuthenticated, router]);
 
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedNodeName, setSelectedNodeName] = useState<string>();
@@ -501,6 +509,7 @@ export default function ContextTreePage() {
   }
 
   if (!isAuthenticated) return <Landing />;
+  if (boardV3) return null; // redirecting to /boards
 
   const showRightPanel = !!selectedNode;
 
