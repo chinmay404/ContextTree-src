@@ -58,6 +58,11 @@ export function createStrings(ctx: EngineContext): StringsModule {
     springs.remove(s.mx); springs.remove(s.my); strs.delete(key);
   }
 
+  /** Paints the selection at once: the next rAF would be too late for a click that is read straight away. */
+  function paintSel(): void {
+    wires.forEach((w, key) => { const on = selWire === key; w.p.classList.toggle('sel', on); w.k.classList.toggle('on', on); if (on) w.p.classList.remove('faded'); });
+  }
+
   function removeWire(key: string): void {
     const w = wires.get(key); if (!w) return;
     w.p.remove(); w.hit.remove(); w.k.remove(); wires.delete(key);
@@ -69,7 +74,7 @@ export function createStrings(ctx: EngineContext): StringsModule {
     if (!w) {
       const p = path('wire'), hit = path('hit');
       ctx.tubes.append(p, hit);
-      hit.addEventListener('pointerdown', (e) => { e.stopPropagation(); store.closeMenu(); selWire = selWire === key ? null : key; });
+      hit.addEventListener('pointerdown', (e) => { e.stopPropagation(); store.closeMenu(); selWire = selWire === key ? null : key; paintSel(); });
       const k = document.createElement('button'); k.className = 'wk'; k.dataset.key = key; k.type = 'button';
       k.innerHTML = icon('unlink') + 'Disconnect'; ctx.knobs.append(k);
       k.addEventListener('pointerdown', (e) => e.stopPropagation());
@@ -108,7 +113,7 @@ export function createStrings(ctx: EngineContext): StringsModule {
   }
 
   function startString(n: ViewNode, kind: 'src' | 'chat', e: PointerEvent): void {
-    endLive(); selWire = null; store.select(n.id);
+    endLive(); selWire = null; paintSel(); store.select(n.id);
     const p = path('live'); ctx.tubes.append(p);
     p.style.stroke = kind === 'src' ? STRING_COL[famOf(store.graph(), store.graph().cards.get(n.id)!)] : '#CFC3E8';
     ctx.root.classList.add('stringing');
@@ -207,7 +212,7 @@ export function createStrings(ctx: EngineContext): StringsModule {
     isLive: () => !!live,
     wireKeys: () => [...wires.keys()],
     selectedWire: () => selWire,
-    clearWire: () => { const had = selWire !== null; selWire = null; return had; },
+    clearWire: () => { const had = selWire !== null; selWire = null; paintSel(); return had; },
     wirePillOn: (key) => wires.get(key)?.k.classList.contains('on') ?? false,
     wirePoint(key, frac) {
       const w = wires.get(key); if (!w) return null;

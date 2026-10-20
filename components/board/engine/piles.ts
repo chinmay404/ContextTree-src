@@ -10,11 +10,19 @@ export function wheelStep(state: WheelState, now: number, delta: number): { stat
   return { state: { acc, t: now }, flip: 0 };
 }
 
+/** One accumulator per pile id: scrolling a different pile starts from zero. */
+export function wheelFor(states: Map<string, WheelState>, id: string, now: number, delta: number): { state: WheelState; flip: 0 | 1 | -1 } {
+  const r = wheelStep(states.get(id) ?? { acc: 0, t: 0 }, now, delta);
+  states.clear();   // only the pile being scrolled keeps a count
+  states.set(id, r.state);
+  return r;
+}
+
 const EASE = 'cubic-bezier(.23, 1, .32, 1)';
 
 /** Piles: hover target, drop, wheel flip with a slide, unstack. */
 export function createPiles(ctx: EngineContext): PilesModule {
-  let wheel: WheelState = { acc: 0, t: 0 };
+  const wheels = new Map<string, WheelState>();
   const card = (id: string) => ctx.store.graph().cards.get(id);
   const live = (id: string) => { const c = card(id); return !!c && c.kind === 'source' && c.status === 'ready' && c.sourceType !== 'note'; };
 
@@ -30,7 +38,7 @@ export function createPiles(ctx: EngineContext): PilesModule {
     ctx.render(id);
     if (ctx.rm || !ghost) return;
     n.el.appendChild(ghost);
-    const off = ghost.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${dir * 64}px, ${-10}px) rotate(${dir * 6}deg)`, opacity: 0 }], { duration: 260, easing: EASE });
+    const off = ghost.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${dir * 64}px, ${-10}px) rotate(${dir * 6}deg)`, opacity: 0 }], { duration: 260, easing: EASE, fill: 'forwards' });
     off.onfinish = () => ghost.remove();
     n.el.querySelector<HTMLElement>('.face')?.animate([{ transform: 'translateY(9px) scale(.96)', filter: 'brightness(.93)' }, { transform: 'none', filter: 'none' }], { duration: 300, easing: EASE });
   };
@@ -54,8 +62,7 @@ export function createPiles(ctx: EngineContext): PilesModule {
       const el = (e.target as Element).closest<HTMLElement>('.card.src');
       const n = el?.dataset.id ? ctx.nodes.get(el.dataset.id) : undefined;
       if (!n || n.open || card(n.id)?.sourceType !== 'pile' || card(n.id)?.status !== 'ready') return false;
-      const r = wheelStep(wheel, performance.now(), e.deltaY || e.deltaX);
-      wheel = r.state;
+      const r = wheelFor(wheels, n.id, performance.now(), e.deltaY || e.deltaX);
       if (r.flip) cycle(n.id, r.flip);
       return true;
     },

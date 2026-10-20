@@ -812,6 +812,12 @@ export class BoardStore {
       }), 'other');
     }
     const moves: Promise<boolean>[] = [];
+    if (target.sourceType === 'pile') {
+      const have = new Set(membersOf(this.graph(), targetId).map((m) => m.id));
+      const total = have.size + joining.filter((m) => !have.has(m.id)).length;
+      const meta = `${total} files`;
+      if ((target.data as SourceData).meta !== meta) this.patchCard(targetId, { data: { meta } });
+    }
     for (const m of members) {
       moves.push(this.patch(m.id, { pileId, deskId: null }));
       this.moveWires(m.id, pileId);

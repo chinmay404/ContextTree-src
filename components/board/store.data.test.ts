@@ -169,6 +169,14 @@ it('makePile and unstack round-trip', async () => {
   expect(after.cards.find((x) => x.id === 'web')).toMatchObject({ pileId: null, deskId: 'main' });
 });
 
+it('merging a source into an existing pile updates the pile meta', async () => {
+  s.makePile('web', 'interviews', [0, 0]);
+  expect(s.getSnapshot().cards.get('web')!.pileId).toBe('interviews');
+  expect(data('interviews').meta).toBe('5 files');
+  await flush();
+  expect(((await m.getBoard('b_seed')).cards.find((x) => x.id === 'interviews')!.data as SourceData).meta).toBe('5 files');
+});
+
 it('an action on a card whose create is in flight waits for the create', async () => {
   const id = s.createNote({ x: 0, y: 0, deskId: null });
   s.patchCard(id, { data: { text: 'edited' } });
