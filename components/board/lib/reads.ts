@@ -59,3 +59,23 @@ export function countSources(g: Graph, items: ReadItem[], inherited?: boolean): 
   }
   return units.size;
 }
+
+/** What the engine says a chat spends on this card (a pile: its members the chat reads); null when that chat does not read it. */
+export function tokensRead(g: Graph, items: ReadItem[], c: Card): number | null {
+  let sum = 0, any = false;
+  for (const i of items) {
+    if (!isRead(i) || (i.cardId !== c.id && g.cards.get(i.cardId)?.pileId !== c.id)) continue;
+    sum += i.tokens; any = true;
+  }
+  return any ? sum : null;
+}
+
+/** Cards with each pile member replaced by its pile, once: the same unit `countSources` counts. */
+export function foldPiles(g: Graph, cards: Card[]): Card[] {
+  const out = new Map<Id, Card>();
+  for (const c of cards) {
+    const unit = (c.pileId && g.cards.get(c.pileId)) || c;
+    if (!out.has(unit.id)) out.set(unit.id, unit);
+  }
+  return [...out.values()];
+}

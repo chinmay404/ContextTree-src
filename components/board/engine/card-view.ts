@@ -5,9 +5,9 @@
 import type { Card, ChatData, Id, Message, SourceData } from '../api/types';
 import { FAMC, TYPE_INFO, modelInfo, personaLabel } from '../lib/catalog';
 import { cut, esc } from '../lib/format';
-import { answersInto, chatData, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, tokensOf, wiresInto, type Graph } from '../lib/graph';
+import { answersInto, chatData, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, wiresInto, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
-import { countSources, isRead } from '../lib/reads';
+import { countSources, foldPiles, isRead, tokensRead } from '../lib/reads';
 import { icon } from './icons';
 import type { BoardStore } from '../store';
 import type { EngineContext, ViewNode } from './types';
@@ -65,6 +65,15 @@ export class CardView {
     return `<div class="tile">${icon(iconOf(c))}</div>`;
   }
 
+  /** The engine's figure for the chat that is selected or open; no figure when that chat does not read the card. */
+  private tokensPill(c: Card): string {
+    const ui = this.ctx.store.getSnapshot().ui, g = this.g;
+    const sel = ui.selected ? g.cards.get(ui.selected) : undefined;
+    const chat = ui.focus ?? (sel && isChat(sel) ? sel.id : null);
+    const t = chat ? tokensRead(g, this.ctx.store.readsOf(chat).items, c) : null;
+    return t === null ? '' : `<span class="upill tk">${(t / 1000).toFixed(1)}k tokens</span>`;
+  }
+
   private metaOf(n: ViewNode, c: Card): string {
     const g = this.g, d = sourceData(c);
     if (c.status === 'processing') return 'Reading…';
@@ -101,7 +110,7 @@ export class CardView {
       body = `<div class="l"><div class="top">${this.tileHTML(n, c)}<div class="sx"><div class="meta">${this.metaOf(n, c)}</div><div class="ttl">${esc(d.title ?? 'Untitled')}</div></div></div>
       ${list ? `<div class="exl">${list}</div>` : ''}
       <textarea class="desc" rows="2" placeholder="What is this for? The AI reads this too.">${esc(d.desc ?? '')}</textarea>
-      <div class="lfoot">${tot ? `<span class="upill">${used} of ${tot} used</span>` : ''}<span class="upill tk">${(tokensOf(g, c) / 1000).toFixed(1)}k tokens</span><button class="done" data-act="expand">Done</button></div></div>`;
+      <div class="lfoot">${tot ? `<span class="upill">${used} of ${tot} used</span>` : ''}${this.tokensPill(c)}<button class="done" data-act="expand">Done</button></div></div>`;
     } else if (pile && st === 'ready') {
       const ms = membersOf(g, c.id), f = ms.length ? ms[this.ctx.modules.piles.front(c.id) % ms.length] : null;
       const fd = f ? sourceData(f) : {}, e = (fd.excerpts ?? [])[0];
@@ -142,7 +151,7 @@ export class CardView {
     <div class="ttl">${esc(d.name)}${persona ? ` <span class="ptag">${esc(persona)}</span>` : ''}</div>
     ${body || live ? `<div class="cbody">${body}${live}</div>` : ''}
     <div class="compose"><textarea rows="1" placeholder="${hasMsgs ? 'Ask a follow-up' : 'Type the question you want to ask…'}" aria-label="Message"></textarea><button class="send" aria-label="Send" disabled>${icon('arrow-up')}</button></div>
-    <div class="cfoot">${readCards.length ? dotsHTML(g, readCards) : ''}<span>${own} source${own === 1 ? '' : 's'}${up ? ` · ${up} from above` : ''}</span><span class="sp"></span>${stale ? '<span class="stale">Source changed</span>' : ''}</div>
+    <div class="cfoot">${readCards.length ? dotsHTML(g, foldPiles(g, readCards)) : ''}<span>${own} source${own === 1 ? '' : 's'}${up ? ` · ${up} from above` : ''}</span><span class="sp"></span>${stale ? '<span class="stale">Source changed</span>' : ''}</div>
     <span class="port in ${incoming ? '' : 'free'}" aria-hidden="true"></span>
     <span class="port out ${outgoing ? '' : 'free'}" data-port="chat" data-tip="Drag out to branch · onto a chat to share this answer"></span>
   </div>`;
@@ -251,7 +260,10 @@ export class CardView {
     const note = el.querySelector<HTMLElement>('.note-in .n');
     if (note) {
       note.addEventListener('input', () => store.patchDataDebounced(id, { text: note.textContent ?? '' } as Partial<SourceData>));
-      note.addEventListener('blur', () => this.render(n));
+      // Pressing one of the card's own buttons blurs the note first; re-rendering then would swap the button out before its click.
+      let onButton = false;
+      note.closest('.face')?.addEventListener('pointerdown', (e) => { onButton = e.target instanceof Element && !!e.target.closest('button'); }, true);
+      note.addEventListener('blur', () => { if (!onButton) this.render(n); onButton = false; });
     }
     const desc = el.querySelector<HTMLTextAreaElement>('.desc');
     if (desc) desc.addEventListener('input', () => { n.fresh = false; store.patchDataDebounced(id, { desc: desc.value } as Partial<SourceData>); });
