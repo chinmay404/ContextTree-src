@@ -40,9 +40,18 @@ test('Escape cancels the confirm', async ({ page }) => {
   expect(await calls(page, 'deleteCard')).toBe(0);
 });
 
-test('Enter confirms the delete', async ({ page }) => {
+test('Enter confirms the delete, with focus on the board or on the Delete button', async ({ page }) => {
   await openBoard(page); await select(page, 'deep'); await page.keyboard.press('Delete');
   await expect(page.locator(C)).toHaveClass(/on/);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());   // exercises the document keydown path
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.card[data-id="deep"]')).toHaveCount(0);
+  expect(await calls(page, 'deleteCard')).toBe(1);
+});
+
+test('Enter on the focused Delete button confirms once', async ({ page }) => {
+  await openBoard(page); await select(page, 'deep'); await page.keyboard.press('Delete');
+  await expect(confirmBtn(page, 'Delete')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('.card[data-id="deep"]')).toHaveCount(0);
   expect(await calls(page, 'deleteCard')).toBe(1);
@@ -52,6 +61,8 @@ test('Delete is ignored while typing or with an overlay open', async ({ page }) 
   await openBoard(page); await select(page, 'deep');
   await page.evaluate(() => window.__board!.openSheet('root'));
   await page.waitForTimeout(300);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());   // only the overlay guard is left
+  expect(await page.evaluate(() => !!window.__board!.dialog())).toBe(true);
   await page.keyboard.press('Delete');
   await expect(page.locator(C)).not.toHaveClass(/on/);
   await page.keyboard.press('Escape');
@@ -62,12 +73,42 @@ test('Delete is ignored while typing or with an overlay open', async ({ page }) 
   await expect(page.locator(C)).not.toHaveClass(/on/);
 });
 
+test('Delete is ignored while the board menu is open', async ({ page }) => {
+  await openBoard(page); await select(page, 'deep');
+  await page.click('[data-pb="brand"] .lg');
+  await expect(page.locator('[data-pb="boardmenu"]')).toHaveClass(/on/);
+  await page.keyboard.press('Delete');
+  await expect(page.locator(C)).not.toHaveClass(/on/);
+});
+
+test('focus returns to the card after Escape, into the focus view after Cancel, and to the board after a delete', async ({ page }) => {
+  await openBoard(page);
+  await page.click('.card[data-id="deep"] .face'); await page.keyboard.press('Delete');
+  await expect(page.locator(C)).toHaveClass(/on/);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.card[data-id="deep"]')).toBeFocused();
+
+  await page.evaluate(() => window.__board!.openFocus('deep')); await page.waitForTimeout(700);
+  await page.click('[data-pb="focus"] [data-act="more"]');
+  await page.locator('[data-pb="focusmenu"]').getByRole('menuitem', { name: 'Delete question' }).click();
+  await expect(page.locator(C)).toHaveClass(/on/);
+  await confirmBtn(page, 'Cancel').click();
+  expect(await page.evaluate(() => !!document.activeElement?.closest('[data-pb="focus"]'))).toBe(true);
+
+  await page.click('[data-pb="focus"] [data-act="more"]');
+  await page.locator('[data-pb="focusmenu"]').getByRole('menuitem', { name: 'Delete question' }).click();
+  await confirmBtn(page, 'Delete').click();
+  await expect(page.locator('.card[data-id="deep"]')).toHaveCount(0);
+  expect(await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 120))).toContain('pb-root');
+});
+
 test('deleting a chat that is answering stops it', async ({ page }) => {
   await openBoard(page, '?firstTokenMs=2000&wordMs=5');
   await page.evaluate(() => window.__board!.openFocus('side')); await page.waitForTimeout(700);
   const F = '[data-pb="focus"]';
   await expect(page.locator(`${F} .fcomp textarea`)).toBeEnabled();
   const before = await page.locator(`${F} .amsg`).count();
+  const msgsBefore = await page.evaluate(() => window.__board!.card('side')!.messageCount ?? 0);
   await page.locator(`${F} .fcomp textarea`).fill('Hold on'); await page.keyboard.press('Enter');
   await expect.poll(() => calls(page, 'streamChat')).toBe(1);
   await page.keyboard.press('Escape');
@@ -84,4 +125,8 @@ test('deleting a chat that is answering stops it', async ({ page }) => {
   await expect(page.locator('.card[data-id="side"]')).toHaveCount(1);
   await page.evaluate(() => window.__board!.openFocus('side')); await page.waitForTimeout(700);
   await expect(page.locator(`${F} .amsg`)).toHaveCount(before);
+  // The mock's stored chat: the question went in, but the aborted answer was never stored.
+  const side = await page.evaluate(async () => { await window.__board!.refresh(); return window.__board!.card('side'); });
+  expect(side!.lastMessage!.role).toBe('user');
+  expect(side!.messageCount).toBe(msgsBefore + 1);
 });

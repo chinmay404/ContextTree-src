@@ -24,17 +24,31 @@ export function DeleteConfirm(): ReactElement {
   useEscape(!!open, cancel);
 
   const isOpen = !!open;
+  const cardId = open?.cardId ?? null;
+  const cardRef = useRef<string | null>(null);
+  if (cardId) cardRef.current = cardId;
   useLayoutEffect(() => {
+    const box = boxRef.current;
     if (isOpen) {
-      if (!opener.current) opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      if (!opener.current) opener.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
       okRef.current?.focus({ preventScroll: true });
-    } else if (opener.current) {
-      const o = opener.current;
-      opener.current = null;
+    } else if (box && (opener.current || cardRef.current)) {
+      const o = opener.current, id = cardRef.current;
+      opener.current = null; cardRef.current = null;
       const a = document.activeElement;
-      if (o.isConnected && (!a || a === document.body || boxRef.current?.contains(a))) o.focus({ preventScroll: true });
+      const gone = !!id && !store.getSnapshot().cards.has(id);   // the deleted card's own element may still hold focus
+      if (a && a !== document.body && !box.contains(a) && !a.closest('[inert]') && !(gone && a.closest(`.card[data-id="${CSS.escape(id)}"]`))) return;   // something else took focus
+      const root = box.closest<HTMLElement>('.pb-root');
+      const focusEl = store.getSnapshot().ui.focus ? root?.querySelector<HTMLElement>('[data-pb="focus"] [data-act="more"], [data-pb="focus"]') : null;
+      const card = id && !gone ? root?.querySelector<HTMLElement>(`.card[data-id="${CSS.escape(id)}"]`) : null;
+      const target = [o, focusEl, card].find((el) => el && el.isConnected && !el.closest('[inert]'));
+      const toRoot = (): void => { if (root) { if (!root.hasAttribute('tabindex')) root.tabIndex = -1; root.focus({ preventScroll: true }); } };
+      if (target) { target.focus({ preventScroll: true }); return; }
+      toRoot();
+      // The focus view's close can hand focus to an element that is about to go; check once more next frame.
+      requestAnimationFrame(() => { const x = document.activeElement; if (!x || x === document.body || x.closest('[inert]') || !x.isConnected) toRoot(); });
     }
-  }, [isOpen]);
+  }, [isOpen, store]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
