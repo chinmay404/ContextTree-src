@@ -30,7 +30,12 @@ export class HttpEngineApi implements EngineApi {
     if (!res.ok) throw await this.toError(res);
     if (res.status === 204) return undefined as T;
     const text = await res.text();
-    return (text ? JSON.parse(text) : undefined) as T;
+    if (!text) return undefined as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new ApiError(res.status, 'bad_response');
+    }
   }
 
   private async toError(res: Response): Promise<ApiError> {
@@ -49,35 +54,35 @@ export class HttpEngineApi implements EngineApi {
     return (await this.req<{ boards: BoardSummary[] }>('GET', '/boards')).boards;
   }
   createBoard(input: { id: Id; title: string }) { return this.req<Board>('POST', '/boards', input); }
-  getBoard(boardId: Id) { return this.req<Board>('GET', `/boards/${boardId}`); }
+  getBoard(boardId: Id) { return this.req<Board>('GET', `/boards/${enc(boardId)}`); }
   async updateBoard(boardId: Id, patch: { title?: string; viewport?: Board['viewport'] }): Promise<void> {
-    await this.req('PATCH', `/boards/${boardId}`, patch);
+    await this.req('PATCH', `/boards/${enc(boardId)}`, patch);
   }
-  async deleteBoard(boardId: Id): Promise<void> { await this.req('DELETE', `/boards/${boardId}`); }
-  createCard(boardId: Id, input: CardCreate) { return this.req<Card>('POST', `/boards/${boardId}/cards`, input); }
+  async deleteBoard(boardId: Id): Promise<void> { await this.req('DELETE', `/boards/${enc(boardId)}`); }
+  createCard(boardId: Id, input: CardCreate) { return this.req<Card>('POST', `/boards/${enc(boardId)}/cards`, input); }
   updateCard(boardId: Id, cardId: Id, patch: CardPatch) {
-    return this.req<Card>('PATCH', `/boards/${boardId}/cards/${cardId}`, patch);
+    return this.req<Card>('PATCH', `/boards/${enc(boardId)}/cards/${enc(cardId)}`, patch);
   }
   async deleteCard(boardId: Id, cardId: Id): Promise<Id[]> {
-    return (await this.req<{ deleted: Id[] }>('DELETE', `/boards/${boardId}/cards/${cardId}`)).deleted;
+    return (await this.req<{ deleted: Id[] }>('DELETE', `/boards/${enc(boardId)}/cards/${enc(cardId)}`)).deleted;
   }
   async restoreCard(boardId: Id, cardId: Id): Promise<Id[]> {
-    return (await this.req<{ restored: Id[] }>('POST', `/boards/${boardId}/cards/${cardId}/restore`)).restored;
+    return (await this.req<{ restored: Id[] }>('POST', `/boards/${enc(boardId)}/cards/${enc(cardId)}/restore`)).restored;
   }
   async savePositions(boardId: Id, positions: { id: Id; x: number; y: number }[]): Promise<void> {
-    await this.req('PATCH', `/boards/${boardId}/positions`, { positions });
+    await this.req('PATCH', `/boards/${enc(boardId)}/positions`, { positions });
   }
   createEdge(boardId: Id, input: { id: Id; kind: 'wire' | 'answer'; from: Id; to: Id }) {
-    return this.req<Edge>('POST', `/boards/${boardId}/edges`, input);
+    return this.req<Edge>('POST', `/boards/${enc(boardId)}/edges`, input);
   }
   async deleteEdge(boardId: Id, edgeId: Id): Promise<void> {
-    await this.req('DELETE', `/boards/${boardId}/edges/${edgeId}`);
+    await this.req('DELETE', `/boards/${enc(boardId)}/edges/${enc(edgeId)}`);
   }
   async getMessages(boardId: Id, chatId: Id): Promise<Message[]> {
-    return (await this.req<{ messages: Message[] }>('GET', `/boards/${boardId}/cards/${chatId}/messages`)).messages;
+    return (await this.req<{ messages: Message[] }>('GET', `/boards/${enc(boardId)}/cards/${enc(chatId)}/messages`)).messages;
   }
   getReads(boardId: Id, chatId: Id) {
-    return this.req<Reads>('GET', `/boards/${boardId}/cards/${chatId}/reads`);
+    return this.req<Reads>('GET', `/boards/${enc(boardId)}/cards/${enc(chatId)}/reads`);
   }
 
   async uploadFile(
@@ -94,7 +99,7 @@ export class HttpEngineApi implements EngineApi {
     if (input.desc) fd.append('desc', input.desc);
     let res: Response;
     try {
-      res = await fetch(`${this.base}/boards/${boardId}/sources/file`, { method: 'POST', body: fd });
+      res = await fetch(`${this.base}/boards/${enc(boardId)}/sources/file`, { method: 'POST', body: fd });
     } catch {
       throw new ApiError(503, 'engine_unavailable');
     }
@@ -102,7 +107,7 @@ export class HttpEngineApi implements EngineApi {
   }
 
   addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string }) {
-    return this.req<Card>('POST', `/boards/${boardId}/sources/link`, input);
+    return this.req<Card>('POST', `/boards/${enc(boardId)}/sources/link`, input);
   }
 
   async streamChat(req: ChatRequest, onEvent: (e: StreamEvent) => void, signal?: AbortSignal): Promise<void> {
@@ -156,41 +161,45 @@ export class HttpEngineApi implements EngineApi {
         if (typeof chunk === 'string' && chunk) onEvent({ type: 'delta', text: chunk });
       }
     };
+    let readFailed = false;
     try {
       while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const r = parseSse(decoder.decode(value, { stream: true }), carry);
+        let chunk: ReadableStreamReadResult<Uint8Array>;
+        try {
+          chunk = await reader.read();
+        } catch (e) {
+          if (isAbort(e) || signal?.aborted) throw abortError();
+          readFailed = true;
+          break;
+        }
+        if (chunk.done) break;
+        const r = parseSse(decoder.decode(chunk.value, { stream: true }), carry);
         carry = r.carry;
-        emit(r.events);
+        emit(r.events); // an exception thrown by onEvent propagates as-is
         if (r.done) { finished = true; break; }
       }
-      if (!finished) {
+      if (!finished && !readFailed) {
         // flush a final frame that lacked a trailing newline
         const r = parseSse('\n', carry);
         emit(r.events);
         finished = r.done;
       }
-    } catch (e) {
-      if (isAbort(e) || signal?.aborted) throw abortError();
-      onEvent({ type: 'error', message: CUT_OFF });
-      return;
     } finally {
+      try { await reader.cancel(); } catch { /* ignore */ }
       try { reader.releaseLock(); } catch { /* ignore */ }
     }
     onEvent(finished ? { type: 'done' } : { type: 'error', message: CUT_OFF });
   }
 
   rawFileUrl(cardId: Id): string | null {
-    return `${this.base}/files/${cardId}/raw`;
+    return `${this.base}/files/${enc(cardId)}/raw`;
   }
 }
 
 function isAbort(e: unknown) {
-  return e instanceof Error && e.name === 'AbortError';
+  return (e instanceof Error || e instanceof DOMException) && e.name === 'AbortError';
 }
+const enc = encodeURIComponent;
 function abortError() {
-  const e = new Error('Aborted');
-  e.name = 'AbortError';
-  return e;
+  return new DOMException('Aborted', 'AbortError');
 }

@@ -167,6 +167,66 @@ describe('streamChat', () => {
   });
 });
 
+describe('hardening', () => {
+  const req: ChatRequest = {
+    boardId: 'b1', chatId: 'q1', messageId: 'm1', message: 'hi', model: 'm', systemPrompt: '',
+    temperature: null, maxOutputTokens: null, lastKMessages: null, externalContextTopK: 5, webSearch: false,
+  };
+  it('2xx non-JSON body -> ApiError', async () => {
+    fetchMock.mockImplementation(async () => new Response('<html>', { status: 200 }));
+    await expect(api.getBoard('b1')).rejects.toBeInstanceOf(ApiError);
+  });
+  it('encodes path ids', async () => {
+    fetchMock.mockImplementation(async () => jres({ id: 'x' }));
+    await api.getBoard('a/b?c');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/engine/boards/a%2Fb%3Fc');
+    expect(api.rawFileUrl('a/b')).toBe('/api/engine/files/a%2Fb/raw');
+  });
+  it('mid-stream read failure -> cut-off event', async () => {
+    fetchMock.mockImplementation(async () =>
+      new Response(
+        new ReadableStream({
+          start(c) { c.enqueue(new TextEncoder().encode('data: {"message":"a"}\n\n')); },
+          pull() { throw new Error('net'); },
+        }),
+        { status: 200, headers: { 'content-type': 'text/event-stream' } }
+      )
+    );
+    const ev: StreamEvent[] = [];
+    await api.streamChat(req, (e) => ev.push(e));
+    expect(ev.at(-1)).toEqual({ type: 'error', message: 'The answer was cut off' });
+  });
+  it('onEvent exception propagates, not reported as cut off', async () => {
+    fetchMock.mockImplementation(async () => sseRes(['data: {"message":"a"}\n\n', 'data: [DONE]\n\n']));
+    const seen: StreamEvent[] = [];
+    await expect(
+      api.streamChat(req, (e) => { seen.push(e); throw new Error('ui bug'); })
+    ).rejects.toThrow('ui bug');
+    expect(seen.some((e) => e.type === 'error')).toBe(false);
+  });
+  it('cancels the reader after [DONE]', async () => {
+    const cancel = vi.fn();
+    fetchMock.mockImplementation(async () =>
+      new Response(
+        new ReadableStream({
+          start(c) { c.enqueue(new TextEncoder().encode('data: [DONE]\n\n')); },
+          cancel,
+        }),
+        { status: 200, headers: { 'content-type': 'text/event-stream' } }
+      )
+    );
+    await api.streamChat(req, () => {});
+    expect(cancel).toHaveBeenCalled();
+  });
+  it('abort error is a DOMException AbortError', async () => {
+    const ac = new AbortController(); ac.abort();
+    fetchMock.mockRejectedValue(new DOMException('x', 'AbortError'));
+    const e = await api.streamChat(req, () => {}, ac.signal).catch((x) => x);
+    expect(e).toBeInstanceOf(DOMException);
+    expect(e.name).toBe('AbortError');
+  });
+});
+
 describe('rawFileUrl', () => {
   it('points at the proxy', () => expect(api.rawFileUrl('c_1')).toBe('/api/engine/files/c_1/raw'));
 });

@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vitest/globals"],
+    "noEmit": true,
+    "paths": {
+      "@/lib/auth-utils": ["./types/auth-utils-stub.d.ts"],
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["app/api/engine/**/*", "lib/engine-base.ts", "tests/unit/engine-proxy.test.ts", "next-env.d.ts"],
+  "exclude": ["node_modules", ".next"]
+}
