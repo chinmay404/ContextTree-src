@@ -3,7 +3,7 @@ import {
   Play, AudioLines, FileText, FilePenLine, StickyNote, Globe, Sheet, Image, Layers, MessageCircle,
   GitFork, Plus, Minus, Maximize, Link, Maximize2, ChevronsDownUp, ChevronsUpDown, Ungroup, X, TriangleAlert,
   Unlink, GitBranch, ArrowUp, SlidersHorizontal, ChevronDown, ArrowLeft, Copy, Upload, Ellipsis, GlobeLock,
-  Trash2, RotateCcw,
+  Trash2, RotateCcw, SquareDashed, Spline, ArrowRight, BookOpen, CornerLeftUp, Mouse, Sparkles,
 } from 'lucide';
 
 /** Prototype's lucide-static names mapped to lucide@0.460.0 canonical export keys (more-horizontal is Ellipsis). */
@@ -16,6 +16,9 @@ const NODES = {
   'arrow-up': ArrowUp, 'sliders-horizontal': SlidersHorizontal, 'chevron-down': ChevronDown,
   'arrow-left': ArrowLeft, 'copy': Copy, 'upload': Upload, 'more-horizontal': Ellipsis, 'globe-lock': GlobeLock,
   'trash-2': Trash2, 'rotate-ccw': RotateCcw,
+  // welcome tour
+  'square-dashed': SquareDashed, 'spline': Spline, 'arrow-right': ArrowRight, 'book-open': BookOpen,
+  'corner-left-up': CornerLeftUp, 'mouse': Mouse, 'sparkles': Sparkles,
 } as const;
 
 export const ICON_NAMES: string[] = Object.keys(NODES);

@@ -87,6 +87,16 @@ describe('branch dialog', () => {
     expect(overlayOpen(snap().ui)).toBe(true);
     s.closeMenu();
     expect(overlayOpen(snap().ui)).toBe(false);
+    s.openTour();
+    expect(overlayOpen(snap().ui)).toBe(true);
+    s.closeTour();
+    expect(overlayOpen(snap().ui)).toBe(false);
+  });
+
+  it('opening the tour closes the add menu and link pop', () => {
+    s.openMenu({ x: 1, y: 2, at: null, fromAdd: true });
+    s.openTour();
+    expect(snap().ui).toMatchObject({ tour: true, menu: null, linkPop: null });
   });
 });
 

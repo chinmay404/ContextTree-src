@@ -29,7 +29,9 @@ export interface UiState { selected: Id | null; dialog: DialogState | null;
   linkPop: { x: number; y: number; at: [number, number] | null } | null;
   confirm: { cardId: Id; text: string; pile?: { frontId: Id; front: string; count: number } } | null;
   toast: { id: number; text: string; undoCardId: Id | null } | null;
-  compare: Id | null; dropping: boolean; webSearch: Readonly<Record<Id, boolean>> }
+  compare: Id | null; dropping: boolean; webSearch: Readonly<Record<Id, boolean>>;
+  /** The first-visit welcome tour (chrome/WelcomeTour.tsx) is open. */
+  tour: boolean }
 
 export interface BoardSnapshot { version: number; status: 'loading' | 'ready' | 'error'; error: string | null;
   board: { id: Id; title: string; viewport: Board['viewport'] } | null;
@@ -46,12 +48,12 @@ export interface StoreOptions { pollMs?: number; readsDebounceMs?: number; toast
 
 /** True while any overlay is up: Tasks 9, 16 and 19 use it for "no overlay open". */
 export function overlayOpen(ui: UiState): boolean {
-  return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.linkPop || ui.confirm || ui.compare);
+  return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.linkPop || ui.confirm || ui.compare || ui.tour);
 }
 
 const initialUi = (): UiState => ({
   selected: null, dialog: null, viewer: null, focus: null, menu: null, linkPop: null, confirm: null, toast: null,
-  compare: null, dropping: false, webSearch: {},
+  compare: null, dropping: false, webSearch: {}, tour: false,
 });
 
 const FILE_TYPES: Record<string, [SourceType, Status]> = {
@@ -971,6 +973,9 @@ export class BoardStore {
   closeFocus(): void { if (this.ui.focus) this.setUi({ focus: null }); }
   openCompare(id: Id): void { this.setUi({ compare: id }); }
   closeCompare(): void { if (this.ui.compare) this.setUi({ compare: null }); }
+  /** The welcome tour sits above everything, so anything else that was open closes. */
+  openTour(): void { if (!this.ui.tour) this.setUi({ tour: true, menu: null, linkPop: null }); }
+  closeTour(): void { if (this.ui.tour) this.setUi({ tour: false }); }
   openMenu(m: UiState['menu']): void { this.setUi({ menu: m, linkPop: null }); }
   closeMenu(): void { if (this.ui.menu) this.setUi({ menu: null }); }
   openLinkPop(p: UiState['linkPop']): void { this.setUi({ linkPop: p, menu: null }); }

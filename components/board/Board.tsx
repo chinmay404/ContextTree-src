@@ -29,6 +29,7 @@ import { runEscape } from './chrome/escape';
 import { SourceViewer } from './chrome/SourceViewer';
 import { Toast } from './chrome/Toast';
 import { TrailBar } from './chrome/TrailBar';
+import { WelcomeTour } from './chrome/WelcomeTour';
 import { ZoomControl } from './chrome/ZoomControl';
 
 export interface BoardProps {
@@ -120,6 +121,7 @@ function Chrome(): ReactElement {
           <CompareSheet />
           <DeleteConfirm />
           <Toast />
+          <WelcomeTour />
         </>
       )}
       {props.topRight ? <div className="pb-topright">{props.topRight}</div> : null}
