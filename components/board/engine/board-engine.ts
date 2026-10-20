@@ -176,6 +176,7 @@ export class BoardEngine {
     };
     if (pop) { n.s.to(1); n.o.to(1); el.style.zIndex = String(++this.zTop); }
     this.ctx.nodes.set(c.id, n);
+    this.ctx.modules.persistence.markSynced(c.id, c.x, c.y);
     this.lastStatus.set(c.id, c.status);
     this.view.render(n);
     this.place(n);
@@ -249,6 +250,7 @@ export class BoardEngine {
     }
     if ((fields.includes('x') || fields.includes('y')) && !n.dragging && !this.ctx.modules.persistence.isDirty(id)) {
       n.px.to(c.x); n.py.to(c.y);
+      this.ctx.modules.persistence.markSynced(id, c.x, c.y);
     }
     n.deskId = c.deskId;
     if (fields.includes('status')) this.intro(n, c);

@@ -41,8 +41,11 @@ export function createPersistence(ctx: EngineContext): PersistenceModule {
   const moved = () => collectMoved(ctx.nodes.values(), ctx.store.graph().cards);
   const flushPositions = () => {
     const all = moved();
+    for (const m of all) synced.set(m.id, [m.x, m.y]);
     for (let i = 0; i < all.length; i += CHUNK) ctx.store.savePositions(all.slice(i, i + CHUNK));
   };
+  /** Last position the server and the board agreed on, per card: what a local move is measured against. */
+  const synced = new Map<string, [number, number]>();
   const positions = new SettleTimer(600, flushPositions);
 
   const cam = () => ({ x: ctx.camera.x.t, y: ctx.camera.y.t, zoom: ctx.camera.z.t });
@@ -60,6 +63,7 @@ export function createPersistence(ctx: EngineContext): PersistenceModule {
   const viewport = new SettleTimer(1000, flushViewport);
 
   return {
+    markSynced(id, x, y) { synced.set(id, [x, y]); },
     resetViewportBase() { base = cam(); prevCam = base; },
     frame() {
       let active = false;
@@ -80,8 +84,8 @@ export function createPersistence(ctx: EngineContext): PersistenceModule {
       viewport.frame(camMoved || !c.x.settled() || !c.y.settled() || !c.z.settled(.002) || ctx.viewport.classList.contains('panning'));
     },
     isDirty(id) {
-      const n = ctx.nodes.get(id), c = ctx.store.graph().cards.get(id);
-      return !!n && !!c && (Math.abs(n.px.t - c.x) > MOVE_EPS || Math.abs(n.py.t - c.y) > MOVE_EPS);
+      const n = ctx.nodes.get(id), p = synced.get(id);
+      return !!n && !!p && (Math.abs(n.px.t - p[0]) > MOVE_EPS || Math.abs(n.py.t - p[1]) > MOVE_EPS);
     },
     /** Flush synchronously so a board switch inside the settle window loses nothing. */
     dispose() { flushPositions(); flushViewport(); },
