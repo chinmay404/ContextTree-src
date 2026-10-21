@@ -14,6 +14,8 @@ export function ModelPicker(p: {
   value: string;
   onChange: (engineId: string) => void;
   isLocked?: (engineId: string) => boolean;
+  /** Shown as a settled value: nothing can be picked. */
+  disabled?: boolean;
   onLockedClick?: (engineId: string) => void;
 }): ReactElement {
   const known = modelInfo(p.value);
@@ -26,7 +28,7 @@ export function ModelPicker(p: {
     const locked = !!p.isLocked?.(engineId);
     return (
       <button key={key} type="button" className={`pp${p.value === engineId ? ' on' : ''}${locked ? ' locked' : ''}`} data-model={key}
-        aria-pressed={p.value === engineId} data-locked={locked ? 'true' : undefined} onClick={() => pick(engineId)}>
+        aria-pressed={p.value === engineId} disabled={p.disabled} data-locked={locked ? 'true' : undefined} onClick={() => pick(engineId)}>
         <ModelMark model={m} />{m.name}
       </button>
     );
@@ -36,7 +38,7 @@ export function ModelPicker(p: {
       {MAIN_MODELS.map((k) => pill(k, MODELS[k].engineId, { key: k, name: MODELS[k].name, color: MODELS[k].color }))}
       {known.key === null && p.value ? pill('current', p.value, known) : null}
       <span className={`pp${inMore ? ' on' : ''}`}>
-        <select id="d-more" aria-label="More models" value={inMore ? p.value : ''}
+        <select id="d-more" aria-label="More models" disabled={p.disabled} value={inMore ? p.value : ''}
           onChange={(e) => { if (e.target.value) pick(e.target.value); }}>
           <option value="">More models</option>
           {MORE.map((k) => <option key={k} value={MODELS[k].engineId}>{MODELS[k].name}</option>)}

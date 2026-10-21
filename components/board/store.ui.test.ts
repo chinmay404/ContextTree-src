@@ -64,15 +64,55 @@ describe('branch dialog', () => {
     expect(snap().cards.get(id)!.forkedFromMessageId).toBeNull();
   });
 
-  it('edit mode patches the chat', async () => {
-    s.openDialog({ mode: 'edit', chatId: 'side' });
-    expect(snap().ui.dialog!.draft).toMatchObject({ name: chat('side').name, persona: 'teacher' });
-    s.setDraft({ carry: 'whole' });
-    expect(s.confirmDialog(null)).toBe('side');
-    expect(chat('side').carry).toBe('whole');
+  const blank = () => s.createChat({ parentId: 'main', x: 0, y: 0, forkedFromMessageId: null, data: defaultChatData('Blank') });
+
+  it('edit mode patches a chat that has not started', async () => {
+    const id = blank();
+    expect(s.hasStarted(id)).toBe(false);
+    s.openDialog({ mode: 'edit', chatId: id });
+    s.setDraft({ carry: 'whole', model: MODELS.claude.engineId, name: 'Renamed' });
+    expect(s.confirmDialog(null)).toBe(id);
+    expect(chat(id)).toMatchObject({ carry: 'whole', model: MODELS.claude.engineId, name: 'Renamed' });
     await flush();
-    expect(calls('updateCard')).toHaveLength(1);
     expect(snap().ui.dialog).toBeNull();
+  });
+
+  it('edit mode on a started chat saves only the name', async () => {
+    expect(s.hasStarted('side')).toBe(true);
+    const before = { ...chat('side') };
+    s.openDialog({ mode: 'edit', chatId: 'side' });
+    expect(snap().ui.dialog!.draft).toMatchObject({ name: before.name, persona: 'teacher' });
+    s.setDraft({ name: 'Just the name', carry: 'whole', model: MODELS.claude.engineId, persona: 'coach', personaText: 'x', inheritDesk: false });
+    expect(s.confirmDialog(null)).toBe('side');
+    await flush();
+    expect(chat('side')).toMatchObject({ name: 'Just the name', carry: before.carry, model: before.model, persona: before.persona, systemPrompt: before.systemPrompt, inheritDesk: before.inheritDesk });
+    const sent = calls('updateCard').map((c) => (c.args[2] as { data: object }).data);
+    expect(sent).toEqual([{ name: 'Just the name' }]);
+  });
+
+  it('the store refuses model, persona, carry and desk-reading changes to a started chat, and says nothing to the server', async () => {
+    const before = { ...chat('side') };
+    s.patchCard('side', { data: { model: MODELS.claude.engineId, persona: 'coach', systemPrompt: 'x', carry: 'whole', inheritDesk: false, advanced: { ...before.advanced, temperature: 1 } } });
+    await flush();
+    expect(chat('side')).toMatchObject({ model: before.model, persona: before.persona, carry: before.carry, inheritDesk: before.inheritDesk });
+    expect(calls('updateCard')).toHaveLength(0);
+    s.patchCard('side', { data: { demoted: true, name: 'ok' } });   // a fold and a rename are still allowed
+    await flush();
+    expect(chat('side')).toMatchObject({ demoted: true, name: 'ok' });
+    expect(calls('updateCard').map((c) => (c.args[2] as { data: object }).data)).toEqual([{ demoted: true, name: 'ok' }]);
+  });
+
+  it('a chat with no messages stays editable through patchCard', async () => {
+    const id = blank();
+    s.patchCard(id, { data: { model: MODELS.claude.engineId } });
+    expect(chat(id).model).toBe(MODELS.claude.engineId);
+  });
+
+  it('a branch can be opened with a model preselected', () => {
+    s.openDialog({ mode: 'branch', parentId: 'side', model: MODELS.kimi.engineId });
+    expect(snap().ui.dialog!.draft.model).toBe(MODELS.kimi.engineId);
+    s.openDialog({ mode: 'branch', parentId: 'side' });
+    expect(snap().ui.dialog!.draft.model).toBe(MODELS.gpt.engineId);
   });
 
   it('overlayOpen reflects the overlays', () => {
@@ -141,11 +181,13 @@ describe('send and stream', () => {
   });
 
   it('maps persona, advanced settings and web search onto the request', async () => {
-    s.patchCard('side', { data: { advanced: { ...chat('side').advanced, temperature: 0.7, maxOutputTokens: 900, historyMode: 'lastK', lastKMessages: 4, externalContextTopK: 3 } } });
-    s.setWebSearch('side', true);
-    await s.send('side', 'q');
+    // A started chat refuses new settings, so use a chat that has not asked anything yet.
+    const id = s.createChat({ parentId: 'main', x: 0, y: 0, forkedFromMessageId: null, data: defaultChatData('Settings', MODELS.gpt.engineId) });
+    s.patchCard(id, { data: { systemPrompt: 'Be brief', advanced: { ...chat(id).advanced, temperature: 0.7, maxOutputTokens: 900, historyMode: 'lastK', lastKMessages: 4, externalContextTopK: 3 } } });
+    s.setWebSearch(id, true);
+    await s.send(id, 'q');
     expect(calls('streamChat')[0].args[0]).toMatchObject({
-      systemPrompt: chat('side').systemPrompt, temperature: 0.7, maxOutputTokens: 900, lastKMessages: 4, externalContextTopK: 3, webSearch: true,
+      systemPrompt: 'Be brief', temperature: 0.7, maxOutputTokens: 900, lastKMessages: 4, externalContextTopK: 3, webSearch: true,
     });
   });
 

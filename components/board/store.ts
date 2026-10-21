@@ -52,6 +52,8 @@ export interface StoreOptions { pollMs?: number; readsDebounceMs?: number; toast
 
 // ---- helpers ----
 
+const LOCKED_ONCE_STARTED = ['model', 'persona', 'systemPrompt', 'inheritDesk', 'carry', 'advanced'] as const;
+
 /** True while any overlay is up. */
 export function overlayOpen(ui: UiState): boolean {
   return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.linkPop || ui.confirm || ui.compare || ui.tour);
@@ -631,9 +633,22 @@ export class BoardStore {
     return { ...data, textChangedAt: new Date().toISOString() };
   }
 
+  /** A chat has started once it has a message (or its first question is on its way). From then on its model, persona,
+   *  desk-reading and advanced settings are fixed; a new setting means a new branch. */
+  hasStarted(chatId: Id): boolean {
+    const c = this.cards.get(chatId);
+    return !!c && c.kind === 'chat' && ((c.messageCount ?? 0) > 0 || (this.messages.get(chatId)?.length ?? 0) > 0);
+  }
+
   private patch(id: Id, patch: CardPatch): Promise<boolean> {
     const card = this.cards.get(id);
     if (!card) return Promise.resolve(false);
+    if (patch.data && this.hasStarted(id)) {   // defence in depth: the sheet already shows these as settled
+      const data = { ...(patch.data as Record<string, unknown>) };
+      for (const k of LOCKED_ONCE_STARTED) delete data[k];
+      if (!Object.keys(data).length && patch.deskId === undefined && patch.pileId === undefined && patch.status === undefined) return Promise.resolve(false);
+      patch = { ...patch, data: data as CardPatch['data'] };
+    }
     if (patch.data) patch = { ...patch, data: BoardStore.stampText(card, patch.data) };
     const o = BoardStore.overrideOf(patch);
     const tok = ++this.tokSeq;
@@ -1004,7 +1019,7 @@ export class BoardStore {
 
   openDialog(o: {
     mode: DialogState['mode']; parentId?: Id | null; chatId?: Id | null; at?: [number, number] | null;
-    anchor?: DOMRect | null; first?: string; forkedFromMessageId?: Id | null; carry?: Carry; noForkPoint?: boolean;
+    anchor?: DOMRect | null; first?: string; forkedFromMessageId?: Id | null; carry?: Carry; noForkPoint?: boolean; model?: string;
   }): void {
     const chat = o.mode === 'edit' && o.chatId ? this.cards.get(o.chatId) : undefined;
     if (o.mode === 'edit' && chat?.kind !== 'chat') return;
@@ -1014,7 +1029,7 @@ export class BoardStore {
     const draft: BranchDraft = {
       name: base ? base.name : o.mode === 'root' ? 'A new question' : 'New question, same desk',
       first: o.first ?? '',
-      model: base?.model ?? (parent?.kind === 'chat' ? (parent.data as ChatData).model : this.defaultModel),
+      model: base?.model ?? o.model ?? (parent?.kind === 'chat' ? (parent.data as ChatData).model : this.defaultModel),
       persona: base?.persona ?? 'none',
       personaText: base?.systemPrompt ?? '',
       inheritDesk: base?.inheritDesk ?? true,
@@ -1063,7 +1078,7 @@ export class BoardStore {
     this.setUi({ dialog: null });
     if (d.mode === 'edit') {
       if (!d.chatId || !this.cards.has(d.chatId)) return null;
-      this.patchCard(d.chatId, { data: fields });
+      this.patchCard(d.chatId, { data: this.hasStarted(d.chatId) ? { name: fields.name } : fields });
       return d.chatId;
     }
     const parent = d.parentId ? this.cards.get(d.parentId) : undefined;

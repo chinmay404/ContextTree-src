@@ -10,7 +10,8 @@ import {
   type CSSProperties, type KeyboardEvent, type ReactElement,
 } from 'react';
 import type { Card, ChatData, Id, Message } from '../api/types';
-import { FAMC, TYPE_INFO, modelInfo, personaLabel, type ModelKey } from '../lib/catalog';
+import { FAMC, TYPE_INFO, modelInfo, personaLabel, providerOf, type ModelKey } from '../lib/catalog';
+import { ModelPicker } from './ModelPicker';
 import { keyErrorView } from '../lib/key-errors';
 import { ModelMark } from './ModelMark';
 import { formatWhen, strip } from '../lib/format';
@@ -408,7 +409,7 @@ function FocusBody(p: {
             })() : null}
           </div>
         </div>
-        <Composer key={c.id} chatId={c.id} streaming={streaming} webOn={webOn} model={mi} onSettings={openSettings} />
+        <Composer key={c.id} chatId={c.id} streaming={streaming} webOn={webOn} model={mi} modelId={d.model} started={store.hasStarted(c.id)} onSettings={openSettings} />
         <div className={`menu${menuOn ? ' on' : ''}`} data-pb="focusmenu" role="menu" inert={!menuOn} aria-hidden={!menuOn}
           style={menu ? { top: menu.top, right: menu.right, left: 'auto' } : undefined}>
           {siblings.length ? (
@@ -428,13 +429,27 @@ function FocusBody(p: {
 }
 
 function Composer(p: {
-  chatId: Id; streaming: boolean; webOn: boolean; model: { key: ModelKey | null; name: string; color: string };
+  chatId: Id; streaming: boolean; webOn: boolean; model: { key: ModelKey | null; name: string; color: string }; modelId: string; started: boolean;
   onSettings: (e: React.MouseEvent<HTMLElement>) => void;
 }): ReactElement {
-  const { store } = useBoard();
+  const { store, props } = useBoard();
   const [text, setText] = useState('');
+  const [pop, setPop] = useState(false);   // a started chat keeps its model: this menu starts a branch on another one
   const ta = useRef<HTMLTextAreaElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const was = useRef(p.streaming);
+  useEscape(pop, () => setPop(false));
+  useEffect(() => {
+    if (!pop) return;
+    const out = (e: PointerEvent) => { if (!(e.target as Element).closest('[data-pb="modelpop"], .cp[data-settings]')) setPop(false); };
+    document.addEventListener('pointerdown', out, true);
+    return () => document.removeEventListener('pointerdown', out, true);
+  }, [pop]);
+  const pick = (engineId: string): void => {
+    setPop(false);
+    if (engineId === p.modelId) return;
+    store.openDialog({ mode: 'branch', parentId: p.chatId, model: engineId, anchor: boxRef.current?.getBoundingClientRect() ?? null });
+  };
   const empty = !text.trim();
 
   // When an answer ends the box comes back and takes the cursor again.
@@ -458,14 +473,21 @@ function Composer(p: {
   return (
     <div className="fcomp">
       <div className="mfade" aria-hidden="true" />
-      <div className="box">
+      <div className="box" ref={boxRef}>
+        {pop && (
+          <div className="mpop" data-pb="modelpop" role="dialog" aria-label="Ask another model">
+            <div className="mpt">This chat keeps its model. Pick another to branch from here.</div>
+            <ModelPicker value={p.modelId} onChange={pick} isLocked={props.isModelLocked} onLockedClick={(m) => props.onOpenSettings?.(providerOf(m) ?? undefined)} />
+          </div>
+        )}
         <textarea ref={ta} rows={1} placeholder="Ask a follow-up" aria-label="Message" value={text} disabled={p.streaming}
           onChange={(e) => { setText(e.target.value); resize(); }}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); go(); } }} />
         <div className="row">
           <button type="button" className="cp" data-addsrc
             onClick={() => window.dispatchEvent(new CustomEvent('pb:pickfiles', { detail: { deskId: p.chatId } }))}><Icon name="plus" />Source</button>
-          <button type="button" className="cp" data-settings onClick={p.onSettings}>
+          <button type="button" className="cp" data-settings aria-haspopup={p.started ? 'dialog' : undefined} aria-expanded={p.started ? pop : undefined}
+            onClick={(e) => { if (p.started) setPop((v) => !v); else p.onSettings(e); }}>
             <ModelMark model={p.model} />{p.model.name}<Icon name="chevron-down" color="var(--t2)" size={11} /></button>
           <button type="button" className={`cp${p.webOn ? ' on' : ''}`} data-web aria-pressed={p.webOn}
             onClick={() => store.setWebSearch(p.chatId, !p.webOn)}><Icon name="globe" />Web</button>
