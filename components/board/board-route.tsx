@@ -7,6 +7,8 @@ import { BrandLoader } from '@/components/brand-loader';
 import { useAuth } from '@/hooks/use-auth';
 import { ShellProvider, useShell } from '@/components/shell/shell-context';
 import { AccountPill } from '@/components/shell/account/AccountPill';
+import { isModelLocked as modelLocked } from '@/components/shell/keys/providers';
+import type { ProviderId } from '@/components/shell/keys/status-types';
 import { Board } from './Board';
 import { BoardsHome } from '@/components/shell/home/BoardsHome';
 import { HttpEngineApi } from './api/http';
@@ -106,7 +108,8 @@ function useSessionGate(mock: boolean, callbackUrl: string): 'loading' | 'ready'
 }
 
 function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }): ReactElement {
-  const { openSettings } = useShell();
+  const { openSettings, keys } = useShell();
+  const statuses = keys.statuses;
   const router = useRouter();
   const gate = useSessionGate(mock, `/b/${boardId}`);
   const base = useEngineApi(mock);
@@ -130,7 +133,11 @@ function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }):
   }, [signedOut, router, boardId]);
 
   const onOpenBoard = useCallback((id: string) => router.push(`/b/${id}${q}`), [router, q]);
-  const onOpenSettings = useCallback(() => openSettings({ section: 'keys' }), [openSettings]);
+  const onOpenSettings = useCallback(
+    (provider?: string) => openSettings({ section: 'keys', provider: provider as ProviderId | undefined }),
+    [openSettings],
+  );
+  const isModelLocked = useCallback((engineId: string) => modelLocked(engineId, statuses), [statuses]);
 
   let body: ReactElement;
   if (gate === 'loading' || !api || signedOut) body = <Splash />;
@@ -147,8 +154,9 @@ function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }):
       </Message>
     );
   } else {
+    // TODO(controller): defaultModel={preferredModel(statuses) ?? undefined} once Task 3 adds it to Board, keyEpoch once Task 4 does.
     body = (
-      <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenSettings={onOpenSettings} topRight={<AccountPill />} />
+      <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenSettings={onOpenSettings} isModelLocked={isModelLocked} topRight={<AccountPill />} />
     );
   }
   return <LightScope>{body}</LightScope>;

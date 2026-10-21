@@ -90,7 +90,7 @@ export function starterPreview(t: StarterTemplate): BoardPreview {
 /**
  * Makes a board from a template through the engine API (FastAPI stays the only writer).
  * Any failure deletes the half-made board and rethrows.
- * TODO(controller): callers pass `preferredModel(statuses) ?? MODELS[DEFAULT_MODEL_KEY].engineId` as `opts.model` once Task 13 exists.
+ * Callers pass `preferredModel(statuses) ?? MODELS[DEFAULT_MODEL_KEY].engineId` as `opts.model`.
  */
 export async function seedStarter(
   api: EngineApi,

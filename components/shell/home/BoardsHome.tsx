@@ -6,6 +6,7 @@ import { inter } from '@/components/board/fonts';
 import { newId } from '@/components/board/api/ids';
 import { ApiError, type EngineApi } from '@/components/board/api/types';
 import { AccountPill } from '../account/AccountPill';
+import { preferredModel } from '../keys/providers';
 import { useShell } from '../shell-context';
 import { PebbleMap } from '../map/PebbleMap';
 import { STARTERS, seedStarter, starterPreview, type StarterTemplate } from './starters';
@@ -46,7 +47,8 @@ function useStoredView(): ['grid' | 'list', (v: 'grid' | 'list') => void] {
 /** The boards home: greeting, start something new, jump back in. */
 export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string }): ReactElement {
   const router = useRouter();
-  const { user } = useShell();
+  const { user, keys } = useShell();
+  const model = () => preferredModel(keys.statuses) ?? MODELS[DEFAULT_MODEL_KEY].engineId;
   const [boards, setBoards] = useState<HomeBoard[] | null>(null);
   const [error, setError] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -66,7 +68,7 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
   const load = useCallback(async () => {
     setError(false);
     try {
-      const list = (await api.listBoards()) as HomeBoard[];
+      const list = await api.listBoards();
       setNow(Date.now());
       setBoards(list.filter((b) => !del.current?.isPending(b.id)));
     } catch (e) {
@@ -112,6 +114,8 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
     const id = newId('b');
     try {
       await api.createBoard({ id, title: 'Untitled board' });
+      const pref = preferredModel(keys.statuses);
+      if (pref) await api.updateCard(id, `${id}_q1`, { data: { model: pref } });
       router.push(`/b/${id}${query}`);
     } catch {
       setCreating(false);
@@ -124,8 +128,7 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
     setSeeding(t.key);
     setStarterError(false);
     try {
-      // TODO(controller): preferredModel(statuses) ?? the default, once Task 13 exists.
-      const id = await seedStarter(api, t, { model: MODELS[DEFAULT_MODEL_KEY].engineId });
+      const id = await seedStarter(api, t, { model: model() });
       router.push(`/b/${id}${query}`);
     } catch {
       setSeeding(null);

@@ -88,6 +88,12 @@ test.describe('boards home', () => {
     await page.goto(URL);
     await page.getByRole('button', { name: 'Blank board' }).click();
     await expect(page).toHaveURL(/\/b\/b_[a-z0-9]+_[a-z0-9]{6}/);
+    const model = await page.evaluate(async () => {
+      const id = location.pathname.split('/').pop()!;
+      const b = await window.__mock!.getBoard(id);
+      return (b.cards.find((c) => c.id === `${id}_q1`)!.data as { model: string }).model;
+    });
+    expect(model).toBe('openai/gpt-5-mini'); // all keys: the default model
   });
 
   test('390 px: list layout, no sideways scroll, pill visible', async ({ page }) => {
