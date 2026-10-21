@@ -95,3 +95,10 @@
   .ct-settings .kclose { top: 12px; right: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .ct-shell.ct-settings { animation: none; } }
+
+/* marks (the board's .mmark rules are scoped to .pb-root, so the sheet carries its own) */
+.ct-settings .mmark { width: 13px; height: 13px; flex: none; color: var(--c); fill: currentColor; }
+.ct-settings .prow .ms span .mmark { width: 12px; height: 12px; }
+.ct-settings .pickp .pr .mmark { width: 15px; height: 15px; }
+.ct-settings .pickp .pr.lock .mmark { opacity: .45; }
+.ct-settings .prow .pt svg { width: 24px; height: 24px; }

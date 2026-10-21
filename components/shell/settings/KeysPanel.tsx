@@ -2,7 +2,9 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Lock, Plus } from 'lucide-react';
 import { MODELS } from '@/components/board/lib/catalog';
+import { ModelMark } from '@/components/board/chrome/ModelMark';
 import { KeyError } from '../keys/key-store';
+import { ProviderMark } from './ProviderMark';
 import { PROVIDERS, keyStatusLine, type ProviderInfo } from '../keys/providers';
 import type { KeyStatus, ProviderId } from '../keys/status-types';
 import type { UseKeyStatus } from '../keys/use-key-status';
@@ -86,13 +88,13 @@ function Row({ info, status, keys, autoOpen, focusRef, onSaved }: {
 
   return (
     <div className={`prow${rejected ? ' bad' : ''}${mode === 'add' ? ' open' : ''}`} style={{ ['--pc' as string]: info.color }} data-provider={info.id}>
-      <div className="pt" aria-hidden="true">{info.letter}</div>
+      <div className="pt" aria-hidden="true"><ProviderMark id={info.id} size={24} /></div>
       <div className="pbody">
         <div className="pn">{info.name} {stateChip}</div>
         {uncheckedNote && <div className="why">Saved · couldn&apos;t check it just now</div>}
         <div className="ms">
           {info.models.map((k) => (
-            <span key={k} className={working ? '' : 'lk'}>{!working && <Lock size={10} strokeWidth={2} />}{MODELS[k].name}</span>
+            <span key={k} className={working ? '' : 'lk'}><ModelMark model={{ key: k, name: MODELS[k].name, color: working ? MODELS[k].color : 'currentColor' }} />{MODELS[k].name}{!working && <Lock size={10} strokeWidth={2} />}</span>
           ))}
         </div>
         {rejected && (

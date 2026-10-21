@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import { Lock, Shield } from 'lucide-react';
+import { ModelMark } from '@/components/board/chrome/ModelMark';
 import type { KeyStatusMap } from '../keys/status-types';
 import { pickerPreview } from '../keys/providers';
 
@@ -15,7 +16,7 @@ export function PickerPreview({ statuses }: { statuses: KeyStatusMap | null }): 
             <div className="grp">Ready</div>
             {ready.map((r) => (
               <div key={r.key} className={`pr${r.isDefault ? ' on' : ''}`} data-model-row={r.key} data-state="ready">
-                <i className="mdot" style={{ background: r.color }} />{r.label}
+                <ModelMark model={{ key: r.key, name: r.label, color: r.color }} />{r.label}
                 {r.isDefault && <span className="r">Default</span>}
               </div>
             ))}
@@ -26,7 +27,7 @@ export function PickerPreview({ statuses }: { statuses: KeyStatusMap | null }): 
             <div className="grp">Needs a key</div>
             {locked.map((l) => (
               <div key={l.key} className="pr lock" data-model-row={l.key} data-state="locked">
-                <i className="mdot" style={{ background: l.color }} />{l.label}
+                <ModelMark model={{ key: l.key, name: l.label, color: l.color }} />{l.label}
                 <span className="r"><Lock size={11} strokeWidth={2} />{l.reason === 'fix-key' ? 'Fix key' : l.providerName}</span>
               </div>
             ))}
