@@ -33,6 +33,7 @@ import { Toast } from './chrome/Toast';
 import { ChatBar } from './chrome/ChatBar';
 import { WelcomeTour } from './chrome/WelcomeTour';
 import { ZoomControl } from './chrome/ZoomControl';
+import './chrome/materials.css'; // keep last: its rules override pebble.css and the chrome CSS at equal specificity
 
 export interface BoardProps {
   api: EngineApi;
