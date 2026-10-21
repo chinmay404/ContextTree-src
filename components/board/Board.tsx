@@ -42,6 +42,8 @@ export interface BoardProps {
   onOpenSettings?: (provider?: ProviderId) => void;
   /** Asked once, in the board's first question chat, after the first successful load of an empty board. */
   initialAsk?: string;
+  /** A key was saved or fixed for `provider` (`at` is a counter or timestamp that changes each time): chats that failed for want of it are re-asked. */
+  keyEpoch?: { provider: ProviderId; at: number };
   /** Engine id for new question chats (a model the user has a key for). */
   defaultModel?: string;
   isModelLocked?: (engineModelId: string) => boolean;
@@ -80,6 +82,17 @@ function BoardShell(p: BoardProps): ReactElement {
   }, [api, boardId, testHook]);
 
   useEffect(() => { inst?.store.setDefaultModel(defaultModel); }, [inst, defaultModel]);
+  const { onOpenSettings: openSettings } = p;
+  useEffect(() => { inst?.engine.setOpenSettings(openSettings ? (provider) => openSettings(provider) : null); }, [inst, openSettings]);
+
+  // A saved key re-asks what failed for want of it; the epoch already on screen at mount is not a new key.
+  const epoch = useRef(p.keyEpoch?.at);
+  useEffect(() => {
+    const k = p.keyEpoch;
+    if (!inst || !k || k.at === epoch.current) return;
+    epoch.current = k.at;
+    inst.store.retryKeyErrors(k.provider);
+  }, [inst, p.keyEpoch]);
 
   // One keydown listener for Escape: the newest open layer first, then blur → drop the wire → deselect.
   useEffect(() => {

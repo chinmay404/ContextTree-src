@@ -382,3 +382,50 @@ describe('fix round 1', () => {
     expect(calls('restoreCard')).toHaveLength(0);
   });
 });
+
+describe('keyError', () => {
+  const settle = async () => { for (let i = 0; i < 3; i++) await flush(); };
+  const texts = (id: string) => (snap().messages.get(id) ?? []).map((x) => x.content);
+
+  it('a missing key is kept as a coded error with its provider, and the question is dropped', async () => {
+    m.setKeys([]);
+    void s.send('side', 'Hi'); await settle();
+    expect(snap().streaming.get('side')).toMatchObject({ code: 'missing_key', provider: 'openai', error: 'No OpenAI key' });
+    expect(texts('side')).not.toContain('Hi');
+    expect(s.isStreaming('side')).toBe(false);
+  });
+
+  it('retryKeyErrors re-asks the failed question once the key is back, for that provider only', async () => {
+    m.setKeys([]);
+    void s.send('side', 'Hi'); void s.send('second', 'Yo'); await settle();
+    expect(snap().streaming.get('second')).toMatchObject({ code: 'missing_key', provider: 'google' });
+    m.setKeys('all');
+    expect(s.retryKeyErrors('anthropic')).toEqual([]);
+    expect(s.retryKeyErrors('openai')).toEqual(['side']);
+    await settle();
+    expect(snap().streaming.has('side')).toBe(false);
+    expect(texts('side')).toContain('Hi');
+    expect(texts('side').length).toBe(4);   // the 2 seed messages, the question, the answer
+    expect(snap().streaming.get('second')).toMatchObject({ code: 'missing_key' });   // google was not saved
+    expect(s.retryKeyErrors('google')).toEqual(['second']);
+    await settle();
+    expect(texts('second')).toContain('Yo');
+  });
+
+  it('a plain error (no code) is not re-asked by a saved key', async () => {
+    m.failNext('streamChat', new ApiError(500, 'boom'));
+    void s.send('side', 'Hi'); await settle();
+    expect(snap().streaming.get('side')!.code).toBeUndefined();
+    expect(s.retryKeyErrors('openai')).toEqual([]);
+  });
+
+  it('only the latest failed question of a chat is re-asked', async () => {
+    m.setKeys([]);
+    void s.send('side', 'one'); await settle();
+    void s.send('side', 'two'); await settle();
+    m.setKeys('all');
+    s.retryKeyErrors('openai'); await settle();
+    expect(texts('side')).toContain('two');
+    expect(texts('side')).not.toContain('one');
+  });
+});

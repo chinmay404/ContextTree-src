@@ -452,3 +452,6 @@
   .pb-root .thinking i, .pb-root .src.processing .tile, .pb-root .prog i, .pb-root .compose, .pb-root .caret { animation: none; }
   .pb-root .menu, .pb-root .wk, .pb-root .sheetbox, .pb-root [data-pb="linkpop"], .pb-root .tools { transition-property: opacity; transform: none; }
 }
+.pb-root .keyerr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pb-root .keyerr .apill, .pb-root .keyerr .cp { flex: none; }
+.pb-root [data-pb="focus"] .keyerr .cp { height: 28px; padding: 0 12px; border-radius: 999px; background: var(--pb-ink); color: #fff; font-size: 12px; font-weight: 600; }

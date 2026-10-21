@@ -1,6 +1,6 @@
 import { ApiError } from './api/types';
 import type {
-  AdvancedSettings, Board, Card, CardPatch, Carry, ChatData, ChatRequest, Edge, EngineApi, Id, Message, Reads, SourceData, SourceType, Status,
+  AdvancedSettings, Board, Card, CardPatch, Carry, ChatData, ChatRequest, Edge, EngineApi, Id, Message, ProviderId, Reads, SourceData, SourceType, Status, StreamErrorCode,
 } from './api/types';
 import { genMessageId, newId } from './api/ids';
 import { DEFAULT_ADVANCED, DEFAULT_MODEL_KEY, MODELS, PERSONAS, TYPE_INFO } from './lib/catalog';
@@ -33,10 +33,14 @@ export interface UiState { selected: Id | null; dialog: DialogState | null;
   /** The first-visit welcome tour (chrome/WelcomeTour.tsx) is open. */
   tour: boolean }
 
+/** One chat's answer in flight, or its kept error. `asked` is the question being answered (a key error re-asks it). */
+export interface StreamState { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null;
+  code?: StreamErrorCode; provider?: ProviderId; asked: string }
+
 export interface BoardSnapshot { version: number; status: 'loading' | 'ready' | 'error'; error: string | null;
   board: { id: Id; title: string; viewport: Board['viewport'] } | null;
   cards: ReadonlyMap<Id, Card>; edges: ReadonlyMap<Id, Edge>; messages: ReadonlyMap<Id, Message[]>;
-  streaming: ReadonlyMap<Id, { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null }>;
+  streaming: ReadonlyMap<Id, StreamState>;
   ui: UiState }
 
 /** What only the engine's view knows: a pile's front member, and a card's dragged position that is not saved yet. */
@@ -129,7 +133,7 @@ export class BoardStore {
   private inflight = 0;
   private pendingTitle: string | null = null;
   private titleTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly streams = new Map<Id, { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null }>();
+  private readonly streams = new Map<Id, StreamState>();
   private readonly aborts = new Map<Id, AbortController>();
   private readonly deleted = new Map<Id, { ids: Id[]; roots: Id[]; edges: Edge[]; done: Promise<boolean>; dissolved?: { pile: Card; members: Id[]; added: Id[]; gone: Edge[] } }>();
   private probe: ViewProbe | null = null;
@@ -1137,12 +1141,12 @@ export class BoardStore {
     const list = this.messages.get(chatId) ?? [];
     const fresh = !(card.messageCount ?? 0);   // server-synced count: a failed first send leaves it 0, so a retry stays fresh
     this.messages.set(chatId, [...list, { id: `${messageId}_u`, role: 'user', content: msg, position: list.length, createdAt: nowIso() }]);
-    this.streams.set(chatId, { messageId, text: '', web: null, error: null });
+    this.streams.set(chatId, { messageId, text: '', web: null, error: null, asked: msg });
     this.aborts.set(chatId, ctrl);
     this.emit([{ kind: 'messages', chatId }, { kind: 'stream', chatId }]);
 
     const mine = () => this.streams.get(chatId)?.messageId === messageId;
-    const update = (p: Partial<{ text: string; web: { title?: string; url?: string }[] | null; error: string | null }>) => {
+    const update = (p: Partial<StreamState>) => {
       const cur = this.streams.get(chatId);
       if (!cur || cur.messageId !== messageId || ctrl.signal.aborted) return;
       this.streams.set(chatId, { ...cur, ...p });
@@ -1175,7 +1179,7 @@ export class BoardStore {
       await this.api.streamChat(req, (e) => {
         if (e.type === 'delta') update({ text: (this.streams.get(chatId)?.text ?? '') + e.text });
         else if (e.type === 'web') update({ web: e.results });
-        else if (e.type === 'error') { errored = true; update({ error: e.message }); }
+        else if (e.type === 'error') { errored = true; update({ error: e.message, code: e.code, provider: e.provider }); }
       }, ctrl.signal);
     } catch (e) {
       finish();
@@ -1212,6 +1216,19 @@ export class BoardStore {
     const c = this.cards.get(chatId);
     const last = msgs.at(-1);
     if (c) this.put({ ...c, messageCount: msgs.length, lastMessage: last ? { role: last.role, content: last.content.slice(0, 280) } : null });
+  }
+
+  /** A key was saved or fixed: re-ask the question that failed for want of it. Returns the chats it re-asked. */
+  retryKeyErrors(provider: ProviderId): Id[] {
+    const ids: Id[] = [];
+    for (const [id, st] of [...this.streams]) {
+      if (!st.error || st.provider !== provider || (st.code !== 'missing_key' && st.code !== 'key_rejected')) continue;
+      this.streams.delete(id);
+      this.emit([{ kind: 'stream', chatId: id }]);
+      void this.send(id, st.asked);
+      ids.push(id);
+    }
+    return ids;
   }
 
   stop(chatId: Id): void {

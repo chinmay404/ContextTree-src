@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import type { ProviderId } from '../../components/board/api/types';
 import { MODELS, type ModelKey } from '../../components/board/lib/catalog';
 import { Board } from '../../components/board/Board';
 import { MockEngineApi, SEED_BOARD_ID } from '../../components/board/api/mock/mock-engine-api';
@@ -20,7 +21,7 @@ export interface BoardDevParams {
 }
 
 declare global {
-  interface Window { __mock?: MockEngineApi; __remount?: () => void; __openSettings?: { calls: (string | undefined)[] } }
+  interface Window { __mock?: MockEngineApi; __remount?: () => void; __openSettings?: { calls: (string | undefined)[] }; __keySaved?: (provider: ProviderId) => void }
 }
 
 /** The board on MockEngineApi (seed board), one mock per page load. Dev only: page.tsx 404s in production. */
@@ -48,11 +49,18 @@ export default function BoardDev({ params }: { params: BoardDevParams }) {
   const [spy] = useState(() => ({ calls: [] as (string | undefined)[] }));
   useEffect(() => { window.__openSettings = spy; return () => { delete window.__openSettings; }; }, [spy]);
 
+  // Test seam: pretend the keys sheet saved a key for `provider` (Board `keyEpoch`).
+  const [keyEpoch, setKeyEpoch] = useState<{ provider: ProviderId; at: number } | undefined>();
+  useEffect(() => {
+    window.__keySaved = (provider) => setKeyEpoch((k) => ({ provider, at: (k?.at ?? 0) + 1 }));
+    return () => { delete window.__keySaved; };
+  }, []);
+
   const defaultModel = params.model && params.model in MODELS ? MODELS[params.model as ModelKey].engineId : undefined;
   return (
     <div data-pb="board-dev" style={{ position: 'fixed', inset: 0 }}>
       {ready && <Board key={gen} api={api} boardId={boardId} testHook onOpenBoard={setBoardId}
-        initialAsk={params.ask} defaultModel={defaultModel} onOpenSettings={params.keys ? (p) => { spy.calls.push(p); } : undefined} />}
+        initialAsk={params.ask} keyEpoch={keyEpoch} defaultModel={defaultModel} onOpenSettings={params.keys ? (p) => { spy.calls.push(p); } : undefined} />}
     </div>
   );
 }

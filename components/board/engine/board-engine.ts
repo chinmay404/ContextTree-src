@@ -6,7 +6,7 @@
  * Re-renders are driven by store changes (card, messages, stream, reads, edges). A `ui` change only toggles
  * `selected` / `faded`; a module whose card face depends on other UI state must call ctx.render(id) itself.
  */
-import type { Card, Id } from '../api/types';
+import type { Card, Id, ProviderId } from '../api/types';
 import { ancestors, chatsOf, isChat } from '../lib/graph';
 import type { BoardStore, StoreChange } from '../store';
 import { Camera, type Box } from './camera';
@@ -98,6 +98,7 @@ export class BoardEngine {
         };
         viewport.addEventListener('pointermove', mv); viewport.addEventListener('pointerup', u); viewport.addEventListener('pointercancel', u);
       },
+      openSettings: null,
       modules: null as unknown as EngineContext['modules'],
     };
     this.ctx = ctx;
@@ -111,6 +112,8 @@ export class BoardEngine {
     });
     this.loop = new FrameLoop(this.springs, (dt, now) => this.frame(dt, now));
   }
+
+  setOpenSettings(fn: ((provider: ProviderId) => void) | null): void { this.ctx.openSettings = fn; }
 
   // ---- lifecycle ----
 

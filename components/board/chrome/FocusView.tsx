@@ -11,6 +11,7 @@ import {
 } from 'react';
 import type { Card, ChatData, Id, Message } from '../api/types';
 import { FAMC, TYPE_INFO, modelInfo, personaLabel, type ModelKey } from '../lib/catalog';
+import { keyErrorView } from '../lib/key-errors';
 import { ModelMark } from './ModelMark';
 import { formatWhen, strip } from '../lib/format';
 import { ancestors, chatData, chatsOf, famOf, iconOf, isChat, membersOf, nameOf, qNum, sourceData, type Graph } from '../lib/graph';
@@ -18,6 +19,7 @@ import { renderMarkdown } from '../lib/markdown';
 import { isRead } from '../lib/reads';
 import { clamp } from '../engine/spring';
 import { useBoard, useSnapshot } from '../context';
+import type { StreamState } from '../store';
 import { Icon } from './Icon';
 import { useEscape } from './escape';
 import { readRows, sourceRows, type SourceRow } from './focus-rows';
@@ -195,12 +197,12 @@ export function FocusView(): ReactElement {
 }
 
 function FocusBody(p: {
-  chat: Card; g: Graph; msgs: Message[]; stream: { messageId: string; text: string; web: Web | null; error: string | null } | undefined;
+  chat: Card; g: Graph; msgs: Message[]; stream: StreamState | undefined;
   webMap: Map<string, Web>; moreRef: React.RefObject<HTMLButtonElement | null>;
   menu: { top: number; right: number } | null; menuOn: boolean;
   setMenu: (m: { top: number; right: number } | null) => void; setMenuOn: (on: boolean) => void;
 }): ReactElement {
-  const { store } = useBoard();
+  const { store, props } = useBoard();
   const snap = useSnapshot();
   const { chat: c, g, msgs, stream, webMap, moreRef, menu, menuOn, setMenu, setMenuOn } = p;
   const d = chatData(c) as ChatData;
@@ -396,7 +398,14 @@ function FocusBody(p: {
                 )}
               </div>
             ) : null}
-            {stream?.error ? <div className="err" role="alert">{stream.error}</div> : null}
+            {stream?.error ? (() => {
+              const ke = keyErrorView(stream, mi, !!props.onOpenSettings);
+              return ke ? (
+                <div className="err keyerr" role="alert" data-code={stream.code}>{ke.text}
+                  {ke.action ? <button type="button" className="cp" data-act={ke.action} onClick={() => props.onOpenSettings?.(ke.provider)}>{ke.button}</button> : null}
+                </div>
+              ) : <div className="err" role="alert">{stream.error}</div>;
+            })() : null}
           </div>
         </div>
         <Composer key={c.id} chatId={c.id} streaming={streaming} webOn={webOn} model={mi} onSettings={openSettings} />
