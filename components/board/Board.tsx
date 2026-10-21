@@ -15,7 +15,7 @@ import type { EngineApi, Id } from './api/types';
 import { BoardContext, useBoard, useSnapshot } from './context';
 import { BoardEngine } from './engine/board-engine';
 import { installTestHook } from './engine/test-hook';
-import { bricolage } from './fonts';
+import { inter } from './fonts';
 import { BoardStore } from './store';
 import { typing } from './lib/util';
 import { AddMenu } from './chrome/AddMenu';
@@ -89,7 +89,7 @@ function BoardShell(p: BoardProps): ReactElement {
   );
 
   return (
-    <div ref={rootRef} className={`pb-root ${bricolage.variable}`} data-board={boardId}>
+    <div ref={rootRef} className={`pb-root ${inter.variable}`} data-board={boardId}>
       {value && <BoardContext.Provider value={value}><Chrome /></BoardContext.Provider>}
     </div>
   );

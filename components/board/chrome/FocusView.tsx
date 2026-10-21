@@ -403,11 +403,11 @@ function FocusBody(p: {
           style={menu ? { top: menu.top, right: menu.right, left: 'auto' } : undefined}>
           {siblings.length ? (
             <button type="button" role="menuitem" onClick={() => { setMenuOn(false); moreRef.current?.focus({ preventScroll: true }); store.openCompare(c.id); }}>
-              <span className="c" style={{ background: 'var(--pb-lilac)' }}><Icon name="git-fork" /></span>Compare with siblings</button>
+              <span className="c" style={{ background: 'var(--pb-fill)' }}><Icon name="git-fork" /></span>Compare with siblings</button>
           ) : null}
           {d.demoted ? (
             <button type="button" role="menuitem" onClick={() => { setMenuOn(false); store.setDemoted(c.id, false); }}>
-              <span className="c" style={{ background: 'var(--pb-lilac)' }}><Icon name="rotate-ccw" /></span>Bring back</button>
+              <span className="c" style={{ background: 'var(--pb-fill)' }}><Icon name="rotate-ccw" /></span>Bring back</button>
           ) : null}
           <button type="button" role="menuitem" onClick={() => { setMenuOn(false); store.requestDelete(c.id); }}>
             <span className="c" style={{ background: 'var(--pb-desk)' }}><Icon name="trash-2" /></span>Delete question</button>

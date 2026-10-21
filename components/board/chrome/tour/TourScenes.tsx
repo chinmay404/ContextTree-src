@@ -10,7 +10,7 @@ export type SceneKey = 'chat' | 'source' | 'desk' | 'string' | 'branch' | 'pile'
 
 const Cursor = (): ReactElement => (
   <svg className="t-cur" viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M4 2.5 L4 19 L8.6 14.8 L11.6 21.2 L14.4 19.9 L11.5 13.7 L17.8 13.4 Z" fill="#2B2340" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" />
+    <path d="M4 2.5 L4 19 L8.6 14.8 L11.6 21.2 L14.4 19.9 L11.5 13.7 L17.8 13.4 Z" fill="#1D1D1F" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" />
   </svg>
 );
 
@@ -31,7 +31,7 @@ const Src = ({ kind, icon, meta, title, className = '', port }: { kind: string; 
 
 /** "Reads no sources yet" swapping to "Reads 1 source" when the scene's source lands. */
 const Reads = ({ after }: { after: string }): ReactElement => (
-  <div className="cfoot"><Icon name="book-open" size={12} color="#6E6585" />Reads&nbsp;<span className="t-swap"><span className="t-n0">no sources yet</span><span className="t-n1"><b>{after}</b></span></span></div>
+  <div className="cfoot"><Icon name="book-open" size={12} color="#6E6E73" />Reads&nbsp;<span className="t-swap"><span className="t-n0">no sources yet</span><span className="t-n1"><b>{after}</b></span></span></div>
 );
 
 function ChatScene(): ReactElement {
@@ -40,7 +40,7 @@ function ChatScene(): ReactElement {
       <div className="t-add"><span className="t-pl"><Icon name="plus" /></span>Add</div>
       <div className="t-menu">
         <div className="t-mi"><span className="t-c" style={{ background: '#FFE1EA' }}><Icon name="sticky-note" color="#D1467E" /></span>Note<kbd>N</kbd></div>
-        <div className="t-mi t-q"><span className="t-c" style={{ background: '#2B2340' }}><Icon name="message-circle" color="#fff" /></span>New question<kbd>Q</kbd></div>
+        <div className="t-mi t-q"><span className="t-c" style={{ background: '#1D1D1F' }}><Icon name="message-circle" color="#fff" /></span>New question<kbd>Q</kbd></div>
         <div className="t-sep" />
         <div className="t-mi"><span className="t-c" style={{ background: '#FFF0B3' }}><Icon name="upload" color="#B8860B" /></span>Upload files</div>
         <div className="t-mi"><span className="t-c" style={{ background: '#C9ECFF' }}><Icon name="link" color="#2A86C4" /></span>Paste a link</div>
