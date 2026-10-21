@@ -1,0 +1,22 @@
+/* Shell tokens. Values copied from components/board/pebble.css + chrome/materials.css (Apple grey, one accent).
+   Everything is scoped under .ct-shell so nothing leaks into V2. Light only. */
+.ct-shell {
+  --pb-canvas: #F5F5F7; --pb-desk: #EBEBF0; --pb-card: #FFFFFF; --pb-fill: #F2F2F5; --pb-edge: #D2D2D7; --pb-accent: #0071E3; --pb-ink: #1D1D1F; --dot: #C7C7CC;
+  --t1: #1D1D1F; --t2: #6E6E73; --t3: #86868B;
+  --ready: #3FAE5A; --stale: #E2A72A; --failed: #E5486B;
+  --hairline: rgba(0,0,0,.08); --hairline-strong: rgba(0,0,0,.12);
+  --glass-bg: rgba(255,255,255,.62); --glass-solid: #FFFFFF;
+  --sh-card: 0 1px 2px rgba(0,0,0,.06), 0 8px 28px rgba(0,0,0,.08);
+  --sh-float: 0 0 0 .5px var(--hairline), 0 8px 28px rgba(0,0,0,.08);
+  --sh-lift: 0 1px 2px rgba(0,0,0,.08), 0 24px 64px rgba(0,0,0,.16);
+  --r-tile: 10px; --r-row: 14px; --r-card: 18px; --r-sheet: 26px;
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  font-family: var(--pb-font), system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; color: var(--t1); -webkit-font-smoothing: antialiased;
+}
+.ct-shell, .ct-shell * { box-sizing: border-box; }
+.ct-shell button, .ct-shell input, .ct-shell select, .ct-shell textarea { font: inherit; color: inherit; }
+.ct-shell button { background: none; border: 0; padding: 0; cursor: pointer; }
+.ct-shell :focus-visible { outline: 3px solid var(--pb-accent); outline-offset: 3px; }
+.ct-shell .glass { background: var(--glass-bg); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); box-shadow: var(--sh-float); }
+.ct-shell.dotted, .ct-shell .dotted { background-color: var(--pb-canvas); background-image: radial-gradient(circle at 12px 12px, var(--dot) 0 .75px, transparent 1px); background-size: 24px 24px; }
+@media (prefers-reduced-transparency: reduce) { .ct-shell .glass { background: var(--glass-solid); -webkit-backdrop-filter: none; backdrop-filter: none; } }

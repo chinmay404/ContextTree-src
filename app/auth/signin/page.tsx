@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Network, AlertCircle } from "lucide-react";
 import { BrandLoader } from "@/components/brand-loader";
+import { SignInV3 } from "@/components/shell/signin/SignInV3";
 
 interface Provider {
   id: string;
@@ -163,6 +164,13 @@ function SignInContent() {
 }
 
 export default function SignInPage() {
+  if (process.env.NEXT_PUBLIC_BOARD_V3 === "1") {
+    return (
+      <Suspense fallback={null}>
+        <SignInV3 />
+      </Suspense>
+    );
+  }
   return (
     <Suspense fallback={
        <div className="min-h-screen bg-background flex items-center justify-center">
