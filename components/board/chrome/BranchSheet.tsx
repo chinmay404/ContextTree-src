@@ -3,7 +3,7 @@
 import './branch-sheet.css';
 import { useCallback, useLayoutEffect, useRef, type CSSProperties, type KeyboardEvent, type ReactElement } from 'react';
 import type { AdvancedSettings, Card, Carry } from '../api/types';
-import { FAMC, PERSONAS } from '../lib/catalog';
+import { FAMC, PERSONAS, providerOf } from '../lib/catalog';
 import { cut } from '../lib/format';
 import { chatData, famOf, qNum } from '../lib/graph';
 import { foldPiles, isRead } from '../lib/reads';
@@ -77,13 +77,20 @@ export function BranchSheet(): ReactElement {
       : parent
         ? <>From <span className="qchip soft">{qNum(g, parent.id)}</span>{cut(chatData(parent).name, 46)}</>
         : <>Starts its own tree, with an empty desk.</>;
-    const flip = (): void => store.setDraft({ inheritDesk: !d.inheritDesk });
+    const locked = dlg.mode === 'edit' && !!chat && store.hasStarted(chat.id);   // settled once the chat has a message: only the name can change
+    const flip = (): void => { if (!locked) store.setDraft({ inheritDesk: !d.inheritDesk }); };
     const onToggleKey = (e: KeyboardEvent): void => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); } };
 
     content = (
-      <div ref={boxRef} className="sheetbox dlg" role="dialog" aria-modal="true" aria-labelledby="dlgt">
+      <div ref={boxRef} className={`sheetbox dlg${locked ? ' locked' : ''}`} role="dialog" aria-modal="true" aria-labelledby="dlgt">
         <h2 id="dlgt">{TITLE[dlg.mode]}</h2>
         <div className="from">{from}</div>
+        {locked && chat && (
+          <div className="lockmsg" data-pb="lockmsg">
+            <span>Set when this chat started. Branch to try another model or persona.</span>
+            <button type="button" className="btn" data-act="branch-from" onClick={() => store.openDialog({ mode: 'branch', parentId: chat.id })}>Branch</button>
+          </div>
+        )}
         <label className="fl" htmlFor="d-name">Name</label>
         <input className="fi" id="d-name" value={d.name} onChange={(e) => store.setDraft({ name: e.target.value })}
           onKeyDown={(e) => { if (e.key === 'Enter') confirm(); }} />
@@ -97,25 +104,25 @@ export function BranchSheet(): ReactElement {
         )}
         <div className="grp">
           <div className="fl">Model</div>
-          <ModelPicker value={d.model} onChange={(m) => store.setDraft({ model: m })}
-            isLocked={props.isModelLocked} onLockedClick={(m) => props.onOpenSettings?.(m.split('/')[0])} />
+          <ModelPicker value={d.model} disabled={locked} onChange={(m) => store.setDraft({ model: m })}
+            isLocked={props.isModelLocked} onLockedClick={(m) => props.onOpenSettings?.(providerOf(m) ?? undefined)} />
         </div>
         <div className="grp">
           <div className="fl">Persona</div>
           <div className="pills">
             {(Object.entries(PERSONAS) as [string, { label: string; text: string }][]).map(([k, v]) => (
-              <button key={k} type="button" className={`pp${d.persona === k ? ' on' : ''}`} data-persona={k} aria-pressed={d.persona === k}
+              <button key={k} type="button" className={`pp${d.persona === k ? ' on' : ''}`} data-persona={k} aria-pressed={d.persona === k} disabled={locked}
                 onClick={() => store.setDraft({ persona: k, personaText: v.text })}>{v.label}</button>
             ))}
           </div>
-          <textarea className="fta" id="d-persona" rows={2} style={{ marginTop: 8 }} value={d.personaText}
+          <textarea className="fta" id="d-persona" rows={2} style={{ marginTop: 8 }} value={d.personaText} disabled={locked} readOnly={locked}
             placeholder="How should it think or talk? e.g. “Be blunt. Assume I'm a solo founder.”"
             onChange={(e) => store.setDraft({ personaText: e.target.value })} />
         </div>
         {parent && (
           <div className="grp">
             <div className="fl">What it starts with</div>
-            <div className={`tog${d.inheritDesk ? ' on' : ''}`} id="d-inherit" role="switch" aria-checked={d.inheritDesk} tabIndex={0}
+            <div className={`tog${d.inheritDesk ? ' on' : ''}`} id="d-inherit" role="switch" aria-checked={d.inheritDesk} aria-disabled={locked || undefined} tabIndex={locked ? -1 : 0}
               onClick={flip} onKeyDown={onToggleKey}>
               <span className="sw" />Read the desk above
               <span className="sub">
@@ -125,7 +132,7 @@ export function BranchSheet(): ReactElement {
             </div>
             <div className="seg" role="radiogroup" aria-label="Carry from the parent chat">
               {CARRY.map(([k, v]) => (
-                <button key={k} type="button" data-carry={k} className={d.carry === k ? 'on' : ''} role="radio" aria-checked={d.carry === k}
+                <button key={k} type="button" data-carry={k} className={d.carry === k ? 'on' : ''} role="radio" aria-checked={d.carry === k} disabled={locked}
                   onClick={() => store.setDraft({ carry: k })}>{v}</button>
               ))}
             </div>
@@ -135,22 +142,22 @@ export function BranchSheet(): ReactElement {
           <summary><Icon name="sliders-horizontal" size={15} />Advanced<span className="ch"><Icon name="chevron-down" size={16} /></span></summary>
           <div className="ab">
             <label className="full">Creativity <span className="v" id="v-temp">{a.temperature == null ? 'Model default' : a.temperature.toFixed(1)}</span>
-              <input type="range" id="d-temp" min={0} max={2} step={0.1} value={a.temperature ?? 0.8} onChange={(e) => setAdv({ temperature: +e.target.value })} /></label>
+              <input type="range" id="d-temp" disabled={locked} min={0} max={2} step={0.1} value={a.temperature ?? 0.8} onChange={(e) => setAdv({ temperature: +e.target.value })} /></label>
             <label>Longest answer
-              <select id="d-max" value={String(a.maxOutputTokens ?? '')} onChange={(e) => setAdv({ maxOutputTokens: e.target.value ? +e.target.value : null })}>
+              <select id="d-max" disabled={locked} value={String(a.maxOutputTokens ?? '')} onChange={(e) => setAdv({ maxOutputTokens: e.target.value ? +e.target.value : null })}>
                 {MAX_OUT.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select></label>
             <label>Conversation it keeps
-              <select id="d-hist" value={a.historyMode} onChange={(e) => setAdv({ historyMode: e.target.value as AdvancedSettings['historyMode'] })}>
+              <select id="d-hist" disabled={locked} value={a.historyMode} onChange={(e) => setAdv({ historyMode: e.target.value as AdvancedSettings['historyMode'] })}>
                 <option value="auto">Automatic</option><option value="lastK">Last few messages</option>
               </select></label>
             <label>Messages kept
-              <input type="number" id="d-k" min={0} max={50} value={a.lastKMessages} disabled={a.historyMode === 'auto'}
+              <input type="number" id="d-k" min={0} max={50} value={a.lastKMessages} disabled={locked || a.historyMode === 'auto'}
                 onChange={(e) => setAdv({ lastKMessages: clamp(Math.round(+e.target.value) || 0, 0, 50) })} /></label>
             <label>Excerpts per question <span className="v" id="v-topk">{a.externalContextTopK}</span>
-              <input type="range" id="d-topk" min={0} max={10} step={1} value={a.externalContextTopK} onChange={(e) => setAdv({ externalContextTopK: +e.target.value })} /></label>
+              <input type="range" id="d-topk" disabled={locked} min={0} max={10} step={1} value={a.externalContextTopK} onChange={(e) => setAdv({ externalContextTopK: +e.target.value })} /></label>
             <label className="full">Token budget per question
-              <select id="d-budget" value={String(a.contextBudgetTokens ?? '')} onChange={(e) => setAdv({ contextBudgetTokens: e.target.value ? +e.target.value : null })}>
+              <select id="d-budget" disabled={locked} value={String(a.contextBudgetTokens ?? '')} onChange={(e) => setAdv({ contextBudgetTokens: e.target.value ? +e.target.value : null })}>
                 {BUDGET.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select></label>
           </div>

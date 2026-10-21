@@ -2,3 +2,14 @@
 .pb-root .pp.locked.on { opacity: 1; }
 .pb-root .pp:focus-visible, .pb-root .seg button:focus-visible, .pb-root .tog:focus-visible, .pb-root .adv summary:focus-visible { outline: 2px solid var(--pb-ink); outline-offset: 2px; }
 .pb-root .adv input[type=number]:disabled { opacity: .5; }
+
+/* A started chat's settings are settled values, not greyed-out controls: the picked one stays ink, the rest step back. */
+.pb-root .dlg .lockmsg { display: flex; align-items: center; gap: 12px; margin: -4px 0 14px; padding: 10px 12px 10px 16px; border-radius: 14px; background: var(--pb-desk); font-size: 13px; color: var(--t2); }
+.pb-root .dlg .lockmsg span { flex: 1; }
+.pb-root .dlg.locked .pp:disabled, .pb-root .dlg.locked .seg button:disabled { cursor: default; opacity: .38; transform: none; }
+.pb-root .dlg.locked .pp.on:disabled, .pb-root .dlg.locked .seg button.on:disabled, .pb-root .dlg.locked .seg button[aria-checked="true"]:disabled { opacity: 1; }
+.pb-root .dlg.locked .pp select:disabled { cursor: default; color: inherit; opacity: 1; }
+.pb-root .dlg.locked .fta:disabled, .pb-root .dlg.locked .adv select:disabled, .pb-root .dlg.locked .adv input:disabled { color: var(--t1); -webkit-text-fill-color: var(--t1); cursor: default; opacity: 1; }
+.pb-root .dlg.locked .adv input[type=range]:disabled { opacity: .55; }
+.pb-root .dlg.locked .tog { cursor: default; }
+.pb-root .dlg.locked .tog .sw { opacity: .8; }

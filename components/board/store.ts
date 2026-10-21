@@ -1,6 +1,6 @@
 import { ApiError } from './api/types';
 import type {
-  AdvancedSettings, Board, Card, CardPatch, Carry, ChatData, ChatRequest, Edge, EngineApi, Id, Message, Reads, SourceData, SourceType, Status,
+  AdvancedSettings, Board, Card, CardPatch, Carry, ChatData, ChatRequest, Edge, EngineApi, Id, Message, ProviderId, Reads, SourceData, SourceType, Status, StreamErrorCode,
 } from './api/types';
 import { genMessageId, newId } from './api/ids';
 import { DEFAULT_ADVANCED, DEFAULT_MODEL_KEY, MODELS, PERSONAS, TYPE_INFO } from './lib/catalog';
@@ -33,18 +33,26 @@ export interface UiState { selected: Id | null; dialog: DialogState | null;
   /** The first-visit welcome tour (chrome/WelcomeTour.tsx) is open. */
   tour: boolean }
 
+/** One chat's answer in flight, or its kept error. `asked` is the question being answered (a key error re-asks it). */
+export interface StreamState { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null;
+  code?: StreamErrorCode; provider?: ProviderId; asked: string }
+
 export interface BoardSnapshot { version: number; status: 'loading' | 'ready' | 'error'; error: string | null;
   board: { id: Id; title: string; viewport: Board['viewport'] } | null;
   cards: ReadonlyMap<Id, Card>; edges: ReadonlyMap<Id, Edge>; messages: ReadonlyMap<Id, Message[]>;
-  streaming: ReadonlyMap<Id, { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null }>;
+  streaming: ReadonlyMap<Id, StreamState>;
   ui: UiState }
 
 /** What only the engine's view knows: a pile's front member, and a card's dragged position that is not saved yet. */
 export interface ViewProbe { front(pileId: Id): number; pos(id: Id): [number, number] | null }
 
-export interface StoreOptions { pollMs?: number; readsDebounceMs?: number; toastMs?: number }
+export interface StoreOptions { pollMs?: number; readsDebounceMs?: number; toastMs?: number;
+  /** Engine id for new question chats that have no parent (the shell passes a model the user has a key for). */
+  defaultModel?: string }
 
 // ---- helpers ----
+
+const LOCKED_ONCE_STARTED = ['model', 'persona', 'systemPrompt', 'inheritDesk', 'carry', 'advanced'] as const;
 
 /** True while any overlay is up. */
 export function overlayOpen(ui: UiState): boolean {
@@ -127,11 +135,12 @@ export class BoardStore {
   private inflight = 0;
   private pendingTitle: string | null = null;
   private titleTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly streams = new Map<Id, { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null }>();
+  private readonly streams = new Map<Id, StreamState>();
   private readonly aborts = new Map<Id, AbortController>();
   private readonly deleted = new Map<Id, { ids: Id[]; roots: Id[]; edges: Edge[]; done: Promise<boolean>; dissolved?: { pile: Card; members: Id[]; added: Id[]; gone: Edge[] } }>();
   private probe: ViewProbe | null = null;
   private disposed = false;
+  private defaultModel: string;
 
   private readonly changeListeners = new Set<(c: StoreChange[]) => void>();
   private readonly subscribers = new Set<() => void>();
@@ -140,6 +149,7 @@ export class BoardStore {
     this.pollMs = opts.pollMs ?? 2000;
     this.readsDebounceMs = opts.readsDebounceMs ?? 150;
     this.toastMs = opts.toastMs ?? 10000;
+    this.defaultModel = opts.defaultModel ?? MODELS[DEFAULT_MODEL_KEY].engineId;
   }
 
   // ---- subscription ----
@@ -623,9 +633,22 @@ export class BoardStore {
     return { ...data, textChangedAt: new Date().toISOString() };
   }
 
+  /** A chat has started once it has a message (or its first question is on its way). From then on its model, persona,
+   *  desk-reading and advanced settings are fixed; a new setting means a new branch. */
+  hasStarted(chatId: Id): boolean {
+    const c = this.cards.get(chatId);
+    return !!c && c.kind === 'chat' && ((c.messageCount ?? 0) > 0 || (this.messages.get(chatId)?.length ?? 0) > 0);
+  }
+
   private patch(id: Id, patch: CardPatch): Promise<boolean> {
     const card = this.cards.get(id);
     if (!card) return Promise.resolve(false);
+    if (patch.data && this.hasStarted(id)) {   // defence in depth: the sheet already shows these as settled
+      const data = { ...(patch.data as Record<string, unknown>) };
+      for (const k of LOCKED_ONCE_STARTED) delete data[k];
+      if (!Object.keys(data).length && patch.deskId === undefined && patch.pileId === undefined && patch.status === undefined) return Promise.resolve(false);
+      patch = { ...patch, data: data as CardPatch['data'] };
+    }
     if (patch.data) patch = { ...patch, data: BoardStore.stampText(card, patch.data) };
     const o = BoardStore.overrideOf(patch);
     const tok = ++this.tokSeq;
@@ -996,7 +1019,7 @@ export class BoardStore {
 
   openDialog(o: {
     mode: DialogState['mode']; parentId?: Id | null; chatId?: Id | null; at?: [number, number] | null;
-    anchor?: DOMRect | null; first?: string; forkedFromMessageId?: Id | null; carry?: Carry; noForkPoint?: boolean;
+    anchor?: DOMRect | null; first?: string; forkedFromMessageId?: Id | null; carry?: Carry; noForkPoint?: boolean; model?: string;
   }): void {
     const chat = o.mode === 'edit' && o.chatId ? this.cards.get(o.chatId) : undefined;
     if (o.mode === 'edit' && chat?.kind !== 'chat') return;
@@ -1006,7 +1029,7 @@ export class BoardStore {
     const draft: BranchDraft = {
       name: base ? base.name : o.mode === 'root' ? 'A new question' : 'New question, same desk',
       first: o.first ?? '',
-      model: base?.model ?? (parent?.kind === 'chat' ? (parent.data as ChatData).model : MODELS[DEFAULT_MODEL_KEY].engineId),
+      model: base?.model ?? o.model ?? (parent?.kind === 'chat' ? (parent.data as ChatData).model : this.defaultModel),
       persona: base?.persona ?? 'none',
       personaText: base?.systemPrompt ?? '',
       inheritDesk: base?.inheritDesk ?? true,
@@ -1055,7 +1078,7 @@ export class BoardStore {
     this.setUi({ dialog: null });
     if (d.mode === 'edit') {
       if (!d.chatId || !this.cards.has(d.chatId)) return null;
-      this.patchCard(d.chatId, { data: fields });
+      this.patchCard(d.chatId, { data: this.hasStarted(d.chatId) ? { name: fields.name } : fields });
       return d.chatId;
     }
     const parent = d.parentId ? this.cards.get(d.parentId) : undefined;
@@ -1112,6 +1135,18 @@ export class BoardStore {
     return !!s && !s.error;
   }
 
+  /** The shell may learn which model has a key after the board mounted. */
+  setDefaultModel(engineId: string | undefined): void { this.defaultModel = engineId ?? MODELS[DEFAULT_MODEL_KEY].engineId; }
+
+  /** The shell's first question: sends to `<board>_q1` when that chat exists, has no messages and is idle. True if it sent. */
+  askFirst(text: string): boolean {
+    const id = `${this.boardId}_q1`, card = this.cards.get(id);
+    if (!text.trim() || !card || card.kind !== 'chat' || this.disposed) return false;
+    if ((card.messageCount ?? 0) > 0 || (this.messages.get(id)?.length ?? 0) > 0 || this.streams.has(id)) return false;
+    void this.send(id, text);
+    return true;
+  }
+
   async send(chatId: Id, text: string): Promise<void> {
     const msg = text.trim();
     const card = this.cards.get(chatId);
@@ -1121,12 +1156,12 @@ export class BoardStore {
     const list = this.messages.get(chatId) ?? [];
     const fresh = !(card.messageCount ?? 0);   // server-synced count: a failed first send leaves it 0, so a retry stays fresh
     this.messages.set(chatId, [...list, { id: `${messageId}_u`, role: 'user', content: msg, position: list.length, createdAt: nowIso() }]);
-    this.streams.set(chatId, { messageId, text: '', web: null, error: null });
+    this.streams.set(chatId, { messageId, text: '', web: null, error: null, asked: msg });
     this.aborts.set(chatId, ctrl);
     this.emit([{ kind: 'messages', chatId }, { kind: 'stream', chatId }]);
 
     const mine = () => this.streams.get(chatId)?.messageId === messageId;
-    const update = (p: Partial<{ text: string; web: { title?: string; url?: string }[] | null; error: string | null }>) => {
+    const update = (p: Partial<StreamState>) => {
       const cur = this.streams.get(chatId);
       if (!cur || cur.messageId !== messageId || ctrl.signal.aborted) return;
       this.streams.set(chatId, { ...cur, ...p });
@@ -1159,7 +1194,7 @@ export class BoardStore {
       await this.api.streamChat(req, (e) => {
         if (e.type === 'delta') update({ text: (this.streams.get(chatId)?.text ?? '') + e.text });
         else if (e.type === 'web') update({ web: e.results });
-        else if (e.type === 'error') { errored = true; update({ error: e.message }); }
+        else if (e.type === 'error') { errored = true; update({ error: e.message, code: e.code, provider: e.provider }); }
       }, ctrl.signal);
     } catch (e) {
       finish();
@@ -1196,6 +1231,19 @@ export class BoardStore {
     const c = this.cards.get(chatId);
     const last = msgs.at(-1);
     if (c) this.put({ ...c, messageCount: msgs.length, lastMessage: last ? { role: last.role, content: last.content.slice(0, 280) } : null });
+  }
+
+  /** A key was saved or fixed: re-ask the question that failed for want of it. Returns the chats it re-asked. */
+  retryKeyErrors(provider: ProviderId): Id[] {
+    const ids: Id[] = [];
+    for (const [id, st] of [...this.streams]) {
+      if (!st.error || st.provider !== provider || (st.code !== 'missing_key' && st.code !== 'key_rejected')) continue;
+      this.streams.delete(id);
+      this.emit([{ kind: 'stream', chatId: id }]);
+      void this.send(id, st.asked);
+      ids.push(id);
+    }
+    return ids;
   }
 
   stop(chatId: Id): void {

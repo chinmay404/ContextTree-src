@@ -115,9 +115,12 @@ test('Branch from here and Settings open the sheet', async ({ page }) => {
   await page.locator(`${F} .mtop [data-settings]`).click();
   expect(await page.evaluate(() => window.__board!.dialog())).toMatchObject({ mode: 'edit' });
   await page.keyboard.press('Escape');
+  // 'main' has started, so its model chip offers a branch on another model instead of settings (lock.spec.ts)
   await page.locator(`${F} .fcomp [data-settings]`).click();   // the model chip
-  expect(await page.evaluate(() => window.__board!.dialog())).toMatchObject({ mode: 'edit' });
+  await expect(page.locator('[data-pb="modelpop"]')).toBeVisible();
   await page.keyboard.press('Escape');
+  await expect(page.locator('[data-pb="modelpop"]')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__board!.dialog())).toBeNull();
   expect(await page.evaluate(() => window.__board!.focus())).toBe('main');
 });
 

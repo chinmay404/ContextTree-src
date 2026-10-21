@@ -17,5 +17,9 @@ export default async function Page({
     const n = Number(raw);
     if (Number.isFinite(n)) params[k] = n;
   }
+  if (sp.ask) params.ask = sp.ask;
+  if (sp.model) params.model = sp.model;
+  if (sp.fresh === '1') params.fresh = true;
+  if (sp.keys === '1') params.keys = true;
   return <BoardDev params={params} />;
 }

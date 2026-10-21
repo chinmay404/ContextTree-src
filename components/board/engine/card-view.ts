@@ -2,8 +2,9 @@
  * Card faces and their bindings, ported from the prototype's render / srcHTML / chatHTML / tileHTML / metaOf / bind / act
  * (lines 455-565). Every interpolated value goes through esc(); answers go through renderMarkdown.
  */
-import type { Card, ChatData, Id, Message, SourceData } from '../api/types';
+import type { Card, ChatData, Id, Message, ProviderId, SourceData } from '../api/types';
 import { FAMC, TYPE_INFO, modelInfo, personaLabel } from '../lib/catalog';
+import { keyErrorView } from '../lib/key-errors';
 import { modelMarkHtml } from '../lib/model-icons';
 import { cut, esc } from '../lib/format';
 import { answersInto, chatData, iconOf, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, wiresInto, type Graph } from '../lib/graph';
@@ -189,7 +190,12 @@ export class CardView {
     const streaming = store.isStreaming(c.id);
     const body = msgs.map((x) => x.role === 'user' ? `<div class="qb">${esc(x.content)}</div>` : x.content ? `<div class="ans">${renderMarkdown(x.content)}</div>` : '').join('');
     let live = '';
-    if (stream?.error) live = `<p class="err">${esc(stream.error)}</p>`;
+    if (stream?.error) {
+      const ke = keyErrorView(stream, m, !!this.ctx.openSettings);
+      live = ke
+        ? `<p class="err keyerr" data-code="${esc(stream.code ?? '')}">${esc(ke.text)}${ke.action ? ` <button class="apill" data-act="${ke.action}" data-provider="${esc(ke.provider ?? '')}">${esc(ke.button ?? '')}</button>` : ''}</p>`
+        : `<p class="err">${esc(stream.error)}</p>`;
+    }
     else if (stream && stream.text) live = `<div class="ans live">${renderMarkdown(stream.text)}</div>`;
     else if (streaming) live = `<div class="thinking"><i></i>Thinking with ${nRead} source${nRead === 1 ? '' : 's'}…</div><div class="skel"><i style="width:92%"></i><i style="width:76%"></i><i style="width:84%"></i></div>`;
     const ap = (a: string, ico: string, label: string) => `<button class="apill" data-act="${a}">${icon(ico)}${label}</button>`;
@@ -323,6 +329,7 @@ export class CardView {
 
   private act(n: ViewNode, a: string, btn: HTMLElement): void {
     const { store } = this.ctx, id = n.id;
+    if (a === 'addkey' || a === 'fixkey') { const p = btn.dataset.provider as ProviderId | undefined; if (p) this.ctx.openSettings?.(p); return; }
     if (a === 'open') store.openFocus(id);
     if (a === 'view') store.openViewer(id, null, btn.getBoundingClientRect());
     if (a === 'branch') store.openDialog({ mode: 'branch', parentId: id, anchor: btn.getBoundingClientRect() });

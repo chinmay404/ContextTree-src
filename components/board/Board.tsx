@@ -11,7 +11,7 @@
 import './pebble.css';
 import './chrome/root.css';
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
-import type { EngineApi, Id } from './api/types';
+import type { EngineApi, Id, ProviderId } from './api/types';
 import { BoardContext, useBoard, useSnapshot } from './context';
 import { BoardEngine } from './engine/board-engine';
 import { installTestHook } from './engine/test-hook';
@@ -39,7 +39,13 @@ export interface BoardProps {
   api: EngineApi;
   boardId: Id;
   onOpenBoard?: (id: Id) => void;
-  onOpenSettings?: (provider?: string) => void;
+  onOpenSettings?: (provider?: ProviderId) => void;
+  /** Asked once, in the board's first question chat, after the first successful load of an empty board. */
+  initialAsk?: string;
+  /** A key was saved or fixed for `provider` (`at` is a counter or timestamp that changes each time): chats that failed for want of it are re-asked. */
+  keyEpoch?: { provider: ProviderId; at: number };
+  /** Engine id for new question chats (a model the user has a key for). */
+  defaultModel?: string;
   isModelLocked?: (engineModelId: string) => boolean;
   topRight?: ReactNode;
   testHook?: boolean;
@@ -54,20 +60,39 @@ export default Board;
 function BoardShell(p: BoardProps): ReactElement {
   const rootRef = useRef<HTMLDivElement>(null);
   const [inst, setInst] = useState<{ store: BoardStore; engine: BoardEngine } | null>(null);
-  const { api, boardId, testHook } = p;
+  const { api, boardId, testHook, initialAsk, defaultModel } = p;
+  const asked = useRef(false);   // the initial question goes out once per mounted board
+  const live = useRef({ initialAsk, defaultModel });   // read at mount: a changed prop must not rebuild the store
+  live.current = { initialAsk, defaultModel };
 
   // Store and engine live for one mount (StrictMode's second mount gets fresh ones).
   useEffect(() => {
     const root = rootRef.current!;
     const rm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const store = new BoardStore(api, boardId);
+    const store = new BoardStore(api, boardId, { defaultModel: live.current.defaultModel });
     const engine = new BoardEngine({ store, root, rm });
     engine.mount();
     const unhook = testHook ? installTestHook(engine, store, api) : () => {};
     setInst({ store, engine });
-    void store.load();
+    void store.load().then(() => {
+      const ask = live.current.initialAsk;
+      if (ask && !asked.current && store.getSnapshot().status === 'ready' && store.askFirst(ask)) asked.current = true;
+    });
     return () => { unhook(); engine.dispose(); store.dispose(); setInst(null); };
   }, [api, boardId, testHook]);
+
+  useEffect(() => { inst?.store.setDefaultModel(defaultModel); }, [inst, defaultModel]);
+  const { onOpenSettings: openSettings } = p;
+  useEffect(() => { inst?.engine.setOpenSettings(openSettings ? (provider) => openSettings(provider) : null); }, [inst, openSettings]);
+
+  // A saved key re-asks what failed for want of it; the epoch already on screen at mount is not a new key.
+  const epoch = useRef(p.keyEpoch?.at);
+  useEffect(() => {
+    const k = p.keyEpoch;
+    if (!inst || !k || k.at === epoch.current) return;
+    epoch.current = k.at;
+    inst.store.retryKeyErrors(k.provider);
+  }, [inst, p.keyEpoch]);
 
   // One keydown listener for Escape: the newest open layer first, then blur → drop the wire → deselect.
   useEffect(() => {
@@ -85,8 +110,8 @@ function BoardShell(p: BoardProps): ReactElement {
 
   const { onOpenBoard, onOpenSettings, isModelLocked, topRight } = p;
   const value = useMemo(
-    () => (inst ? { store: inst.store, engine: inst.engine, props: { api, boardId, onOpenBoard, onOpenSettings, isModelLocked, topRight, testHook } } : null),
-    [inst, api, boardId, onOpenBoard, onOpenSettings, isModelLocked, topRight, testHook],
+    () => (inst ? { store: inst.store, engine: inst.engine, props: { api, boardId, onOpenBoard, onOpenSettings, isModelLocked, topRight, testHook, defaultModel } } : null),
+    [inst, api, boardId, onOpenBoard, onOpenSettings, isModelLocked, topRight, testHook, defaultModel],
   );
 
   return (

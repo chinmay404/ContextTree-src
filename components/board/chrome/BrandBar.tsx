@@ -12,7 +12,7 @@ import { useEscape } from './escape';
 export function BrandBar(): ReactElement {
   const { store, props } = useBoard();
   const { board } = useSnapshot();
-  const { api, boardId, onOpenBoard, onOpenSettings } = props;
+  const { api, boardId, onOpenBoard, onOpenSettings, defaultModel } = props;
   const title = board?.title ?? '';
 
   const [editing, setEditing] = useState(false);
@@ -82,6 +82,7 @@ export function BrandBar(): ReactElement {
     try {
       const id = newId('b');
       await api.createBoard({ id, title: 'Untitled board' });
+      if (defaultModel) await api.updateCard(id, `${id}_q1`, { data: { model: defaultModel } }).catch(() => undefined);   // best effort: q1 keeps the catalog default
       if (openRef.current) close();
       onOpenBoard?.(id);
     } catch {
