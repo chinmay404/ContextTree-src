@@ -40,7 +40,7 @@ export class MockKeyStore implements KeyStore {
     return Object.fromEntries(V3_KEY_PROVIDERS.map((p) => [p, { ...this.map[p] }])) as KeyStatusMap;
   }
 
-  async status() { this.calls.push({ method: 'status' }); await this.wait(); return this.snapshot(); }
+  async status() { this.calls.push({ method: 'status' }); this.sync(); await this.wait(); return this.snapshot(); }
   async check(force = false) { this.calls.push({ method: 'check', force }); await this.wait(); return this.snapshot(); }
   async save(p: ProviderId, apiKey: string): Promise<KeyStatus> {
     await this.wait();

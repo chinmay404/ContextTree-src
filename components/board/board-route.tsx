@@ -7,7 +7,7 @@ import { BrandLoader } from '@/components/brand-loader';
 import { useAuth } from '@/hooks/use-auth';
 import { ShellProvider, useShell } from '@/components/shell/shell-context';
 import { AccountPill } from '@/components/shell/account/AccountPill';
-import { isModelLocked as modelLocked } from '@/components/shell/keys/providers';
+import { isModelLocked as modelLocked, preferredModel } from '@/components/shell/keys/providers';
 import type { ProviderId } from '@/components/shell/keys/status-types';
 import { providerOf } from './lib/catalog';
 import { Board } from './Board';
@@ -156,9 +156,8 @@ function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }):
       </Message>
     );
   } else {
-    // TODO(controller): defaultModel={preferredModel(statuses) ?? undefined} once Task 3 adds it to Board, keyEpoch once Task 4 does.
     body = (
-      <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenSettings={onOpenSettings} isModelLocked={isModelLocked} topRight={<AccountPill />} />
+      <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenSettings={onOpenSettings} defaultModel={preferredModel(statuses) ?? undefined} keyEpoch={keys.lastSaved ?? undefined} isModelLocked={isModelLocked} topRight={<AccountPill />} />
     );
   }
   return <LightScope>{body}</LightScope>;

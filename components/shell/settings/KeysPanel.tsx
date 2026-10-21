@@ -59,6 +59,7 @@ function Row({ info, status, keys, autoOpen, focusRef, onSaved }: {
       setValue('');
       setMode('idle');
       onSaved(info.id);
+      setTimeout(() => actRef.current?.focus(), 0); // the form is gone: keep focus inside the sheet
     } catch (e) {
       setError(e instanceof KeyError ? e.message : "Couldn't reach Context Tree. Try again.");
     } finally {

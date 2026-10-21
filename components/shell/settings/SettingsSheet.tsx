@@ -41,6 +41,22 @@ export function SettingsSheet({ open, target, onClose, onKeySaved }: {
     dialogRef.current?.querySelector<HTMLElement>('.knav .ni:not([aria-disabled="true"])')?.focus();
   }, [open, target]);
 
+  // Escape closes the sheet wherever focus is (a saved key form unmounts its own field); the capture phase on window
+  // runs before the board's document listener, so a selected card stays selected.
+  useEffect(() => {
+    if (!open) return;
+    const onEsc = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (e.target instanceof HTMLInputElement && dialogRef.current?.contains(e.target)) return; // the open key form takes its own Escape
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onEsc, true);
+    return () => window.removeEventListener('keydown', onEsc, true);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const onKeyDown = (e: KeyboardEvent) => {

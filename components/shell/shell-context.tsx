@@ -71,7 +71,7 @@ export function ShellProvider({ mock, children }: { mock: boolean; children: Rea
       back?.focus({ preventScroll: true });
     });
   }, []);
-  // Hook point for the re-ask after a save: the shell's `keys.lastSaved` reaches <Board keyEpoch> (TODO(controller): wire once Board Task 4 lands).
+  // The re-ask after a save: `keys.lastSaved` reaches <Board keyEpoch>; this callback is for callers that want the provider too.
   const onKeySaved = useCallback((p: ProviderId) => { savedCb.current?.(p); }, []);
 
   const value = useMemo<ShellValue>(() => ({ user, keys, openSettings }), [user, keys, openSettings]);
