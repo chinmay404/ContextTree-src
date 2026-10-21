@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, Check, GitFork, Sparkles, StickyNote } from 'lucide-react';
 import { inter } from '@/components/board/fonts';
+import { BrandMark } from '@/components/board/chrome/BrandMark';
 import { MODELS } from '@/components/board/lib/catalog';
 import { PebbleMap } from '../map/PebbleMap';
 import { LANDING_PREVIEWS } from '../map/demo-previews';
@@ -83,7 +84,7 @@ export function LandingV3(): ReactElement {
   return (
     <div className={`ct-shell lp ${inter.variable}`}>
       <nav className="lp-nav" aria-label="Main">
-        <a className="c-brand glass" href="/"><span className="lg"><GitFork size={18} strokeWidth={2} /></span><b>Context Tree</b></a>
+        <a className="c-brand glass" href="/"><span className="lg"><BrandMark size={24} /></span><b>Context Tree</b></a>
         <div className="lp-links glass">
           {nav.links.map((l) => <a key={l.href} href={l.href}>{l.label}</a>)}
           <a className="si" href={nav.signIn.href}>{nav.signIn.label}</a>
@@ -192,7 +193,7 @@ export function LandingV3(): ReactElement {
         </section>
 
         <footer className="lp-foot">
-          <span className="bl"><span className="lg"><GitFork size={15} strokeWidth={2} /></span>Context Tree</span>
+          <span className="bl"><span className="lg"><BrandMark size={20} /></span>Context Tree</span>
           <span>{footer.tagline}</span>
           <nav aria-label="Footer">
             {footer.links.map((l) => <a key={l.label} href={l.href}>{l.label}</a>)}

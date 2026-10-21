@@ -6,6 +6,7 @@ import type { BoardSummary } from '../api/types';
 import { newId } from '../api/ids';
 import { useBoard, useSnapshot } from '../context';
 import { Icon } from './Icon';
+import { BrandMark } from './BrandMark';
 import { useEscape } from './escape';
 
 export function BrandBar(): ReactElement {
@@ -102,7 +103,7 @@ export function BrandBar(): ReactElement {
     <>
       <div className="float" data-pb="brand">
         <button ref={logoRef} type="button" className="lg" aria-label="Switch board" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-          <Icon name="git-fork" />
+          <BrandMark size={24} />
         </button>
         <b>Context Tree</b>
         {editing ? (

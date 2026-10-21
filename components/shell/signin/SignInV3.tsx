@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, GitFork, Shield } from 'lucide-react';
+import { ArrowLeft, Shield } from 'lucide-react';
 import { inter } from '@/components/board/fonts';
+import { BrandMark } from '@/components/board/chrome/BrandMark';
 import { PebbleMap } from '../map/PebbleMap';
 import { THESIS_PREVIEW } from '../map/demo-previews';
 import { safeCallback } from './safe-callback';
@@ -52,7 +53,7 @@ export function SignInV3() {
       <a className="si-back glass" href="/"><ArrowLeft size={15} strokeWidth={2} />contexttree.tech</a>
       <div className="si-wrap">
         <main className="si-sheet">
-          <div className="lg"><GitFork size={24} strokeWidth={2} /></div>
+          <div className="lg"><BrandMark size={32} /></div>
           <h1>Sign in to Context Tree</h1>
           <p className="sub">Your boards are where you left them.<br />New here? The same button makes your account.</p>
           {error && <div className="si-err" role="alert">{errorText(error)}</div>}

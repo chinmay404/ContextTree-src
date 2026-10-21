@@ -1,8 +1,9 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useRouter } from 'next/navigation';
-import { GitFork, LayoutGrid, List, Plus, Search } from 'lucide-react';
+import { LayoutGrid, List, Plus, Search } from 'lucide-react';
 import { inter } from '@/components/board/fonts';
+import { BrandMark } from '@/components/board/chrome/BrandMark';
 import { newId } from '@/components/board/api/ids';
 import { ApiError, type EngineApi } from '@/components/board/api/types';
 import { AccountPill } from '../account/AccountPill';
@@ -156,7 +157,7 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
 
   return (
     <div className={`ct-shell ct-home ${inter.variable}`}>
-      <div className="c-brand glass"><span className="lg"><GitFork size={18} strokeWidth={2} /></span><b>Context Tree</b></div>
+      <div className="c-brand glass"><span className="lg"><BrandMark size={24} /></span><b>Context Tree</b></div>
       <span className="ct-shell ct-acct-fixed"><AccountPill /></span>
 
       <main className="hin">
