@@ -274,3 +274,87 @@ describe('streamChat key errors', () => {
     expect((ev[0] as { provider?: string }).provider).toBeUndefined();
   });
 });
+
+describe('ingest kicks (engine on Vercel)', () => {
+  const processing = (id: string, over: Record<string, unknown> = {}) => ({ id, kind: 'source', status: 'processing', updatedAt: new Date().toISOString(), ...over });
+  const ingestCalls = () => fetchMock.mock.calls.filter((c) => String(c[0]).endsWith('/ingest'));
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+
+  it('uploadFile calls the ingest route after the 202 and resolves with that card', async () => {
+    let release: (r: Response) => void = () => {};
+    fetchMock.mockImplementation(async (u: string) => {
+      if (String(u).endsWith('/ingest')) return new Promise<Response>((r) => { release = r; }); // a long ingest must not hold the caller
+      return jres(processing('c1'), 202);
+    });
+    const card = await api.uploadFile('b1', { id: 'c1', file: new File(['hi'], 'a.txt'), x: 0, y: 0 });
+    expect(card).toMatchObject({ id: 'c1', status: 'processing' });
+    await flush();
+    const calls = ingestCalls();
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0]).toBe('/api/engine/boards/b1/cards/c1/ingest');
+    expect(calls[0][1].method).toBe('POST');
+    release(jres(processing('c1'), 200));
+  });
+
+  it('addLink does the same', async () => {
+    fetchMock.mockImplementation(async (u: string) => (String(u).endsWith('/ingest') ? jres({}, 200) : jres(processing('c2'), 202)));
+    await expect(api.addLink('b1', { id: 'c2', url: 'https://a.b', x: 0, y: 0 })).resolves.toMatchObject({ id: 'c2' });
+    await flush();
+    expect(ingestCalls().map((c) => c[0])).toEqual(['/api/engine/boards/b1/cards/c2/ingest']);
+  });
+
+  it('a failing ingest call is swallowed and logs only the error type', async () => {
+    const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) => vi.spyOn(console, m).mockImplementation(() => {}));
+    fetchMock.mockImplementation(async (u: string) => {
+      if (String(u).endsWith('/ingest')) throw new TypeError('network down https://secret.example/x');
+      return jres(processing('c3'), 202);
+    });
+    await expect(api.addLink('b1', { id: 'c3', url: 'https://a.b', x: 0, y: 0 })).resolves.toMatchObject({ id: 'c3' });
+    await flush(); await flush();
+    for (const s of spies) expect(JSON.stringify(s.mock.calls)).not.toContain('secret.example');
+    spies.forEach((s) => s.mockRestore());
+  });
+
+  it('a card that is not processing is not kicked', async () => {
+    fetchMock.mockImplementation(async () => jres({ id: 'c4', status: 'ready' }, 202));
+    await api.addLink('b1', { id: 'c4', url: 'https://a.b', x: 0, y: 0 });
+    await flush();
+    expect(ingestCalls()).toHaveLength(0);
+  });
+
+  describe('getBoard re-kick', () => {
+    const old = () => new Date(Date.now() - 6 * 60_000).toISOString();
+    const board = (cards: unknown[]) => ({ id: 'b1', title: 't', cards, edges: [] });
+    const serve = (cards: unknown[]) => fetchMock.mockImplementation(async (u: string) => (String(u).endsWith('/ingest') ? jres({}, 202) : jres(board(cards))));
+
+    it('kicks a source still processing after 5 minutes, at most once a minute', async () => {
+      const a = new HttpEngineApi();
+      serve([processing('s1', { updatedAt: old() }), processing('s2'), { id: 'q', kind: 'chat', status: null, updatedAt: old() }, { id: 's3', kind: 'source', status: 'ready', updatedAt: old() }]);
+      await a.getBoard('b1');
+      await flush();
+      expect(ingestCalls().map((c) => c[0])).toEqual(['/api/engine/boards/b1/cards/s1/ingest']);
+      await a.getBoard('b1');
+      await flush();
+      expect(ingestCalls()).toHaveLength(1); // within the minute
+    });
+
+    it('kicks again once a minute has passed', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      try {
+        const a = new HttpEngineApi();
+        const stale = new Date(Date.now() - 6 * 60_000).toISOString();
+        serve([processing('s1', { updatedAt: stale })]);
+        await a.getBoard('b1'); await flush();
+        vi.setSystemTime(Date.now() + 61_000);
+        await a.getBoard('b1'); await flush();
+        expect(ingestCalls()).toHaveLength(2);
+      } finally { vi.useRealTimers(); }
+    });
+
+    it('getBoard still resolves with the board when the kick fails', async () => {
+      const a = new HttpEngineApi();
+      fetchMock.mockImplementation(async (u: string) => { if (String(u).endsWith('/ingest')) throw new Error('x'); return jres(board([processing('s1', { updatedAt: old() })])); });
+      await expect(a.getBoard('b1')).resolves.toMatchObject({ id: 'b1' });
+    });
+  });
+});

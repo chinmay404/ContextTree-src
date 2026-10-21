@@ -6,6 +6,8 @@ import { resolveEngineBase } from "@/lib/engine-base";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Vercel Hobby's ceiling. The engine's ingest route works inside one request (up to ~280 s) and chat streams are long too.
+export const maxDuration = 300;
 
 const SEGMENT = /^[A-Za-z0-9_.-]+$/;
 // Allow-list: nothing else from the browser (cookies, forwarded-for, origin…) reaches the engine.
@@ -49,7 +51,8 @@ async function handler(req: Request, ctx: Ctx): Promise<Response> {
   }
   headers.set("user-agent", "ContextTree/1.0");
 
-  const isStream = path.join("/") === "chat/stream";
+  // Streams and ingest hold the request open for a long time: no header timeout, only the browser's abort.
+  const isStream = path.join("/") === "chat/stream" || (path.length >= 3 && path[path.length - 1] === "ingest");
   const hasBody = req.method !== "GET" && req.method !== "HEAD" && req.body !== null;
 
   const init: RequestInit & { duplex?: "half" } = { method: req.method, headers, redirect: "manual" };

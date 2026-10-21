@@ -9,6 +9,8 @@ import { PROVIDER_NAME } from '../lib/catalog';
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 const CUT_OFF = 'The answer was cut off';
+const STALE_PROCESSING_MS = 5 * 60_000; // a source still processing this long after its last update gets another ingest
+const KICK_EVERY_MS = 60_000;           // at most one re-kick per card per minute
 
 const isProvider = (v: unknown): v is ProviderId => typeof v === 'string' && Object.prototype.hasOwnProperty.call(PROVIDER_NAME, v);
 const CODES: StreamErrorCode[] = ['missing_key', 'key_rejected', 'unsupported_model', 'key_store_unavailable'];
@@ -35,6 +37,21 @@ function keyErrorEvent(err: ApiError): StreamEvent | null {
 
 export class HttpEngineApi implements EngineApi {
   constructor(private base = '/api/engine') {}
+
+  /** When each card was last kicked (in memory, per api instance). */
+  private kicked = new Map<Id, number>();
+
+  /**
+   * The engine runs on Vercel, where work after a response is best-effort, so ingest runs inside its own request
+   * (the browser keeps the function alive). Fire and forget: the board's normal poll shows the status change.
+   * Failures are swallowed; only the error type is logged.
+   */
+  private kickIngest(boardId: Id, cardId: Id): void {
+    this.kicked.set(cardId, Date.now());
+    void fetch(`${this.base}/boards/${enc(boardId)}/cards/${enc(cardId)}/ingest`, { method: 'POST' })
+      .then((r) => { void r.body?.cancel?.().catch(() => {}); })
+      .catch((e: unknown) => { console.debug('[ingest] kick failed:', e instanceof Error ? e.name : 'error'); });
+  }
 
   private async req<T>(method: string, path: string, body?: unknown): Promise<T> {
     let res: Response;
@@ -78,7 +95,17 @@ export class HttpEngineApi implements EngineApi {
     return (await this.req<{ boards: BoardSummary[] }>('GET', '/boards')).boards;
   }
   createBoard(input: { id: Id; title: string }) { return this.req<Board>('POST', '/boards', input); }
-  getBoard(boardId: Id) { return this.req<Board>('GET', `/boards/${enc(boardId)}`); }
+  async getBoard(boardId: Id): Promise<Board> {
+    const board = await this.req<Board>('GET', `/boards/${enc(boardId)}`);
+    const now = Date.now();
+    for (const c of board?.cards ?? []) {
+      if (c.kind !== 'source' || c.status !== 'processing') continue;
+      if (now - Date.parse(c.updatedAt) < STALE_PROCESSING_MS) continue;
+      if (now - (this.kicked.get(c.id) ?? 0) < KICK_EVERY_MS) continue;
+      this.kickIngest(boardId, c.id);
+    }
+    return board;
+  }
   async updateBoard(boardId: Id, patch: { title?: string; viewport?: Board['viewport'] }): Promise<void> {
     await this.req('PATCH', `/boards/${enc(boardId)}`, patch);
   }
@@ -131,11 +158,17 @@ export class HttpEngineApi implements EngineApi {
     } catch {
       throw new ApiError(503, 'engine_unavailable');
     }
-    return this.handle<Card>(res);
+    return this.afterAccepted(boardId, await this.handle<Card>(res));
   }
 
-  addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string }) {
-    return this.req<Card>('POST', `/boards/${enc(boardId)}/sources/link`, input);
+  async addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card> {
+    return this.afterAccepted(boardId, await this.req<Card>('POST', `/boards/${enc(boardId)}/sources/link`, input));
+  }
+
+  /** A 202 card still processing: start its ingest, then hand the card back as before. */
+  private afterAccepted(boardId: Id, card: Card): Card {
+    if (card?.status === 'processing') this.kickIngest(boardId, card.id);
+    return card;
   }
 
   async streamChat(req: ChatRequest, onEvent: (e: StreamEvent) => void, signal?: AbortSignal): Promise<void> {

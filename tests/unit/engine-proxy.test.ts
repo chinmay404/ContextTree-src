@@ -246,6 +246,25 @@ describe("engine proxy", () => {
     expect(signal!.aborted).toBe(true);
   });
 
+  it("ingest holds its request open: no header timeout, abort follows the browser", async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    fetchMock.mockImplementation(async (_u: string, init: RequestInit) => {
+      signal = init.signal!;
+      return new Response("{}", { status: 200 });
+    });
+    const p = POST(new Request("http://t/api/engine/boards/b1/cards/c1/ingest", { method: "POST" }), ctx("boards", "b1", "cards", "c1", "ingest"));
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(signal!.aborted).toBe(false);
+    expect((await p).status).toBe(200);
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/v1/boards/b1/cards/c1/ingest");
+  });
+
+  it("allows the longest Vercel Hobby duration", async () => {
+    const mod = await import("@/app/api/engine/[...path]/route");
+    expect(mod.maxDuration).toBe(300);
+  });
+
   it("accept: text/event-stream on another path still gets the header timeout", async () => {
     vi.useFakeTimers();
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
