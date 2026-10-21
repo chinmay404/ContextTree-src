@@ -2,12 +2,36 @@ import { parseSse } from '@/lib/sse';
 import {
   ApiError,
   type Board, type BoardSummary, type Card, type CardCreate, type CardPatch, type ChatRequest,
-  type Edge, type EngineApi, type Id, type Message, type Reads, type StreamEvent,
+  type Edge, type EngineApi, type Id, type Message, type ProviderId, type Reads, type StreamErrorCode, type StreamEvent,
 } from './types';
+import { PROVIDER_NAME } from '../lib/catalog';
 
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 const CUT_OFF = 'The answer was cut off';
+
+const isProvider = (v: unknown): v is ProviderId => typeof v === 'string' && Object.prototype.hasOwnProperty.call(PROVIDER_NAME, v);
+const CODES: StreamErrorCode[] = ['missing_key', 'key_rejected', 'unsupported_model', 'key_store_unavailable'];
+const isCode = (v: unknown): v is StreamErrorCode => CODES.includes(v as StreamErrorCode);
+
+/**
+ * The engine answers a V3 turn's key problems before streaming (400 missing_key / unsupported_model, 503
+ * key_store_unavailable, 500 server_error). The board shows those as an error on the chat, not as a thrown request.
+ */
+function keyErrorEvent(err: ApiError): StreamEvent | null {
+  const detail = err.message !== err.code ? err.message : undefined;
+  if (err.code === 'missing_key' && err.status === 400) {
+    const provider = isProvider(detail) ? detail : undefined;
+    return { type: 'error', code: 'missing_key', message: provider ? `No ${PROVIDER_NAME[provider]} key` : 'No key for this model', ...(provider ? { provider } : {}) };
+  }
+  if (err.code === 'unsupported_model' && err.status === 400) return { type: 'error', code: 'unsupported_model', message: "This model isn't available any more" };
+  if (err.code === 'key_store_unavailable' && err.status === 503) {
+    const provider = isProvider(detail) ? detail : undefined;
+    return { type: 'error', code: 'key_store_unavailable', message: "Your keys can't be read right now. Try again in a minute.", ...(provider ? { provider } : {}) };
+  }
+  if (err.code === 'server_error' && err.status === 500) return { type: 'error', message: 'Something went wrong on our side. Try again in a minute.' };
+  return null;
+}
 
 export class HttpEngineApi implements EngineApi {
   constructor(private base = '/api/engine') {}
@@ -144,7 +168,13 @@ export class HttpEngineApi implements EngineApi {
       if (isAbort(e) || signal?.aborted) throw abortError();
       throw new ApiError(503, 'engine_unavailable');
     }
-    if (!res.ok) throw await this.toError(res);
+    if (!res.ok) {
+      const err = await this.toError(res);
+      const ev = keyErrorEvent(err);
+      if (!ev) throw err;
+      onEvent(ev);
+      return;
+    }
     if (!res.body) {
       onEvent({ type: 'error', message: CUT_OFF });
       return;
@@ -154,11 +184,17 @@ export class HttpEngineApi implements EngineApi {
     const decoder = new TextDecoder();
     let carry = '';
     let finished = false;
+    let coded = false; // a coded error frame (key_rejected) ends the stream without [DONE]
     const emit = (events: unknown[]) => {
       for (const ev of events) {
         const p = ev as Record<string, any> | null;
         if (!p) continue;
-        if (p.error) { onEvent({ type: 'error', message: String(p.error) }); continue; }
+        if (p.error) {
+          const code = isCode(p.code) ? p.code : undefined;
+          if (code) coded = true;
+          onEvent({ type: 'error', message: String(p.error), ...(code ? { code } : {}), ...(code && isProvider(p.provider) ? { provider: p.provider } : {}) });
+          continue;
+        }
         if (typeof p.summary === 'string' && p.summary) onEvent({ type: 'summary', text: p.summary });
         if (p.web_search?.results) onEvent({ type: 'web', results: p.web_search.results });
         const chunk = p.message ?? p.delta;
@@ -192,7 +228,8 @@ export class HttpEngineApi implements EngineApi {
       try { await reader.cancel(); } catch { /* ignore */ }
       try { reader.releaseLock(); } catch { /* ignore */ }
     }
-    onEvent(finished ? { type: 'done' } : { type: 'error', message: CUT_OFF });
+    if (finished) onEvent({ type: 'done' });
+    else if (!coded) onEvent({ type: 'error', message: CUT_OFF });
   }
 
   rawFileUrl(cardId: Id): string | null {

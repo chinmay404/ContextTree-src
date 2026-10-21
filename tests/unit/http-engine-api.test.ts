@@ -230,3 +230,47 @@ describe('hardening', () => {
 describe('rawFileUrl', () => {
   it('points at the proxy', () => expect(api.rawFileUrl('c_1')).toBe('/api/engine/files/c_1/raw'));
 });
+
+describe('streamChat key errors', () => {
+  const req: ChatRequest = {
+    boardId: 'b1', chatId: 'q1', messageId: 'm1', message: 'hi', model: 'm', systemPrompt: '',
+    temperature: null, maxOutputTokens: null, lastKMessages: null, externalContextTopK: 5, webSearch: false,
+  };
+  const run = async () => { const ev: StreamEvent[] = []; await api.streamChat(req, (e) => ev.push(e)); return ev; };
+
+  it('400 missing_key becomes a coded error event and resolves', async () => {
+    fetchMock.mockResolvedValue(jres({ error: 'missing_key', detail: 'anthropic' }, 400));
+    expect(await run()).toEqual([{ type: 'error', code: 'missing_key', provider: 'anthropic', message: 'No Anthropic key' }]);
+  });
+  it('400 unsupported_model carries a code only', async () => {
+    fetchMock.mockResolvedValue(jres({ error: 'unsupported_model', detail: 'z-ai/glm' }, 400));
+    expect(await run()).toEqual([{ type: 'error', code: 'unsupported_model', message: "This model isn't available any more" }]);
+  });
+  it('503 key_store_unavailable becomes a coded error with the provider', async () => {
+    fetchMock.mockResolvedValue(jres({ error: 'key_store_unavailable', detail: 'openai' }, 503));
+    const ev = await run();
+    expect(ev).toHaveLength(1);
+    expect(ev[0]).toMatchObject({ type: 'error', code: 'key_store_unavailable', provider: 'openai' });
+  });
+  it('500 server_error becomes a plain error event with generic text', async () => {
+    fetchMock.mockResolvedValue(jres({ error: 'server_error', detail: 'secret operator detail' }, 500));
+    const ev = await run();
+    expect(ev).toHaveLength(1);
+    expect(ev[0]).toMatchObject({ type: 'error' });
+    expect(JSON.stringify(ev)).not.toContain('secret operator detail');
+  });
+  it('a key_rejected frame passes code and provider through and no done follows', async () => {
+    fetchMock.mockResolvedValue(sseRes(['data: {"error":"x","code":"key_rejected","provider":"openai"}\n\n']));
+    expect(await run()).toEqual([{ type: 'error', message: 'x', code: 'key_rejected', provider: 'openai' }]);
+  });
+  it('any other 400 still throws ApiError', async () => {
+    fetchMock.mockResolvedValue(jres({ error: 'bad_request' }, 400));
+    await expect(run()).rejects.toBeInstanceOf(ApiError);
+  });
+  it('a 400 with an unknown provider detail does not invent a provider', async () => {
+    fetchMock.mockResolvedValue(jres({ error: 'missing_key', detail: 'nope' }, 400));
+    const ev = await run();
+    expect(ev[0]).toMatchObject({ code: 'missing_key' });
+    expect((ev[0] as { provider?: string }).provider).toBeUndefined();
+  });
+});
