@@ -20,3 +20,22 @@
 .ct-shell .glass { background: var(--glass-bg); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); box-shadow: var(--sh-float); }
 .ct-shell.dotted, .ct-shell .dotted { background-color: var(--pb-canvas); background-image: radial-gradient(circle at 12px 12px, var(--dot) 0 .75px, transparent 1px); background-size: 24px 24px; }
 @media (prefers-reduced-transparency: reduce) { .ct-shell .glass { background: var(--glass-solid); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+
+/* Buttons (mockup .btn) */
+.ct-shell .btn { height: 44px; padding: 0 20px; border-radius: 999px; font-size: 14px; font-weight: 600; background: var(--pb-fill); display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; text-decoration: none; color: var(--t1); transition: transform 120ms var(--ease-out); }
+.ct-shell .btn:active { transform: scale(.97); }
+.ct-shell .btn.primary { background: var(--pb-ink); color: #fff; }
+.ct-shell .btn.white { background: var(--glass-bg); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); box-shadow: var(--sh-float); }
+.ct-shell .btn.big { height: 54px; padding: 0 26px; font-size: 16px; }
+.ct-shell .btn[disabled] { opacity: .6; cursor: default; }
+
+/* Menus (mockup .menu / .mi) */
+.ct-shell .menu { position: absolute; z-index: 65; min-width: 250px; padding: 8px; border-radius: var(--r-card); background: var(--glass-bg); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); box-shadow: 0 0 0 .5px var(--hairline), var(--sh-card); }
+.ct-shell .menu .mi { width: 100%; display: flex; align-items: center; gap: 12px; padding: 6px 12px 6px 6px; border-radius: var(--r-row); font-size: 14px; font-weight: 600; text-align: left; color: var(--t1); }
+.ct-shell .menu .mi:hover, .ct-shell .menu .mi:focus-visible { background: rgba(0,0,0,.05); outline: none; }
+.ct-shell .menu .mi .c { width: 36px; height: 36px; border-radius: 18px; display: grid; place-items: center; flex: none; background: var(--pb-fill); color: var(--pb-ink); }
+.ct-shell .menu .mi .r { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--t3); }
+.ct-shell .menu .mi.danger { color: #B4244A; }
+.ct-shell .menu .mi.danger .c { background: #F6E0E6; color: var(--failed); }
+.ct-shell .menu .sep { height: .5px; background: var(--hairline); margin: 6px 12px; }
+@media (prefers-reduced-transparency: reduce) { .ct-shell .btn.white, .ct-shell .menu { background: var(--glass-solid); -webkit-backdrop-filter: none; backdrop-filter: none; } }

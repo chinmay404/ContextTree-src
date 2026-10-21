@@ -5,6 +5,8 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, GitFork, Shield } from 'lucide-react';
 import { inter } from '@/components/board/fonts';
+import { PebbleMap } from '../map/PebbleMap';
+import { THESIS_PREVIEW } from '../map/demo-previews';
 import { safeCallback } from './safe-callback';
 import '../tokens.css';
 import './signin.css';
@@ -22,28 +24,10 @@ const ERRORS: Record<string, string> = {
 };
 const errorText = (e: string) => ERRORS[e] ?? 'Unable to sign in.';
 
-/** Faint backdrop: a zoomed-out board (desks, pebbles, strings). Static until the shell's PebbleMap lands (plan Task 12). */
-const DESKS = [
-  { x: 40, y: 330, w: 330, h: 250, l: 'Commons' }, { x: 500, y: 90, w: 300, h: 200, l: 'Ostrom' },
-  { x: 500, y: 500, w: 330, h: 260, l: 'Cities' }, { x: 980, y: 60, w: 330, h: 180, l: 'Rules' },
-  { x: 980, y: 330, w: 330, h: 180, l: 'Gaps' }, { x: 980, y: 640, w: 330, h: 190, l: 'Survey' },
-];
-const PEBBLES: [number, number, string][] = [
-  [70, 360, '#F3EBCF'], [150, 360, '#F3EBCF'], [230, 360, '#F3EBCF'], [70, 440, '#DCE9F2'],
-  [530, 120, '#F3EBCF'], [530, 530, '#F3EBCF'], [610, 530, '#DDE3EE'], [1010, 670, '#E0EBD9'],
-  [1010, 100, '#ECECF0'], [1010, 370, '#ECECF0'],
-];
-const STRINGS = ['M370 450 C470 450 400 190 500 190', 'M370 470 C450 470 420 630 500 630', 'M800 190 C900 190 880 150 980 150', 'M830 630 C900 630 900 420 980 420', 'M830 640 C900 640 920 730 980 730'];
-
 function Backdrop() {
   return (
     <div className="si-bg" aria-hidden="true">
-      <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
-        {DESKS.map((d) => <rect key={d.l} x={d.x} y={d.y} width={d.w} height={d.h} rx={36} fill="#EBEBF0" />)}
-        {STRINGS.map((s) => <path key={s} d={s} fill="none" stroke="#D2D2D7" strokeWidth={7} strokeLinecap="round" />)}
-        {PEBBLES.map(([x, y, c]) => <rect key={`${x}-${y}`} x={x} y={y} width={64} height={64} rx={20} fill={c} />)}
-        {DESKS.map((d) => <text key={d.l} x={d.x + 22} y={d.y + 26} fontSize={15} fontWeight={700} fill="#6E6E73">{d.l}</text>)}
-      </svg>
+      <PebbleMap preview={THESIS_PREVIEW} title="a research board" detail pad={40} size={[1440, 900]} />
     </div>
   );
 }
