@@ -3,7 +3,7 @@
 import './branch-sheet.css';
 import { useCallback, useLayoutEffect, useRef, type CSSProperties, type KeyboardEvent, type ReactElement } from 'react';
 import type { AdvancedSettings, Card, Carry } from '../api/types';
-import { FAMC, PERSONAS } from '../lib/catalog';
+import { FAMC, PERSONAS, providerOf } from '../lib/catalog';
 import { cut } from '../lib/format';
 import { chatData, famOf, qNum } from '../lib/graph';
 import { foldPiles, isRead } from '../lib/reads';
@@ -98,7 +98,7 @@ export function BranchSheet(): ReactElement {
         <div className="grp">
           <div className="fl">Model</div>
           <ModelPicker value={d.model} onChange={(m) => store.setDraft({ model: m })}
-            isLocked={props.isModelLocked} onLockedClick={(m) => props.onOpenSettings?.(m.split('/')[0])} />
+            isLocked={props.isModelLocked} onLockedClick={(m) => props.onOpenSettings?.(providerOf(m) ?? undefined)} />
         </div>
         <div className="grp">
           <div className="fl">Persona</div>

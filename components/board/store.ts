@@ -42,7 +42,9 @@ export interface BoardSnapshot { version: number; status: 'loading' | 'ready' | 
 /** What only the engine's view knows: a pile's front member, and a card's dragged position that is not saved yet. */
 export interface ViewProbe { front(pileId: Id): number; pos(id: Id): [number, number] | null }
 
-export interface StoreOptions { pollMs?: number; readsDebounceMs?: number; toastMs?: number }
+export interface StoreOptions { pollMs?: number; readsDebounceMs?: number; toastMs?: number;
+  /** Engine id for new question chats that have no parent (the shell passes a model the user has a key for). */
+  defaultModel?: string }
 
 // ---- helpers ----
 
@@ -132,6 +134,7 @@ export class BoardStore {
   private readonly deleted = new Map<Id, { ids: Id[]; roots: Id[]; edges: Edge[]; done: Promise<boolean>; dissolved?: { pile: Card; members: Id[]; added: Id[]; gone: Edge[] } }>();
   private probe: ViewProbe | null = null;
   private disposed = false;
+  private defaultModel: string;
 
   private readonly changeListeners = new Set<(c: StoreChange[]) => void>();
   private readonly subscribers = new Set<() => void>();
@@ -140,6 +143,7 @@ export class BoardStore {
     this.pollMs = opts.pollMs ?? 2000;
     this.readsDebounceMs = opts.readsDebounceMs ?? 150;
     this.toastMs = opts.toastMs ?? 10000;
+    this.defaultModel = opts.defaultModel ?? MODELS[DEFAULT_MODEL_KEY].engineId;
   }
 
   // ---- subscription ----
@@ -1006,7 +1010,7 @@ export class BoardStore {
     const draft: BranchDraft = {
       name: base ? base.name : o.mode === 'root' ? 'A new question' : 'New question, same desk',
       first: o.first ?? '',
-      model: base?.model ?? (parent?.kind === 'chat' ? (parent.data as ChatData).model : MODELS[DEFAULT_MODEL_KEY].engineId),
+      model: base?.model ?? (parent?.kind === 'chat' ? (parent.data as ChatData).model : this.defaultModel),
       persona: base?.persona ?? 'none',
       personaText: base?.systemPrompt ?? '',
       inheritDesk: base?.inheritDesk ?? true,
@@ -1110,6 +1114,18 @@ export class BoardStore {
   isStreaming(chatId: Id): boolean {
     const s = this.streams.get(chatId);
     return !!s && !s.error;
+  }
+
+  /** The shell may learn which model has a key after the board mounted. */
+  setDefaultModel(engineId: string | undefined): void { this.defaultModel = engineId ?? MODELS[DEFAULT_MODEL_KEY].engineId; }
+
+  /** The shell's first question: sends to `<board>_q1` when that chat exists, has no messages and is idle. True if it sent. */
+  askFirst(text: string): boolean {
+    const id = `${this.boardId}_q1`, card = this.cards.get(id);
+    if (!text.trim() || !card || card.kind !== 'chat' || this.disposed) return false;
+    if ((card.messageCount ?? 0) > 0 || (this.messages.get(id)?.length ?? 0) > 0 || this.streams.has(id)) return false;
+    void this.send(id, text);
+    return true;
   }
 
   async send(chatId: Id, text: string): Promise<void> {

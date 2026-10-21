@@ -1,6 +1,7 @@
 import { ApiError } from './api/types';
 import type { SourceData } from './api/types';
 import { MockEngineApi } from './api/mock/mock-engine-api';
+import { MODELS } from './lib/catalog';
 import { BoardStore, type StoreChange } from './store';
 
 const flush = async () => { for (let i = 0; i < 12; i++) await new Promise((r) => setTimeout(r, 0)); };
@@ -386,5 +387,43 @@ describe('piles merge', () => {
     expect(wires.some((e) => e.from === 'csv' && e.to === 'main')).toBe(false);
     expect(wires.some((e) => e.from === pile && e.to === 'main')).toBe(false);
     expect(wires.some((e) => e.from === pile && e.to === 'deep')).toBe(true);
+  });
+});
+
+describe('first question and default model from the shell', () => {
+  const fresh = async (opts = {}) => {
+    await m.createBoard({ id: 'b_new', title: 'New' });
+    const st = new BoardStore(m, 'b_new', { readsDebounceMs: 5, toastMs: 5000, ...opts });
+    await st.load();
+    return st;
+  };
+
+  it('askFirst sends to q1 once, and only when q1 is empty and idle', async () => {
+    const st = await fresh();
+    expect(st.askFirst('Why?')).toBe(true);
+    await flush();
+    expect(st.getSnapshot().messages.get('b_new_q1')![0]).toMatchObject({ role: 'user', content: 'Why?' });
+    expect(st.askFirst('Again?')).toBe(false);
+    st.dispose();
+  });
+
+  it('askFirst is false while q1 is streaming, when q1 has messages, and when there is no q1', async () => {
+    const st = await fresh();
+    void st.send('b_new_q1', 'busy');
+    expect(st.askFirst('x')).toBe(false);
+    await flush(); await new Promise((r) => setTimeout(r, 50));
+    expect(st.askFirst('x')).toBe(false);
+    st.dispose();
+    expect(s.askFirst('Why?')).toBe(false);   // the seed board has no b_seed_q1
+    expect(s.askFirst('')).toBe(false);
+  });
+
+  it('a new question chat takes the shell default model', async () => {
+    const st = await fresh({ defaultModel: MODELS.gemini.engineId });
+    st.openDialog({ mode: 'root', at: [0, 0] });
+    expect(st.getSnapshot().ui.dialog!.draft.model).toBe(MODELS.gemini.engineId);
+    st.dispose();
+    s.openDialog({ mode: 'root', at: [0, 0] });
+    expect(s.getSnapshot().ui.dialog!.draft.model).toBe(MODELS.gpt.engineId);
   });
 });
