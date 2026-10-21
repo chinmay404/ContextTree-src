@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { ShellProvider, useShell } from '@/components/shell/shell-context';
 import { AccountPill } from '@/components/shell/account/AccountPill';
 import { Board } from './Board';
-import { BoardList } from './board-list';
+import { BoardsHome } from '@/components/shell/home/BoardsHome';
 import { HttpEngineApi } from './api/http';
 import { guardFirstLoad } from './first-load-guard';
 import type { ApiError, EngineApi } from './api/types';
@@ -16,6 +16,8 @@ import './board-route.css';
 
 /** Pebble board token (--pb-canvas): the board paints only inside .pb-root, so the page behind it must match. */
 const PB_CANVAS = '#F5F5F7';
+/** The boards home sits on the desk grey (--pb-desk). */
+const HOME_BG = '#EBEBF0';
 
 /** null while the dev mock is still loading. The mock is a dynamic import that production builds drop. */
 function useEngineApi(mock: boolean): EngineApi | null {
@@ -24,7 +26,11 @@ function useEngineApi(mock: boolean): EngineApi | null {
   useEffect(() => {
     if (process.env.NODE_ENV === 'production' || !mock) return;
     let live = true;
-    void import('./api/dev-mock').then((m) => { if (live) setMockApi(m.getSharedMockApi()); });
+    void import('./api/dev-mock').then((m) => {
+      // Dev only: ?fail=<method> makes that call answer 503 once (e.g. ?fail=listBoards).
+      const fail = new URLSearchParams(window.location.search).get('fail');
+      if (live) setMockApi(m.getSharedMockApi({ fail: fail ?? undefined }));
+    });
     return () => { live = false; };
   }, [mock]);
   return mock ? mockApi : real;
@@ -35,19 +41,22 @@ function useEngineApi(mock: boolean): EngineApi | null {
  * The app's root ThemeProvider (dark default) applies its class after our nested one, so the light class is
  * re-asserted whenever <html> changes.
  */
-function LightScope({ children }: { children: React.ReactNode }): ReactElement {
+function LightScope({ children, bg = PB_CANVAS }: { children: React.ReactNode; bg?: string }): ReactElement {
   useEffect(() => {
     const html = document.documentElement;
     const els = [html, document.body];
     const prev = els.map((e) => e.style.backgroundColor);
     const prevClass = html.className;
     const prevScheme = html.style.colorScheme;
+    const probe = document.createElement('i');
+    probe.style.backgroundColor = bg;
+    const want = probe.style.backgroundColor; // normalised, e.g. rgb(235, 235, 240)
     // Only write when something differs: our own writes re-trigger the observer.
     const apply = () => {
       if (html.classList.contains('dark')) html.classList.remove('dark');
       if (!html.classList.contains('light')) html.classList.add('light');
       if (html.style.colorScheme !== 'light') html.style.colorScheme = 'light';
-      els.forEach((e) => { if (e.style.backgroundColor !== 'rgb(245, 245, 247)') e.style.backgroundColor = PB_CANVAS; });
+      els.forEach((e) => { if (e.style.backgroundColor !== want) e.style.backgroundColor = bg; });
     };
     apply();
     const mo = new MutationObserver(apply);
@@ -58,7 +67,7 @@ function LightScope({ children }: { children: React.ReactNode }): ReactElement {
       html.style.colorScheme = prevScheme;
       els.forEach((e, i) => { e.style.backgroundColor = prev[i]; });
     };
-  }, []);
+  }, [bg]);
   return (
     <ThemeProvider attribute="class" forcedTheme="light" enableSystem={false}>
       {children}
@@ -158,15 +167,8 @@ export function BoardsRoute({ mock = false }: { mock?: boolean }): ReactElement 
   const api = useEngineApi(mock);
   return (
     <ShellProvider mock={mock}>
-      <LightScope>
-        {gate === 'loading' || !api ? (
-          <Splash />
-        ) : (
-          <>
-            <BoardList api={api} query={mock ? '?api=mock' : ''} />
-            <span className="ct-shell ct-acct-fixed"><AccountPill /></span>
-          </>
-        )}
+      <LightScope bg={HOME_BG}>
+        {gate === 'loading' || !api ? <Splash /> : <BoardsHome api={api} query={mock ? '?api=mock' : ''} />}
       </LightScope>
     </ShellProvider>
   );

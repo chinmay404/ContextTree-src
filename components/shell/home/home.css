@@ -1,0 +1,110 @@
+/* C: boards home (mockup C, C·list, C·m). Tokens come from ../tokens.css. */
+.ct-shell.ct-home { position: fixed; inset: 0; overflow: auto; background: var(--pb-desk); }
+.ct-home .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ct-home .c-brand { position: fixed; top: 16px; left: 16px; z-index: 20; height: 56px; display: flex; align-items: center; gap: 10px; padding: 8px 22px 8px 8px; border-radius: 999px; }
+.ct-home .c-brand .lg { width: 40px; height: 40px; border-radius: 20px; background: var(--pb-ink); color: #fff; display: grid; place-items: center; }
+.ct-home .c-brand b { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+.ct-home .hin { max-width: 1216px; margin: 0 auto; padding: 112px 24px 64px; }
+.ct-home .greet { margin: 0; text-align: center; font-size: 64px; font-weight: 700; letter-spacing: -.02em; line-height: 1; overflow-wrap: anywhere; }
+.ct-home .greet-sub { text-align: center; margin: 14px 0 0; font-size: 16px; color: var(--t2); }
+.ct-home .greet-sub b { color: var(--t1); font-weight: 600; }
+.ct-home .rowh { display: flex; align-items: center; gap: 10px; margin: 56px 0 18px; }
+.ct-home .rowh h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+.ct-home .rowh .chip { font-size: 11px; font-weight: 700; background: var(--pb-fill); color: var(--t2); padding: 3px 9px; border-radius: 999px; }
+.ct-home .rowh .sp { flex: 1; }
+
+.ct-home .starters { display: flex; gap: 16px; overflow-x: auto; scrollbar-width: none; padding: 4px 4px 8px; margin: -4px -4px -8px; }
+.ct-home .starters::-webkit-scrollbar { display: none; }
+.ct-home .st { flex: none; width: 214px; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; text-align: left; }
+.ct-home .st .pv { display: block; height: 136px; border-radius: var(--r-card); box-shadow: inset 0 0 0 .5px var(--hairline); background-color: var(--pb-canvas); background-image: radial-gradient(circle at 6px 6px, var(--dot) 0 .6px, transparent .9px); background-size: 12px 12px; overflow: hidden; position: relative; transition: transform 160ms var(--ease-out), box-shadow 160ms; }
+.ct-home .st .pv svg { width: 100%; height: 100%; display: block; }
+.ct-home .st:hover .pv, .ct-home .st:focus-visible .pv { box-shadow: 0 0 0 2px var(--pb-accent); }
+.ct-home .st:active .pv { transform: scale(.98); }
+.ct-home .st .nm { display: block; margin-top: 10px; font-size: 14.5px; font-weight: 700; line-height: 1.25; }
+.ct-home .st .ds { display: block; margin-top: 2px; font-size: 12.5px; color: var(--t2); line-height: 1.35; }
+.ct-home .st.blank .pv { background-image: none; background-color: #fff; display: grid; place-items: center; }
+.ct-home .st.blank .pv > span { width: 48px; height: 48px; border-radius: 24px; background: var(--pb-ink); color: #fff; display: grid; place-items: center; }
+.ct-home .st[aria-disabled="true"] { cursor: default; }
+.ct-home .st[aria-disabled="true"]:hover .pv { box-shadow: inset 0 0 0 .5px var(--hairline); }
+
+.ct-home .tools { display: flex; align-items: center; gap: 8px; }
+.ct-home .search, .ct-home .sortp { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 999px; background: var(--glass-bg); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); box-shadow: 0 0 0 .5px var(--hairline); color: var(--t3); font-size: 14px; }
+.ct-home .search { width: 280px; }
+.ct-home .search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; color: var(--t1); font-size: 14px; }
+.ct-home .search input::placeholder { color: var(--t3); }
+.ct-home .search:focus-within { box-shadow: 0 0 0 .5px var(--hairline), 0 0 0 2px var(--pb-accent); }
+.ct-home .sortp { font-weight: 600; color: var(--t1); }
+.ct-home .sortp span { color: var(--t3); font-weight: 500; }
+.ct-home .sortp select { border: 0; background: none; outline: none; font-weight: 600; font-size: 14px; cursor: pointer; }
+.ct-home .seg { display: flex; padding: 4px; border-radius: 999px; background: var(--pb-fill); gap: 2px; }
+.ct-home .seg button { width: 36px; height: 32px; border-radius: 999px; display: grid; place-items: center; color: var(--t2); }
+.ct-home .seg button.on { background: #fff; color: var(--t1); box-shadow: 0 0 0 .5px var(--hairline), 0 1px 3px rgba(0,0,0,.12); }
+
+.ct-home .bgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 1100px) { .ct-home .bgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .ct-home .bgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ct-home .bc { position: relative; background: #fff; border-radius: var(--r-card); padding: 8px; box-shadow: var(--sh-card); }
+.ct-home .bc .pv { display: block; width: 100%; height: 168px; border-radius: var(--r-tile); overflow: hidden; background-color: var(--pb-canvas); background-image: radial-gradient(circle at 6px 6px, var(--dot) 0 .6px, transparent .9px); background-size: 12px 12px; }
+.ct-home .bc .pv svg { width: 100%; height: 100%; display: block; }
+.ct-home .bc.skel .pv { background-color: var(--pb-fill); }
+.ct-home .bc .info { display: flex; align-items: flex-start; gap: 8px; padding: 12px 8px 6px 10px; }
+.ct-home .tx { min-width: 0; flex: 1; text-align: left; display: block; }
+.ct-home .bc .tx b, .ct-home .lr .tx b { display: block; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct-home .bc .tx span { display: block; margin-top: 3px; font-size: 12.5px; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct-home .bc .tx span.when { margin-top: 1px; color: var(--t3); }
+.ct-home .rn-input { flex: 1; min-width: 0; height: 40px; border-radius: var(--r-row); border: 0; box-shadow: 0 0 0 2px var(--pb-accent); padding: 0 12px; background: #fff; font-size: 15px; font-weight: 600; outline: none; }
+.ct-home .bmenu-wrap { position: relative; flex: none; }
+.ct-home .more { width: 32px; height: 32px; border-radius: 16px; display: grid; place-items: center; color: var(--t2); flex: none; }
+.ct-home .more:hover, .ct-home .more.on { background: var(--pb-fill); color: var(--t1); }
+.ct-home .menu.bmenu { right: 0; top: 36px; width: 230px; min-width: 0; }
+
+.ct-home .blist { background: #fff; border-radius: var(--r-card); box-shadow: var(--sh-card); padding: 6px 8px; }
+.ct-home .lr { display: grid; grid-template-columns: 76px minmax(0, 1fr) 200px 140px 40px; gap: 16px; align-items: center; padding: 10px; border-top: .5px solid var(--hairline); position: relative; }
+.ct-home .lr:first-child { border-top: 0; }
+.ct-home .lr.head { font-size: 12px; font-weight: 700; color: var(--t3); padding: 10px 10px 8px; }
+.ct-home .lr .th { display: block; width: 76px; height: 50px; border-radius: var(--r-tile); overflow: hidden; background-color: var(--pb-canvas); background-image: radial-gradient(circle at 4px 4px, var(--dot) 0 .5px, transparent .8px); background-size: 8px 8px; }
+.ct-home .lr .th svg { width: 100%; height: 100%; display: block; }
+.ct-home .lr .s { display: block; font-size: 12.5px; color: var(--t2); margin-top: 2px; }
+.ct-home .lr .w { font-size: 14px; color: var(--t2); }
+.ct-home .dotrow { display: inline-flex; gap: 4px; }
+.ct-home .dotrow i { width: 9px; height: 9px; border-radius: 5px; }
+
+.ct-home .note { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; color: var(--failed); font-weight: 600; }
+.ct-home .nomatch { color: var(--t2); text-align: center; margin: 32px 0; }
+.ct-home .emptyd { border-radius: var(--r-sheet); box-shadow: inset 0 0 0 1px var(--pb-edge); padding: 44px 24px; text-align: center; }
+.ct-home .emptyd h3 { margin: 0 0 6px; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.ct-home .emptyd p { margin: 0 auto; font-size: 15px; color: var(--t2); line-height: 1.5; max-width: 34em; }
+
+.ct-home .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.24); display: grid; place-items: center; z-index: 80; padding: 16px; }
+.ct-home .sheet { background: #fff; border-radius: var(--r-sheet); padding: 28px; width: min(420px, 100%); box-shadow: var(--sh-lift); }
+.ct-home .sheet p { margin: 0 0 22px; font-size: 16px; line-height: 1.45; overflow-wrap: anywhere; }
+.ct-home .sheet-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.ct-home .toasts { position: fixed; left: 0; right: 0; bottom: 24px; display: grid; justify-items: center; gap: 8px; z-index: 90; pointer-events: none; }
+.ct-home .toast { pointer-events: auto; display: flex; align-items: center; gap: 16px; border-radius: 999px; padding: 8px 8px 8px 20px; font-size: 14px; font-weight: 600; }
+.ct-home .undo { height: 32px; padding: 0 14px; border-radius: 999px; background: var(--pb-ink); color: #fff; font-weight: 600; }
+
+@media (max-width: 700px) {
+  .ct-home .c-brand { top: 12px; left: 12px; height: 48px; padding: 6px 14px 6px 6px; gap: 8px; }
+  .ct-home .c-brand b { font-size: 17px; }
+  .ct-home .c-brand .lg { width: 34px; height: 34px; }
+  .ct-shell.ct-acct-fixed { top: 12px; right: 12px; }
+  .ct-home .hin { padding: 88px 16px 40px; }
+  .ct-home .greet { font-size: 40px; text-align: left; }
+  .ct-home .greet-sub { text-align: left; font-size: 15px; }
+  .ct-home .rowh { margin: 36px 0 14px; flex-wrap: wrap; }
+  .ct-home .rowh h2 { font-size: 18px; }
+  .ct-home .rowh .btn { height: 36px; padding: 0 12px; font-size: 13px; }
+  .ct-home .rowh .chip { display: none; }
+  .ct-home .st { width: 150px; }
+  .ct-home .st .pv { height: 104px; border-radius: 20px; }
+  .ct-home .st .ds { display: none; }
+  .ct-home .tools { width: 100%; order: 3; }
+  .ct-home .tools .search { width: auto; flex: 1; }
+  .ct-home .tools .sortp, .ct-home .tools .seg { display: none; }
+  .ct-home .lr { grid-template-columns: 60px minmax(0, 1fr) 32px; gap: 12px; padding: 10px 4px; }
+  .ct-home .lr .th { width: 60px; height: 44px; }
+  .ct-home .lr .w, .ct-home .lr .dr, .ct-home .lr.head { display: none; }
+  .ct-home .lr .tx b { font-size: 14.5px; }
+  .ct-home .blist { padding: 4px 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .ct-home .st .pv { transition: none; } }

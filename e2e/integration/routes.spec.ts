@@ -31,32 +31,35 @@ test('New board creates a board and opens it', async ({ page }) => {
 
 test('rename, delete with confirm, and Undo', async ({ page }) => {
   await page.goto('/boards?api=mock');
-  const rows = page.locator('[data-board-row]');
+  const rows = page.locator('[data-board-card]');
   await expect(rows.first()).toBeVisible();
   const before = await rows.count();
 
-  await rows.first().getByRole('button', { name: 'Rename' }).click();
+  await rows.first().getByRole('button', { name: /^Options for/ }).click();
+  await page.getByRole('menuitem', { name: 'Rename' }).click();
   const input = page.getByRole('textbox', { name: 'Board name' });
   await input.fill('Renamed by test');
   await input.press('Enter');
-  await expect(page.getByText('Renamed by test')).toBeVisible();
+  await expect(page.locator('.ttl').filter({ hasText: 'Renamed by test' })).toBeVisible();
 
-  await rows.first().getByRole('button', { name: 'Delete' }).click();
-  await page.getByRole('button', { name: 'Delete board' }).click();
+  await rows.first().getByRole('button', { name: /^Options for/ }).click();
+  await page.getByRole('menuitem', { name: 'Delete board' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete board' }).click();
   await expect(rows).toHaveCount(before - 1);
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect(rows).toHaveCount(before);
-  await expect(page.getByText('Renamed by test')).toBeVisible();
+  await expect(page.locator('.ttl').filter({ hasText: 'Renamed by test' })).toBeVisible();
 });
 
 const deletes = (page: import('@playwright/test').Page) =>
   page.evaluate(() => window.__mock!.calls.filter((c) => c.method === 'deleteBoard').length);
 
 async function deleteFirstRow(page: import('@playwright/test').Page) {
-  const rows = page.locator('[data-board-row]');
+  const rows = page.locator('[data-board-card]');
   await expect(rows.first()).toBeVisible();
-  await rows.first().getByRole('button', { name: 'Delete' }).click();
-  await page.getByRole('button', { name: 'Delete board' }).click();
+  await rows.first().getByRole('button', { name: /^Options for/ }).click();
+  await page.getByRole('menuitem', { name: 'Delete board' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete board' }).click();
 }
 
 test('the Undo window expiring sends exactly one DELETE', async ({ page }) => {
@@ -86,7 +89,8 @@ test('leaving /boards inside the Undo window flushes the DELETE once', async ({ 
 
 test('Escape closes the delete confirm sheet without deleting', async ({ page }) => {
   await page.goto('/boards?api=mock');
-  await page.locator('[data-board-row]').first().getByRole('button', { name: 'Delete' }).click();
+  await page.locator('[data-board-card]').first().getByRole('button', { name: /^Options for/ }).click();
+  await page.getByRole('menuitem', { name: 'Delete board' }).click();
   await expect(page.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
