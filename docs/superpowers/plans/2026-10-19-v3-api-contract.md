@@ -226,3 +226,51 @@ getPassages(cardId: Id): Promise<Passage[]>;
   and csv sources; 400 `invalid` for other kinds; 404 if not theirs. The side panel uses it for text sources; PDFs
   render the original via `GET /files/{cardId}/raw` and highlight `quote` on `page`.
 - Fake-LLM mode emits `[1]` after its first sentence when any passage was sent, so tests have a citation.
+
+## Amendment 2026-10-20: app shell (board previews, BYOK turns)
+
+```ts
+type ProviderId = 'anthropic' | 'openai' | 'google' | 'groq' | 'deepseek' | 'mistral' | 'moonshot';
+interface BoardPreviewCard { id: Id; kind: 'chat' | 'source'; sourceType: SourceType | null; x: number; y: number;
+  deskId: Id | null; pileId: Id | null; parentId: Id | null; name?: string }   // name: chats only, ≤ 60 chars
+interface BoardPreview { cards: BoardPreviewCard[]; edges: { kind: 'wire' | 'answer'; from: Id; to: Id }[] }
+interface BoardSummary { id: Id; title: string; updatedAt: string; cardCount: number; preview?: BoardPreview }
+type StreamErrorCode = 'missing_key' | 'key_rejected' | 'unsupported_model' | 'key_store_unavailable';
+// StreamEvent's error member becomes:
+//   | { type: 'error'; message: string; code?: StreamErrorCode; provider?: ProviderId }
+```
+
+- **(a) Board previews.** `GET /boards` adds `preview` to the 24 most recently updated boards. Cards are the live cards
+  minus members of a live pile. Edges are the live `wire` and `answer` edges with both ends in `cards`. Lineage comes
+  from `parentId`.
+- **(b) BYOK turns.** `POST /chat/stream` with `boardId` (a V3 turn) uses only the user's stored key for the model's
+  provider, never a server env key. Before streaming it answers:
+  - 400 `{error:'missing_key', detail:'<provider>'}` when the user has no key for that provider;
+  - 400 `{error:'unsupported_model', detail:'<model id>'}` for an id with no route;
+  - 400 `{error:'key_rejected', detail:'<provider>'}` on the sync (non-stream) route when the provider refuses the key;
+  - 503 `{error:'key_store_unavailable', detail:'<provider>'}` when the key store cannot be read (board copy: "Your keys
+    can't be read right now. Try again in a minute.");
+  - 500 `{error:'server_error'}` with generic text for operator misconfiguration (no detail leaks).
+
+  A provider that refuses the key mid-stream sends the SSE frame `{"error":"<text>","code":"key_rejected","provider":"<provider>"}`
+  with no `[DONE]` after it. The board shows these as "Add your <Provider> key" (missing or rejected) and re-asks once
+  a key is saved.
+- **(c) Model table.** Each model has one provider and one engine id that runs on that provider's key:
+
+  | Model | Engine id | Provider |
+  |---|---|---|
+  | Claude Sonnet 4 | `anthropic/claude-sonnet-4-20250514` | anthropic |
+  | GPT-5 mini | `openai/gpt-5-mini` | openai |
+  | Gemini 3 Flash | `gemini/gemini-3-flash-preview` | google |
+  | Llama 4 Maverick | `meta-llama/llama-4-maverick-17b-128e-instruct` | groq |
+  | DeepSeek V3 | `deepseek/deepseek-chat` | deepseek |
+  | Mistral Large | `mistral/mistral-large-latest` | mistral |
+  | Kimi K2 | `moonshot/kimi-k2-0905-preview` | moonshot |
+
+  Legacy ids on chats that already exist route as follows: `openai/gpt-oss-120b` and `openai/gpt-oss-20b` to groq (same
+  id); `deepseek-ai/*` to deepseek `deepseek-chat`; `mistralai/*` to mistral `mistral-large-latest`; `moonshotai/*` to
+  moonshot `kimi-k2-0905-preview`; other `anthropic/*`, `openai/gpt-5*` and `gemini/*` through the engine's alias tables.
+  Anything else (`z-ai/*`, `groq/compound*`, `litellm/*`, unknown) is 400 `unsupported_model`.
+- **Mock.** `MockEngineApi.listBoards` builds `preview`; `setKeys(providers | 'all')` (default `'all'`) says which
+  providers are keyed; `streamChat` on a model whose provider is not keyed emits one
+  `{type:'error', code:'missing_key', provider, message:'No <Name> key'}` and returns without storing the question.

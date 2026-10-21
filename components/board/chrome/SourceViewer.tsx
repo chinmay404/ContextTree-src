@@ -1,9 +1,10 @@
 'use client';
 /** The source viewer sheet: double-click a source (prototype openViewer / closeViewer, lines 980-1038). */
 import './viewer.css';
-import { useCallback, useLayoutEffect, useRef, type CSSProperties, type ReactElement } from 'react';
+import { useCallback, useLayoutEffect, useRef, type ReactElement } from 'react';
 import type { Card, SourceData } from '../api/types';
 import { TYPE_INFO, modelInfo } from '../lib/catalog';
+import { ModelMark } from './ModelMark';
 import { cut } from '../lib/format';
 import { chatData, famOf, isChat, membersOf, qNum } from '../lib/graph';
 import { isRead, tokensRead } from '../lib/reads';
@@ -102,7 +103,7 @@ export function SourceViewer(): ReactElement {
             <div className="used">
               {users.length ? users.map((c) => (
                 <span key={c.id}>
-                  <span className="mdot" style={{ '--c': modelInfo(chatData(c).model).color } as CSSProperties} />
+                  <ModelMark model={modelInfo(chatData(c).model)} />
                   <span className="qchip soft">{qNum(g, c.id)}</span>{cut(chatData(c).name, 24)}
                 </span>
               )) : <span className="none">No question reads this yet. Drag from its handle on the right onto a chat, or drop it on a desk.</span>}

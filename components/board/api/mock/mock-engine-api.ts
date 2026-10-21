@@ -1,9 +1,9 @@
 import { ApiError } from '../types';
 import type {
-  Board, BoardSummary, Card, CardCreate, CardPatch, ChatData, ChatRequest, Edge, EngineApi, Id, Message, Reads,
-  SourceData, SourceType, Status, StreamEvent,
+  Board, BoardPreview, BoardSummary, Card, CardCreate, CardPatch, ChatData, ChatRequest, Edge, EngineApi, Id, Message, Reads,
+  ProviderId, SourceData, SourceType, Status, StreamEvent,
 } from '../types';
-import { PERSONAS, TYPE_INFO, defaultChatData, personaLabel } from '../../lib/catalog';
+import { PERSONAS, PROVIDER_NAME, TYPE_INFO, defaultChatData, personaLabel, providerOf } from '../../lib/catalog';
 import { cut, sizeOf } from '../../lib/format';
 import { canPlug, graphOf, nameOf } from '../../lib/graph';
 import { computeReads, isRead } from '../../lib/reads';
@@ -22,6 +22,8 @@ export interface MockOptions {
 }
 
 const CARD_CAP = 50;
+const PREVIEW_BOARDS = 24;
+const PREVIEW_NAME = 60;
 const MAX_UPLOAD = 4 * 1024 * 1024;
 const ANSWER = "try $12 a month with ten real users before you decide, and ask what they'd pay before you show a number.";
 
@@ -58,6 +60,7 @@ export class MockEngineApi implements EngineApi {
   private readonly objectUrls = new Map<Id, string>();
   private lastTick = 0;
   private stamp = 0;
+  private keyed: Set<ProviderId> | 'all' = 'all';
 
   constructor(opts: MockOptions = {}) {
     this.o = {
@@ -66,6 +69,11 @@ export class MockEngineApi implements EngineApi {
     };
     this.foreign = new Set(opts.foreignIds ?? []);
     if (this.o.seed) this.loadSeed();
+  }
+
+  /** Which providers have a stored key; a V3 turn on any other provider fails with `missing_key`. Default: all seven. */
+  setKeys(providers: ProviderId[] | 'all'): void {
+    this.keyed = providers === 'all' ? 'all' : new Set(providers);
   }
 
   failNext(method: keyof EngineApi, err: ApiError): void {
@@ -208,12 +216,29 @@ export class MockEngineApi implements EngineApi {
 
   // ---- boards ----
 
+  private previewOf(b: BoardRec): BoardPreview {
+    const live = [...b.cards.values()].filter((r) => r.del === null).map((r) => r.card);
+    const livePiles = new Set(live.filter((c) => c.sourceType === 'pile').map((c) => c.id));
+    const cards = live.filter((c) => !(c.pileId && livePiles.has(c.pileId))).map((c) => ({
+      id: c.id, kind: c.kind, sourceType: c.sourceType, x: c.x, y: c.y, deskId: c.deskId, pileId: c.pileId, parentId: c.parentId,
+      ...(c.kind === 'chat' ? { name: String((c.data as ChatData).name ?? '').slice(0, PREVIEW_NAME) } : {}),
+    }));
+    const ids = new Set(cards.map((c) => c.id));
+    const edges = [...b.edges.values()].filter((r) => !r.del).map((r) => r.edge)
+      .filter((e): e is Edge & { kind: 'wire' | 'answer' } => e.kind !== 'lineage' && ids.has(e.from) && ids.has(e.to))
+      .map((e) => ({ kind: e.kind, from: e.from, to: e.to }));
+    return { cards, edges };
+  }
+
   async listBoards(): Promise<BoardSummary[]> {
     await this.enter('listBoards', []);
     return structuredClone(
       [...this.boards.values()].filter((b) => !b.deleted)
         .sort((a, c) => (a.updatedAt < c.updatedAt ? 1 : a.updatedAt > c.updatedAt ? -1 : 0))
-        .map((b) => ({ id: b.id, title: b.title, updatedAt: b.updatedAt, cardCount: this.liveCount(b) })),
+        .map((b, i) => ({
+          id: b.id, title: b.title, updatedAt: b.updatedAt, cardCount: this.liveCount(b),
+          ...(i < PREVIEW_BOARDS ? { preview: this.previewOf(b) } : {}),
+        })),
     );
   }
 
@@ -488,6 +513,12 @@ export class MockEngineApi implements EngineApi {
     const b = this.board(req.boardId);
     const chat = this.live(b, req.chatId);
     if (!chat || chat.kind !== 'chat') throw notFound('chat');
+
+    const provider = providerOf(req.model);
+    if (provider && this.keyed !== 'all' && !this.keyed.has(provider)) {
+      onEvent({ type: 'error', code: 'missing_key', provider, message: `No ${PROVIDER_NAME[provider]} key` });
+      return;
+    }
 
     const g = graphOf(this.snapshot(b));
     const names = computeReads(g, chat.id).items.filter(isRead).map((i) => nameOf(g, g.cards.get(i.cardId)!));

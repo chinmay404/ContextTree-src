@@ -1,8 +1,9 @@
 'use client';
 /** Compare a chat with its siblings, side by side; keep one and the others fold (V2 compare-modal, promote). */
 import './focus.css';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import { modelInfo } from '../lib/catalog';
+import { ModelMark } from './ModelMark';
 import { chatData, chatsOf, qNum } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
 import { useBoard, useSnapshot } from '../context';
@@ -88,7 +89,7 @@ export function CompareSheet(): ReactElement {
                 <div key={c.id} className="cmp-col" data-id={c.id}>
                   <div className="cmp-h">
                     <span className="qchip">{qNum(g, c.id)}</span>
-                    <span className="md"><span className="mdot" style={{ '--c': mi.color } as CSSProperties} />{mi.label}</span>
+                    <span className="md"><ModelMark model={mi} />{mi.name}</span>
                     {d.demoted ? <span className="tag">Folded</span> : null}
                     <span className="nm">{d.name}</span>
                   </div>

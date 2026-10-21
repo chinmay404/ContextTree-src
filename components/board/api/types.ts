@@ -69,7 +69,12 @@ export interface Board {
   cards: Card[]; edges: Edge[];
   createdAt: string; updatedAt: string;
 }
-export interface BoardSummary { id: Id; title: string; updatedAt: string; cardCount: number }
+export type ProviderId = 'anthropic' | 'openai' | 'google' | 'groq' | 'deepseek' | 'mistral' | 'moonshot';
+/** One live card in a board's map. `name` is for chats only (at most 60 characters). */
+export interface BoardPreviewCard { id: Id; kind: 'chat' | 'source'; sourceType: SourceType | null; x: number; y: number;
+  deskId: Id | null; pileId: Id | null; parentId: Id | null; name?: string }
+export interface BoardPreview { cards: BoardPreviewCard[]; edges: { kind: 'wire' | 'answer'; from: Id; to: Id }[] }
+export interface BoardSummary { id: Id; title: string; updatedAt: string; cardCount: number; preview?: BoardPreview }
 
 export interface Message { id: string; role: 'user' | 'assistant'; content: string; position: number; createdAt: string }
 
@@ -94,10 +99,11 @@ export interface ChatRequest { boardId: Id; chatId: Id; messageId: string; messa
   systemPrompt: string; temperature: number | null; maxOutputTokens: number | null; lastKMessages: number | null;
   externalContextTopK: number; webSearch: boolean; parentNodeId?: Id; forkedFromMessageId?: Id;
   regenerateLastUser?: boolean }
+export type StreamErrorCode = 'missing_key' | 'key_rejected' | 'unsupported_model' | 'key_store_unavailable';
 export type StreamEvent =
   | { type: 'delta'; text: string } | { type: 'summary'; text: string }
   | { type: 'web'; results: { title?: string; url?: string }[] }
-  | { type: 'error'; message: string } | { type: 'done' };
+  | { type: 'error'; message: string; code?: StreamErrorCode; provider?: ProviderId } | { type: 'done' };
 
 export interface EngineApi {
   listBoards(): Promise<BoardSummary[]>;
