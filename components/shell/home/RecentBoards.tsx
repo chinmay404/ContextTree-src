@@ -7,7 +7,7 @@ import type { BoardPreview } from '../map/preview-types';
 import { BoardMenu } from './BoardMenu';
 import { editedAgo, families, metaLine } from './home-format';
 
-export type HomeBoard = BoardSummary & { preview?: BoardPreview };
+export type HomeBoard = BoardSummary;
 
 export interface RecentActions {
   renamingId: string | null;

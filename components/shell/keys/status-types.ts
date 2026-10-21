@@ -1,7 +1,6 @@
-import type { V3KeyProvider } from '@/lib/byok';
+import type { ProviderId } from '@/components/board/api/types';
 
-/** The seven providers a board turn can run on. Task 13's providers.ts re-exports these. */
-export type ProviderId = V3KeyProvider;
+export type { ProviderId };
 export type KeyState = 'ok' | 'rejected' | 'unchecked';
 export interface KeyStatus {
   provider: ProviderId;
