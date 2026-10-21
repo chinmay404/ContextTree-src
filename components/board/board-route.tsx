@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ThemeProvider } from '@/components/theme-provider';
 import { BrandLoader } from '@/components/brand-loader';
-import { ApiKeySettingsDialog } from '@/components/api-key-settings-dialog';
 import { useAuth } from '@/hooks/use-auth';
+import { ShellProvider, useShell } from '@/components/shell/shell-context';
+import { AccountPill } from '@/components/shell/account/AccountPill';
 import { Board } from './Board';
 import { BoardList } from './board-list';
 import { HttpEngineApi } from './api/http';
@@ -14,7 +15,7 @@ import type { ApiError, EngineApi } from './api/types';
 import './board-route.css';
 
 /** Pebble board token (--pb-canvas): the board paints only inside .pb-root, so the page behind it must match. */
-const PB_CANVAS = '#EDE8F5';
+const PB_CANVAS = '#F5F5F7';
 
 /** null while the dev mock is still loading. The mock is a dynamic import that production builds drop. */
 function useEngineApi(mock: boolean): EngineApi | null {
@@ -46,7 +47,7 @@ function LightScope({ children }: { children: React.ReactNode }): ReactElement {
       if (html.classList.contains('dark')) html.classList.remove('dark');
       if (!html.classList.contains('light')) html.classList.add('light');
       if (html.style.colorScheme !== 'light') html.style.colorScheme = 'light';
-      els.forEach((e) => { if (e.style.backgroundColor !== 'rgb(237, 232, 245)') e.style.backgroundColor = PB_CANVAS; });
+      els.forEach((e) => { if (e.style.backgroundColor !== 'rgb(245, 245, 247)') e.style.backgroundColor = PB_CANVAS; });
     };
     apply();
     const mo = new MutationObserver(apply);
@@ -95,7 +96,8 @@ function useSessionGate(mock: boolean, callbackUrl: string): 'loading' | 'ready'
   return mock || (!isLoading && isAuthenticated) ? 'ready' : 'loading';
 }
 
-export function BoardRoute({ boardId, mock = false }: { boardId: string; mock?: boolean }): ReactElement {
+function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }): ReactElement {
+  const { openSettings } = useShell();
   const router = useRouter();
   const gate = useSessionGate(mock, `/b/${boardId}`);
   const base = useEngineApi(mock);
@@ -103,7 +105,6 @@ export function BoardRoute({ boardId, mock = false }: { boardId: string; mock?: 
   const [failure, setFailure] = useState<{ boardId: string; err: ApiError } | null>(null);
   const fail = failure && failure.boardId === boardId ? failure.err : null;
   const [attempt, setAttempt] = useState(0);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const q = mock ? '?api=mock' : '';
 
   // Same API, but a failed FIRST load of this board is reported to the route (Board itself shows only a generic retry).
@@ -120,7 +121,7 @@ export function BoardRoute({ boardId, mock = false }: { boardId: string; mock?: 
   }, [signedOut, router, boardId]);
 
   const onOpenBoard = useCallback((id: string) => router.push(`/b/${id}${q}`), [router, q]);
-  const onOpenSettings = useCallback(() => setSettingsOpen(true), []);
+  const onOpenSettings = useCallback(() => openSettings({ section: 'keys' }), [openSettings]);
 
   let body: ReactElement;
   if (gate === 'loading' || !api || signedOut) body = <Splash />;
@@ -138,17 +139,35 @@ export function BoardRoute({ boardId, mock = false }: { boardId: string; mock?: 
     );
   } else {
     body = (
-      <>
-        <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenSettings={onOpenSettings} />
-        <ApiKeySettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-      </>
+      <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenSettings={onOpenSettings} topRight={<AccountPill />} />
     );
   }
   return <LightScope>{body}</LightScope>;
 }
 
+export function BoardRoute({ boardId, mock = false }: { boardId: string; mock?: boolean }): ReactElement {
+  return (
+    <ShellProvider mock={mock}>
+      <BoardRouteInner boardId={boardId} mock={mock} />
+    </ShellProvider>
+  );
+}
+
 export function BoardsRoute({ mock = false }: { mock?: boolean }): ReactElement {
   const gate = useSessionGate(mock, '/boards');
   const api = useEngineApi(mock);
-  return <LightScope>{gate === 'loading' || !api ? <Splash /> : <BoardList api={api} query={mock ? '?api=mock' : ''} />}</LightScope>;
+  return (
+    <ShellProvider mock={mock}>
+      <LightScope>
+        {gate === 'loading' || !api ? (
+          <Splash />
+        ) : (
+          <>
+            <BoardList api={api} query={mock ? '?api=mock' : ''} />
+            <span className="ct-shell ct-acct-fixed"><AccountPill /></span>
+          </>
+        )}
+      </LightScope>
+    </ShellProvider>
+  );
 }

@@ -1,0 +1,47 @@
+/* D / F: account pill and menu (mockup .c-acct, .menu, .acctm). Tokens come from ../tokens.css. */
+.ct-shell.ct-acct-wrap { position: relative; display: inline-block; }
+.ct-shell .ct-acct { height: 56px; border-radius: 999px; padding: 8px; display: flex; align-items: center; gap: 8px; transition: transform 160ms var(--ease-out), box-shadow 160ms; }
+.ct-shell .ct-acct:active { transform: scale(.96); }
+.ct-shell .ct-acct.on { box-shadow: 0 0 0 2px var(--pb-accent), 0 8px 28px rgba(0,0,0,.08); }
+.ct-shell .av { width: 40px; height: 40px; border-radius: 20px; background: #DCEBF5; color: #173F5C; display: grid; place-items: center; font-size: 15px; font-weight: 700; flex: none; letter-spacing: .01em; }
+.ct-shell .av.lg2 { width: 48px; height: 48px; border-radius: 24px; font-size: 17px; }
+
+.ct-shell .ct-acctm { position: absolute; top: 64px; right: 0; z-index: 65; width: 316px; max-width: calc(100vw - 24px); padding: 8px; border-radius: var(--r-card); box-shadow: 0 0 0 .5px var(--hairline), var(--sh-card); transform-origin: 100% 0; animation: ct-acct-in 160ms var(--ease-out); }
+.ct-shell .ct-acctm .who { display: flex; gap: 12px; align-items: center; padding: 10px 10px 12px; min-width: 0; }
+.ct-shell .ct-acctm .who .wt { min-width: 0; }
+.ct-shell .ct-acctm .who b { display: block; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-shell .ct-acctm .who .wt span { display: block; font-size: 13px; color: var(--t2); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-shell .ct-acctm .plan { margin: 0 6px 6px; padding: 10px 12px; border-radius: var(--r-row); background: var(--pb-desk); font-size: 12.5px; color: var(--t2); display: flex; align-items: center; gap: 8px; }
+.ct-shell .ct-acctm .plan b { color: var(--t1); font-weight: 700; }
+.ct-shell .ct-acctm .mi { width: 100%; display: flex; align-items: center; gap: 12px; padding: 6px 12px 6px 6px; border-radius: var(--r-row); font-size: 14px; font-weight: 600; text-align: left; color: var(--t1); text-decoration: none; cursor: pointer; }
+.ct-shell .ct-acctm .mi:hover, .ct-shell .ct-acctm .mi:focus-visible { background: rgba(0,0,0,.05); outline: none; }
+.ct-shell .ct-acctm .mi:focus-visible { box-shadow: inset 0 0 0 2px var(--pb-accent); }
+.ct-shell .ct-acctm .mi .c { width: 36px; height: 36px; border-radius: 18px; display: grid; place-items: center; flex: none; background: var(--pb-fill); color: var(--pb-ink); }
+.ct-shell .ct-acctm .mi .r { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--t3); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ct-shell .ct-acctm .mi .r.soon { font-weight: 600; background: #fff; color: var(--t2); padding: 2px 8px; border-radius: 999px; }
+.ct-shell .ct-acctm .mi[aria-disabled="true"] { cursor: default; color: var(--t3); }
+.ct-shell .ct-acctm .mi[aria-disabled="true"]:hover { background: none; }
+.ct-shell .ct-acctm .mi.danger { color: #B4244A; }
+.ct-shell .ct-acctm .mi.danger .c { background: #F6E0E6; color: var(--failed); }
+.ct-shell .ct-acctm .dot { width: 7px; height: 7px; border-radius: 4px; background: var(--t3); flex: none; }
+.ct-shell .ct-acctm .dot.ready { background: var(--ready); }
+.ct-shell .ct-acctm .dot.stale { background: var(--stale); }
+.ct-shell .ct-acctm .dot.failed { background: var(--failed); }
+.ct-shell .ct-acctm .sep { height: .5px; background: var(--hairline); margin: 6px 12px; }
+.ct-shell .ct-acctm .ver { padding: 4px 12px 6px 14px; font-size: 11.5px; color: var(--t3); display: flex; justify-content: space-between; }
+.ct-shell .ct-acctm .ver a { color: var(--t3); text-decoration: none; }
+.ct-shell .ct-acctm .ver a:hover { text-decoration: underline; }
+
+/* /boards: the pill is fixed in the corner (the board places it through its own top-right slot). */
+.ct-shell.ct-acct-fixed { position: fixed; top: 16px; right: 16px; z-index: 20; }
+
+@keyframes ct-acct-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@media (max-width: 700px) {
+  .ct-shell .ct-acct { height: 48px; padding: 6px; }
+  .ct-shell .ct-acct .av { width: 36px; height: 36px; font-size: 13px; }
+  .ct-shell .ct-acctm { top: 56px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ct-shell .ct-acctm { animation: none; }
+  .ct-shell .ct-acct { transition: none; }
+}

@@ -12,7 +12,7 @@ test('body paints the Pebble board colour, not the V2 dark background', async ({
   await page.goto('/b/b_seed?api=mock');
   await expect(page.locator('.pb-root')).toBeVisible();
   // The scope applies after hydration; the SSR paint is still the app's dark background.
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(237, 232, 245)');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(245, 245, 247)');
   await expect(page.locator('html')).not.toHaveClass(/dark/);
 });
 
