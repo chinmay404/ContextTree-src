@@ -27,6 +27,8 @@
 .pb-root .pb-vp { position: fixed; inset: 0; touch-action: none; }
 .pb-root .pb-vp.panning { cursor: grabbing; }
 .pb-root.stringing, .pb-root.stringing * { cursor: crosshair !important; }
+.pb-root .pb-dots { position: absolute; inset: 0; pointer-events: none; --dot: .75px;
+  background-image: radial-gradient(circle at center, #C7C7CC var(--dot), transparent calc(var(--dot) + .6px)); }
 .pb-root .pb-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
 .pb-root .pb-tubes { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; z-index: 1; pointer-events: none; }
 .pb-root .pb-tubes path { fill: none; stroke-linecap: round; transition: stroke 220ms ease, opacity 220ms ease; }
