@@ -105,4 +105,26 @@ test.describe('boards home', () => {
     await page.getByRole('button', { name: 'Try again' }).click();
     await expect(cards(page).first()).toBeVisible();
   });
+
+  test('Compare answers makes a board with four chats', async ({ page }) => {
+    await page.goto(URL);
+    await expect(page.getByRole('button', { name: 'Compare answers' })).toBeVisible();
+    await page.getByRole('button', { name: 'Compare answers' }).click();
+    await expect(page).toHaveURL(/\/b\/b_[a-z0-9]+_[a-z0-9]{6}/);
+    await expect(page.locator('.card.chat')).toHaveCount(4);
+  });
+
+  test('a failed starter says so and leaves no half-made board', async ({ page }) => {
+    await page.goto(URL);
+    await expect(cards(page).first()).toBeVisible();
+    const before = await cards(page).count();
+    await page.evaluate(() => {
+      const m = window.__mock as unknown as { failNext(method: string, err: unknown): void; constructor: { ApiError: new (s: number, c: string) => unknown } };
+      m.failNext('createCard', new m.constructor.ApiError(500, 'boom'));
+    });
+    await page.getByRole('button', { name: 'Plan from notes' }).click();
+    await expect(page.getByText("Couldn't make that board. Try again.")).toBeVisible();
+    await expect(page).toHaveURL(/\/boards/);
+    await expect(cards(page)).toHaveCount(before);
+  });
 });

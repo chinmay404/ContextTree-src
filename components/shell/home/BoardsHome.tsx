@@ -8,7 +8,8 @@ import { ApiError, type EngineApi } from '@/components/board/api/types';
 import { AccountPill } from '../account/AccountPill';
 import { useShell } from '../shell-context';
 import { PebbleMap } from '../map/PebbleMap';
-import { STARTER_PREVIEWS } from '../map/demo-previews';
+import { STARTERS, seedStarter, starterPreview, type StarterTemplate } from './starters';
+import { MODELS, DEFAULT_MODEL_KEY } from '@/components/board/lib/catalog';
 import { RecentBoards, type HomeBoard } from './RecentBoards';
 import { editedAgo, firstName, greeting, matchBoards, sortBoards, type SortKey } from './home-format';
 import { useDeferredDelete } from './use-deferred-delete';
@@ -17,14 +18,6 @@ import '../account/account.css';
 import './home.css';
 
 const VIEW_KEY = 'ct-home-view';
-
-// Placeholders until Task 20 seeds real starter boards.
-const STARTERS = [
-  { key: 'pdf2', name: 'Read a PDF with two AIs', desc: 'One desk, two branches, two models.' },
-  { key: 'research', name: 'Research a topic', desc: 'Pin sources, then add one and compare.' },
-  { key: 'compare', name: 'Compare answers', desc: 'Same question on three AIs.' },
-  { key: 'plan', name: 'Plan from notes', desc: 'Turn loose notes into a plan.' },
-] as const;
 
 function useNarrow(): boolean {
   const [narrow, setNarrow] = useState(false);
@@ -57,6 +50,8 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
   const [boards, setBoards] = useState<HomeBoard[] | null>(null);
   const [error, setError] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [seeding, setSeeding] = useState<string | null>(null);
+  const [starterError, setStarterError] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<HomeBoard | null>(null);
   const [q, setQ] = useState('');
@@ -124,6 +119,26 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
     }
   };
 
+  const startFrom = async (t: StarterTemplate) => {
+    if (seeding || creating) return;
+    setSeeding(t.key);
+    setStarterError(false);
+    try {
+      // TODO(controller): preferredModel(statuses) ?? the default, once Task 13 exists.
+      const id = await seedStarter(api, t, { model: MODELS[DEFAULT_MODEL_KEY].engineId });
+      router.push(`/b/${id}${query}`);
+    } catch {
+      setSeeding(null);
+      setStarterError(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!starterError) return;
+    const t = setTimeout(() => setStarterError(false), 6000);
+    return () => clearTimeout(t);
+  }, [starterError]);
+
   const rename = (b: HomeBoard, raw: string) => {
     setRenaming(null);
     const title = raw.trim();
@@ -152,16 +167,16 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
           <button type="button" className="btn primary" onClick={() => void create()} disabled={creating}><Plus size={16} strokeWidth={2} />New board</button>
         </div>
         <div className="starters">
-          <button type="button" className="st blank" aria-label="Blank board" onClick={() => void create()} disabled={creating}>
+          <button type="button" className="st blank" aria-label="Blank board" onClick={() => void create()} disabled={creating || seeding !== null}>
             <span className="pv"><span><Plus size={22} strokeWidth={2} /></span></span>
             <span className="nm">Blank board</span>
             <span className="ds">An empty desk and a question.</span>
           </button>
           {STARTERS.map((s) => (
-            <button key={s.key} type="button" className="st" aria-disabled="true" title="Coming soon" onClick={(e) => e.preventDefault()}>
-              <span className="pv"><PebbleMap preview={STARTER_PREVIEWS[s.key]} title={s.name} pad={90} detail={false} size={[214, 136]} /></span>
+            <button key={s.key} type="button" className="st" aria-label={s.name} disabled={creating || seeding !== null} aria-busy={seeding === s.key} onClick={() => void startFrom(s)}>
+              <span className="pv"><PebbleMap preview={starterPreview(s)} title={s.name} pad={90} detail={false} size={[214, 136]} /></span>
               <span className="nm">{s.name}</span>
-              <span className="ds">{s.desc}</span>
+              <span className="ds">{s.blurb}</span>
             </button>
           ))}
         </div>
@@ -238,6 +253,12 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
       )}
 
       <div className="toasts" aria-live="polite">
+        {starterError && (
+          <div className="toast glass" role="alert">
+            <span>Couldn&apos;t make that board. Try again.</span>
+            <button type="button" className="undo" onClick={() => setStarterError(false)}>OK</button>
+          </div>
+        )}
         {deleter.toasts.map((b) => (
           <div key={b.id} className="toast glass" role="status">
             <span>Board deleted</span>
