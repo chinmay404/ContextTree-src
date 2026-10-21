@@ -33,5 +33,7 @@ export interface EngineContext {
   track(e: PointerEvent, move: (ev: PointerEvent) => void, up: (ev: PointerEvent) => void): void;
   /** The shell's way to open the keys sheet (null: no shell, so key errors show no button). Set by the Board after mount. */
   openSettings: ((provider: ProviderId) => void) | null;
+  /** Read-only landing mode: the camera fits the root, nothing is saved, nothing takes input. */
+  showcase: boolean;
   modules: { desks: DesksModule; strings: StringsModule; piles: PilesModule; persistence: PersistenceModule };
 }

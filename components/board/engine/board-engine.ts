@@ -62,7 +62,7 @@ export class BoardEngine {
   private dots: HTMLElement;
   private dotKey = '';
 
-  constructor(o: { store: BoardStore; root: HTMLElement; rm: boolean }) {
+  constructor(o: { store: BoardStore; root: HTMLElement; rm: boolean; showcase?: boolean }) {
     this.store = o.store;
     this.springs = new SpringSystem(o.rm);
     this.camera = new Camera(this.springs);
@@ -99,6 +99,7 @@ export class BoardEngine {
         viewport.addEventListener('pointermove', mv); viewport.addEventListener('pointerup', u); viewport.addEventListener('pointercancel', u);
       },
       openSettings: null,
+      showcase: !!o.showcase,
       modules: null as unknown as EngineContext['modules'],
     };
     this.ctx = ctx;
@@ -122,10 +123,18 @@ export class BoardEngine {
     this.mounted = true;
     const { root, viewport } = this.ctx;
     root.prepend(viewport);
+    if (this.ctx.showcase) viewport.inert = true;   // decorative: no tab stops, no typing into a card
     root.append(this.tip);
     this.ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver((entries) => {
-      for (const en of entries) { const id = (en.target as HTMLElement).dataset.id; const n = id ? this.ctx.nodes.get(id) : undefined; if (n) n.h = n.el.offsetHeight; }
+      let grew = false;
+      for (const en of entries) {
+        if (en.target === root) { grew = true; continue; }
+        const id = (en.target as HTMLElement).dataset.id; const n = id ? this.ctx.nodes.get(id) : undefined;
+        if (n) { n.h = n.el.offsetHeight; grew = true; }
+      }
+      if (grew && this.started) this.fitShowcase();   // the box or a card changed size: the whole board is refitted
     });
+    if (this.ctx.showcase) this.ro?.observe(root);   // the box the board sits in changed size
     this.unsub = this.store.onChange((c) => this.onChange(c));
     // Delete asks the view for what only it knows: the front member of a pile, and a drop that has not been saved yet.
     this.store.setViewProbe({
@@ -360,7 +369,8 @@ export class BoardEngine {
     this.started = true;
     this.ctx.nodes.forEach((n) => { n.h = n.el.offsetHeight; });
     const v = this.store.getSnapshot().board?.viewport;
-    if (v) this.camSnap(v.x, v.y, v.zoom); else this.fit(false);
+    if (this.ctx.showcase) this.fitShowcase();   // the saved viewport belongs to the app, not the landing
+    else if (v) this.camSnap(v.x, v.y, v.zoom); else this.fit(false);
     this.ctx.modules.persistence.resetViewportBase();   // mount itself never saves
     this.place();
   }
@@ -386,7 +396,7 @@ export class BoardEngine {
 
   private frame(dt: number, now: number): void {
     const z = this.camera.z.x;
-    const want = this.size === 'S' ? (z > .5 ? 'M' : 'S') : (z < .42 ? 'S' : 'M');
+    const want = this.ctx.showcase ? 'M' : this.size === 'S' ? (z > .5 ? 'M' : 'S') : (z < .42 ? 'S' : 'M');
     if (want !== this.size) { this.size = want; this.ctx.renderAll(); }
     this.ctx.world.style.transform = `translate3d(${this.camera.x.x}px,${this.camera.y.x}px,0) scale(${z})`;
     this.paintDots(this.camera.x.x, this.camera.y.x, z);
@@ -438,6 +448,18 @@ export class BoardEngine {
     });
     if (x0 > x1) return;
     this.camera.fit([x0, y0, x1, y1] as Box, innerWidth, innerHeight, anim);
+  }
+  /** Showcase: every card inside the root's own box, whatever its size (no chrome to leave room for). */
+  private fitShowcase(): void {
+    if (!this.ctx.showcase) return;
+    const { root } = this.ctx, vw = root.clientWidth, vh = root.clientHeight;
+    if (!vw || !vh) return;
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    this.ctx.nodes.forEach((n) => {
+      x0 = Math.min(x0, n.px.t); y0 = Math.min(y0, n.py.t); x1 = Math.max(x1, n.px.t + n.w); y1 = Math.max(y1, n.py.t + n.h);
+    });
+    if (x0 > x1) return;
+    this.camera.fit([x0, y0, x1, y1] as Box, vw, vh, false, { l: 16, r: 16, t: 16, b: 16 });
   }
   zoomBy(f: number): void { this.camera.zoomAt(innerWidth / 2, innerHeight / 2, this.camera.z.t * f, true); }
   zoomAt(px: number, py: number, z: number, anim: boolean): void { this.camera.zoomAt(px, py, z, anim); }

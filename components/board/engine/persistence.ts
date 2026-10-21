@@ -40,6 +40,7 @@ export class SettleTimer {
 export function createPersistence(ctx: EngineContext): PersistenceModule {
   const moved = () => collectMoved(ctx.nodes.values(), ctx.store.graph().cards);
   const flushPositions = () => {
+    if (ctx.showcase) return;
     const all = moved();
     for (const m of all) synced.set(m.id, [m.x, m.y]);
     for (let i = 0; i < all.length; i += CHUNK) ctx.store.savePositions(all.slice(i, i + CHUNK));
@@ -52,6 +53,7 @@ export function createPersistence(ctx: EngineContext): PersistenceModule {
   const same = (a: { x: number; y: number; zoom: number }, b: { x: number; y: number; zoom: number }) =>
     Math.abs(a.x - b.x) <= MOVE_EPS && Math.abs(a.y - b.y) <= MOVE_EPS && Math.abs(a.zoom - b.zoom) <= .001;
   const flushViewport = () => {
+    if (ctx.showcase) return;
     const v = cam();
     if (same(v, base)) return;
     base = v;

@@ -42,6 +42,8 @@ export interface BoardProps {
   onOpenSettings?: (provider?: ProviderId) => void;
   /** Asked once, in the board's first question chat, after the first successful load of an empty board. */
   initialAsk?: string;
+  /** 'showcase': a read-only board for the landing page: no chrome, no input, nothing saved, fitted to its box. */
+  mode?: 'app' | 'showcase';
   /** A key was saved or fixed for `provider` (`at` is a counter or timestamp that changes each time): chats that failed for want of it are re-asked. */
   keyEpoch?: { provider: ProviderId; at: number };
   /** Engine id for new question chats (a model the user has a key for). */
@@ -61,6 +63,7 @@ function BoardShell(p: BoardProps): ReactElement {
   const rootRef = useRef<HTMLDivElement>(null);
   const [inst, setInst] = useState<{ store: BoardStore; engine: BoardEngine } | null>(null);
   const { api, boardId, testHook, initialAsk, defaultModel } = p;
+  const showcase = p.mode === 'showcase';
   const asked = useRef(false);   // the initial question goes out once per mounted board
   const live = useRef({ initialAsk, defaultModel });   // read at mount: a changed prop must not rebuild the store
   live.current = { initialAsk, defaultModel };
@@ -70,7 +73,7 @@ function BoardShell(p: BoardProps): ReactElement {
     const root = rootRef.current!;
     const rm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     const store = new BoardStore(api, boardId, { defaultModel: live.current.defaultModel });
-    const engine = new BoardEngine({ store, root, rm });
+    const engine = new BoardEngine({ store, root, rm, showcase });
     engine.mount();
     const unhook = testHook ? installTestHook(engine, store, api) : () => {};
     setInst({ store, engine });
@@ -79,7 +82,7 @@ function BoardShell(p: BoardProps): ReactElement {
       if (ask && !asked.current && store.getSnapshot().status === 'ready' && store.askFirst(ask)) asked.current = true;
     });
     return () => { unhook(); engine.dispose(); store.dispose(); setInst(null); };
-  }, [api, boardId, testHook]);
+  }, [api, boardId, testHook, showcase]);
 
   useEffect(() => { inst?.store.setDefaultModel(defaultModel); }, [inst, defaultModel]);
   const { onOpenSettings: openSettings } = p;
@@ -96,7 +99,7 @@ function BoardShell(p: BoardProps): ReactElement {
 
   // One keydown listener for Escape: the newest open layer first, then blur → drop the wire → deselect.
   useEffect(() => {
-    if (!inst) return;
+    if (!inst || showcase) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (runEscape()) { e.preventDefault(); return; }
@@ -106,7 +109,7 @@ function BoardShell(p: BoardProps): ReactElement {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [inst]);
+  }, [inst, showcase]);
 
   const { onOpenBoard, onOpenSettings, isModelLocked, topRight } = p;
   const value = useMemo(
@@ -115,8 +118,8 @@ function BoardShell(p: BoardProps): ReactElement {
   );
 
   return (
-    <div ref={rootRef} className={`pb-root ${inter.variable}`} data-board={boardId}>
-      {value && <BoardContext.Provider value={value}><Chrome /></BoardContext.Provider>}
+    <div ref={rootRef} className={`pb-root ${inter.variable}${showcase ? ' pb-showcase' : ''}`} data-board={boardId} data-mode={showcase ? 'showcase' : 'app'}>
+      {value && !showcase && <BoardContext.Provider value={value}><Chrome /></BoardContext.Provider>}
     </div>
   );
 }

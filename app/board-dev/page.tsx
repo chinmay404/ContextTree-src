@@ -21,5 +21,6 @@ export default async function Page({
   if (sp.model) params.model = sp.model;
   if (sp.fresh === '1') params.fresh = true;
   if (sp.keys === '1') params.keys = true;
+  if (sp.showcase === '1') params.showcase = true;
   return <BoardDev params={params} />;
 }

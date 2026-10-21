@@ -18,6 +18,8 @@ export interface BoardDevParams {
   fresh?: boolean;
   /** `?keys=1`: hand Board an `onOpenSettings` that records its calls in `window.__openSettings.calls`. Off by default: it adds an API keys item to the logo menu. */
   keys?: boolean;
+  /** `?showcase=1`: the seed board in a 960×540 box inside a 3000 px tall page (the landing's read-only mode). */
+  showcase?: boolean;
 }
 
 declare global {
@@ -57,6 +59,15 @@ export default function BoardDev({ params }: { params: BoardDevParams }) {
   }, []);
 
   const defaultModel = params.model && params.model in MODELS ? MODELS[params.model as ModelKey].engineId : undefined;
+  if (params.showcase) {
+    return (
+      <div data-pb="board-dev" style={{ height: 3000, paddingTop: 200 }}>
+        <div data-pb="showcase-box" style={{ position: 'relative', width: 960, height: 540, margin: '0 auto', background: '#fff', boxShadow: '0 0 0 1px #ddd' }}>
+          <Board api={api} boardId={SEED_BOARD_ID} mode="showcase" testHook />
+        </div>
+      </div>
+    );
+  }
   return (
     <div data-pb="board-dev" style={{ position: 'fixed', inset: 0 }}>
       {ready && <Board key={gen} api={api} boardId={boardId} testHook onOpenBoard={setBoardId}
