@@ -7,11 +7,14 @@ import { BrandMark } from '@/components/board/chrome/BrandMark';
 import { newId } from '@/components/board/api/ids';
 import { ApiError, type EngineApi } from '@/components/board/api/types';
 import { AccountPill } from '../account/AccountPill';
-import { preferredModel } from '../keys/providers';
+import { PROVIDERS, preferredModel } from '../keys/providers';
+import type { ProviderId } from '../keys/status-types';
+import { FirstQuestion } from './FirstQuestion';
+import { cutTitle, takePendingAsk, writeFirstAsk, writePendingAsk } from './first-ask';
 import { useShell } from '../shell-context';
 import { PebbleMap } from '../map/PebbleMap';
 import { STARTERS, seedStarter, starterPreview, type StarterTemplate } from './starters';
-import { MODELS, DEFAULT_MODEL_KEY } from '@/components/board/lib/catalog';
+import { MODELS, DEFAULT_MODEL_KEY, modelInfo } from '@/components/board/lib/catalog';
 import { RecentBoards, type HomeBoard } from './RecentBoards';
 import { editedAgo, firstName, greeting, matchBoards, sortBoards, type SortKey } from './home-format';
 import { useDeferredDelete } from './use-deferred-delete';
@@ -48,7 +51,7 @@ function useStoredView(): ['grid' | 'list', (v: 'grid' | 'list') => void] {
 /** The boards home: greeting, start something new, jump back in. */
 export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string }): ReactElement {
   const router = useRouter();
-  const { user, keys } = useShell();
+  const { user, keys, openSettings } = useShell();
   const model = () => preferredModel(keys.statuses) ?? MODELS[DEFAULT_MODEL_KEY].engineId;
   const [boards, setBoards] = useState<HomeBoard[] | null>(null);
   const [error, setError] = useState(false);
@@ -124,6 +127,57 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
     }
   };
 
+  // The first question on the empty desk: with a working key it makes the board and asks; without one the sheet opens
+  // and the text waits (kept in the box, and across a reload).
+  const [ask, setAsk] = useState('');
+  const [askNote, setAskNote] = useState(false);
+  const askBusy = useRef(false);
+  const queued = useRef<string | null>(null);
+  useEffect(() => { const p = takePendingAsk(); if (p) setAsk(p); }, []);
+
+  const makeFromQuestion = async (text: string, modelId: string) => {
+    if (askBusy.current) return;
+    askBusy.current = true;
+    setCreating(true);
+    const id = newId('b');
+    try {
+      await api.createBoard({ id, title: cutTitle(text) });
+      await api.updateCard(id, `${id}_q1`, { data: { model: modelId } });
+      writeFirstAsk(id, text);
+      router.push(`/b/${id}${query}`);
+    } catch {
+      askBusy.current = false;
+      setCreating(false);
+      setError(true);
+    }
+  };
+
+  const submitFirst = (text: string) => {
+    const t = text.trim();
+    if (!t || askBusy.current) return;
+    const pref = preferredModel(keys.statuses);
+    if (pref) { void makeFromQuestion(t, pref); return; }
+    if (keys.statuses === null && !keys.error) { queued.current = t; return; } // keys still loading: decide when they arrive
+    setAskNote(false);
+    writePendingAsk(t);
+    let saved = false;
+    openSettings({
+      section: 'keys',
+      onKeySaved: (p: ProviderId) => {
+        saved = true;
+        takePendingAsk();
+        const provider = PROVIDERS.find((x) => x.id === p)!;
+        void makeFromQuestion(t, MODELS[provider.models[0]].engineId);
+      },
+      onClose: () => { if (!saved) setAskNote(true); },
+    });
+  };
+  const statusesNow = keys.statuses;
+  useEffect(() => {
+    if (statusesNow !== null && queued.current) { const q = queued.current; queued.current = null; submitFirst(q); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusesNow]);
+
   const startFrom = async (t: StarterTemplate) => {
     if (seeding || creating) return;
     setSeeding(t.key);
@@ -154,6 +208,7 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
   const shown = useMemo(() => (boards ? sortBoards(matchBoards(boards, q), sort) : null), [boards, q, sort]);
   const last = useMemo(() => (boards ? sortBoards(boards, 'edited')[0] : undefined), [boards]);
   const searching = q.trim() !== '';
+  const isEmpty = boards !== null && boards.length === 0 && !error;
 
   return (
     <div className={`ct-shell ct-home ${inter.variable}`}>
@@ -161,7 +216,8 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
       <span className="ct-shell ct-acct-fixed"><AccountPill /></span>
 
       <main className="hin">
-        <h1 className="greet">{greeting(new Date().getHours())}, {firstName(user.name, user.email)}</h1>
+        <h1 className="greet">{isEmpty ? 'Welcome' : greeting(new Date().getHours())}, {firstName(user.name, user.email)}</h1>
+        {isEmpty && <p className="greet-sub">Start from a blank board, or open a starter board to see how desks and branches work.</p>}
         {last && <p className="greet-sub">You last worked on <b>{last.title}</b>, {editedAgo(last.updatedAt, now)}.</p>}
 
         <div className="rowh">
@@ -185,6 +241,7 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
           ))}
         </div>
 
+        {!isEmpty && (
         <div className="rowh rec">
           <h2>Jump back in</h2>
           <span className="sp" />
@@ -208,6 +265,7 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
             </div>
           )}
         </div>
+        )}
 
         {error && (
           <div className="note" role="alert">
@@ -220,10 +278,24 @@ export function BoardsHome({ api, query = '' }: { api: EngineApi; query?: string
             {[0, 1, 2, 3].map((i) => <div key={i} className="bc skel"><div className="pv" /></div>)}
           </div>
         )}
-        {boards && boards.length === 0 && !error && (
+        {isEmpty && (
           <div className="emptyd">
+            <span className="tabx">Your boards</span>
+            <FirstQuestion
+              value={ask}
+              onChange={(v) => { setAsk(v); setAskNote(false); }}
+              onSubmit={() => submitFirst(ask)}
+              busy={creating}
+              modelLabel={preferredModel(keys.statuses) ? modelInfo(preferredModel(keys.statuses)!).name : null}
+              note={askNote}
+            />
             <h3>Your first board starts with a question.</h3>
-            <p>Start a blank board above, then drop PDFs, links or notes on its desk. That is what it will read.</p>
+            <p>Type it above and we&apos;ll make the board. Then drop PDFs, links or notes on its desk — that&apos;s what it will read.</p>
+            {keys.statuses !== null && !preferredModel(keys.statuses) && (
+              <span className="keynag">Answers need an API key from any provider
+                <button type="button" className="btn primary" onClick={() => openSettings({ section: 'keys' })}>Add a key</button>
+              </span>
+            )}
           </div>
         )}
         {shown && boards && boards.length > 0 && shown.length === 0 && <p className="nomatch">No boards match “{q.trim()}”.</p>}

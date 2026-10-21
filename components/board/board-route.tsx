@@ -10,6 +10,7 @@ import { AccountPill } from '@/components/shell/account/AccountPill';
 import { isModelLocked as modelLocked, preferredModel } from '@/components/shell/keys/providers';
 import type { ProviderId } from '@/components/shell/keys/status-types';
 import { providerOf } from './lib/catalog';
+import { peekFirstAsk, takeFirstAsk } from '@/components/shell/home/first-ask';
 import { Board } from './Board';
 import { BoardsHome } from '@/components/shell/home/BoardsHome';
 import { HttpEngineApi } from './api/http';
@@ -31,8 +32,8 @@ function useEngineApi(mock: boolean): EngineApi | null {
     let live = true;
     void import('./api/dev-mock').then((m) => {
       // Dev only: ?fail=<method> makes that call answer 503 once (e.g. ?fail=listBoards).
-      const fail = new URLSearchParams(window.location.search).get('fail');
-      if (live) setMockApi(m.getSharedMockApi({ fail: fail ?? undefined }));
+      const q = new URLSearchParams(window.location.search);
+      if (live) setMockApi(m.getSharedMockApi({ fail: q.get('fail') ?? undefined, empty: q.get('mock') === 'empty' }));
     });
     return () => { live = false; };
   }, [mock]);
@@ -111,6 +112,9 @@ function useSessionGate(mock: boolean, callbackUrl: string): 'loading' | 'ready'
 function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }): ReactElement {
   const { openSettings, keys } = useShell();
   const statuses = keys.statuses;
+  // The question typed on the empty boards home: asked once, in this board's first chat. Cleared after mount (renders can run twice).
+  const initialAsk = useMemo(() => peekFirstAsk(boardId) ?? undefined, [boardId]);
+  useEffect(() => { takeFirstAsk(boardId); }, [boardId]);
   const router = useRouter();
   const gate = useSessionGate(mock, `/b/${boardId}`);
   const base = useEngineApi(mock);
@@ -157,7 +161,7 @@ function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }):
     );
   } else {
     body = (
-      <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenSettings={onOpenSettings} defaultModel={preferredModel(statuses) ?? undefined} keyEpoch={keys.lastSaved ?? undefined} isModelLocked={isModelLocked} topRight={<AccountPill />} />
+      <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenSettings={onOpenSettings} initialAsk={initialAsk} defaultModel={preferredModel(statuses) ?? undefined} keyEpoch={keys.lastSaved ?? undefined} isModelLocked={isModelLocked} topRight={<AccountPill />} />
     );
   }
   return <LightScope>{body}</LightScope>;

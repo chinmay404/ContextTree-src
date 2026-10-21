@@ -7,7 +7,7 @@ import { useKeyStatus, type UseKeyStatus } from './keys/use-key-status';
 import type { ProviderId } from './keys/status-types';
 
 export interface ShellUser { name: string | null; email: string }
-export interface SettingsTarget { section?: 'keys' | 'account'; provider?: ProviderId; onKeySaved?: (p: ProviderId) => void }
+export interface SettingsTarget { section?: 'keys' | 'account'; provider?: ProviderId; onKeySaved?: (p: ProviderId) => void; onClose?: () => void }
 export interface ShellValue {
   user: ShellUser;
   keys: UseKeyStatus;
@@ -57,13 +57,16 @@ export function ShellProvider({ mock, children }: { mock: boolean; children: Rea
   const [sheet, setSheet] = useState<{ open: boolean; target?: SettingsTarget }>({ open: false });
   const opener = useRef<HTMLElement | null>(null);
   const savedCb = useRef<SettingsTarget['onKeySaved']>(undefined);
+  const savedClose = useRef<SettingsTarget['onClose']>(undefined);
   const openSettings = useCallback((target?: SettingsTarget) => {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     savedCb.current = target?.onKeySaved;
+    savedClose.current = target?.onClose;
     setSheet({ open: true, target });
   }, []);
   const closeSheet = useCallback(() => {
     setSheet((s) => ({ ...s, open: false }));
+    savedClose.current?.();
     const el = opener.current;
     // The menu item that opened the sheet is gone by now, so fall back to the account pill.
     requestAnimationFrame(() => {
