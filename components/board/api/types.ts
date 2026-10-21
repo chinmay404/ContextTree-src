@@ -27,6 +27,7 @@ export interface ChatData {
   advanced: AdvancedSettings;
   hide: Id[];                           // inherited sources left out of this chat
   demoted?: boolean;                    // compare/promote
+  color?: string | null;                // card colour key (lib/colors.ts); absent or null = default
 }
 
 export interface SourceData {
@@ -42,6 +43,7 @@ export interface SourceData {
   table?: { columns: string[]; rows: string[][] };   // csv, first 200 rows
   error?: string;                       // when status = 'failed'
   off?: boolean;                        // pile member switched off: never read
+  color?: string | null;                // card colour key (lib/colors.ts); absent or null = default
   textChangedAt?: string;               // ISO; set by the client whenever it changes note/doc text (drives "Source changed")
 }
 

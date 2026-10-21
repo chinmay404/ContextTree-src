@@ -3,6 +3,7 @@ import type {
   AdvancedSettings, Board, Card, CardPatch, Carry, ChatData, ChatRequest, Edge, EngineApi, Id, Message, ProviderId, Reads, SourceData, SourceType, Status, StreamErrorCode,
 } from './api/types';
 import { genMessageId, newId } from './api/ids';
+import { colorOf, type CardColor } from './lib/colors';
 import { DEFAULT_ADVANCED, DEFAULT_MODEL_KEY, MODELS, PERSONAS, TYPE_INFO } from './lib/catalog';
 import { cut, sizeOf } from './lib/format';
 import { canPlug, chatsOf, descendants, membersOf, nameOf, qNum, type Graph } from './lib/graph';
@@ -31,7 +32,9 @@ export interface UiState { selected: Id | null; dialog: DialogState | null;
   toast: { id: number; text: string; undoCardId: Id | null } | null;
   compare: Id | null; dropping: boolean; webSearch: Readonly<Record<Id, boolean>>;
   /** The first-visit welcome tour (chrome/WelcomeTour.tsx) is open. */
-  tour: boolean }
+  tour: boolean;
+  /** The right-click menu on a card (its colour row). */
+  cardMenu: { x: number; y: number; cardId: Id } | null }
 
 /** One chat's answer in flight, or its kept error. `asked` is the question being answered (a key error re-asks it). */
 export interface StreamState { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null;
@@ -56,12 +59,12 @@ const LOCKED_ONCE_STARTED = ['model', 'persona', 'systemPrompt', 'inheritDesk', 
 
 /** True while any overlay is up. */
 export function overlayOpen(ui: UiState): boolean {
-  return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.linkPop || ui.confirm || ui.compare || ui.tour);
+  return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.cardMenu || ui.linkPop || ui.confirm || ui.compare || ui.tour);
 }
 
 const initialUi = (): UiState => ({
   selected: null, dialog: null, viewer: null, focus: null, menu: null, linkPop: null, confirm: null, toast: null,
-  compare: null, dropping: false, webSearch: {}, tour: false,
+  compare: null, dropping: false, webSearch: {}, tour: false, cardMenu: null,
 });
 
 const FILE_TYPES: Record<string, [SourceType, Status]> = {
@@ -1008,9 +1011,17 @@ export class BoardStore {
   /** The welcome tour sits above everything, so anything else that was open closes. */
   openTour(): void { if (!this.ui.tour) this.setUi({ tour: true, menu: null, linkPop: null }); }
   closeTour(): void { if (this.ui.tour) this.setUi({ tour: false }); }
-  openMenu(m: UiState['menu']): void { this.setUi({ menu: m, linkPop: null }); }
+  openMenu(m: UiState['menu']): void { this.setUi({ menu: m, linkPop: null, cardMenu: null }); }
+  openCardMenu(x: number, y: number, cardId: Id): void { if (this.cards.has(cardId)) this.setUi({ cardMenu: { x, y, cardId }, menu: null, linkPop: null }); }
+  closeCardMenu(): void { if (this.ui.cardMenu) this.setUi({ cardMenu: null }); }
+  /** Colours a card (null = default). One normal PATCH of `data.color`; a pile's colour is its face's, not its members'. */
+  setColor(id: Id, color: CardColor | null): void {
+    const c = this.cards.get(id);
+    if (!c || (colorOf(c.data) ?? null) === color) return;
+    this.patchCard(id, { data: { color } });
+  }
   closeMenu(): void { if (this.ui.menu) this.setUi({ menu: null }); }
-  openLinkPop(p: UiState['linkPop']): void { this.setUi({ linkPop: p, menu: null }); }
+  openLinkPop(p: UiState['linkPop']): void { this.setUi({ linkPop: p, menu: null, cardMenu: null }); }
   closeLinkPop(): void { if (this.ui.linkPop) this.setUi({ linkPop: null }); }
   setDropping(on: boolean): void { if (this.ui.dropping !== on) this.setUi({ dropping: on }); }
   setWebSearch(chatId: Id, on: boolean): void { this.setUi({ webSearch: { ...this.ui.webSearch, [chatId]: on } }); }

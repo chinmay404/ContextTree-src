@@ -1,0 +1,33 @@
+/* Card colours (P9). Each tone sets the five tokens a source family sets, so a coloured source face takes the tone and
+   keeps the family text contrast; a coloured chat keeps its white body and gets a tinted header strip and a 2 px rim.
+   Imported after materials.css so the rim wins over its hairline shadow at equal specificity. */
+.pb-root .tone-graphite { --fc: #E8E8ED; --fd: #6E6E73; --fk: #D1D1D6; --fkt: #1D1D1F; --fx: #3A3A3C; }
+.pb-root .tone-blue { --fc: #DCE9F7; --fd: #3A78B8; --fk: #B5D0EE; --fkt: #17375C; --fx: #2B4A70; }
+.pb-root .tone-teal { --fc: #D9EEEE; --fd: #2F8F8F; --fk: #AEDADA; --fkt: #0F4444; --fx: #1F5555; }
+.pb-root .tone-green { --fc: #E0EDD9; --fd: #4F8A45; --fk: #BCD9B2; --fkt: #1F4A1A; --fx: #34552F; }
+.pb-root .tone-yellow { --fc: #F7EFC9; --fd: #B58B12; --fk: #EBDC8C; --fkt: #4F3B04; --fx: #5E5120; }
+.pb-root .tone-orange { --fc: #F8E3CF; --fd: #C26A1B; --fk: #EDC09A; --fkt: #5A2C05; --fx: #6B4527; }
+.pb-root .tone-red { --fc: #F5DBDB; --fd: #C0463F; --fk: #E8AEAA; --fkt: #5C1A17; --fx: #6F3532; }
+.pb-root .tone-pink { --fc: #F5DDE9; --fd: #C0568A; --fk: #E8B3CC; --fkt: #5E1F40; --fx: #6E3A55; }
+
+/* chats: tinted strip across the top of the face, tinted rim; the body stays white for reading */
+.pb-root .card.chat[class*="tone-"] .face { box-shadow: 0 0 0 2px var(--fd), var(--sh-card); }
+.pb-root .card.chat[class*="tone-"].selected .face { box-shadow: 0 0 0 2px var(--pb-ink), 0 0 0 4px var(--fd), var(--sh-lift); }
+.pb-root .card.chat[class*="tone-"].lift .face { box-shadow: 0 0 0 2px var(--fd), var(--sh-lift); }
+.pb-root .card.chat[class*="tone-"]:not(.size-s) .chd { margin: -14px -14px 0; padding: 9px 14px; min-height: 38px; background: var(--fc); border-radius: var(--r-card, 18px) var(--r-card, 18px) 0 0; }
+.pb-root .card.chat[class*="tone-"]:not(.size-s) .chd .mtag { color: var(--fx); }
+/* zoomed out: the blob takes the strip's tone */
+.pb-root .card.chat[class*="tone-"].size-s .face { background: var(--fc); }
+
+/* swatches (right-click menu and the focus view's menu); they sit inside .menu, whose generic button rules they override */
+.pb-root .menu .swl { font-size: 12px; font-weight: 600; color: var(--t2); padding: 8px 14px 2px; }
+.pb-root .menu .swatches { display: flex; align-items: center; gap: 8px; padding: 6px 14px 10px; }
+.pb-root .menu .swatches button { width: 22px; height: 22px; padding: 0; gap: 0; border-radius: 11px; flex: none; background: var(--sw); box-shadow: inset 0 0 0 .5px rgba(0,0,0,.14); display: grid; place-items: center; transition: transform 120ms var(--ease-out), box-shadow 120ms ease; }
+.pb-root .menu .swatches button.none, .pb-root .menu .swatches button.none:hover { background: #fff; position: relative; overflow: hidden; }
+.pb-root .menu .swatches button.none::after { content: ''; position: absolute; left: -2px; right: -2px; top: 50%; height: 1.5px; background: #C0463F; transform: rotate(-45deg); }
+.pb-root .menu .swatches button:hover { background: var(--sw); }
+.pb-root .menu .swatches button[aria-checked="true"] { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--pb-ink); }
+.pb-root .menu .swatches button:focus-visible { outline: 2px solid var(--pb-edge-strong); outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) { .pb-root .menu .swatches button:hover { transform: scale(1.12); } }
+.pb-root .menu .swatches button:active { transform: scale(.94); }
+.pb-root [data-pb="cardmenu"] { min-width: 0; padding: 6px 0 2px; border-radius: 22px; }

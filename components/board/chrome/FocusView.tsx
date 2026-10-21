@@ -11,6 +11,8 @@ import {
 } from 'react';
 import type { Card, ChatData, Id, Message } from '../api/types';
 import { FAMC, TYPE_INFO, modelInfo, personaLabel, providerOf, type ModelKey } from '../lib/catalog';
+import { ColorSwatches } from './ColorSwatches';
+import { colorOf } from '../lib/colors';
 import { ModelPicker } from './ModelPicker';
 import { keyErrorView } from '../lib/key-errors';
 import { ModelMark } from './ModelMark';
@@ -412,6 +414,8 @@ function FocusBody(p: {
         <Composer key={c.id} chatId={c.id} streaming={streaming} webOn={webOn} model={mi} modelId={d.model} started={store.hasStarted(c.id)} onSettings={openSettings} />
         <div className={`menu${menuOn ? ' on' : ''}`} data-pb="focusmenu" role="menu" inert={!menuOn} aria-hidden={!menuOn}
           style={menu ? { top: menu.top, right: menu.right, left: 'auto' } : undefined}>
+          <div className="swl">Colour</div>
+          <ColorSwatches value={colorOf(c.data)} onPick={(col) => { store.setColor(c.id, col); setMenuOn(false); moreRef.current?.focus({ preventScroll: true }); }} />
           {siblings.length ? (
             <button type="button" role="menuitem" onClick={() => { setMenuOn(false); moreRef.current?.focus({ preventScroll: true }); store.openCompare(c.id); }}>
               <span className="c" style={{ background: 'var(--pb-fill)' }}><Icon name="git-fork" /></span>Compare with siblings</button>

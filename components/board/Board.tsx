@@ -21,6 +21,7 @@ import { typing } from './lib/util';
 import { AddMenu } from './chrome/AddMenu';
 import { BoardInput } from './chrome/BoardInput';
 import { BranchSheet } from './chrome/BranchSheet';
+import { CardMenu } from './chrome/CardMenu';
 import { BrandBar } from './chrome/BrandBar';
 import { CompareSheet } from './chrome/CompareSheet';
 import { DeleteConfirm } from './chrome/DeleteConfirm';
@@ -33,7 +34,8 @@ import { Toast } from './chrome/Toast';
 import { ChatBar } from './chrome/ChatBar';
 import { WelcomeTour } from './chrome/WelcomeTour';
 import { ZoomControl } from './chrome/ZoomControl';
-import './chrome/materials.css'; // keep last: its rules override pebble.css and the chrome CSS at equal specificity
+import './chrome/materials.css'; // its rules override pebble.css and the chrome CSS at equal specificity
+import './chrome/colors.css'; // keep last: card colours and the chat rim win over materials.css
 
 export interface BoardProps {
   api: EngineApi;
@@ -142,6 +144,7 @@ function Chrome(): ReactElement {
           <ChatBar />
           <ZoomControl />
           <AddMenu />
+          <CardMenu />
           <DropOverlay />
           <BoardInput />
           <BranchSheet />

@@ -93,7 +93,15 @@ export function BoardInput(): null {
       engine.spawnNote(x - 106, y - 30);
     };
     const onContext = (e: MouseEvent) => {
-      if (e.target instanceof Element && e.target.closest('.card')) return;
+      const t = e.target instanceof Element ? e.target : null;
+      const card = t?.closest<HTMLElement>('.card[data-id]');
+      if (card) {
+        // The browser's own menu stays for text (copy, paste, spell check) and links; elsewhere on a card the card's menu opens.
+        if (t!.closest('textarea, input, [contenteditable], a[href]') || covered()) return;
+        e.preventDefault();
+        store.openCardMenu(e.clientX, e.clientY, card.dataset.id!);
+        return;
+      }
       if (covered()) return;
       e.preventDefault();
       store.openMenu({ x: e.clientX, y: e.clientY, at: engine.ctx.s2w(e.clientX, e.clientY), fromAdd: false });

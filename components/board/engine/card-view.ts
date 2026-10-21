@@ -4,6 +4,7 @@
  */
 import type { Card, ChatData, Id, Message, ProviderId, SourceData } from '../api/types';
 import { FAMC, TYPE_INFO, modelInfo, personaLabel } from '../lib/catalog';
+import { colorOf } from '../lib/colors';
 import { keyErrorView } from '../lib/key-errors';
 import { modelMarkHtml } from '../lib/model-icons';
 import { cut, esc } from '../lib/format';
@@ -235,7 +236,7 @@ export class CardView {
     const keep = ['lift', 'drop', 'target'].filter((k) => n.el.classList.contains(k));
     return ['card', chat ? 'chat' : `src f-${famOf(g, c)}`, `size-${this.ctx.size().toLowerCase()}`, c.id === sel && 'selected',
       !!rel && !rel.has(c.id) && 'faded', empty && 'empty', !chat && this.reading(c) && 'reading', !chat && st !== 'ready' && st,
-      loose && (st === 'ready' || st === 'soon') && 'muted', chat && (c.data as ChatData).demoted && 'demoted', ...keep]
+      loose && (st === 'ready' || st === 'soon') && 'muted', chat && (c.data as ChatData).demoted && 'demoted', colorOf(c.data) && `tone-${colorOf(c.data)}`, ...keep]
       .filter(Boolean).join(' ');
   }
 

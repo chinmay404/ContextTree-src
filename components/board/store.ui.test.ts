@@ -471,3 +471,61 @@ describe('keyError', () => {
     expect(texts('side')).not.toContain('one');
   });
 });
+
+describe('card colour', () => {
+  const color = (id: string) => (snap().cards.get(id)!.data as { color?: string | null }).color;
+  const patches = () => calls('updateCard').map((c) => (c.args[2] as { data: object }).data);
+
+  it('one normal PATCH of data.color, and the card shows it at once', async () => {
+    s.setColor('main', 'blue');
+    expect(color('main')).toBe('blue');
+    await flush();
+    expect(patches()).toEqual([{ color: 'blue' }]);
+    s.setColor('main', 'blue');   // the same colour again sends nothing
+    await flush();
+    expect(patches()).toHaveLength(1);
+  });
+
+  it('works for a chat and for a source, and Default clears it', async () => {
+    s.setColor('pdf', 'green'); s.setColor('side', 'pink');
+    await flush();
+    expect(color('pdf')).toBe('green'); expect(color('side')).toBe('pink');
+    s.setColor('pdf', null);
+    await flush();
+    expect(color('pdf')).toBeNull();
+    expect(patches()).toEqual([{ color: 'green' }, { color: 'pink' }, { color: null }]);
+    s.setColor('second', null);   // already default: nothing to send
+    await flush();
+    expect(patches()).toHaveLength(3);
+  });
+
+  it('a started chat can still be coloured (colour is not a setting)', async () => {
+    expect(s.hasStarted('side')).toBe(true);
+    s.setColor('side', 'red');
+    await flush();
+    expect(color('side')).toBe('red');
+  });
+
+  it('survives a reload: the server keeps data.color', async () => {
+    s.setColor('main', 'teal');
+    await flush();
+    const again = new BoardStore(m, 'b_seed', { readsDebounceMs: 5 });
+    await again.load();
+    expect((again.getSnapshot().cards.get('main')!.data as { color?: string }).color).toBe('teal');
+    again.dispose();
+  });
+
+  it('the card menu opens for a card, closes other pop-ups, and counts as an overlay', () => {
+    s.openMenu({ x: 1, y: 1, at: null, fromAdd: false });
+    s.openCardMenu(10, 20, 'main');
+    expect(snap().ui.cardMenu).toEqual({ x: 10, y: 20, cardId: 'main' });
+    expect(snap().ui.menu).toBeNull();
+    expect(overlayOpen(snap().ui)).toBe(true);
+    s.openMenu({ x: 1, y: 1, at: null, fromAdd: false });
+    expect(snap().ui.cardMenu).toBeNull();
+    s.openCardMenu(1, 1, 'nope');
+    expect(snap().ui.cardMenu).toBeNull();
+    s.openCardMenu(1, 1, 'main'); s.closeCardMenu();
+    expect(snap().ui.cardMenu).toBeNull();
+  });
+});

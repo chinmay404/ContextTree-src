@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { contrast } from './lib/contrast';
 
 const OLD = ['#3B3352', '#DDD3EE', '#D6CDE6', '#E4DCF2', '#3A2B55', '#EDE8F5', '#F5F2FA', '#EFE9F8', '#CFC3E8', '#A594D1', '#2B2340',
   '#6E6585', '#9A92AD', '#7A52D6', '#E6DBFF', '#B9A0F5', '#4F3A8A'];
@@ -14,15 +15,6 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 const css = readFileSync('components/board/pebble.css', 'utf8');
-
-function lum(hex: string): number {
-  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-}
-export function contrast(a: string, b: string): number {
-  const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m);
-  return (x + 0.05) / (y + 0.05);
-}
 
 describe('Apple-grey palette', () => {
   it('leaves no old purple hex or --pb-lilac in board code', () => {
