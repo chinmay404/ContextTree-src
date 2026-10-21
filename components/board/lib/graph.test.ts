@@ -62,10 +62,10 @@ it('names, wire keys, tokens and answers', () => {
 });
 
 it('catalog helpers', () => {
-  expect(defaultChatData('Q').model).toBe('openai/gpt-oss-120b');
+  expect(defaultChatData('Q').model).toBe('openai/gpt-5-mini');
   expect(defaultChatData('Q', 'x').model).toBe('x');
-  expect(modelInfo(MODELS.gemini.engineId)).toEqual({ key: 'gemini', label: 'Gemini', color: '#2A86C4' });
-  expect(modelInfo('acme/foo-bar')).toEqual({ key: null, label: 'foo-bar', color: '#6E6585' });
+  expect(modelInfo(MODELS.gemini.engineId)).toEqual({ key: 'gemini', label: 'Gemini', name: 'Gemini 3 Flash', color: '#2A86C4' });
+  expect(modelInfo('acme/foo-bar')).toEqual({ key: null, label: 'foo-bar', name: 'foo-bar', color: '#6E6585' });
   expect(personaLabel('none')).toBeNull();
   expect(personaLabel('custom')).toBe('Custom');
   expect(personaLabel('skeptic')).toBe('Skeptic');

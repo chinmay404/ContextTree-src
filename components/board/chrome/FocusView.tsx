@@ -10,7 +10,8 @@ import {
   type CSSProperties, type KeyboardEvent, type ReactElement,
 } from 'react';
 import type { Card, ChatData, Id, Message } from '../api/types';
-import { FAMC, TYPE_INFO, modelInfo, personaLabel } from '../lib/catalog';
+import { FAMC, TYPE_INFO, modelInfo, personaLabel, type ModelKey } from '../lib/catalog';
+import { ModelMark } from './ModelMark';
 import { formatWhen, strip } from '../lib/format';
 import { ancestors, chatData, chatsOf, famOf, iconOf, isChat, membersOf, nameOf, qNum, sourceData, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
@@ -38,7 +39,7 @@ const Dots = ({ g, cards }: { g: Graph; cards: Card[] }): ReactElement => (
 
 function rowMeta(g: Graph, r: SourceRow): string {
   const c = r.card;
-  if (isChat(c)) return `Answer · ${modelInfo(chatData(c).model).label}`;
+  if (isChat(c)) return `Answer · ${modelInfo(chatData(c).model).name}`;
   if (c.status === 'soon') return 'Coming soon';
   if (c.sourceType === 'pile') return `${membersOf(g, c.id).length} files`;
   const d = sourceData(c);
@@ -256,7 +257,7 @@ function FocusBody(p: {
   };
 
   const who = (text: string): ReactElement => (
-    <div className="who"><span className="av" style={{ '--c': mi.color } as CSSProperties}><i /></span>{text}</div>
+    <div className="who"><span className="av" style={{ '--c': mi.color } as CSSProperties}><ModelMark model={mi} /></span>{text}</div>
   );
   const webRows = (list: Web | null | undefined): ReactElement | null => (list?.length ? (
     <div className="webrows">
@@ -288,7 +289,7 @@ function FocusBody(p: {
               const added = sr.filter((r) => !r.inherited);
               const head = (
                 <>
-                  <div className="h"><span className="mdot" style={{ '--c': sm.color } as CSSProperties} /><u>{qNum(g, s.id)}</u> · {sm.label}<span className="when">{isHere ? 'Now' : formatWhen(s.createdAt)}</span></div>
+                  <div className="h"><ModelMark model={sm} /><u>{qNum(g, s.id)}</u> · {sm.name}<span className="when">{isHere ? 'Now' : formatWhen(s.createdAt)}</span></div>
                   <div className="t">{sd.name}</div>
                   <div className="s2">Asked with {asked} source{asked === 1 ? '' : 's'}</div>
                 </>
@@ -347,7 +348,7 @@ function FocusBody(p: {
             <div>
               <div className="ftitle" role="heading" aria-level={1}>{d.name}</div>
               <div className="fmeta">
-                <span className="mdot" style={{ '--c': mi.color } as CSSProperties} /><b>{mi.label}</b>
+                <ModelMark model={mi} /><b>{mi.name}</b>
                 {persona ? <><span>·</span><span>{persona}</span></> : null}
                 <span>·</span><span>{turns} turn{turns === 1 ? '' : 's'}</span>
                 <span>·</span><span>{read.length} source{read.length === 1 ? '' : 's'}</span>
@@ -368,7 +369,7 @@ function FocusBody(p: {
                 <div key={m.id} className="amsg">
                   {webRows(webMap.get(m.id))}
                   <article className="art">
-                    {who(`${mi.label} answered with ${read.length} source${read.length === 1 ? '' : 's'}`)}
+                    {who(`${mi.name} answered with ${read.length} source${read.length === 1 ? '' : 's'}`)}
                     <div className="body" dangerouslySetInnerHTML={{ __html: html }} />
                     <div className="aacts">
                       <button type="button" data-copy onClick={() => copy(m)}><Icon name="copy" />{copied === m.id ? 'Copied' : 'Copy'}</button>
@@ -384,12 +385,12 @@ function FocusBody(p: {
                 {webRows(stream.web)}
                 {stream.text ? (
                   <article className="art live" aria-busy="true">
-                    {who(`${mi.label} is answering with ${read.length} source${read.length === 1 ? '' : 's'}`)}
+                    {who(`${mi.name} is answering with ${read.length} source${read.length === 1 ? '' : 's'}`)}
                     <div className="body" dangerouslySetInnerHTML={{ __html: renderMarkdown(stream.text) }} />
                   </article>
                 ) : (
                   <article className="art" aria-busy="true">
-                    {who(`${mi.label} is thinking with ${read.length} source${read.length === 1 ? '' : 's'}…`)}
+                    {who(`${mi.name} is thinking with ${read.length} source${read.length === 1 ? '' : 's'}…`)}
                     <div className="skel"><i style={{ width: '92%', height: 12 }} /><i style={{ width: '76%', height: 12 }} /><i style={{ width: '84%', height: 12 }} /></div>
                   </article>
                 )}
@@ -418,7 +419,7 @@ function FocusBody(p: {
 }
 
 function Composer(p: {
-  chatId: Id; streaming: boolean; webOn: boolean; model: { label: string; color: string };
+  chatId: Id; streaming: boolean; webOn: boolean; model: { key: ModelKey | null; name: string; color: string };
   onSettings: (e: React.MouseEvent<HTMLElement>) => void;
 }): ReactElement {
   const { store } = useBoard();
@@ -456,7 +457,7 @@ function Composer(p: {
           <button type="button" className="cp" data-addsrc
             onClick={() => window.dispatchEvent(new CustomEvent('pb:pickfiles', { detail: { deskId: p.chatId } }))}><Icon name="plus" />Source</button>
           <button type="button" className="cp" data-settings onClick={p.onSettings}>
-            <span className="mdot" style={{ '--c': p.model.color } as CSSProperties} />{p.model.label}<Icon name="chevron-down" color="var(--t2)" size={11} /></button>
+            <ModelMark model={p.model} />{p.model.name}<Icon name="chevron-down" color="var(--t2)" size={11} /></button>
           <button type="button" className={`cp${p.webOn ? ' on' : ''}`} data-web aria-pressed={p.webOn}
             onClick={() => store.setWebSearch(p.chatId, !p.webOn)}><Icon name="globe" />Web</button>
           <button type="button" className="send2" aria-label="Send" disabled={empty || p.streaming} onClick={go}><Icon name="arrow-up" /></button>

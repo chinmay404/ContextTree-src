@@ -3,8 +3,10 @@
  * 640×320 stage. Timing lives in welcome-tour.css: every animation in a scene runs on that scene's `--T` clock.
  * Spec and visual source: docs/design/onboarding-tour.html.
  */
-import type { CSSProperties, ReactElement } from 'react';
+import type { ReactElement } from 'react';
+import { MODELS, type ModelKey } from '../../lib/catalog';
 import { Icon } from '../Icon';
+import { ModelMark } from '../ModelMark';
 
 export type SceneKey = 'chat' | 'source' | 'desk' | 'string' | 'branch' | 'pile';
 
@@ -14,10 +16,8 @@ const Cursor = (): ReactElement => (
   </svg>
 );
 
-const Dot = ({ c }: { c: string }): ReactElement => <span className="mdot" style={{ '--c': c } as CSSProperties} />;
-
-const Head = ({ model, color, q, soft }: { model: string; color: string; q: string; soft?: boolean }): ReactElement => (
-  <div className="chd"><Dot c={color} /><span className="mtag">{model}</span><span className="sp" /><span className={soft ? 'qchip soft' : 'qchip'}>{q}</span></div>
+const Head = ({ model, q, soft }: { model: ModelKey; q: string; soft?: boolean }): ReactElement => (
+  <div className="chd"><ModelMark model={{ key: model, name: MODELS[model].name, color: MODELS[model].color }} /><span className="mtag">{MODELS[model].name}</span><span className="sp" /><span className={soft ? 'qchip soft' : 'qchip'}>{q}</span></div>
 );
 
 const Src = ({ kind, icon, meta, title, className = '', port }: { kind: string; icon: string; meta: string; title: string; className?: string; port?: boolean }): ReactElement => (
@@ -46,7 +46,7 @@ function ChatScene(): ReactElement {
         <div className="t-mi"><span className="t-c" style={{ background: '#C9ECFF' }}><Icon name="link" color="#2A86C4" /></span>Paste a link</div>
       </div>
       <div className="card chat"><div className="face">
-        <Head model="Claude" color="#E0673A" q="Q1" />
+        <Head model="claude" q="Q1" />
         <div className="ttl"><span className="t-typ">Which pricing tier first?</span></div>
         <div className="t-slot">
           <div className="thinking"><i />Thinking…</div>
@@ -78,7 +78,7 @@ function DeskScene(): ReactElement {
     <>
       <div className="desk"><div className="tab"><span className="qchip">Q1</span><span className="lb">Which pricing tier first?</span><span className="dots"><i style={{ background: '#F5C93A' }} /></span></div><div className="t-hint">Drop sources here to add them to this question only</div></div>
       <div className="card chat"><div className="face">
-        <Head model="Claude" color="#E0673A" q="Q1" />
+        <Head model="claude" q="Q1" />
         <div className="ttl">Which pricing tier should we launch with?</div>
         <Reads after="1 source" />
       </div></div>
@@ -95,7 +95,7 @@ function StringScene(): ReactElement {
       <Src kind="web" icon="globe" meta="Web page · competitor.com" title="Rival pricing page" port />
       <div className="card chat"><div className="face">
         <span className="port in" /><span className="port out" />
-        <Head model="Gemini" color="#2A86C4" q="Q2" />
+        <Head model="gemini" q="Q2" />
         <div className="ttl">How do rivals price extra seats?</div>
         <Reads after="1 source · strung in" />
       </div></div>
@@ -110,13 +110,13 @@ function BranchScene(): ReactElement {
       <svg className="t-lines" aria-hidden="true"><path className="t-tube" d="M271 68 C340 68, 356 214, 420 214" /></svg>
       <div className="card chat t-parent"><div className="face">
         <span className="port in" /><span className="port out" />
-        <Head model="Claude" color="#E0673A" q="Q1" />
+        <Head model="claude" q="Q1" />
         <div className="ttl">Which pricing tier should we launch with?</div>
         <div className="ans"><p>Launch with <b>Free</b> and <b>Pro at $12</b>.</p></div>
       </div></div>
       <div className="card chat t-kid"><div className="face">
         <span className="port in" />
-        <Head model="GPT" color="#3FAE5A" q="Q1.1" soft />
+        <Head model="gpt" q="Q1.1" soft />
         <div className="ttl">What if we drop the free tier?</div>
         <div className="t-inh"><Icon name="corner-left-up" />Reads the desk above</div>
       </div></div>

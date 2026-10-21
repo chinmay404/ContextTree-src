@@ -4,6 +4,7 @@
  */
 import type { Card, ChatData, Id, Message, SourceData } from '../api/types';
 import { FAMC, TYPE_INFO, modelInfo, personaLabel } from '../lib/catalog';
+import { modelMarkHtml } from '../lib/model-icons';
 import { cut, esc } from '../lib/format';
 import { answersInto, chatData, iconOf, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, wiresInto, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
@@ -181,7 +182,7 @@ export class CardView {
 
   private chatHTML(_n: ViewNode, c: Card): string {
     const g = this.g, d = chatData(c), store = this.ctx.store, m = modelInfo(d.model);
-    if (this.ctx.size() === 'S' || d.demoted) return `<div class="face" title="${esc(d.name)}"><div class="s blob"><span class="mdot" style="--c:${esc(m.color)}"></span></div></div>`;
+    if (this.ctx.size() === 'S' || d.demoted) return `<div class="face" title="${esc(d.name)}"><div class="s blob">${modelMarkHtml(m)}</div></div>`;
     const items = store.readsOf(c.id).items, read = items.filter(isRead);
     const nRead = countSources(g, read);
     const snap = store.getSnapshot(), msgs: Message[] = snap.messages.get(c.id) ?? [], stream = snap.streaming.get(c.id);
@@ -197,7 +198,7 @@ export class CardView {
     const persona = personaLabel(d.persona);
     const hasMsgs = msgs.length > 0 || (c.messageCount ?? 0) > 0;
     return `<div class="face">
-    <div class="chd"><span class="mdot" style="--c:${esc(m.color)}"></span><span class="mtag"><u>${esc(qNum(g, c.id))}</u> · ${esc(m.label)}</span><span class="sp"></span>${streaming ? '' : `${ap('open', 'maximize-2', 'Open')}${ap('branch', 'git-branch', 'Branch')}`}</div>
+    <div class="chd">${modelMarkHtml(m)}<span class="mtag"><u>${esc(qNum(g, c.id))}</u> · ${esc(m.name)}</span><span class="sp"></span>${streaming ? '' : `${ap('open', 'maximize-2', 'Open')}${ap('branch', 'git-branch', 'Branch')}`}</div>
     <div class="ttl">${esc(d.name)}${persona ? ` <span class="ptag">${esc(persona)}</span>` : ''}</div>
     ${body || live ? `<div class="cbody">${body}${live}</div>` : ''}
     <div class="compose"><textarea rows="1" placeholder="${hasMsgs ? 'Ask a follow-up' : 'Type the question you want to ask…'}" aria-label="Message"></textarea><button class="send" aria-label="Send" disabled>${icon('arrow-up')}</button></div>

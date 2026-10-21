@@ -1,4 +1,4 @@
-import type { AdvancedSettings, ChatData, SourceType } from '../api/types';
+import type { AdvancedSettings, ChatData, ProviderId, SourceType } from '../api/types';
 
 export type Family = 'media' | 'docs' | 'note' | 'web' | 'data' | 'image' | 'mixed' | 'answer';
 
@@ -25,25 +25,47 @@ export const STRING_COL: Record<Family, string> = {
 
 export type ModelKey = 'claude' | 'gpt' | 'gemini' | 'llama' | 'deepseek' | 'mistral' | 'kimi';
 
-export const MODELS: Record<ModelKey, { label: string; color: string; engineId: string }> = {
-  claude: { label: 'Claude', color: '#E0673A', engineId: 'anthropic/claude-sonnet-4-20250514' },
-  gpt: { label: 'GPT', color: '#3FAE5A', engineId: 'openai/gpt-oss-120b' },
-  gemini: { label: 'Gemini', color: '#2A86C4', engineId: 'gemini/gemini-3-flash-preview' },
-  llama: { label: 'Llama (Groq)', color: '#7A52D6', engineId: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
-  deepseek: { label: 'DeepSeek', color: '#3B6FD8', engineId: 'deepseek-ai/deepseek-v4-pro' },
-  mistral: { label: 'Mistral', color: '#E2A72A', engineId: 'mistralai/mistral-large-3-675b-instruct-2512' },
-  kimi: { label: 'Kimi', color: '#D1467E', engineId: 'moonshotai/kimi-k2-instruct' },
+export const PROVIDER_NAME: Record<ProviderId, string> = {
+  anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google', groq: 'Groq', deepseek: 'DeepSeek', mistral: 'Mistral', moonshot: 'Moonshot',
+};
+
+/** `name` is the detailed model name shown on pills, card headers, "answered with" and the picker; `label` is the short
+ *  form for tight spots (the zoomed-out map). Colours are the models' identity colours. Each engine id runs on the
+ *  user's own key for `provider` (app-shell plan, "Model routes"). */
+export const MODELS: Record<ModelKey, { label: string; name: string; color: string; engineId: string; provider: ProviderId }> = {
+  claude: { label: 'Claude', name: 'Claude Sonnet 4', color: '#E0673A', engineId: 'anthropic/claude-sonnet-4-20250514', provider: 'anthropic' },
+  gpt: { label: 'GPT', name: 'GPT-5 mini', color: '#3FAE5A', engineId: 'openai/gpt-5-mini', provider: 'openai' },
+  gemini: { label: 'Gemini', name: 'Gemini 3 Flash', color: '#2A86C4', engineId: 'gemini/gemini-3-flash-preview', provider: 'google' },
+  llama: { label: 'Llama', name: 'Llama 4 Maverick', color: '#7A52D6', engineId: 'meta-llama/llama-4-maverick-17b-128e-instruct', provider: 'groq' },
+  deepseek: { label: 'DeepSeek', name: 'DeepSeek V3', color: '#3B6FD8', engineId: 'deepseek/deepseek-chat', provider: 'deepseek' },
+  mistral: { label: 'Mistral', name: 'Mistral Large', color: '#E2A72A', engineId: 'mistral/mistral-large-latest', provider: 'mistral' },
+  kimi: { label: 'Kimi', name: 'Kimi K2', color: '#D1467E', engineId: 'moonshot/kimi-k2-0905-preview', provider: 'moonshot' },
 };
 
 export const MAIN_MODELS: ModelKey[] = ['claude', 'gpt', 'gemini'];
-// Claude needs BYOK, so a Claude default would fail the first question for most users.
+// The shell passes a `defaultModel` that has a key (app-shell plan, Task 3); this is the fallback.
 export const DEFAULT_MODEL_KEY: ModelKey = 'gpt';
 
-export function modelInfo(engineId: string): { key: ModelKey | null; label: string; color: string } {
+// Legacy ids on chats that already exist. Longest prefix first: Groq-hosted `openai/gpt-oss-*` before `openai/`.
+const LEGACY_PROVIDER: [string, ProviderId][] = [
+  ['openai/gpt-oss', 'groq'], ['openai/', 'openai'], ['anthropic/', 'anthropic'], ['gemini/', 'google'], ['meta-llama/', 'groq'],
+  ['deepseek-ai/', 'deepseek'], ['deepseek/', 'deepseek'], ['mistralai/', 'mistral'], ['mistral/', 'mistral'],
+  ['moonshotai/', 'moonshot'], ['moonshot/', 'moonshot'],
+];
+
+/** Which provider key runs this engine id: the catalog first, then the legacy prefixes; null means unsupported. */
+export function providerOf(engineId: string): ProviderId | null {
+  const id = String(engineId || '');
+  const k = (Object.keys(MODELS) as ModelKey[]).find((m) => MODELS[m].engineId === id);
+  if (k) return MODELS[k].provider;
+  return LEGACY_PROVIDER.find(([prefix]) => id.startsWith(prefix))?.[1] ?? null;
+}
+
+export function modelInfo(engineId: string): { key: ModelKey | null; label: string; name: string; color: string } {
   const key = (Object.keys(MODELS) as ModelKey[]).find((k) => MODELS[k].engineId === engineId);
-  if (key) return { key, label: MODELS[key].label, color: MODELS[key].color };
+  if (key) return { key, label: MODELS[key].label, name: MODELS[key].name, color: MODELS[key].color };
   const last = String(engineId || '').split('/').filter(Boolean).pop() ?? '';
-  return { key: null, label: last, color: '#6E6585' };
+  return { key: null, label: last, name: last, color: '#6E6585' };
 }
 
 export const PERSONAS: Record<'none' | 'skeptic' | 'teacher' | 'coach' | 'analyst', { label: string; text: string }> = {

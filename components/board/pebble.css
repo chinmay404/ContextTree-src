@@ -126,6 +126,7 @@
 .pb-root .card.size-s .sheet { border-radius: 24px; }
 .pb-root .s.blob { padding: 0 22px; }
 .pb-root .s.blob .mdot { width: 14px; height: 14px; border-radius: 7px; }
+.pb-root .s.blob .mmark { width: 20px; height: 20px; }
 .pb-root .tools { position: absolute; right: 8px; top: -12px; display: flex; gap: 3px; opacity: 0; transform: translateY(3px); transition: opacity 140ms ease-out, transform 160ms var(--ease-out); z-index: 4; }
 .pb-root .card.selected .tools { opacity: 1; transform: none; }
 @media (hover: hover) and (pointer: fine) {
@@ -155,6 +156,8 @@
 .pb-root .card.chat.selected .face { box-shadow: 0 0 0 2px var(--pb-ink), var(--sh-card); }
 .pb-root .chd { display: flex; align-items: center; gap: 6px; min-height: 20px; }
 .pb-root .mdot { width: 9px; height: 9px; border-radius: 5px; background: var(--c); flex: none; }
+/* The model's mark replaces the dot: same slot, tinted by the model colour through currentColor. */
+.pb-root .mmark { width: 13px; height: 13px; flex: none; color: var(--c); fill: currentColor; vertical-align: -2px; }
 .pb-root .mtag { font-size: 10.5px; font-weight: 600; white-space: nowrap; }
 .pb-root .mtag u { text-underline-offset: 2px; }
 .pb-root .ptag { vertical-align: 2px; font-size: 9.5px; font-weight: 600; background: var(--pb-fill); color: var(--t2); padding: 2px 6px; border-radius: 999px; white-space: nowrap; }
@@ -387,7 +390,7 @@
 .pb-root .art { display: flex; flex-direction: column; gap: 16px; }
 .pb-root .art .who { display: flex; gap: 8px; align-items: center; font-size: 12px; font-weight: 600; color: var(--t2); }
 .pb-root .art .who .av { width: 22px; height: 22px; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 22%, #fff); }
-.pb-root .art .who .av i { width: 8px; height: 8px; border-radius: 4px; background: var(--c); }
+.pb-root .art .who .av .mmark { width: 13px; height: 13px; vertical-align: 0; }
 .pb-root .art .body { display: flex; flex-direction: column; gap: 14px; font-size: 18px; line-height: 1.7; color: #3A3A3C; }
 .pb-root .art .body > p:first-child { font-size: 19px; color: var(--t1); }
 .pb-root .art .body p { margin: 0; text-wrap: pretty; }
