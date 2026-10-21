@@ -67,6 +67,16 @@ export function createDesks(ctx: EngineContext): DesksModule {
     },
 
     deskAt: (x, y, except) => geoDeskAt(ctx.layout(), x, y, except ?? null),
+    /** The chat whose desk box or title tab is under a screen point (both are pointer-events:none, so geometry answers). */
+    chatAt(cx, cy) {
+      for (const d of desks.values()) {
+        if (d.el.style.display === 'none') continue;
+        const r = d.tab.getBoundingClientRect();
+        if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) return d.chat;
+      }
+      const [x, y] = ctx.s2w(cx, cy);
+      return geoDeskAt(ctx.layout(), x, y, null);
+    },
     setHot(chatId) { desks.forEach((d) => d.el.classList.toggle('hot', d.chat === chatId)); },
     onCardDropped(n) { jiggled(makeRoom(ctx.layout(), n)); },
     onChatDropped(n) { jiggled(separateDesks(ctx.layout(), n.id)); },

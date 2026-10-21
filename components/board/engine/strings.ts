@@ -115,7 +115,7 @@ export function createStrings(ctx: EngineContext): StringsModule {
   function startString(n: ViewNode, kind: 'src' | 'chat', e: PointerEvent): void {
     endLive(); selWire = null; paintSel(); store.select(n.id);
     const p = path('live'); ctx.tubes.append(p);
-    p.style.stroke = kind === 'src' ? STRING_COL[famOf(store.graph(), store.graph().cards.get(n.id)!)] : '#CFC3E8';
+    p.style.stroke = kind === 'src' ? STRING_COL[famOf(store.graph(), store.graph().cards.get(n.id)!)] : '#D2D2D7';
     ctx.root.classList.add('stringing');
     ctx.root.querySelector('.tip')?.classList.remove('show');
     n.el.querySelector('.port[data-port]')?.classList.add('grab');
@@ -187,7 +187,7 @@ export function createStrings(ctx: EngineContext): StringsModule {
       const A = ctx.nodes.get(e.from), C = ctx.nodes.get(e.to); if (!A || !C) continue;
       const key = wireKey(e), card = g.cards.get(e.from)!;
       const fam = famOf(g, card), isAns = e.kind === 'answer';
-      const color = isAns ? STRING_COL.answer : STRING_COL[fam], deep = isAns ? '#6E6585' : FAMC[fam][1];
+      const color = isAns ? STRING_COL.answer : STRING_COL[fam], deep = isAns ? '#6E6E73' : FAMC[fam][1];
       const fade = isAns
         ? !!selChat && selChat.id !== C.id && selChat.id !== A.id
         : !!selChat && selChat.id !== C.id && !ancestors(g, C.id).some((x) => x.id === selChat.id);

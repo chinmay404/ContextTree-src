@@ -18,7 +18,7 @@
 .pb-root .ubw .reask { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; font-weight: 500; padding: 5px 11px; border-radius: 999px; background: var(--pb-desk); opacity: 0; transform: translateY(-2px); pointer-events: none; transition: opacity 150ms ease, transform 150ms var(--ease-out), background-color 150ms ease; }
 .pb-root .ubw .reask .i { --s: 13px; --c: var(--pb-ink); }
 .pb-root .ubw:hover .reask, .pb-root .ubw:focus-within .reask { opacity: 1; transform: none; pointer-events: auto; }
-@media (hover: hover) and (pointer: fine) { .pb-root .ubw .reask:hover { background: var(--pb-lilac); } }
+@media (hover: hover) and (pointer: fine) { .pb-root .ubw .reask:hover { background: var(--pb-fill); } }
 @media (hover: none) { .pb-root .ubw .reask { opacity: .8; transform: none; pointer-events: auto; } }
 
 /* answers with web results above them */
@@ -32,7 +32,7 @@
 .pb-root .fcomp .row .cp { transition: background-color 150ms ease, color 150ms ease; }
 .pb-root .fcomp .row .cp.on { background: var(--pb-ink); color: #fff; }
 .pb-root .fcomp .row .cp.on .i { --c: #fff; }
-@media (hover: hover) and (pointer: fine) { .pb-root .fcomp .row .cp:not(.on):hover { background: var(--pb-lilac); } }
+@media (hover: hover) and (pointer: fine) { .pb-root .fcomp .row .cp:not(.on):hover { background: var(--pb-fill); } }
 
 /* the more button and its menu */
 .pb-root .backp.more { padding: 9px 12px; }
@@ -42,7 +42,7 @@
 .pb-root .sheetbox.cmp { width: min(1120px, calc(100vw - 32px)); height: min(760px, calc(100vh - 32px)); display: flex; flex-direction: column; overflow: hidden; padding: 20px 24px 20px; gap: 14px; }
 .pb-root .cmp:focus { outline: none; }
 .pb-root .cmp-top { display: flex; align-items: center; gap: 8px; }
-.pb-root .cmp-top h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.01em; margin-right: auto; }
+.pb-root .cmp-top h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin-right: auto; }
 .pb-root .cmp-top .cp { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; background: var(--pb-desk); }
 .pb-root .cmp-top .cp.on { background: var(--pb-ink); color: #fff; }
 .pb-root .cmp-top .cp .i { --s: 13px; --c: currentColor; }

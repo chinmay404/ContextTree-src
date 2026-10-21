@@ -23,8 +23,8 @@ function selectorLists(src: string): string[] {
 
 describe('pebble.css', () => {
   it('keeps the prototype tokens', () => {
-    expect(css).toContain('--pb-canvas: #EDE8F5');
-    expect(css).toContain('--pb-ink: #2B2340');
+    expect(css).toContain('--pb-canvas: #F5F5F7');
+    expect(css).toContain('--pb-ink: #1D1D1F');
   });
   it('scopes every rule under .pb-root', () => {
     const lists = selectorLists(css);

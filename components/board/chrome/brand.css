@@ -3,7 +3,7 @@
 .pb-root [data-pb="brand"] .lg:active { transform: scale(.92); }
 .pb-root [data-pb="brand"] .lg .i { --s: 18px; --c: #fff; }
 .pb-root [data-pb="brand"] .bt { appearance: none; background: none; border: 0; font: inherit; text-align: left; font-size: 16px; color: var(--t2); cursor: text; border-radius: 8px; padding: 2px 6px; margin: -2px -6px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pb-root [data-pb="brand"] input.bt { font: inherit; font-size: 16px; color: var(--t1); background: var(--pb-desk); border: 0; outline: 2px solid var(--pb-lilac); width: 220px; }
+.pb-root [data-pb="brand"] input.bt { font: inherit; font-size: 16px; color: var(--t1); background: var(--pb-desk); border: 0; outline: 2px solid var(--pb-fill); width: 220px; }
 .pb-root [data-pb="boardmenu"] { max-height: 60vh; overflow-y: auto; }
 .pb-root [data-pb="boardmenu"] button .c { background: var(--pb-desk); }
 .pb-root [data-pb="boardmenu"] button .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
