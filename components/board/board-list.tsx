@@ -3,7 +3,7 @@ import './pebble.css';
 import './board-list.css';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { useRouter } from 'next/navigation';
-import { bricolage } from './fonts';
+import { inter } from './fonts';
 import { newId } from './api/ids';
 import { ApiError, type BoardSummary, type EngineApi } from './api/types';
 
@@ -138,7 +138,7 @@ export function BoardList({ api, query = '' }: { api: EngineApi; query?: string 
   };
 
   return (
-    <div className={`pb-root bl-root ${bricolage.variable}`}>
+    <div className={`pb-root bl-root ${inter.variable}`}>
       <main className="bl-main">
         <header className="bl-head">
           <h1>Your boards</h1>
