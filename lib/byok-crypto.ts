@@ -1,7 +1,7 @@
 import "server-only";
 
 import crypto from "crypto";
-import type { ByokProvider } from "@/lib/byok";
+import { PROVIDER_LABEL, type KeyStoreProvider } from "@/lib/byok";
 
 const ALGORITHM = "aes-256-gcm";
 
@@ -55,17 +55,7 @@ export function decryptApiKey(payload: string) {
   return decrypted.toString("utf8");
 }
 
-export function formatKeyHint(provider: ByokProvider, rawKey: string) {
-  const trimmed = rawKey.trim();
-  const last4 = trimmed.slice(-4) || "key";
-
-  if (provider === "openai") {
-    return `OpenAI ••••${last4}`;
-  }
-
-  if (provider === "litellm") {
-    return `LiteLLM ••••${last4}`;
-  }
-
-  return `Anthropic ••••${last4}`;
+export function formatKeyHint(provider: KeyStoreProvider, rawKey: string) {
+  const last4 = rawKey.trim().slice(-4) || "key";
+  return `${PROVIDER_LABEL[provider] ?? "Anthropic"} ••••${last4}`;
 }

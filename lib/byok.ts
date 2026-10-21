@@ -2,12 +2,16 @@ export const BYOK_PROVIDERS = ["openai", "anthropic", "litellm"] as const;
 
 export type ByokProvider = (typeof BYOK_PROVIDERS)[number];
 
-export type ProviderKeyStatus = {
-  provider: ByokProvider;
+export type ProviderKeyStatus<P extends string = ByokProvider> = {
+  provider: P;
   configured: boolean;
   keyHint: string | null;
   apiBaseHint?: string | null;
   updatedAt: string | null;
+  /** V3 key store only: last four characters, and the result of the provider check. */
+  last4?: string | null;
+  status?: "ok" | "rejected" | "unchecked" | null;
+  checkedAt?: string | null;
 };
 
 export type ProviderKeyStatusMap = Record<ByokProvider, ProviderKeyStatus>;
@@ -53,3 +57,32 @@ export const KEY_STORE_PROVIDERS = Array.from(
 ) as readonly (V3KeyProvider | ByokProvider)[];
 
 export type KeyStoreProvider = (typeof KEY_STORE_PROVIDERS)[number];
+
+export const PROVIDER_LABEL: Record<KeyStoreProvider, string> = {
+  anthropic: "Anthropic",
+  openai: "OpenAI",
+  google: "Google",
+  groq: "Groq",
+  deepseek: "DeepSeek",
+  mistral: "Mistral",
+  moonshot: "Moonshot",
+  litellm: "LiteLLM",
+};
+
+/** Empty status for every store provider (V2 shape stays in cloneEmptyProviderKeyStatus). */
+export function cloneEmptyStoreStatus(): Record<KeyStoreProvider, ProviderKeyStatus<KeyStoreProvider>> {
+  const out = {} as Record<KeyStoreProvider, ProviderKeyStatus<KeyStoreProvider>>;
+  for (const provider of KEY_STORE_PROVIDERS) {
+    out[provider] = {
+      provider,
+      configured: false,
+      keyHint: null,
+      updatedAt: null,
+      last4: null,
+      status: null,
+      checkedAt: null,
+      ...(provider === "litellm" ? { apiBaseHint: null } : {}),
+    };
+  }
+  return out;
+}
