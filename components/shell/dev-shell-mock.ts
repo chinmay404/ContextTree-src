@@ -14,6 +14,8 @@ type MockEngineKeys = { setKeys?: (providers: ProviderId[]) => void };
 export class MockKeyStore implements KeyStore {
   private map: KeyStatusMap = emptyStatusMap();
   private readonly latency: number;
+  /** Every call, for e2e: window.__mockKeys.calls. */
+  readonly calls: { method: string; force?: boolean }[] = [];
 
   constructor(opts: { all?: boolean; latencyMs?: number } = {}) {
     this.latency = opts.latencyMs ?? 300;
@@ -38,8 +40,8 @@ export class MockKeyStore implements KeyStore {
     return Object.fromEntries(V3_KEY_PROVIDERS.map((p) => [p, { ...this.map[p] }])) as KeyStatusMap;
   }
 
-  async status() { await this.wait(); return this.snapshot(); }
-  async check() { await this.wait(); return this.snapshot(); }
+  async status() { this.calls.push({ method: 'status' }); await this.wait(); return this.snapshot(); }
+  async check(force = false) { this.calls.push({ method: 'check', force }); await this.wait(); return this.snapshot(); }
   async save(p: ProviderId, apiKey: string): Promise<KeyStatus> {
     await this.wait();
     if (apiKey.includes('bad')) throw new KeyError('key_rejected', 'This key was turned down. Check that you copied all of it.', 422);

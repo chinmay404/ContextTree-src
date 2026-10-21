@@ -9,6 +9,7 @@ import { ShellProvider, useShell } from '@/components/shell/shell-context';
 import { AccountPill } from '@/components/shell/account/AccountPill';
 import { isModelLocked as modelLocked } from '@/components/shell/keys/providers';
 import type { ProviderId } from '@/components/shell/keys/status-types';
+import { providerOf } from './lib/catalog';
 import { Board } from './Board';
 import { BoardsHome } from '@/components/shell/home/BoardsHome';
 import { HttpEngineApi } from './api/http';
@@ -134,7 +135,8 @@ function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }):
 
   const onOpenBoard = useCallback((id: string) => router.push(`/b/${id}${q}`), [router, q]);
   const onOpenSettings = useCallback(
-    (provider?: string) => openSettings({ section: 'keys', provider: provider as ProviderId | undefined }),
+    // Board callers pass a provider id or an engine-id prefix ("gemini", "meta-llama").
+    (p?: string) => openSettings({ section: 'keys', provider: p ? (providerOf(`${p}/`) ?? (p as ProviderId)) : undefined }),
     [openSettings],
   );
   const isModelLocked = useCallback((engineId: string) => modelLocked(engineId, statuses), [statuses]);

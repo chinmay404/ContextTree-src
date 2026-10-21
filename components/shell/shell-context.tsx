@@ -1,8 +1,7 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { ApiKeySettingsDialog } from '@/components/api-key-settings-dialog';
-import type { ByokProvider } from '@/lib/byok';
+import { SettingsSheet } from './settings/SettingsSheet';
 import { HttpKeyStore, type KeyStore } from './keys/key-store';
 import { useKeyStatus, type UseKeyStatus } from './keys/use-key-status';
 import type { ProviderId } from './keys/status-types';
@@ -45,8 +44,6 @@ function useKeyStore(mock: boolean): { store: KeyStore; mockUser: ShellUser | nu
   return loaded ? { store: loaded.store, mockUser: loaded.user } : { store: WAITING, mockUser: null };
 }
 
-const V2_PROVIDERS: ByokProvider[] = ['openai', 'anthropic'];
-
 export function ShellProvider({ mock, children }: { mock: boolean; children: ReactNode }): ReactElement {
   const { user: session } = useAuth();
   const { store, mockUser } = useKeyStore(mock);
@@ -57,28 +54,31 @@ export function ShellProvider({ mock, children }: { mock: boolean; children: Rea
     [mockUser, session?.name, session?.email],
   );
 
-  // Until the settings sheet (Task 18) exists, "settings" is V2's key dialog.
-  const [dialog, setDialog] = useState<{ open: boolean; provider?: ByokProvider }>({ open: false });
+  const [sheet, setSheet] = useState<{ open: boolean; target?: SettingsTarget }>({ open: false });
+  const opener = useRef<HTMLElement | null>(null);
   const savedCb = useRef<SettingsTarget['onKeySaved']>(undefined);
   const openSettings = useCallback((target?: SettingsTarget) => {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     savedCb.current = target?.onKeySaved;
-    const provider = V2_PROVIDERS.find((p) => p === target?.provider);
-    setDialog({ open: true, provider });
+    setSheet({ open: true, target });
   }, []);
-
-  const refresh = keys.refresh;
-  const onKeysChanged = useCallback(() => { void refresh(); }, [refresh]);
+  const closeSheet = useCallback(() => {
+    setSheet((s) => ({ ...s, open: false }));
+    const el = opener.current;
+    // The menu item that opened the sheet is gone by now, so fall back to the account pill.
+    requestAnimationFrame(() => {
+      const back = el && el.isConnected ? el : document.querySelector<HTMLElement>('[aria-label="Account"]');
+      back?.focus({ preventScroll: true });
+    });
+  }, []);
+  // Hook point for the re-ask after a save: the shell's `keys.lastSaved` reaches <Board keyEpoch> (TODO(controller): wire once Board Task 4 lands).
+  const onKeySaved = useCallback((p: ProviderId) => { savedCb.current?.(p); }, []);
 
   const value = useMemo<ShellValue>(() => ({ user, keys, openSettings }), [user, keys, openSettings]);
   return (
     <Ctx.Provider value={value}>
       {children}
-      <ApiKeySettingsDialog
-        open={dialog.open}
-        onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
-        initialProvider={dialog.provider}
-        onKeysChanged={onKeysChanged}
-      />
+      <SettingsSheet open={sheet.open} target={sheet.target} onClose={closeSheet} onKeySaved={onKeySaved} />
     </Ctx.Provider>
   );
 }

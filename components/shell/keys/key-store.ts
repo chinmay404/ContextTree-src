@@ -73,6 +73,7 @@ export class HttpKeyStore implements KeyStore {
       if (secret && text.includes(secret)) text = REJECTED_COPY;
       throw new KeyError('key_rejected', text, 422);
     }
+    if (res.status === 400 && typeof body?.error === 'string') throw new KeyError('failed', body.error, 400);
     if (res.status === 401) throw new KeyError('unauthorized', COPY.unauthorized, 401);
     if (res.status === 429) throw new KeyError('rate_limited', COPY.rate_limited, 429);
     throw new KeyError('failed', COPY.failed, res.status);
