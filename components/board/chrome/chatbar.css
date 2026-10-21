@@ -6,4 +6,4 @@
 .pb-root [data-pb="chatbar"] .cb-send { width: 40px; height: 40px; flex: none; border-radius: 20px; background: var(--pb-ink); display: grid; place-items: center; transition: transform 120ms var(--ease-out), background-color 150ms ease; }
 .pb-root [data-pb="chatbar"] .cb-send .i { --s: 18px; --c: #fff; }
 .pb-root [data-pb="chatbar"] .cb-send:active:not(:disabled) { transform: scale(.92); }
-.pb-root [data-pb="chatbar"] .cb-send:disabled { background: #D6CDE6; cursor: default; }
+.pb-root [data-pb="chatbar"] .cb-send:disabled { background: #D1D1D6; cursor: default; }

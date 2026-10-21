@@ -16,8 +16,10 @@ export function attachPointer(ctx: EngineContext): PointerRouting {
   let lastClick: { id: Id | null; t: number } = { id: null, t: 0 };
   const selectedId = () => store.getSnapshot().ui.selected;
 
-  function drag(n: ViewNode, e: PointerEvent): void {
+  /** `byBox`: the press began on the chat's desk (box or tab), not on its card; it moves the same group, but a bare click only deselects. */
+  function drag(n: ViewNode, e: PointerEvent, byBox = false): void {
     getSelection()?.removeAllRanges();
+    if (byBox) vp.classList.add('grabbing');
     const [wx, wy] = ctx.s2w(e.clientX, e.clientY), off = [wx - n.px.x, wy - n.py.x], sx = e.clientX, sy = e.clientY;
     const hist: { x: number; y: number; t: number }[] = [];
     let moved = false, deskT: Id | null = null, pileT: ViewNode | null = null, vxs = 0, lastX = n.px.x, lastT = performance.now();
@@ -46,8 +48,9 @@ export function attachPointer(ctx: EngineContext): PointerRouting {
         if (d !== deskT) { deskT = d; desks.setHot(d); }
       }
     }, () => {
-      n.dragging = false;
+      n.dragging = false; vp.classList.remove('grabbing');
       if (!moved) {
+        if (byBox) { store.select(null); return; }
         const now = performance.now();
         if (lastClick.id === n.id && now - lastClick.t < 360) {
           lastClick = { id: null, t: 0 };
@@ -102,7 +105,10 @@ export function attachPointer(ctx: EngineContext): PointerRouting {
     if (n && t.closest(PASS)) { if (selectedId() !== n.id) store.select(n.id); return; }
     if (t.closest('button, textarea, input, select, a')) return;
     e.preventDefault();
-    if (n) drag(n, e); else if (!ce) pan(e);
+    if (n) { drag(n, e); return; }
+    if (ce) return;
+    const chat = ctx.modules.desks.chatAt(e.clientX, e.clientY), cn = chat ? ctx.nodes.get(chat) : undefined;
+    if (cn) drag(cn, e, true); else pan(e);
   };
 
   const onWheel = (e: WheelEvent) => {
@@ -115,10 +121,17 @@ export function attachPointer(ctx: EngineContext): PointerRouting {
     else cam.snap(cam.x.x - e.deltaX, cam.y.x - e.deltaY);
   };
 
+  // Desks ignore pointer events, so the grab cursor is set from geometry while the pointer is free over a desk.
+  const onHover = (e: PointerEvent) => {
+    if (e.buttons) return;
+    const over = !(e.target as Element).closest('.card, button, textarea, input, select, a') && !!ctx.modules.desks.chatAt(e.clientX, e.clientY);
+    vp.classList.toggle('deskhover', over);
+  };
+  vp.addEventListener('pointermove', onHover);
   vp.addEventListener('pointerdown', onDown);
   vp.addEventListener('wheel', onWheel, { passive: false });
   return {
     downOnCard: () => downOnCard,
-    dispose: () => { vp.removeEventListener('pointerdown', onDown); vp.removeEventListener('wheel', onWheel); },
+    dispose: () => { vp.removeEventListener('pointermove', onHover); vp.removeEventListener('pointerdown', onDown); vp.removeEventListener('wheel', onWheel); },
   };
 }

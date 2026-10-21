@@ -10,6 +10,7 @@ export interface ViewNode extends LayoutItem { el: HTMLDivElement; s: Spring; o:
 export interface DesksModule {
   sync(): void; frame(z: number): void; deskAt(x: number, y: number, except?: ViewNode | null): Id | null;
   setHot(chatId: Id | null): void; onCardDropped(n: ViewNode): void; onChatDropped(n: ViewNode): void;
+  chatAt(clientX: number, clientY: number): Id | null;
   fade(related: Set<Id> | null): void; deskBox(chatId: Id): Box | null; dispose(): void;
 }
 export interface StringsModule {

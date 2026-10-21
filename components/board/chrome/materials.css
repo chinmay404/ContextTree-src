@@ -1,0 +1,83 @@
+/* Materials (T1 part B): depth from layering. Controls float on frosted glass, cards cast soft shadows, lines are
+   0.5px hairlines. Imported LAST in Board.tsx so these rules win over pebble.css and the other chrome CSS at equal
+   specificity. Colours and the font are the palette task's; the dot grid is the canvas task's. */
+
+/* ---- tokens ---- */
+.pb-root.pb-root {
+  --hairline: rgba(0,0,0,.08); --hairline-strong: rgba(0,0,0,.12);
+  --glass-bg: rgba(255,255,255,.62); --glass-solid: #FFFFFF;
+  --sh-card: 0 1px 2px rgba(0,0,0,.06), 0 8px 28px rgba(0,0,0,.08);
+  --sh-node: 0 1px 2px rgba(0,0,0,.06), 0 8px 28px rgba(0,0,0,.08);
+  --sh-float: 0 1px 2px rgba(0,0,0,.06), 0 8px 28px rgba(0,0,0,.08);
+  --sh-lift: 0 2px 4px rgba(0,0,0,.08), 0 18px 48px rgba(0,0,0,.16);
+  --r-tile: 10px; --r-row: 14px; --r-card: 18px; --r-sheet: 26px;
+}
+
+/* ---- glass: floating controls (brand bar, Add + link pop, trail, zoom, chat bar via .float; menus; focus top bar and
+   composer; viewer close; toasts) ---- */
+.pb-root .float, .pb-root .menu, .pb-root .backp, .pb-root .fcomp .box, .pb-root .vclose, .pb-root .pb-toast {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: 0 0 0 .5px var(--hairline), var(--sh-float);
+}
+.pb-root .pb-toast { color: var(--t1); }
+.pb-root .pb-toast button { color: var(--t1); }
+.pb-root .menu { box-shadow: 0 0 0 .5px var(--hairline), var(--sh-card); }
+.pb-root .fcomp .box { box-shadow: 0 0 0 .5px var(--hairline); }
+.pb-root [data-pb="focus"] .fcomp .box:focus-within { box-shadow: 0 0 0 .5px var(--hairline), 0 0 0 2px var(--pb-edge-strong); }
+.pb-root [data-pb="chatbar"]:focus-within { box-shadow: 0 0 0 .5px var(--hairline), 0 0 0 2px var(--pb-edge-strong), var(--sh-float); }
+/* fallback: solid white, same hairline */
+@media (prefers-reduced-transparency: reduce) {
+  .pb-root .float, .pb-root .menu, .pb-root .backp, .pb-root .fcomp .box, .pb-root .vclose, .pb-root .pb-toast {
+    background: var(--glass-solid); -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pb-root .float, .pb-root .menu, .pb-root .backp, .pb-root .fcomp .box, .pb-root .vclose, .pb-root .pb-toast {
+    background: var(--glass-solid);
+  }
+}
+
+/* ---- cards: soft two-layer shadow, hairline edge, lifted variant keeps both layers stronger ---- */
+.pb-root .face { border-radius: var(--r-card); box-shadow: 0 0 0 .5px var(--hairline), var(--sh-node); }
+.pb-root .card.lift .face { box-shadow: 0 0 0 .5px var(--hairline-strong), var(--sh-lift); }
+.pb-root .card.selected .face { box-shadow: 0 0 0 2px var(--pb-ink), var(--sh-lift); }
+.pb-root .card.reading .face { box-shadow: 0 0 0 3px var(--pb-edge-strong), var(--sh-node); }
+.pb-root .card.drop .face, .pb-root .card.target .face { box-shadow: 0 0 0 3px var(--pb-ink), var(--sh-lift); }
+.pb-root .chat .face { box-shadow: 0 0 0 .5px var(--hairline), var(--sh-card); }
+.pb-root .card.chat.selected .face { box-shadow: 0 0 0 2px var(--pb-ink), var(--sh-card); }
+.pb-root .sheet { border-radius: var(--r-card); box-shadow: 0 0 0 .5px var(--hairline); }
+.pb-root .pages .pg.hit { box-shadow: 0 0 0 2px var(--fk), var(--sh-node); }
+.pb-root .tl .cur { box-shadow: 0 0 0 .5px var(--hairline), var(--sh-node); }
+.pb-root .pages .pg, .pb-root .webprev { box-shadow: 0 0 0 .5px var(--hairline), var(--sh-node); }
+.pb-root .mock3 div { box-shadow: 0 0 0 .5px var(--hairline), var(--sh-node); }
+.pb-root .mock3 div.mid { box-shadow: 0 0 0 3px #0071E3, var(--sh-card); }
+
+/* ---- sheets, desks, panels ---- */
+.pb-root .sheetbox { border-radius: var(--r-sheet); box-shadow: 0 0 0 .5px var(--hairline), var(--sh-card); }
+.pb-root .desk { border-radius: var(--r-sheet); }
+.pb-root .desk .tab { border-radius: var(--r-row); box-shadow: 0 0 0 .5px var(--hairline), var(--sh-float); }
+.pb-root .panel, .pb-root .cmp-col, .pb-root .pb-error { border-radius: var(--r-sheet); }
+.pb-root [data-pb="drop"] { border-radius: var(--r-sheet); }
+.pb-root .adv, .pb-root .webprev, .pb-root .mock3 div { border-radius: var(--r-card); }
+.pb-root .hero, .pb-root .imgbig, .pb-root .editor { border-radius: var(--r-card); }
+.pb-root .menu, .pb-root [data-pb="zoom"], .pb-root [data-pb="chatbar"] { border-radius: var(--r-sheet); }
+.pb-root .fcomp .box { border-radius: var(--r-sheet); }
+
+/* ---- rows, bubbles, tiles ---- */
+.pb-root .tile, .pb-root .tile img, .pb-root .vhead .tile, .pb-root .quote .tile, .pb-root .webrow .tile, .pb-root .srow .tile { border-radius: var(--r-tile); }
+.pb-root .s .tile { border-radius: 18px; }
+.pb-root .pages .pg { border-radius: var(--r-tile); }
+.pb-root .qb, .pb-root .thinking, .pb-root .compose textarea, .pb-root .exl, .pb-root .desc, .pb-root .vside .desc,
+.pb-root .used > span, .pb-root .ts .row, .pb-root .srow, .pb-root .passages button, .pb-root .members button,
+.pb-root .quote, .pb-root .webrow, .pb-root .soonbox, .pb-root .fi, .pb-root .fta, .pb-root .tog, .pb-root .tbl,
+.pb-root .tl .cur { border-radius: var(--r-row); }
+.pb-root .ub { border-radius: var(--r-row) var(--r-row) 6px var(--r-row); }
+.pb-root .srow, .pb-root .used > span, .pb-root .webrow, .pb-root .quote, .pb-root .soonbox, .pb-root .members button { box-shadow: 0 0 0 .5px var(--hairline); }
+.pb-root .srow.off { box-shadow: 0 0 0 .5px var(--hairline); }
+
+/* ---- hairlines instead of 1px lines ---- */
+.pb-root .apill { border: .5px solid var(--hairline-strong); }
+.pb-root .tbl { box-shadow: inset 0 0 0 .5px var(--hairline-strong); }
+.pb-root .tbl td { border-top: .5px solid var(--hairline); }
+.pb-root .menu .sep { height: .5px; border-radius: 0; background: var(--hairline); }

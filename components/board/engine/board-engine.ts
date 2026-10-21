@@ -20,6 +20,7 @@ import { createPiles } from './piles';
 import { clamp, SpringSystem, type Spring } from './spring';
 import { createStrings } from './strings';
 import type { EngineContext, ViewNode } from './types';
+import { dotGrid } from './dotgrid';
 
 const NS = 'http://www.w3.org/2000/svg';
 const near = (s: Spring, ex: number, ev: number) => Math.abs(s.x - s.t) < ex && Math.abs(s.v) < ev;
@@ -52,11 +53,14 @@ export class BoardEngine {
   private lastReadBy = '|';
   /** Source cards whose read state (the "reading" glow, the token figure) changed but whose face did not. */
   private readonly liveSources = new Set<Id>();
+  private readonly liveChats = new Set<Id>();
   private pointer: PointerRouting | null = null;
   private ro: ResizeObserver | null = null;
   private unsub: (() => void) | null = null;
   private tipTimer: ReturnType<typeof setTimeout> | null = null;
   private tipWarm = 0;
+  private dots: HTMLElement;
+  private dotKey = '';
 
   constructor(o: { store: BoardStore; root: HTMLElement; rm: boolean }) {
     this.store = o.store;
@@ -66,7 +70,9 @@ export class BoardEngine {
     const world = document.createElement('div'); world.className = 'pb-world';
     const tubes = document.createElementNS(NS, 'svg') as SVGSVGElement; tubes.setAttribute('class', 'pb-tubes');
     const knobs = document.createElement('div'); knobs.className = 'pb-knobs';
-    world.append(tubes, knobs); viewport.append(world);
+    world.append(tubes, knobs);
+    this.dots = document.createElement('div'); this.dots.className = 'pb-dots'; this.dots.setAttribute('aria-hidden', 'true');
+    viewport.append(this.dots, world);
     this.tip = document.createElement('div'); this.tip.className = 'tip'; this.tip.setAttribute('role', 'tooltip');
     const nodes = new Map<Id, ViewNode>();
     const ctx: EngineContext = {
@@ -240,7 +246,7 @@ export class BoardEngine {
         case 'messages': this.dirty.add(ch.chatId); break;
         case 'stream': this.streamDirty.add(ch.chatId); break;
         case 'reads':
-          this.dirty.add(ch.chatId);
+          this.liveChats.add(ch.chatId);   // footer in place: a redraw between mouse down and up would eat the click
           for (const n of this.ctx.nodes.values()) if (!n.isChat) this.liveSources.add(n.id);   // in place: a redraw here would eat a click
           break;
         case 'ui': break;
@@ -335,6 +341,8 @@ export class BoardEngine {
     for (const id of dirty) { const n = nodes.get(id); if (n) this.view.render(n); }
     for (const id of this.liveSources) { const n = nodes.get(id); if (n && !dirty.has(id)) this.view.refreshLive(n); }
     this.liveSources.clear();
+    for (const id of this.liveChats) { const n = nodes.get(id); if (n && !dirty.has(id)) this.view.refreshChatFoot(n); }
+    this.liveChats.clear();
     for (const n of nodes.values()) {
       if (dirty.has(n.id)) continue;
       n.el.classList.toggle('selected', n.id === sel);
@@ -361,11 +369,24 @@ export class BoardEngine {
     for (const n of list) n.el.style.transform = `translate3d(${n.px.x}px,${n.py.x}px,0) rotate(${n.rot.x.toFixed(2)}deg) scale(${n.s.x})`;
   }
 
+  /** The dotted canvas follows the camera; style is written only when the camera moved. */
+  private paintDots(cx: number, cy: number, z: number): void {
+    const key = `${cx.toFixed(2)}|${cy.toFixed(2)}|${z.toFixed(4)}`;
+    if (key === this.dotKey) return;
+    this.dotKey = key;
+    const g = dotGrid(cx, cy, z), st = this.dots.style;
+    st.backgroundSize = `${g.size}px ${g.size}px`;
+    st.backgroundPosition = `${g.x}px ${g.y}px`;
+    st.opacity = String(g.opacity);
+    st.setProperty('--dot', `${g.dot / 2}px`);
+  }
+
   private frame(dt: number, now: number): void {
     const z = this.camera.z.x;
     const want = this.size === 'S' ? (z > .5 ? 'M' : 'S') : (z < .42 ? 'S' : 'M');
     if (want !== this.size) { this.size = want; this.ctx.renderAll(); }
     this.ctx.world.style.transform = `translate3d(${this.camera.x.x}px,${this.camera.y.x}px,0) scale(${z})`;
+    this.paintDots(this.camera.x.x, this.camera.y.x, z);
     this.place();
     this.ctx.nodes.forEach((n) => {
       const o = this.opacity.get(n.id);

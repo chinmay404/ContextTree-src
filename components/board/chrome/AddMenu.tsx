@@ -11,7 +11,7 @@ const MENU_H = 232;
 type Item = { k: 'note' | 'chat' | 'file' | 'link'; label: string; icon: string; bg: string; fg: string; kbd: string };
 const ITEMS: Item[] = [
   { k: 'note', label: 'Note', icon: 'sticky-note', bg: '#FFE1EA', fg: '#D1467E', kbd: 'N' },
-  { k: 'chat', label: 'New question', icon: 'message-circle', bg: '#2B2340', fg: '#FFFFFF', kbd: 'Q' },
+  { k: 'chat', label: 'New question', icon: 'message-circle', bg: '#1D1D1F', fg: '#FFFFFF', kbd: 'Q' },
   { k: 'file', label: 'Upload files', icon: 'upload', bg: '#FFF0B3', fg: '#B8860B', kbd: '' },
   { k: 'link', label: 'Paste a link', icon: 'link', bg: '#C9ECFF', fg: '#2A86C4', kbd: '' },
 ];

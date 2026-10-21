@@ -16,11 +16,11 @@ export const TYPE_INFO: Record<SourceType, { family: Family; icon: string; label
 };
 
 export const FAMC: Record<Family, [string, string]> = {
-  media: ['#FFD9C7', '#E0673A'], docs: ['#FFF0B3', '#B8860B'], note: ['#FFE1EA', '#D1467E'], web: ['#C9ECFF', '#2A86C4'],
-  data: ['#D4F2C9', '#3F9A2E'], image: ['#E6DBFF', '#7A52D6'], mixed: ['#EFE9F8', '#6E6585'], answer: ['#EFE9F8', '#6E6585'],
+  media: ['#F4E3DA', '#B8644A'], docs: ['#F3EBCF', '#9A7B2E'], note: ['#F3DEE4', '#B5547A'], web: ['#DCE9F2', '#3F7FA8'],
+  data: ['#E0EBD9', '#4F8A45'], image: ['#DDE3EE', '#5B6F9A'], mixed: ['#ECECF0', '#6E6E73'], answer: ['#ECECF0', '#6E6E73'],
 };
 export const STRING_COL: Record<Family, string> = {
-  media: '#FFB898', docs: '#F5DB6E', note: '#F7AECB', web: '#96D4F7', data: '#9EDB8C', image: '#C6B2F7', mixed: '#CFC3E8', answer: '#D6CDE6',
+  media: '#E3B7A3', docs: '#DCCB8C', note: '#E0B3C3', web: '#A9CBE0', data: '#AFCDA3', image: '#AEB9D3', mixed: '#D2D2D7', answer: '#D1D1D6',
 };
 
 export type ModelKey = 'claude' | 'gpt' | 'gemini' | 'llama' | 'deepseek' | 'mistral' | 'kimi';
