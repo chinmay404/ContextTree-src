@@ -186,25 +186,56 @@ test('the card menu opens a pile as a set, closes a set into a pile, and starts 
 
 test('deleting a set asks: keep its sources, or delete them too; an empty set just goes', async ({ page }) => {
   await openBoard(page);
-  const id = await newSet(page);
-  await frame(page, [id, 'csv', 'web']);
-  test.skip((await page.evaluate(() => window.__board!.size())) === 'S', 'cards too small at this viewport');
-  await page.evaluate((i) => window.__board!.select(i), id);
-  await page.keyboard.press('Delete');                                   // empty: no question
-  await expect(page.locator(SET)).toHaveCount(0);
   const id2 = await newSet(page);
   await frame(page, [id2, 'csv', 'web']);
+  test.skip((await page.evaluate(() => window.__board!.size())) === 'S', 'cards too small at this viewport');
   for (const src of ['csv', 'web']) { await dragPath(page, await center(page, `[data-id="${src}"] .meta`), await center(page, `[data-id="${id2}"] .sethd`), 25); await page.waitForTimeout(400); }
   await page.evaluate((i) => window.__board!.select(i), id2);
   await page.keyboard.press('Delete');
   await expect(page.locator('[data-pb="confirm"] h2')).toHaveText('Delete the set "New set"?');
   await expect(page.locator('[data-pb="confirm"] .btn.primary')).toHaveText(['Delete the set, keep the 2 sources', 'Delete all 2']);
+  // fully open (not mid-fade): opaque, in front, and no toast of any kind yet
+  await expect.poll(() => page.locator('[data-pb="confirm"]').evaluate((e) => getComputedStyle(e).opacity)).toBe('1');
+  await expect(page.locator('.pb-toast')).toHaveText('');
+  await page.waitForTimeout(250);
   await page.screenshot({ path: shot('set-delete-ask') });
   await page.locator('[data-pb="confirm"] .btn.primary').first().click();
   await page.waitForTimeout(500);
   await expect(page.locator(SET)).toHaveCount(0);
   await expect(page.locator('[data-id="csv"].card')).toHaveCount(1);     // the sources are back on the board
   await expect(page.locator('[data-id="web"].card')).toHaveCount(1);
+  await expect(page.locator('.pb-toast')).toContainText('Set deleted · 2 sources kept');
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: shot('set-delete-kept') });
+  // an empty set has nothing to ask about: it goes at once, with Undo
+  const id = await newSet(page);
+  await page.evaluate((i) => window.__board!.select(i), id);
+  await page.keyboard.press('Delete');
+  await expect(page.locator(SET)).toHaveCount(0);
+  await expect(page.locator('.pb-toast')).toContainText('Removed');
+});
+
+test('the delete question is opaque once open, and no Removed toast shows before anything is deleted', async ({ page }) => {
+  await openBoard(page);
+  const id = await newSet(page);
+  await frame(page, [id, 'csv', 'web']);
+  test.skip((await page.evaluate(() => window.__board!.size())) === 'S', 'cards too small at this viewport');
+  for (const src of ['csv', 'web']) { await dragPath(page, await center(page, `[data-id="${src}"] .meta`), await center(page, `[data-id="${id}"] .sethd`), 25); await page.waitForTimeout(400); }
+  await expect(page.locator('.pb-toast')).toHaveText('');
+  await page.evaluate((i) => window.__board!.select(i), id);
+  await page.keyboard.press('Delete');
+  const box = page.locator('[data-pb="confirm"]');
+  await expect(box).toHaveAttribute('aria-hidden', 'false');
+  await expect.poll(() => box.evaluate((e) => getComputedStyle(e).opacity)).toBe('1');
+  await expect(page.locator('.pb-toast')).toHaveText('');              // nothing is deleted, so nothing to undo
+  expect(await page.locator(SET).count()).toBe(1);                      // the set is still on the board
+  const sheet = await page.locator('[data-pb="confirm"] .sheetbox').evaluate((e) => ({ bg: getComputedStyle(e).backgroundColor, op: getComputedStyle(e).opacity }));
+  expect(sheet.op).toBe('1');
+  expect(sheet.bg).toMatch(/^rgb\(/);                                  // a solid sheet, not a see-through one
+  await page.locator('[data-pb="confirm"] .btn:not(.primary)').click(); // Cancel
+  await expect(box).toHaveAttribute('aria-hidden', 'true');
+  expect(await page.locator(SET).count()).toBe(1);
+  await expect(page.locator('.pb-toast')).toHaveText('');
 });
 
 test('zoomed out a set is a pebble like any source', async ({ page }) => {
