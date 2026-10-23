@@ -474,3 +474,14 @@
 @media (prefers-reduced-motion: reduce) {
   .pb-root .pb-tubes .bub.pour { animation: none; opacity: 0; }
 }
+
+/* P12: a chat that is answering makes its desk glow softly in the accent; a dot on the label says the same when zoomed out. */
+@keyframes pb-glow {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(0,113,227,.16), 0 0 16px 2px rgba(0,113,227,.10); }
+  50% { box-shadow: 0 0 0 3px rgba(0,113,227,.42), 0 0 34px 6px rgba(0,113,227,.26); }
+}
+.pb-root .desk.running { animation: pb-glow 1.6s ease-in-out infinite; }
+.pb-root .desk.running .tab::after { content: ''; width: 8px; height: 8px; border-radius: 4px; background: var(--pb-edge-strong); flex: none; }
+@media (prefers-reduced-motion: reduce) {
+  .pb-root .desk.running { animation: none; box-shadow: 0 0 0 3px rgba(0,113,227,.4), 0 0 20px 3px rgba(0,113,227,.18); }
+}

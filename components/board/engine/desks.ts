@@ -50,6 +50,7 @@ export function createDesks(ctx: EngineContext): DesksModule {
         d.el.style.width = dw + 'px'; d.el.style.height = (d.b[3].x - d.b[1].x) + 'px';
         const own = deskOf(g, d.chat);
         d.el.classList.toggle('empty', !own.length);
+        d.el.classList.toggle('running', ctx.store.isStreaming(d.chat));   // an answer is on its way: the desk glows
         const key = chatData(c).name + own.map((m) => m.id + famOf(g, m) + m.status).join();
         if (d.tab.dataset.v !== key) {
           d.tab.dataset.v = key;
