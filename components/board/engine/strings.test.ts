@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { stringD, stringTarget } from './strings';
+import { arrowD, stringD, stringTarget } from './strings';
 
 describe('strings', () => {
   it('the midpoint sags by 8 + 6% of the length', () => { expect(stringTarget([0, 0], [100, 0])).toEqual([50, 14]); });
@@ -9,5 +9,9 @@ describe('strings', () => {
   });
   it('the control reach is 14 + 28% of the horizontal run, capped at 70', () => {
     expect(stringD([0, 0], [100, 0], 1, -1, [50, 14])).toBe('M0.0,0.0 C42.0,0.0 ' + (50 - (58 - 42) * .22).toFixed(1) + ',14.0 50.0,14.0 S58.0,0.0 100.0,0.0');
+  });
+  it('the arrowhead tip sits 10 px before the receiving end and points the way the string travels', () => {
+    expect(arrowD([100, 50], 1)).toBe('M90.0,50.0 L78.0,43.5 L78.0,56.5 Z');     // arriving going right: base is to the left of the tip
+    expect(arrowD([100, 50], -1)).toBe('M110.0,50.0 L122.0,43.5 L122.0,56.5 Z');  // arriving going left
   });
 });

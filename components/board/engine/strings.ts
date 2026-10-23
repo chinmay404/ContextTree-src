@@ -5,7 +5,8 @@
  */
 import type { Edge, Id } from '../api/types';
 import { FAMC, STRING_COL } from '../lib/catalog';
-import { ancestors, canPlug, famOf, isChat, tubeW, wireKey } from '../lib/graph';
+import { ancestors, canPlug, chatData, famOf, isChat, nameOf, sourceData, tubeW, wireKey, type Graph } from '../lib/graph';
+import { cut } from '../lib/format';
 import { icon } from './icons';
 import { clamp, type Spring } from './spring';
 import type { EngineContext, StringsModule, ViewNode } from './types';
@@ -26,9 +27,16 @@ export function stringD(a: Pt, b: Pt, outA: 1 | -1, inB: 1 | -1, mid: Pt): strin
   return `M${f1(a[0])},${f1(a[1])} C${f1(a2[0])},${f1(a2[1])} ${f1(mid[0] - (b2[0] - a2[0]) * .22)},${f1(mid[1])} ${f1(mid[0])},${f1(mid[1])} S${f1(b2[0])},${f1(b2[1])} ${f1(b[0])},${f1(b[1])}`;
 }
 
+/** The arrowhead at a string's receiving end: its tip sits just outside the port (the port reaches 6 px out of the card edge),
+ *  pointing the way the string travels. `dir` is +1 when the string arrives going right. */
+export function arrowD(end: Pt, dir: 1 | -1): string {
+  const tx = end[0] - dir * 10, y = end[1], bx = tx - dir * 12;
+  return `M${f1(tx)},${f1(y)} L${f1(bx)},${f1(y - 6.5)} L${f1(bx)},${f1(y + 6.5)} Z`;
+}
+
 interface Str { mx: Spring; my: Spring; seen: boolean }
-interface Tube { p: SVGPathElement; b: SVGPathElement; seen: boolean }
-interface Wire { p: SVGPathElement; hit: SVGPathElement; k: HTMLButtonElement; edgeId: Id; from: Id; seen: boolean }
+interface Tube { p: SVGPathElement; b: SVGPathElement; a: SVGPathElement; hit: SVGPathElement; seen: boolean }
+interface Wire { p: SVGPathElement; b: SVGPathElement; a: SVGPathElement; hit: SVGPathElement; k: HTMLButtonElement; edgeId: Id; from: Id; seen: boolean }
 interface Live {
   n: ViewNode; kind: 'src' | 'chat'; p: SVGPathElement; ex: Spring; ey: Spring; target: ViewNode | null; retract: boolean;
 }
@@ -39,7 +47,26 @@ export function createStrings(ctx: EngineContext): StringsModule {
   const tubes = new Map<Id, Tube>();
   const wires = new Map<string, Wire>();
   let selWire: string | null = null;
+  let hoverKey: string | null = null;
   let live: Live | null = null;
+
+  // "<start> -> <end>" near the pointer while a string is hovered (screen pixels, so it keeps its size at any zoom)
+  const label = document.createElement('div'); label.className = 'strlabel'; label.setAttribute('role', 'tooltip');
+  ctx.root.append(label);
+  const chatName = (g: Graph, id: Id): string => { const c = g.cards.get(id); return c ? cut(c.kind === 'chat' ? chatData(c).name : nameOf(g, c), 34) : ''; };
+  const sourceName = (g: Graph, id: Id): string => { const c = g.cards.get(id); return c ? (c.kind === 'chat' ? chatName(g, id) : cut(sourceData(c).title || nameOf(g, c), 34)) : ''; };
+  function hover(key: string, from: Id, to: Id): { enter(e: PointerEvent): void; move(e: PointerEvent): void; leave(): void } {
+    const place = (e: PointerEvent) => { label.style.left = `${e.clientX + 14}px`; label.style.top = `${e.clientY + 16}px`; };
+    return {
+      enter(e) {
+        if (live) return;
+        hoverKey = key; const g = store.graph();
+        label.textContent = `${sourceName(g, from)} → ${chatName(g, to)}`; place(e); label.classList.add('on');
+      },
+      move(e) { if (hoverKey === key) place(e); },
+      leave() { if (hoverKey === key) hoverKey = null; label.classList.remove('on'); },
+    };
+  }
 
   const path = (cls: string): SVGPathElement => { const p = document.createElementNS(NS, 'path'); p.setAttribute('class', cls); return p; };
 
@@ -65,24 +92,30 @@ export function createStrings(ctx: EngineContext): StringsModule {
 
   function removeWire(key: string): void {
     const w = wires.get(key); if (!w) return;
-    w.p.remove(); w.hit.remove(); w.k.remove(); wires.delete(key);
+    w.p.remove(); w.b.remove(); w.a.remove(); w.hit.remove(); w.k.remove(); wires.delete(key);
+    if (hoverKey === key) { hoverKey = null; label.classList.remove('on'); }
     if (selWire === key) selWire = null;
   }
+
+  const arrow = (kind: string, to: Id): SVGPathElement => { const a = path(`arrow ${kind}`); a.dataset.to = to; a.dataset.kind = kind; return a; };
 
   function wireFor(key: string, edge: Edge, color: string, deep: string): Wire {
     let w = wires.get(key);
     if (!w) {
-      const p = path('wire'), hit = path('hit');
-      ctx.tubes.append(p, hit);
+      const p = path('wire'), b = path('bub'), a = arrow(edge.kind, edge.to), hit = path('hit');
+      b.dataset.key = key; hit.dataset.key = key; b.style.strokeWidth = '3';
+      ctx.tubes.append(p, b, a, hit);
+      const h = hover(key, edge.from, edge.to);
+      hit.addEventListener('pointerenter', h.enter); hit.addEventListener('pointermove', h.move); hit.addEventListener('pointerleave', h.leave);
       hit.addEventListener('pointerdown', (e) => { e.stopPropagation(); store.closeMenu(); selWire = selWire === key ? null : key; paintSel(); });
       const k = document.createElement('button'); k.className = 'wk'; k.dataset.key = key; k.type = 'button';
       k.innerHTML = icon('unlink') + 'Disconnect'; ctx.knobs.append(k);
       k.addEventListener('pointerdown', (e) => e.stopPropagation());
       k.addEventListener('click', (e) => { e.stopPropagation(); disconnect(key); });
-      w = { p, hit, k, edgeId: edge.id, from: edge.from, seen: true }; wires.set(key, w);
+      w = { p, b, a, hit, k, edgeId: edge.id, from: edge.from, seen: true }; wires.set(key, w);
     }
     w.edgeId = edge.id; w.from = edge.from;
-    w.p.style.stroke = color; w.k.style.setProperty('--kd', deep); w.seen = true;
+    w.p.style.stroke = color; w.a.style.fill = `color-mix(in srgb, ${color} 30%, #6E6E73)`; w.k.style.setProperty('--kd', deep); w.seen = true;
     return w;
   }
 
@@ -162,6 +195,7 @@ export function createStrings(ctx: EngineContext): StringsModule {
     const flowing = new Set<Id>();
     for (const c of g.cards.values()) if (isChat(c) && store.isStreaming(c.id)) [c.id, ...ancestors(g, c.id).map((a) => a.id)].forEach((x) => flowing.add(x));
     strs.forEach((s) => { s.seen = false; });
+    ctx.tubes.classList.toggle('noarrows', ctx.camera.z.x < .35);   // too small to read when zoomed far out
 
     // branch strings: thick at the trunk, thinner toward the leaves; they sag and swing as cards move
     tubes.forEach((t) => { t.seen = false; });
@@ -169,16 +203,27 @@ export function createStrings(ctx: EngineContext): StringsModule {
       if (!isChat(c) || !c.parentId) continue;
       const A = ctx.nodes.get(c.parentId), B = ctx.nodes.get(c.id); if (!A || !B) continue;
       let t = tubes.get(c.id);
-      if (!t) { t = { p: path('tube'), b: path('bub'), seen: true }; ctx.tubes.prepend(t.b); ctx.tubes.prepend(t.p); tubes.set(c.id, t); }
+      if (!t) {
+        const key = 't|' + c.id;
+        t = { p: path('tube'), b: path('bub'), a: arrow('lineage', c.id), hit: path('hit'), seen: true };
+        t.b.dataset.key = key; t.hit.dataset.key = key;
+        ctx.tubes.prepend(t.b); ctx.tubes.prepend(t.p); ctx.tubes.append(t.a, t.hit); tubes.set(c.id, t);
+        const h = hover(key, c.parentId, c.id);
+        t.hit.addEventListener('pointerenter', h.enter); t.hit.addEventListener('pointermove', h.move); t.hit.addEventListener('pointerleave', h.leave);
+      }
       t.seen = true;
       const on = trail.has(c.id) && trail.has(c.parentId), flow = flowing.has(c.id) && flowing.has(c.parentId), w = tubeW(g, c.id) + (on || flow ? 1 : 0);
       const { d } = stringPath('t|' + c.id, [A.px.x + A.w + 1, A.py.x + 22], [B.px.x - 1, B.py.x + 40], 1, -1);
       t.p.setAttribute('d', d); t.b.setAttribute('d', d); t.p.style.strokeWidth = String(w); t.b.style.strokeWidth = String(Math.max(2, w * .45));
       t.p.setAttribute('class', ['tube', (on || flow) && 'trail', selChat && !on && 'faded'].filter(Boolean).join(' '));
-      t.b.setAttribute('class', 'bub' + (flow ? ' flow' : ''));
+      const pour = sel?.id === c.id || sel?.id === c.parentId || hoverKey === 't|' + c.id;
+      t.b.setAttribute('class', 'bub' + (flow ? ' flow' : '') + (pour ? ' pour' : ''));
       t.p.style.opacity = String(clamp(B.o.x, 0, 1));
+      t.hit.setAttribute('d', d); t.hit.style.strokeWidth = String(Math.max(18, w + 12));
+      t.a.setAttribute('d', arrowD([B.px.x - 1, B.py.x + 40], 1)); t.a.setAttribute('class', `arrow lineage${on || flow ? ' trail' : ''}${selChat && !on ? ' faded' : ''}`);
+      t.a.style.opacity = String(clamp(B.o.x, 0, 1));
     }
-    tubes.forEach((t, id) => { if (!t.seen) { t.p.remove(); t.b.remove(); tubes.delete(id); } });
+    tubes.forEach((t, id) => { if (!t.seen) { t.p.remove(); t.b.remove(); t.a.remove(); t.hit.remove(); if (hoverKey === 't|' + id) { hoverKey = null; label.classList.remove('on'); } tubes.delete(id); } });
 
     // strings pulled by hand: a source into a chat, or one chat's answer into another
     wires.forEach((w) => { w.seen = false; });
@@ -196,6 +241,9 @@ export function createStrings(ctx: EngineContext): StringsModule {
       const p = stringPath(key, a, b, r ? 1 : -1, r ? -1 : 1), on = selWire === key;
       w.p.setAttribute('d', p.d); w.hit.setAttribute('d', p.d); w.k.style.left = p.m[0] + 'px'; w.k.style.top = p.m[1] + 'px';
       w.p.classList.toggle('faded', fade && !on); w.p.classList.toggle('sel', on); w.k.classList.toggle('on', on);
+      w.b.setAttribute('d', p.d); w.a.setAttribute('d', arrowD(b, r ? 1 : -1));
+      w.b.setAttribute('class', 'bub' + ((sel && (sel.id === e.from || sel.id === e.to)) || hoverKey === key ? ' pour' : ''));
+      w.a.classList.toggle('faded', fade && !on);
     }
     wires.forEach((w, key) => { if (!w.seen) removeWire(key); });
 
@@ -222,8 +270,8 @@ export function createStrings(ctx: EngineContext): StringsModule {
     clickDisconnect: disconnect,
     stringMid: (key) => { const s = strs.get(key); return s ? { y: s.my.x, ty: s.my.t } : null; },
     dispose() {
-      endLive(); ctx.root.classList.remove('stringing');
-      tubes.forEach((t) => { t.p.remove(); t.b.remove(); }); tubes.clear();
+      endLive(); ctx.root.classList.remove('stringing'); label.remove();
+      tubes.forEach((t) => { t.p.remove(); t.b.remove(); t.a.remove(); t.hit.remove(); }); tubes.clear();
       [...wires.keys()].forEach(removeWire);
       [...strs.keys()].forEach(dropStr);
     },
