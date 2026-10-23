@@ -34,7 +34,8 @@
 .ct-settings .prow .pn { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; flex-wrap: wrap; }
 .ct-settings .prow .ms { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
 .ct-settings .prow .ms span { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #fff; color: var(--t1); display: inline-flex; gap: 4px; align-items: center; }
-.ct-settings .prow .ms span.lk { color: var(--t3); background: transparent; box-shadow: inset 0 0 0 .5px var(--hairline); }
+.ct-settings .prow .ms span.more { color: var(--t2); font-weight: 500; background: transparent; }
+.ct-settings .prow .ms span.lk {color: var(--t3); background: transparent; box-shadow: inset 0 0 0 .5px var(--hairline); }
 .ct-settings .prow .acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .ct-settings .ks { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .ct-settings .ks.ok { background: #E3F4E7; color: #2F7A43; }

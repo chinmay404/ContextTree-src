@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { ShellProvider, useShell } from '@/components/shell/shell-context';
 import { AccountPill } from '@/components/shell/account/AccountPill';
 import { isModelLocked as modelLocked, preferredModel } from '@/components/shell/keys/providers';
+import { useLiveModels } from '@/components/shell/keys/live-models';
 import type { ProviderId } from '@/components/shell/keys/status-types';
 import { providerOf } from './lib/catalog';
 import { peekFirstAsk, takeFirstAsk } from '@/components/shell/home/first-ask';
@@ -144,6 +145,7 @@ function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }):
     [openSettings],
   );
   const isModelLocked = useCallback((engineId: string) => modelLocked(engineId, statuses), [statuses]);
+  const liveModels = useLiveModels(mock ? null : statuses, keys.lastSaved?.at);
 
   let body: ReactElement;
   if (gate === 'loading' || !api || signedOut) body = <Splash />;
@@ -161,7 +163,7 @@ function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }):
     );
   } else {
     body = (
-      <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenSettings={onOpenSettings} initialAsk={initialAsk} defaultModel={preferredModel(statuses) ?? undefined} keyEpoch={keys.lastSaved ?? undefined} isModelLocked={isModelLocked} topRight={<AccountPill />} />
+      <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenSettings={onOpenSettings} initialAsk={initialAsk} defaultModel={preferredModel(statuses) ?? undefined} keyEpoch={keys.lastSaved ?? undefined} isModelLocked={isModelLocked} liveModels={liveModels} topRight={<AccountPill />} />
     );
   }
   return <LightScope>{body}</LightScope>;

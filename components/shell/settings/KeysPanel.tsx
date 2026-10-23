@@ -8,6 +8,7 @@ import { ProviderMark } from './ProviderMark';
 import { PROVIDERS, keyStatusLine, type ProviderInfo } from '../keys/providers';
 import type { KeyStatus, ProviderId } from '../keys/status-types';
 import type { UseKeyStatus } from '../keys/use-key-status';
+import { useLiveModels } from '../keys/live-models';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const shortDate = (iso: string | null): string => {
@@ -24,8 +25,10 @@ function helpLine(info: ProviderInfo): ReactElement {
   return <>Make one at <a href={info.keyUrl} target="_blank" rel="noopener noreferrer">{m[1]}</a>{m[2]}</>;
 }
 
-function Row({ info, status, keys, autoOpen, focusRef, onSaved }: {
+function Row({ info, status, keys, autoOpen, focusRef, onSaved, liveCount }: {
   info: ProviderInfo;
+  /** How many chat models this key offers at the provider (0 until listed). */
+  liveCount: number;
   status: KeyStatus;
   keys: UseKeyStatus;
   autoOpen: boolean;
@@ -96,6 +99,7 @@ function Row({ info, status, keys, autoOpen, focusRef, onSaved }: {
           {info.models.map((k) => (
             <span key={k} className={working ? '' : 'lk'}><ModelMark model={{ key: k, name: MODELS[k].name, color: working ? MODELS[k].color : 'currentColor' }} />{MODELS[k].name}{!working && <Lock size={10} strokeWidth={2} />}</span>
           ))}
+          {working && liveCount > 0 && <span className="more">{liveCount} models on your key · pick any under More models</span>}
         </div>
         {rejected && (
           <div className="why">
@@ -160,6 +164,7 @@ export function KeysPanel({ keys, focusProvider, onSaved }: {
   onSaved(p: ProviderId): void;
 }): ReactElement {
   const line = keyStatusLine(keys.statuses);
+  const live = useLiveModels(keys.statuses, keys.lastSaved?.at);
   return (
     <section className="kmain" aria-labelledby="keys-h">
       <div className="khead">
@@ -182,6 +187,7 @@ export function KeysPanel({ keys, focusProvider, onSaved }: {
               autoOpen={isTarget && !status.configured}
               focusRef={isTarget}
               onSaved={onSaved}
+              liveCount={live[info.id]?.length ?? 0}
             />
           );
         })}

@@ -1,4 +1,4 @@
-import { MODELS, PROVIDER_NAME, modelInfo, providerOf, type ModelKey } from './catalog';
+import { MODELS, PROVIDER_NAME, liveProvider, modelInfo, providerOf, type ModelKey } from './catalog';
 
 const keys = Object.keys(MODELS) as ModelKey[];
 
@@ -41,6 +41,14 @@ describe('model catalog', () => {
 
   it('providerOf finds every catalog model first', () => {
     for (const k of keys) expect(providerOf(MODELS[k].engineId)).toBe(MODELS[k].provider);
+  });
+
+  it('reads live-listed ids as <provider>:<model id>', () => {
+    expect(providerOf('groq:qwen/qwen3.8-27b')).toBe('groq');
+    expect(providerOf('google:gemini-2.5-pro')).toBe('google');
+    expect(liveProvider('nvidia:x')).toBeNull();
+    expect(liveProvider('openai/gpt-5')).toBeNull();
+    expect(modelInfo('groq:qwen/qwen3.8-27b')).toMatchObject({ key: null, name: 'qwen3.8-27b', color: MODELS.gptoss.color });
   });
 
   it('modelInfo of an unknown id is still readable', () => {
