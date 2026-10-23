@@ -66,6 +66,7 @@ export function FocusView(): ReactElement {
   const rectRef = useRef<Rect>(FALLBACK());
   const shownRef = useRef<Id | null>(null);   // the chat on screen: kept while the view shrinks back
   const prevFocus = useRef<Id | null>(null);
+  const leaving = useRef<HTMLElement | null>(null);   // a copy of the chat on screen, taken just before another replaces it (the slide-out)
   const opener = useRef<HTMLElement | null>(null);
   const openerAt = useRef<{ cardId: string; act: string } | null>(null);   // the card button, found again after the card re-renders
   const webMap = useRef(new Map<string, Web>());
@@ -74,6 +75,9 @@ export function FocusView(): ReactElement {
   const [menuOn, setMenuOn] = useState(false);
   if (focusId) shownRef.current = focusId;
   const id = focusId ?? shownRef.current;
+  // Another chat is about to replace this one (a branch made from here, a timeline step): keep a copy of what is on screen for the slide-out.
+  // The DOM still shows the old chat here; the layout effect below animates the copy and removes it.
+  if (focusId && prevFocus.current && focusId !== prevFocus.current && innerRef.current) leaving.current = innerRef.current.cloneNode(true) as HTMLElement;
 
   const close = useCallback(() => { store.closeFocus(); }, [store]);
   useEscape(!!focusId, close);
@@ -134,6 +138,26 @@ export function FocusView(): ReactElement {
     return () => { set.forEach((el) => { el.inert = false; }); };
   }, [isOpen]);
 
+  /** The parent's copy fades and shifts left (160 ms), the new chat comes in from the right (220 ms); a cross-fade under reduced motion. Interruptible. */
+  const slide = useCallback((R: HTMLElement) => {
+    const inner = innerRef.current;
+    if (!inner || !engine) return;
+    const rm = engine.ctx.rm;
+    inner.getAnimations().forEach((a) => a.cancel());
+    R.querySelectorAll('.fx-out').forEach((e) => e.remove());
+    const out = leaving.current; leaving.current = null;
+    if (out) {
+      out.classList.add('fx-out'); out.setAttribute('inert', ''); out.setAttribute('aria-hidden', 'true');
+      R.appendChild(out);
+      const a = out.animate(rm ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'translateX(0px)' }, { opacity: 0, transform: 'translateX(-16px)' }], { duration: 160, easing: 'ease-out', fill: 'forwards' });
+      a.onfinish = () => out.remove(); a.oncancel = () => out.remove();
+    }
+    inner.animate(rm ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateX(16px)' }, { opacity: 1, transform: 'translateX(0px)' }],
+      { duration: rm ? 160 : 220, easing: rm ? 'ease-out' : 'cubic-bezier(0.23, 1, 0.32, 1)' });
+    const ta = R.querySelector<HTMLTextAreaElement>('.fcomp textarea');
+    if (ta && !ta.disabled) ta.focus({ preventScroll: true });
+  }, [engine]);
+
   // Open, switch chat, close.
   useLayoutEffect(() => {
     const prev = prevFocus.current;
@@ -155,6 +179,7 @@ export function FocusView(): ReactElement {
       engine.ctx.render(prev);
       rectRef.current = engine.cardRect(focusId) ?? rectRef.current;
       paint();
+      slide(R);
     } else if (!focusId && prev) {
       rectRef.current = engine.cardRect(prev) ?? rectRef.current;
       prog.cfg(.38, 1).to(0);
@@ -162,7 +187,7 @@ export function FocusView(): ReactElement {
       const target = o?.isConnected ? o : engine.ctx.nodes.get(prev)?.el ?? null;
       target?.focus({ preventScroll: true });
     }
-  }, [focusId, engine, paint]);
+  }, [focusId, engine, paint, slide]);
 
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.key !== 'Tab' || !isOpen) return;

@@ -592,7 +592,10 @@ export class BoardEngine {
     if (n) n.el.style.zIndex = String(++this.zTop);
     this.store.select(id);
     if (!d.at) this.later(() => this.flyTo(id), 60);
-    if (first) this.later(() => { void this.store.send(id, first); }, 350); else this.focusCompose(id);
+    // A branch made from inside the focus view takes the view with it: the new chat opens there, and the board behind has it selected.
+    const inFocus = !!this.store.getSnapshot().ui.focus;
+    if (inFocus) this.store.openFocus(id);
+    if (first) this.later(() => { void this.store.send(id, first); }, 350); else if (!inFocus) this.focusCompose(id);
     return id;
   }
 

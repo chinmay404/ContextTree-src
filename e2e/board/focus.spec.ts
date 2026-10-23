@@ -35,7 +35,7 @@ test('an answer row switches the focus to that chat', async ({ page }) => {
   await openBoard(page); await openFocus(page, 'deep');
   await page.locator(`${F} .srow`, { hasText: 'Q1.1 answer' }).click();
   expect(await page.evaluate(() => window.__board!.focus())).toBe('side');
-  await expect(page.locator(`${F} .tl .cur`)).toContainText('Q1.1');
+  await expect(page.locator(`${F} .in:not(.fx-out) .tl .cur`)).toContainText('Q1.1');   // not the copy of the old chat that is sliding away
 });
 
 test('a timeline step opens that question', async ({ page }) => {

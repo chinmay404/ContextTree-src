@@ -489,3 +489,5 @@
 @media (prefers-reduced-motion: reduce) {
   .pb-root .desk.running { animation: none; box-shadow: 0 0 0 3px rgba(0,113,227,.4), 0 0 20px 3px rgba(0,113,227,.18); }
 }
+/* the focus view's slide between two chats (P4): the old chat's copy leaves while the new one arrives */
+.pb-root [data-pb="focus"] .fx-out { pointer-events: none; z-index: 1; }
