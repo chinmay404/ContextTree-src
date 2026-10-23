@@ -445,6 +445,7 @@ export class BoardEngine {
         if (i < 9) dy += p.bottom + GAP - r.top;      // down, past what is in the way
         else dx += p.right + GAP - r.left;            // then sideways
       }
+      n.lw = el.offsetWidth;
       n.nx = Math.round(dx); n.ny = Math.round(dy);
       el.style.setProperty('--nx', String(n.nx)); el.style.setProperty('--ny', String(n.ny));
       placed.push(new DOMRect(b.left + dx, b.top + dy, b.width, b.height));

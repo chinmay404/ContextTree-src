@@ -128,6 +128,14 @@ export function createStrings(ctx: EngineContext): StringsModule {
   }
 
   const outPoint = (n: ViewNode, kind: 'src' | 'chat'): Pt => kind === 'src' ? [n.px.x + n.w + 1, n.py.x + n.h / 2] : [n.px.x + n.w + 1, n.py.x + 22];
+  /** Where a string meets a card. Zoomed out the card is its label, drawn where the overlap pass left it, so the string
+   *  meets the label's left or right edge at its vertical centre; otherwise `fb`, the card's own edge. */
+  function edge(n: ViewNode, side: 'left' | 'right', fb: Pt): Pt {
+    if (ctx.size() !== 'S' || !n.lw) return fb;
+    const iz = 1 / ctx.camera.z.x;   // the label is drawn at a steady size on screen: its world size is that times 1 / zoom
+    const cx = n.px.x + (parseFloat(n.el.style.width) || n.w) / 2 + (n.nx ?? 0) * iz, cy = n.py.x + 22 + (n.ny ?? 0) * iz;
+    return [cx + (side === 'right' ? 1 : -1) * (n.lw * iz) / 2, cy];
+  }
   const rightOf = (A: ViewNode, B: ViewNode) => (A.px.x + A.w / 2) <= (B.px.x + B.w / 2);
 
   function endLive(): void {
@@ -213,14 +221,15 @@ export function createStrings(ctx: EngineContext): StringsModule {
       }
       t.seen = true;
       const on = trail.has(c.id) && trail.has(c.parentId), flow = flowing.has(c.id) && flowing.has(c.parentId), w = tubeW(g, c.id) + (on || flow ? 1 : 0);
-      const { d } = stringPath('t|' + c.id, [A.px.x + A.w + 1, A.py.x + 22], [B.px.x - 1, B.py.x + 40], 1, -1);
+      const ta = edge(A, 'right', [A.px.x + A.w + 1, A.py.x + 22]), tb = edge(B, 'left', [B.px.x - 1, B.py.x + 40]);
+      const { d } = stringPath('t|' + c.id, ta, tb, 1, -1);
       t.p.setAttribute('d', d); t.b.setAttribute('d', d); t.p.style.strokeWidth = String(w); t.b.style.strokeWidth = String(Math.max(2, w * .45));
       t.p.setAttribute('class', ['tube', (on || flow) && 'trail', selChat && !on && 'faded'].filter(Boolean).join(' '));
       const pour = sel?.id === c.id || sel?.id === c.parentId || hoverKey === 't|' + c.id;
       t.b.setAttribute('class', 'bub' + (flow ? ' flow' : '') + (pour ? ' pour' : ''));
       t.p.style.opacity = String(clamp(B.o.x, 0, 1));
       t.hit.setAttribute('d', d); t.hit.style.strokeWidth = String(Math.max(18, w + 12));
-      t.a.setAttribute('d', arrowD([B.px.x - 1, B.py.x + 40], 1)); t.a.setAttribute('class', `arrow lineage${on || flow ? ' trail' : ''}${selChat && !on ? ' faded' : ''}`);
+      t.a.setAttribute('d', arrowD(tb, 1)); t.a.setAttribute('class', `arrow lineage${on || flow ? ' trail' : ''}${selChat && !on ? ' faded' : ''}`);
       t.a.style.opacity = String(clamp(B.o.x, 0, 1));
     }
     tubes.forEach((t, id) => { if (!t.seen) { t.p.remove(); t.b.remove(); t.a.remove(); t.hit.remove(); if (hoverKey === 't|' + id) { hoverKey = null; label.classList.remove('on'); } tubes.delete(id); } });
@@ -237,7 +246,7 @@ export function createStrings(ctx: EngineContext): StringsModule {
         ? !!selChat && selChat.id !== C.id && selChat.id !== A.id
         : !!selChat && selChat.id !== C.id && !ancestors(g, C.id).some((x) => x.id === selChat.id);
       const w = wireFor(key, e, color, deep), r = rightOf(A, C), ay = isAns ? A.py.x + 22 : A.py.x + A.h / 2;
-      const a: Pt = [r ? A.px.x + A.w + 1 : A.px.x - 1, ay], b: Pt = [r ? C.px.x - 1 : C.px.x + C.w + 1, C.py.x + 40];
+      const a = edge(A, r ? 'right' : 'left', [r ? A.px.x + A.w + 1 : A.px.x - 1, ay]), b = edge(C, r ? 'left' : 'right', [r ? C.px.x - 1 : C.px.x + C.w + 1, C.py.x + 40]);
       const p = stringPath(key, a, b, r ? 1 : -1, r ? -1 : 1), on = selWire === key;
       w.p.setAttribute('d', p.d); w.hit.setAttribute('d', p.d); w.k.style.left = p.m[0] + 'px'; w.k.style.top = p.m[1] + 'px';
       w.p.classList.toggle('faded', fade && !on); w.p.classList.toggle('sel', on); w.k.classList.toggle('on', on);

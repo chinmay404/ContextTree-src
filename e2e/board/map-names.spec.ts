@@ -181,3 +181,46 @@ test('the map in dark: same labels, same layout', async ({ page }) => {
   expect(await page.locator('.card.chat .maplabel').first().evaluate((e) => getComputedStyle(e).color)).toBe('rgb(245, 245, 247)');
   await page.screenshot({ path: shot('map-of-names-30-dark') });
 });
+
+for (const z of [0.2, 0.3, 0.4]) {
+  test(`at ${z * 100}% every string ends on the edge of the label it belongs to`, async ({ page }) => {
+    await openBoard(page);
+    await zoomTo(page, z);
+    await page.waitForTimeout(500);
+    const r = await page.evaluate(() => {
+      const c = window.__board!.cam(), out: { key: string; end: string; id: string; dist: number }[] = [];
+      const rect = (id: string) => document.querySelector<HTMLElement>(`[data-id="${id}"] .maplabel`)?.getBoundingClientRect();
+      for (const p of document.querySelectorAll<SVGPathElement>('.pb-tubes path.hit[data-key]')) {
+        const key = p.dataset.key!, len = p.getTotalLength();
+        const ends: [string, string, DOMPoint][] = [['start', '', p.getPointAtLength(0)], ['end', '', p.getPointAtLength(len)]];
+        const parts = key.split('|');   // t|child, s|source|chat, a|chat|chat
+        const from = parts[0] === 't' ? window.__board!.card(parts[1])!.parentId! : parts[1], to = parts[0] === 't' ? parts[1] : parts[2];
+        ends[0][1] = from; ends[1][1] = to;
+        for (const [end, id, pt] of ends) {
+          const b = rect(id);
+          if (!b) { out.push({ key, end, id, dist: -1 }); continue; }
+          const x = pt.x * c.z + c.x, y = pt.y * c.z + c.y;
+          const dx = Math.max(b.left - x, 0, x - b.right), dy = Math.max(b.top - y, 0, y - b.bottom);
+          out.push({ key, end, id, dist: Math.hypot(dx, dy) });
+        }
+      }
+      return out;
+    });
+    expect(r.length).toBeGreaterThan(8);
+    expect(r.filter((e) => e.dist < 0), 'ends whose card has no label').toEqual([]);
+    expect(r.filter((e) => e.dist > 4), 'ends more than 4 px from their label').toEqual([]);
+    await page.screenshot({ path: shot(`map-strings-${Math.round(z * 100)}`) });
+  });
+}
+
+test('string ends meet the label edges: light and dark at 30%', async ({ browser }) => {
+  for (const theme of ['light', 'dark']) {
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [{ origin: new URL(process.env.PW_BASE_URL ?? 'http://localhost:3100').origin, localStorage: [{ name: 'ct-tour', value: JSON.stringify({ version: 1e6, at: 0, finished: true }) }, ...(theme === 'dark' ? [{ name: 'ct-theme', value: 'dark' }] : [])] }] }, viewport: { width: 1440, height: 900 } });
+    const page = await ctx.newPage();
+    await openBoard(page);
+    await zoomTo(page, 0.3);
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: shot(`map-strings-30-${theme}`) });
+    await ctx.close();
+  }
+});
