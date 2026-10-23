@@ -8,7 +8,7 @@
 @media (hover: hover) and (pointer: fine) { .pb-root .pastebox button.pv:hover { box-shadow: 0 0 0 2px var(--pb-edge-strong); } }
 .pb-root .pastebox button.pv:active { transform: scale(.992); }
 .pb-root .pastebox button.pv:focus-visible { outline: 2px solid var(--pb-edge-strong); outline-offset: 2px; }
-.pb-root .pastebox .pvlink { background: #fff; }
+.pb-root .pastebox .pvlink { background: var(--pb-card); }
 .pb-root .pastebox .tile { width: 56px; height: 56px; border-radius: 14px; flex: none; background: var(--pb-fill) center / cover no-repeat; display: grid; place-items: center; }
 .pb-root .pastebox .tile .i { --s: 22px; --c: var(--t2); }
 .pb-root .pastebox .tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
@@ -16,9 +16,9 @@
 .pb-root .pastebox .tx .site { font-size: 12px; font-weight: 600; color: var(--t2); }
 .pb-root .pastebox .tx .body { font-size: 12.5px; line-height: 1.4; color: var(--t2); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
 .pb-root .pastebox .pvnote .body { color: var(--fx); -webkit-line-clamp: 5; }
-.pb-root .pastebox .add { align-self: center; flex: none; height: 30px; padding: 0 14px; border-radius: 999px; background: var(--pb-ink); color: #fff; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; }
+.pb-root .pastebox .add { align-self: center; flex: none; height: 30px; padding: 0 14px; border-radius: 999px; background: var(--pb-ink); color: var(--pb-on-ink); font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; }
 .pb-root .pastebox .loading .body { color: var(--t3); }
-.pb-root .pastebox .pverr { background: #fff; box-shadow: 0 0 0 2px var(--failed-ring, #F2B8B5); }
+.pb-root .pastebox .pverr { background: var(--pb-card); box-shadow: 0 0 0 2px var(--failed-ring, #F2B8B5); }
 .pb-root .pastebox .pverr .tile .i { --c: var(--failed, #C0463F); }
 .pb-root .pastebox .pbfoot { display: flex; align-items: center; gap: 10px; }
 .pb-root .pastebox .pbkeys { flex: 1; font-size: 12px; color: var(--t3); }

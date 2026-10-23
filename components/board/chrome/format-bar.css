@@ -17,5 +17,5 @@
 .pb-root .note-in .n.md ul, .pb-root .note-in .n.md ol { margin: 0 0 6px; padding-left: 18px; }
 .pb-root .note-in .n.md ul { list-style: disc; }
 .pb-root .note-in .n.md ol { list-style: decimal; }
-.pb-root .note-in .n.md code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; background: rgba(0,0,0,.07); padding: 1px 4px; border-radius: 5px; }
+.pb-root .note-in .n.md code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; background: var(--pb-code-bg); padding: 1px 4px; border-radius: 5px; }
 .pb-root .note-in .n.md a { color: var(--pb-edge-strong); text-decoration: underline; text-underline-offset: 2px; }

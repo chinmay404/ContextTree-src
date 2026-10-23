@@ -23,10 +23,10 @@
 .pb-root .menu .swl { font-size: 12px; font-weight: 600; color: var(--t2); padding: 8px 14px 2px; }
 .pb-root .menu .swatches { display: flex; align-items: center; gap: 8px; padding: 6px 14px 10px; }
 .pb-root .menu .swatches button { width: 22px; height: 22px; padding: 0; gap: 0; border-radius: 11px; flex: none; background: var(--sw); box-shadow: inset 0 0 0 .5px rgba(0,0,0,.14); display: grid; place-items: center; transition: transform 120ms var(--ease-out), box-shadow 120ms ease; }
-.pb-root .menu .swatches button.none, .pb-root .menu .swatches button.none:hover { background: #fff; position: relative; overflow: hidden; }
+.pb-root .menu .swatches button.none, .pb-root .menu .swatches button.none:hover { background: var(--pb-card); position: relative; overflow: hidden; }
 .pb-root .menu .swatches button.none::after { content: ''; position: absolute; left: -2px; right: -2px; top: 50%; height: 1.5px; background: #C0463F; transform: rotate(-45deg); }
 .pb-root .menu .swatches button:hover { background: var(--sw); }
-.pb-root .menu .swatches button[aria-checked="true"] { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--pb-ink); }
+.pb-root .menu .swatches button[aria-checked="true"] { box-shadow: 0 0 0 2px var(--pb-card), 0 0 0 4px var(--pb-ink); }
 .pb-root .menu .swatches button:focus-visible { outline: 2px solid var(--pb-edge-strong); outline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .pb-root .menu .swatches button:hover { transform: scale(1.12); } }
 .pb-root .menu .swatches button:active { transform: scale(.94); }

@@ -19,7 +19,7 @@
 .pb-root .members .mrow.off > button { opacity: .45; }
 .pb-root .members .mrow.off .ttl { text-decoration: line-through; }
 .pb-root .msw { flex: none; width: 38px; height: 22px; border-radius: 11px; background: var(--pb-edge); position: relative; cursor: pointer; transition: background-color 180ms ease; }
-.pb-root .msw i { position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform 200ms var(--ease-out); }
+.pb-root .msw i { position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 8px; background: var(--pb-card); box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform 200ms var(--ease-out); }
 .pb-root .msw[aria-checked="true"] { background: var(--pb-ink); }
 .pb-root .msw[aria-checked="true"] i { transform: translateX(16px); }
 .pb-root .msw:focus-visible { outline: 2px solid var(--pb-ink); outline-offset: 2px; }

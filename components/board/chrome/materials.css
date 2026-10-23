@@ -51,7 +51,7 @@
 .pb-root .tl .cur { box-shadow: 0 0 0 .5px var(--hairline), var(--sh-node); }
 .pb-root .pages .pg, .pb-root .webprev { box-shadow: 0 0 0 .5px var(--hairline), var(--sh-node); }
 .pb-root .mock3 div { box-shadow: 0 0 0 .5px var(--hairline), var(--sh-node); }
-.pb-root .mock3 div.mid { box-shadow: 0 0 0 3px #0071E3, var(--sh-card); }
+.pb-root .mock3 div.mid { box-shadow: 0 0 0 3px var(--pb-edge-strong), var(--sh-card); }
 
 /* ---- sheets, desks, panels ---- */
 .pb-root .sheetbox { border-radius: var(--r-sheet); box-shadow: 0 0 0 .5px var(--hairline), var(--sh-card); }

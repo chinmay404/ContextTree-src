@@ -4,6 +4,6 @@
 .pb-root [data-pb="chatbar"] textarea { flex: 1; min-width: 0; border: 0; outline: none; resize: none; background: none; padding: 9px 0; font-size: 16px; line-height: 1.4; max-height: 160px; overflow-y: auto; cursor: text; user-select: text; -webkit-user-select: text; }
 .pb-root [data-pb="chatbar"] textarea::placeholder { color: var(--t3); }
 .pb-root [data-pb="chatbar"] .cb-send { width: 40px; height: 40px; flex: none; border-radius: 20px; background: var(--pb-ink); display: grid; place-items: center; transition: transform 120ms var(--ease-out), background-color 150ms ease; }
-.pb-root [data-pb="chatbar"] .cb-send .i { --s: 18px; --c: #fff; }
+.pb-root [data-pb="chatbar"] .cb-send .i { --s: 18px; --c: var(--pb-on-ink); }
 .pb-root [data-pb="chatbar"] .cb-send:active:not(:disabled) { transform: scale(.92); }
-.pb-root [data-pb="chatbar"] .cb-send:disabled { background: #D1D1D6; cursor: default; }
+.pb-root [data-pb="chatbar"] .cb-send:disabled { background: var(--pb-disabled); cursor: default; }
