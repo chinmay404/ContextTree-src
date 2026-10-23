@@ -38,6 +38,7 @@ import { ChatBar } from './chrome/ChatBar';
 import { WelcomeTour } from './chrome/WelcomeTour';
 import { ZoomControl } from './chrome/ZoomControl';
 import './chrome/materials.css'; // its rules override pebble.css and the chrome CSS at equal specificity
+import './chrome/map-names.css'; // the zoomed-out map of names
 import './chrome/sets.css'; // open sets (a pile drawn as a box of sources)
 import './chrome/colors.css'; // card colours and the chat rim win over materials.css
 import './chrome/dark.css'; // keep last: the dark palette re-defines the tokens and tones above

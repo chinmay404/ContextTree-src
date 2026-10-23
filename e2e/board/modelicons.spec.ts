@@ -23,15 +23,14 @@ test('a card header shows the model mark in its colour and the detailed model na
   expect(errs).toEqual([]);
 });
 
-test('zoomed out, a chat blob carries the mark, not a dot', async ({ page }) => {
+test('zoomed out, a chat label carries the mark, not a dot', async ({ page }) => {
   await openBoard(page);
-  await page.evaluate(() => window.__board!.fit(false));
-  await page.evaluate(() => window.__board!.settle());
-  const blobs = page.locator('.card.chat.size-s .s.blob');
-  if (await blobs.count()) {
-    await expect(blobs.first().locator('svg.mmark')).toHaveCount(1);
-    await expect(blobs.first().locator('.mdot')).toHaveCount(0);
-  }
+  await page.evaluate(() => window.__board!.camSnap(300, 300, 0.3));
+  await page.waitForTimeout(300);
+  const labels = page.locator('.card.chat.size-s .maplabel');
+  expect(await labels.count()).toBeGreaterThan(0);
+  await expect(labels.first().locator('svg.mmark')).toHaveCount(1);
+  await expect(labels.first().locator('.mdot')).toHaveCount(0);
 });
 
 test('the focus view says which model answered, by name, with its mark', async ({ page }) => {

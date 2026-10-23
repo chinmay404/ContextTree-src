@@ -46,13 +46,13 @@ test('reduced motion: a steady accent rim, no pulse', async ({ page }) => {
   expect(await page.locator(DESK).evaluate((e) => getComputedStyle(e).boxShadow)).toContain('rgba(0, 113, 227, 0.4)');
 });
 
-test('zoomed out the label carries an accent dot while it answers', async ({ page }) => {
+test('zoomed out the chat label carries an accent dot while it answers', async ({ page }) => {
   await openBoard(page, slow);
   await ask(page);
   await expect(page.locator(DESK)).toHaveClass(/running/);
   await page.evaluate(() => window.__board!.camSnap(300, 300, 0.3));
   await page.waitForTimeout(300);
-  const dot = await page.locator(`${DESK} .tab`).evaluate((e) => { const s = getComputedStyle(e, '::after'); return { c: s.content, bg: s.backgroundColor, w: s.width }; });
-  expect(dot).toEqual({ c: '""', bg: 'rgb(0, 113, 227)', w: '8px' });
+  const dot = await page.locator('[data-id="side"] .maplabel .rundot').evaluate((e) => ({ bg: getComputedStyle(e).backgroundColor, w: getComputedStyle(e).width }));
+  expect(dot).toEqual({ bg: 'rgb(0, 113, 227)', w: '8px' });
   await page.screenshot({ path: shot('desk-glow-map') });
 });

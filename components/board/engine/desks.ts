@@ -42,7 +42,7 @@ export function createDesks(ctx: EngineContext): DesksModule {
       for (const n of ctx.nodes.values()) if (n.dragging && !n.isChat) { dragged = n; break; }
       desks.forEach((d) => {
         const c = g.cards.get(d.chat), box = deskBounds(layout, d.chat, dragged && dragged.deskId === d.chat ? dragged : null);
-        if (!c || !box) { d.el.style.display = 'none'; return; }
+        if (!c || !box || ctx.size() === 'S') { d.el.style.display = 'none'; return; }   // zoomed out the names are the map: no frames
         d.el.style.display = '';
         if (!d.init) { d.b.forEach((s, i) => s.snap(box[i])); d.init = true; } else d.b.forEach((s, i) => s.to(box[i]));
         const dw = d.b[2].x - d.b[0].x;

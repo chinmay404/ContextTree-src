@@ -16,8 +16,6 @@
 .pb-root .card.chat[class*="tone-"].lift .face { box-shadow: 0 0 0 2px var(--fd), var(--sh-lift); }
 .pb-root .card.chat[class*="tone-"]:not(.size-s) .chd { margin: -14px -14px 0; padding: 9px 14px; min-height: 38px; background: var(--fc); border-radius: var(--r-card, 18px) var(--r-card, 18px) 0 0; }
 .pb-root .card.chat[class*="tone-"]:not(.size-s) .chd .mtag { color: var(--fx); }
-/* zoomed out: the blob takes the strip's tone */
-.pb-root .card.chat[class*="tone-"].size-s .face { background: var(--fc); }
 
 /* swatches (right-click menu and the focus view's menu); they sit inside .menu, whose generic button rules they override */
 .pb-root .menu .swl { font-size: 12px; font-weight: 600; color: var(--t2); padding: 8px 14px 2px; }

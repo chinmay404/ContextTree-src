@@ -28,7 +28,9 @@ test('a new chat shows the empty desk hint', async ({ page }) => {
   await expect(page.locator('.desk[data-chat="main"]')).not.toHaveClass(/empty/);
 });
 test('zoomed out, desk names grow but never outgrow their desk', async ({ page }) => {
-  await openBoard(page); await page.evaluate(() => window.__board!.zoomAt(720, 450, .35, false)); await page.waitForTimeout(200);
+  // between 42% and 55% the cards are still cards and the desk names already grow; below 42% the board is a map of names and has no desk frames (map-names.spec.ts)
+  await openBoard(page); await page.evaluate(() => window.__board!.zoomAt(720, 450, .46, false)); await page.waitForTimeout(200);
+  expect(await page.evaluate(() => window.__board!.size())).toBe('M');
   const t = await page.locator('.desk[data-chat="main"] .tab').evaluate((e) => (e as HTMLElement).style.transform); expect(t).toMatch(/scale\(/);
   const r = await page.evaluate(() => {
     const d = document.querySelector('.desk[data-chat="main"]')!.getBoundingClientRect(), tb = document.querySelector('.desk[data-chat="main"] .tab')!.getBoundingClientRect();

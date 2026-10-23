@@ -400,6 +400,7 @@ export class BoardEngine {
     const want = this.ctx.showcase ? 'M' : this.size === 'S' ? (z > .5 ? 'M' : 'S') : (z < .42 ? 'S' : 'M');
     if (want !== this.size) { this.size = want; this.ctx.renderAll(); }
     this.ctx.world.style.transform = `translate3d(${this.camera.x.x}px,${this.camera.y.x}px,0) scale(${z})`;
+    if (this.size === 'S') this.ctx.world.style.setProperty('--iz', (1 / z).toFixed(3));   // the map's labels counter-scale to a steady size on screen
     this.paintDots(this.camera.x.x, this.camera.y.x, z);
     this.place();
     this.ctx.nodes.forEach((n) => {

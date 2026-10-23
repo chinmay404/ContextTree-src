@@ -121,7 +121,10 @@ export class CardView {
     const set = pile && d.layout === 'open';   // a pile drawn open: its sources laid out in a box
     const sheets = pile && !set ? '<div class="sheet s2"></div><div class="sheet s1"></div>' : '';
     // zoomed out: a plain coloured pebble; the desk names carry the words (map view)
-    if (this.ctx.size() === 'S') return `${sheets}<div class="face" title="${esc(nameOf(g, c))}"><div class="s blob"></div></div>`;
+    if (this.ctx.size() === 'S') {
+      const label = pile ? `${nameOf(g, c)} (${membersOf(g, c.id).length})` : nameOf(g, c);
+      return `<div class="face" title="${esc(label)}"><div class="maplabel srcl">${icon(iconOf(c))}<span class="nm">${esc(label)}</span></div></div>`;
+    }
     const live = st === 'ready' || st === 'soon';
     const port = live ? `<span class="port out ${wireCount(g, c.id) ? '' : 'free'}" data-port="src" data-tip="Drag onto a chat to connect"></span>` : '';
     const ic = (a: string, ico: string, tip: string) => `<button class="ic" data-act="${a}" data-tip="${esc(tip)}" aria-label="${esc(tip)}">${icon(ico)}</button>`;
@@ -198,7 +201,9 @@ export class CardView {
 
   private chatHTML(_n: ViewNode, c: Card): string {
     const g = this.g, d = chatData(c), store = this.ctx.store, m = modelInfo(d.model);
-    if (this.ctx.size() === 'S' || d.demoted) return `<div class="face" title="${esc(d.name)}"><div class="s blob">${modelMarkHtml(m)}</div></div>`;
+    // zoomed out the board is a map of names: a chat is its question with its model's mark (a folded chat stays a mark)
+    if (this.ctx.size() === 'S' && !d.demoted) return `<div class="face" title="${esc(d.name)}"><div class="maplabel chatl" style="--c:${esc(m.color)}">${modelMarkHtml(m)}<span class="nm">${esc(d.name)}</span>${this.ctx.store.isStreaming(c.id) ? '<i class="rundot"></i>' : ''}</div></div>`;
+    if (d.demoted) return `<div class="face" title="${esc(d.name)}"><div class="s blob">${modelMarkHtml(m)}</div></div>`;
     const items = store.readsOf(c.id).items, read = items.filter(isRead);
     const nRead = countSources(g, read);
     const snap = store.getSnapshot(), msgs: Message[] = snap.messages.get(c.id) ?? [], stream = snap.streaming.get(c.id);

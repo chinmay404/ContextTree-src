@@ -118,6 +118,6 @@ test('zoomed out the map keeps the colour; a few coloured cards on the board', a
   expect(await page.evaluate(() => window.__board!.size())).toBe('S');
   await expect(page.locator('[data-id="main"]')).toHaveClass(/tone-blue/);
   await expect(page.locator('[data-id="pdf"]')).toHaveClass(/tone-orange/);
-  expect(await css(page, '[data-id="main"] .face', 'background-color')).toBe('rgb(220, 233, 247)');
+  expect(await css(page, '[data-id="main"] .maplabel', 'background-color')).toBe('rgb(220, 233, 247)');   // the label takes the tone
   await page.screenshot({ path: shot('colour-board-zoomed-out') });
 });

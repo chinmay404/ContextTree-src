@@ -242,11 +242,11 @@ test('the delete question is opaque once open, and no Removed toast shows before
   await expect(page.locator('.pb-toast')).toHaveText('');
 });
 
-test('zoomed out a set is a pebble like any source', async ({ page }) => {
+test('zoomed out a set is a name like any source, with its count', async ({ page }) => {
   await openBoard(page);
   const id = await newSet(page);
   await page.evaluate(() => window.__board!.camSnap(300, 300, .3));
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => window.__board!.size())).toBe('S');
-  await expect(page.locator(`[data-id="${id}"] .s.blob`)).toHaveCount(1);
+  await expect(page.locator(`[data-id="${id}"] .maplabel`)).toContainText('New set (0)');
 });
