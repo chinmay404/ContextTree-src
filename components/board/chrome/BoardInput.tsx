@@ -46,10 +46,11 @@ export function BoardInput(): null {
       hide();
       if (covered()) return;
       const [x, y] = engine.ctx.s2w(e.clientX, e.clientY), deskId = engine.deskAt(x, y);
+      const into = engine.setUnder(e.clientX, e.clientY);   // dropped on an open set: into it, and onto no desk
       const files = Array.from(dt.files ?? []);
-      if (files.length) { engine.addFiles(files, [x, y], deskId); return; }
+      if (files.length) { engine.addFiles(files, [x, y], into ? null : deskId, into); return; }
       const url = droppedUrl(dt);
-      if (url) engine.addLink(url, deskId, [x, y]);
+      if (url) engine.addLink(url, into ? null : deskId, [x, y], into);
     };
 
     const onPaste = (e: ClipboardEvent) => {

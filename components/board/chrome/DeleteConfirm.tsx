@@ -15,7 +15,7 @@ export function DeleteConfirm(): ReactElement {
   const okRef = useRef<HTMLButtonElement>(null);
   const allRef = useRef<HTMLButtonElement>(null);
   const opener = useRef<HTMLElement | null>(null);
-  const shown = useRef<{ text: string; pile?: { front: string; count: number } }>({ text: '' });   // the text stays while the sheet fades out
+  const shown = useRef<{ text: string; pile?: { front: string; count: number; set?: boolean } }>({ text: '' });   // the text stays while the sheet fades out
   if (open) shown.current = { text: open.text, pile: open.pile };
 
   const cancel = useCallback(() => { store.cancelConfirm(); }, [store]);
@@ -93,7 +93,7 @@ export function DeleteConfirm(): ReactElement {
           <button type="button" className="btn" onClick={cancel}>Cancel</button>
           {pile ? (
             <>
-              <button type="button" ref={okRef} className="btn primary" onClick={ok}>{`Delete "${pile.front}"`}</button>
+              <button type="button" ref={okRef} className="btn primary" onClick={ok}>{pile.set ? `Delete the set, keep the ${pile.count} ${pile.count === 1 ? 'source' : 'sources'}` : `Delete "${pile.front}"`}</button>
               <button type="button" ref={allRef} className="btn primary" onClick={all}>{`Delete all ${pile.count}`}</button>
             </>
           ) : <button type="button" ref={okRef} className="btn primary" onClick={ok}>Delete</button>}

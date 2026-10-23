@@ -139,6 +139,7 @@ export class BoardEngine {
     // Delete asks the view for what only it knows: the front member of a pile, and a drop that has not been saved yet.
     this.store.setViewProbe({
       front: (id) => this.ctx.nodes.get(id)?.front ?? 0,
+      size: (id) => { const n = this.ctx.nodes.get(id); return n ? [n.w, n.h] : null; },
       pos: (id) => {
         const n = this.ctx.nodes.get(id);
         return n && this.ctx.modules.persistence.isDirty(id) ? [Math.round(n.px.t * 10) / 10, Math.round(n.py.t * 10) / 10] : null;
@@ -523,22 +524,39 @@ export class BoardEngine {
   }
 
   /** One card per file; the API decides what each is. `at` is a world point, else the desk's next spot or the centre. */
-  addFiles(files: File[], at: [number, number] | null, deskId: Id | null): Id[] {
+  addFiles(files: File[], at: [number, number] | null, deskId: Id | null, into: Id | null = null): Id[] {
     const ids = files.map((f, i) => {
       const id = this.store.createSourceFromFile(f, this.placeFor(deskId, i, at), deskId, files.length === 1 ? 'single' : 'multi');
       this.land(id);
+      if (into) this.store.makePile(id, into, at ?? [0, 0]);   // dropped on an open set: a member from the start
       return id;
     });
     return ids;
   }
 
   /** A link card (YouTube becomes a coming-soon video); false when `text` is not an http(s) URL. */
-  addLink(text: string, deskId: Id | null, at: [number, number] | null): boolean {
+  addLink(text: string, deskId: Id | null, at: [number, number] | null, into: Id | null = null): boolean {
     const id = this.store.createSourceFromLink(text.trim(), this.placeFor(deskId, 0, at), deskId);
     if (!id) return false;
     this.land(id);
-    this.store.select(id);
+    if (into) this.store.makePile(id, into, at ?? [0, 0]);
+    this.store.select(into ?? id);
     return true;
+  }
+
+  /** The open set under a screen point, if any (a drop on it goes into it). */
+  setUnder(clientX: number, clientY: number): Id | null {
+    const el = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('.card.src.set');
+    return el?.dataset.id ?? null;
+  }
+
+  /** A new, empty set at a spot (or a free one near the middle of the screen); it is selected. */
+  spawnSet(at: [number, number] | null): Id {
+    const [fx, fy] = at ?? this.freeSpot(...this.center().map((v, i) => v - (i ? 90 : 165)) as [number, number], 330, 190);
+    const id = this.store.makeSet([fx, fy], null);
+    this.land(id);
+    this.store.select(id);
+    return id;
   }
 
   /** Pasted text becomes a note with the first 600 characters (prototype 1153). */

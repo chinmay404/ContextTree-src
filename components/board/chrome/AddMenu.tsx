@@ -7,11 +7,12 @@ import { clamp } from '../lib/util';
 import { Icon } from './Icon';
 import { useEscape } from './escape';
 
-const MENU_H = 232;
-type Item = { k: 'note' | 'chat' | 'file' | 'link'; label: string; icon: string; bg: string; fg: string; kbd: string };
+const MENU_H = 286;
+type Item = { k: 'note' | 'chat' | 'set' | 'file' | 'link'; label: string; icon: string; bg: string; fg: string; kbd: string };
 const ITEMS: Item[] = [
   { k: 'note', label: 'Note', icon: 'sticky-note', bg: '#FFE1EA', fg: '#D1467E', kbd: 'N' },
   { k: 'chat', label: 'New question', icon: 'message-circle', bg: '#1D1D1F', fg: '#FFFFFF', kbd: 'Q' },
+  { k: 'set', label: 'New set', icon: 'layers', bg: '#E5E5EA', fg: '#3A3A3C', kbd: '' },
   { k: 'file', label: 'Upload files', icon: 'upload', bg: '#FFF0B3', fg: '#B8860B', kbd: '' },
   { k: 'link', label: 'Paste a link or text', icon: 'link', bg: '#C9ECFF', fg: '#2A86C4', kbd: 'V' },
 ];
@@ -86,6 +87,7 @@ export function AddMenu(): ReactElement {
       const [fx, fy] = at ? [p[0] - 106, p[1] - 30] : engine.freeSpot(p[0] - 106, p[1] - 30, 212, 90);
       engine.spawnNote(fx, fy);
     } else if (k === 'chat') store.openDialog({ mode: 'root', at: at ? [p[0] - 160, p[1] - 40] : null });
+    else if (k === 'set') engine.spawnSet(at ? [p[0] - 165, p[1] - 40] : null);
     else if (k === 'file') pick(at, at ? engine.deskAt(p[0], p[1]) : null);
     else store.openPaste('');
   };

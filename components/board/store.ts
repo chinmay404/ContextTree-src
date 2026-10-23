@@ -29,7 +29,7 @@ export interface UiState { selected: Id | null; dialog: DialogState | null;
   menu: { x: number; y: number; at: [number, number] | null; fromAdd: boolean } | null;
   /** The paste box (V): `text` is what it opens with; `seq` makes each opening a new one. */
   pasteBox: { text: string; seq: number } | null;
-  confirm: { cardId: Id; text: string; pile?: { frontId: Id; front: string; count: number } } | null;
+  confirm: { cardId: Id; text: string; pile?: { frontId: Id; front: string; count: number; set?: boolean } } | null;
   toast: { id: number; text: string; undoCardId: Id | null } | null;
   compare: Id | null; dropping: boolean; webSearch: Readonly<Record<Id, boolean>>;
   /** The first-visit welcome tour (chrome/WelcomeTour.tsx) is open. */
@@ -48,13 +48,17 @@ export interface BoardSnapshot { version: number; status: 'loading' | 'ready' | 
   ui: UiState }
 
 /** What only the engine's view knows: a pile's front member, and a card's dragged position that is not saved yet. */
-export interface ViewProbe { front(pileId: Id): number; pos(id: Id): [number, number] | null }
+export interface ViewProbe { front(pileId: Id): number; pos(id: Id): [number, number] | null; size?(id: Id): [number, number] | null }
 
 export interface StoreOptions { pollMs?: number; readsDebounceMs?: number; toastMs?: number;
   /** Engine id for new question chats that have no parent (the shell passes a model the user has a key for). */
   defaultModel?: string }
 
 // ---- helpers ----
+
+/** A pile drawn open is a set. */
+const isOpenSet = (c: Card): boolean => c.sourceType === 'pile' && (c.data as SourceData).layout === 'open';
+const setMeta = (n: number): string => (n === 0 ? 'Empty set' : n === 1 ? '1 source' : `${n} sources`);
 
 const LOCKED_ONCE_STARTED = ['model', 'persona', 'systemPrompt', 'inheritDesk', 'carry', 'advanced'] as const;
 
@@ -855,7 +859,7 @@ export class BoardStore {
     if (target.sourceType === 'pile') {
       const have = new Set(membersOf(this.graph(), targetId).map((m) => m.id));
       const total = have.size + joining.filter((m) => !have.has(m.id)).length;
-      const meta = `${total} files`;
+      const meta = isOpenSet(target) ? setMeta(total) : `${total} files`;
       if ((target.data as SourceData).meta !== meta) this.patchCard(targetId, { data: { meta } });
     }
     for (const m of members) {
@@ -867,6 +871,44 @@ export class BoardStore {
       void this.removeCard(srcId, Promise.all(moves).then((r) => r.every(Boolean)));
     }
     return pileId;
+  }
+
+  // ---- sets: a pile drawn open ----
+
+  /** A new set (a pile with `data.layout: 'open'`), optionally started from one source, which it takes in with its strings. */
+  makeSet(at: [number, number], deskId: Id | null, firstId?: Id): Id {
+    const first = firstId ? this.cards.get(firstId) : undefined;
+    const take = !!first && first.kind === 'source' && first.sourceType !== 'pile' && !first.pileId;
+    const data: SourceData = { title: 'New set', layout: 'open', meta: setMeta(take ? 1 : 0) };
+    const set = this.blankSource('pile', at[0], at[1], deskId, 'ready', data);
+    this.create(set, () => this.api.createCard(this.boardId, {
+      id: set.id, kind: 'source', sourceType: 'pile', x: at[0], y: at[1], deskId, status: 'ready', data,
+    }), 'other');
+    if (take && first) {
+      void this.patch(first.id, { pileId: set.id, deskId: null });
+      this.moveWires(first.id, set.id);
+    }
+    return set.id;
+  }
+
+  /** Draws a pile open as a set ('open') or closes a set back into a stack (null). One PATCH of data.layout; the members are untouched. */
+  setLayout(id: Id, layout: 'open' | null): void {
+    const c = this.cards.get(id);
+    if (!c || c.sourceType !== 'pile' || ((c.data as SourceData).layout ?? null) === layout) return;
+    this.patchCard(id, { data: { layout } });
+  }
+
+  /** A member leaves its set: loose beside it, on the set's desk if it has one. The set keeps its other members (and may be left empty). */
+  takeOut(memberId: Id): void {
+    const m = this.cards.get(memberId), set = m?.pileId ? this.cards.get(m.pileId) : undefined;
+    if (!m || !set) return;
+    const [w] = this.probe?.size?.(set.id) ?? [330, 0], n = membersOf(this.graph(), set.id).length;
+    const x = set.x + w + 24, y = set.y + Math.min(n - 1, 3) * 24;
+    this.put({ ...m, x, y });
+    void this.patch(memberId, { pileId: null, deskId: set.deskId });
+    this.savePositions([{ id: memberId, x, y }]);
+    const left = n - 1;
+    this.patchCard(set.id, { data: { meta: isOpenSet(set) ? setMeta(left) : `${left} files` } });
   }
 
   unstack(pileId: Id, spots: [number, number][]): Id[] {
@@ -1274,6 +1316,10 @@ export class BoardStore {
     if (!card) return;
     if (card.sourceType === 'pile') {
       const ms = membersOf(this.graph(), id);
+      if (ms.length && isOpenSet(card)) {   // a set: keep its sources, or delete them with it
+        this.setUi({ confirm: { cardId: id, text: `Delete the set "${nameOf(this.graph(), card)}"?`, pile: { frontId: ms[0].id, front: '', count: ms.length, set: true } } });
+        return;
+      }
       if (ms.length) {
         const front = ms[(this.probe?.front(id) ?? 0) % ms.length];
         const text = `Delete the pile "${nameOf(this.graph(), card)}"?`;
@@ -1301,6 +1347,13 @@ export class BoardStore {
     if (!c.pile) { await this.deleteSet(c.cardId); return; }
     if (mode === 'all') { await this.deleteSet(c.cardId, membersOf(this.graph(), c.cardId).map((m) => m.id)); return; }
     const pile = this.cards.get(c.cardId);
+    if (c.pile.set && pile) {   // the set goes, its sources stay on the board, laid out below where it stood
+      const ms = membersOf(this.graph(), c.cardId), h = this.probe?.size?.(c.cardId)?.[1] ?? 200;
+      this.unstack(c.cardId, ms.map((_, i): [number, number] => [pile.x + (i % 3) * 230, pile.y + h + 40 + Math.floor(i / 3) * 110]));
+      this.select(null);
+      this.toast(`Set deleted · ${ms.length} ${ms.length === 1 ? 'source' : 'sources'} kept`);
+      return;
+    }
     if (pile && c.pile.count <= 2) {   // one would be left alone in a pile: unpile first, then remove the front member
       const ms = membersOf(this.graph(), c.cardId);
       const spots = ms.map((m): [number, number] => (m.id === c.pile!.frontId ? [pile.x + 24, pile.y + 96] : [pile.x, pile.y]));

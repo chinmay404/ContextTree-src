@@ -44,6 +44,7 @@ export interface SourceData {
   error?: string;                       // when status = 'failed'
   off?: boolean;                        // pile member switched off: never read
   color?: string | null;                // card colour key (lib/colors.ts); absent or null = default
+  layout?: 'open' | null;               // a pile drawn open is a set: its members laid out in a box ('open'); absent = a stack
   textChangedAt?: string;               // ISO; set by the client whenever it changes note/doc text (drives "Source changed")
 }
 

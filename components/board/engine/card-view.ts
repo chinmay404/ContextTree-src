@@ -17,6 +17,8 @@ import type { BoardStore } from '../store';
 import type { EngineContext, ViewNode } from './types';
 
 export const CHAT_W = 320, SRC_W = 212, CHAT_W_S = 260, SRC_W_S = 220;
+/** An open set is as wide as its grid of tiles: one to three columns of 150 px. */
+export const setWidth = (members: number): number => 28 + (members < 2 ? 1 : Math.min(3, Math.ceil(Math.sqrt(members)))) * 158 - 8;
 
 /** Engine services the card faces need beyond the shared context. */
 export interface CardViewHooks {
@@ -116,17 +118,26 @@ export class CardView {
 
   private srcHTML(n: ViewNode, c: Card): string {
     const g = this.g, d = sourceData(c), pile = c.sourceType === 'pile', st = c.status ?? 'ready';
-    const sheets = pile ? '<div class="sheet s2"></div><div class="sheet s1"></div>' : '';
+    const set = pile && d.layout === 'open';   // a pile drawn open: its sources laid out in a box
+    const sheets = pile && !set ? '<div class="sheet s2"></div><div class="sheet s1"></div>' : '';
     // zoomed out: a plain coloured pebble; the desk names carry the words (map view)
     if (this.ctx.size() === 'S') return `${sheets}<div class="face" title="${esc(nameOf(g, c))}"><div class="s blob"></div></div>`;
     const live = st === 'ready' || st === 'soon';
     const port = live ? `<span class="port out ${wireCount(g, c.id) ? '' : 'free'}" data-port="src" data-tip="Drag onto a chat to connect"></span>` : '';
     const ic = (a: string, ico: string, tip: string) => `<button class="ic" data-act="${a}" data-tip="${esc(tip)}" aria-label="${esc(tip)}">${icon(ico)}</button>`;
-    const tools = `<div class="tools">${live ? ic('view', 'maximize-2', 'Open · double-click') : ''}${c.sourceType !== 'note' && st === 'ready' ? ic('expand', n.open ? 'chevrons-down-up' : 'chevrons-up-down', n.open ? 'Done' : 'Excerpts and what it is for') : ''}${pile ? ic('unstack', 'ungroup', 'Unpile') : ''}${ic('del', 'x', 'Remove')}</div>`;
+    const tools = `<div class="tools">${set ? ic('setclose', 'layers', 'Close into a pile') : live ? ic('view', 'maximize-2', 'Open · double-click') : ''}${c.sourceType !== 'note' && st === 'ready' && !set ? ic('expand', n.open ? 'chevrons-down-up' : 'chevrons-up-down', n.open ? 'Done' : 'Excerpts and what it is for') : ''}${pile ? ic('unstack', 'ungroup', set ? 'Release every source' : 'Unpile') : ''}${ic('del', 'x', 'Remove')}</div>`;
     const soon = st === 'soon' ? '<span class="soon-pill">Coming soon</span>' : '';
     const ex = d.excerpts ?? [];
     let body: string;
-    if (c.sourceType === 'note') {
+    if (set && st === 'ready') {
+      const ms = membersOf(g, c.id);
+      const tiles = ms.map((m, i) => {
+        const md = sourceData(m);
+        return `<div class="setm f-${famOf(g, m)}${md.off ? ' off' : ''}"><button class="sm-open" data-setm="${i}" title="${esc(nameOf(g, m))}"><span class="tile">${m.status === 'processing' ? '' : icon(iconOf(m))}</span><span class="tx"><b>${esc(nameOf(g, m))}</b><span>${m.status === 'processing' ? 'Reading…' : esc(md.meta ?? TYPE_INFO[m.sourceType ?? 'pdf'].label)}</span></span></button><button class="sm-x" data-act="takeout" data-i="${i}" aria-label="Take ${esc(nameOf(g, m))} out of the set" data-tip="Take out of the set">${icon('x')}</button></div>`;
+      }).join('');
+      body = `<div class="setbox"><div class="sethd"><input class="setname" value="${esc(d.title ?? 'New set')}" aria-label="Set name" maxlength="80" spellcheck="false"><span class="setmeta">${esc(d.meta ?? '')}</span></div>`
+        + `<div class="setgrid" style="grid-template-columns: repeat(${ms.length < 2 ? 1 : Math.min(3, Math.ceil(Math.sqrt(ms.length)))}, 150px)">${ms.length ? tiles : '<p class="sethint">Drop sources here, or drag them onto this box.</p>'}</div></div>`;
+    } else if (c.sourceType === 'note') {
       // Markdown is drawn while the note is not being edited; focusing it swaps in the plain text to edit (see bind)
       const txt = d.text ?? '';
       body = `<div class="note-in"><div class="meta">${esc(d.meta || 'Note · You')}</div><div class="n${txt ? ' md' : ''}" contenteditable="plaintext-only" spellcheck="false" data-text="${esc(txt)}">${txt ? renderMarkdown(txt, { breaks: true }) : ''}</div></div>`;
@@ -238,7 +249,8 @@ export class CardView {
     const msgs = this.ctx.store.getSnapshot().messages.get(c.id);
     const empty = chat && !(msgs?.length) && !(c.messageCount ?? 0) && !this.ctx.store.isStreaming(c.id);
     const keep = ['lift', 'drop', 'target'].filter((k) => n.el.classList.contains(k));
-    return ['card', chat ? 'chat' : `src f-${famOf(g, c)}`, `size-${this.ctx.size().toLowerCase()}`, c.id === sel && 'selected',
+    const isSet = !chat && c.sourceType === 'pile' && sourceData(c).layout === 'open';
+    return ['card', chat ? 'chat' : `src f-${famOf(g, c)}${isSet ? ' set' : ''}`, `size-${this.ctx.size().toLowerCase()}`, c.id === sel && 'selected',
       !!rel && !rel.has(c.id) && 'faded', empty && 'empty', !chat && this.reading(c) && 'reading', !chat && st !== 'ready' && st,
       loose && (st === 'ready' || st === 'soon') && 'muted', chat && (c.data as ChatData).demoted && 'demoted', colorOf(c.data) && `tone-${colorOf(c.data)}`, ...keep]
       .filter(Boolean).join(' ');
@@ -252,13 +264,16 @@ export class CardView {
     const el = n.el, active = document.activeElement;
     const nt0 = el.querySelector<HTMLElement>('.note-in .n');
     if (nt0 && nt0 === active) return;   // never re-render a note while typing in it
+    if (active instanceof HTMLInputElement && active.classList.contains('setname') && el.contains(active)) return;   // nor a set while it is being renamed
     const ta = el.querySelector<HTMLTextAreaElement>('.compose textarea');
     const focus = !!ta && ta === active, draft = ta?.value ?? '', taSel = ta ? [ta.selectionStart, ta.selectionEnd] : null;
     const dta = el.querySelector<HTMLTextAreaElement>('.desc'), dFocus = !!dta && dta === active, dSel = dta ? [dta.selectionStart, dta.selectionEnd] : null;
     const sc = el.querySelector('.cbody')?.scrollTop, nsc = nt0?.scrollTop;
     const chat = isChat(c), S = this.ctx.size() === 'S';
     el.className = this.classes(n, c);
-    el.style.width = (S ? (chat ? CHAT_W_S : SRC_W_S) : chat ? CHAT_W : SRC_W) + 'px';
+    const isSet = !chat && c.sourceType === 'pile' && sourceData(c).layout === 'open' && c.status === 'ready';
+    if (!S) n.w = chat ? CHAT_W : isSet ? setWidth(membersOf(this.g, c.id).length) : SRC_W;
+    el.style.width = (S ? (chat ? CHAT_W_S : SRC_W_S) : n.w) + 'px';
     el.innerHTML = chat ? this.chatHTML(n, c) : this.srcHTML(n, c);
     this.bind(n, c);
     const b = el.querySelector('.cbody');
@@ -306,6 +321,17 @@ export class CardView {
       sb.addEventListener('click', go);
     }
     el.querySelectorAll<HTMLElement>('[data-act]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.act(n, b.dataset.act!, b); }));
+    el.querySelectorAll<HTMLElement>('[data-setm]').forEach((b) => b.addEventListener('click', (e) => {   // a member of an open set opens in the viewer
+      e.stopPropagation();
+      const m = membersOf(store.graph(), id)[+b.dataset.setm!];
+      if (m) store.openViewer(id, m.id, b.getBoundingClientRect());
+    }));
+    const setname = el.querySelector<HTMLInputElement>('.setname');
+    if (setname) {
+      setname.addEventListener('input', () => store.patchDataDebounced(id, { title: setname.value } as Partial<SourceData>));
+      setname.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') setname.blur(); });
+      setname.addEventListener('blur', () => this.render(n));
+    }
     el.querySelectorAll<HTMLElement>('[data-ex]').forEach((b) => b.addEventListener('click', (e) => {
       e.stopPropagation();
       const i = +b.dataset.ex!, x = (sourceData(c).excerpts ?? [])[i];
@@ -357,6 +383,8 @@ export class CardView {
   private act(n: ViewNode, a: string, btn: HTMLElement): void {
     const { store } = this.ctx, id = n.id;
     if (a === 'addkey' || a === 'fixkey') { const p = btn.dataset.provider as ProviderId | undefined; if (p) this.ctx.openSettings?.(p); return; }
+    if (a === 'takeout') { const m = membersOf(store.graph(), id)[+btn.dataset.i!]; if (m) store.takeOut(m.id); return; }
+    if (a === 'setclose') { store.setLayout(id, null); return; }
     if (a === 'open') store.openFocus(id);
     if (a === 'view') store.openViewer(id, null, btn.getBoundingClientRect());
     if (a === 'branch') store.openDialog({ mode: 'branch', parentId: id, anchor: btn.getBoundingClientRect() });

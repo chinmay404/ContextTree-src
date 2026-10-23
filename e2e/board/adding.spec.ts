@@ -33,7 +33,7 @@ test('the menu has the prototype items and is out of reach when closed', async (
   await expect(page.locator('[data-pb="menu"]')).toHaveAttribute('aria-hidden', 'true');
   await expect(page.locator('[data-pb="menu"]')).toHaveAttribute('inert', '');
   await page.click('[data-pb="add"]');
-  await expect(page.locator('[data-pb="menu"] [data-m]')).toHaveText(['NoteN', 'New questionQ', 'Upload files', 'Paste a link or textV']);
+  await expect(page.locator('[data-pb="menu"] [data-m]')).toHaveText(['NoteN', 'New questionQ', 'New set', 'Upload files', 'Paste a link or textV']);
   await expect(page.locator('[data-pb="menu"]')).toHaveAttribute('aria-hidden', 'false');
   await page.keyboard.press('Escape');
   expect(await page.evaluate(() => window.__board!.menuOpen())).toBe(false);
