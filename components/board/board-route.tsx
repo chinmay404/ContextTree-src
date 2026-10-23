@@ -138,7 +138,8 @@ function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }):
     if (signedOut) router.replace(`/auth/signin?callbackUrl=${encodeURIComponent(`/b/${boardId}`)}`);
   }, [signedOut, router, boardId]);
 
-  const onOpenBoard = useCallback((id: string) => router.push(`/b/${id}${q}`), [router, q]);
+  // replace, not push: switching boards must not stack history, so one Back from a board returns to where you opened it from (the boards home)
+  const onOpenBoard = useCallback((id: string) => router.replace(`/b/${id}${q}`), [router, q]);
   const onOpenSettings = useCallback(
     // Board callers pass a provider id or an engine-id prefix ("gemini", "meta-llama").
     (p?: string) => openSettings({ section: 'keys', provider: p ? (providerOf(`${p}/`) ?? (p as ProviderId)) : undefined }),
