@@ -193,7 +193,11 @@ test('deleting a set asks: keep its sources, or delete them too; an empty set ju
   await page.evaluate((i) => window.__board!.select(i), id2);
   await page.keyboard.press('Delete');
   await expect(page.locator('[data-pb="confirm"] h2')).toHaveText('Delete the set "New set"?');
-  await expect(page.locator('[data-pb="confirm"] .btn.primary')).toHaveText(['Delete the set, keep the 2 sources', 'Delete all 2']);
+  await expect(page.locator('[data-pb="confirm"] .btn.primary')).toHaveText(['Keep the 2 sources', 'Delete all 2']);
+  // Cancel, keep and delete-all share one row (one baseline), not a stranded third button
+  const rows = await page.locator('[data-pb="confirm"] .row .btn').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().bottom)));
+  expect(rows).toHaveLength(3);
+  expect(new Set(rows).size).toBe(1);
   // fully open (not mid-fade): opaque, in front, and no toast of any kind yet
   await expect.poll(() => page.locator('[data-pb="confirm"]').evaluate((e) => getComputedStyle(e).opacity)).toBe('1');
   await expect(page.locator('.pb-toast')).toHaveText('');

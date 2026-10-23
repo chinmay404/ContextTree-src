@@ -2,3 +2,4 @@
 .pb-root .dconfirm h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; line-height: 1.25; }
 .pb-root .dconfirm .row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 22px; }
 .pb-root .dconfirm .row .btn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-root .dconfirm.wide { width: min(540px, calc(100vw - 32px)); }   /* three buttons (Cancel, keep, delete all) stay on one row */

@@ -87,13 +87,13 @@ export function DeleteConfirm(): ReactElement {
   return (
     <div className={`wrap${open ? ' on' : ''}`} data-pb="confirm" inert={!open} aria-hidden={!open}
       onMouseDown={(e) => { if (e.target === e.currentTarget) cancel(); }}>
-      <div ref={boxRef} className="sheetbox dconfirm" role="alertdialog" aria-modal="true" aria-labelledby="pb-confirm-h">
+      <div ref={boxRef} className={`sheetbox dconfirm${pile ? ' wide' : ''}`} role="alertdialog" aria-modal="true" aria-labelledby="pb-confirm-h">
         <h2 id="pb-confirm-h">{shown.current.text}</h2>
         <div className="row">
           <button type="button" className="btn" onClick={cancel}>Cancel</button>
           {pile ? (
             <>
-              <button type="button" ref={okRef} className="btn primary" onClick={ok}>{pile.set ? `Delete the set, keep the ${pile.count} ${pile.count === 1 ? 'source' : 'sources'}` : `Delete "${pile.front}"`}</button>
+              <button type="button" ref={okRef} className="btn primary" onClick={ok}>{pile.set ? `Keep the ${pile.count} ${pile.count === 1 ? 'source' : 'sources'}` : `Delete "${pile.front}"`}</button>
               <button type="button" ref={allRef} className="btn primary" onClick={all}>{`Delete all ${pile.count}`}</button>
             </>
           ) : <button type="button" ref={okRef} className="btn primary" onClick={ok}>Delete</button>}
