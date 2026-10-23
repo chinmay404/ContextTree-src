@@ -23,7 +23,7 @@ export const STRING_COL: Record<Family, string> = {
   media: '#E3B7A3', docs: '#DCCB8C', note: '#E0B3C3', web: '#A9CBE0', data: '#AFCDA3', image: '#AEB9D3', mixed: '#D2D2D7', answer: '#D1D1D6',
 };
 
-export type ModelKey = 'claude' | 'gpt' | 'gemini' | 'llama' | 'deepseek' | 'mistral' | 'kimi';
+export type ModelKey = 'claude' | 'gpt' | 'gemini' | 'gptoss' | 'deepseek' | 'mistral' | 'kimi';
 
 export const PROVIDER_NAME: Record<ProviderId, string> = {
   anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google', groq: 'Groq', deepseek: 'DeepSeek', mistral: 'Mistral', moonshot: 'Moonshot',
@@ -36,7 +36,7 @@ export const MODELS: Record<ModelKey, { label: string; name: string; color: stri
   claude: { label: 'Claude', name: 'Claude Sonnet 4', color: '#E0673A', engineId: 'anthropic/claude-sonnet-4-20250514', provider: 'anthropic' },
   gpt: { label: 'GPT', name: 'GPT-5 mini', color: '#3FAE5A', engineId: 'openai/gpt-5-mini', provider: 'openai' },
   gemini: { label: 'Gemini', name: 'Gemini 3 Flash', color: '#2A86C4', engineId: 'gemini/gemini-3-flash-preview', provider: 'google' },
-  llama: { label: 'Llama', name: 'Llama 4 Maverick', color: '#7A52D6', engineId: 'meta-llama/llama-4-maverick-17b-128e-instruct', provider: 'groq' },
+  gptoss: { label: 'GPT-OSS', name: 'GPT-OSS 120B', color: '#7A52D6', engineId: 'openai/gpt-oss-120b', provider: 'groq' },
   deepseek: { label: 'DeepSeek', name: 'DeepSeek V3', color: '#3B6FD8', engineId: 'deepseek/deepseek-chat', provider: 'deepseek' },
   mistral: { label: 'Mistral', name: 'Mistral Large', color: '#E2A72A', engineId: 'mistral/mistral-large-latest', provider: 'mistral' },
   kimi: { label: 'Kimi', name: 'Kimi K2', color: '#D1467E', engineId: 'moonshot/kimi-k2-0905-preview', provider: 'moonshot' },

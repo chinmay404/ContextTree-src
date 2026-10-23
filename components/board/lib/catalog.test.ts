@@ -15,7 +15,7 @@ describe('model catalog', () => {
       claude: 'anthropic/claude-sonnet-4-20250514',
       gpt: 'openai/gpt-5-mini',
       gemini: 'gemini/gemini-3-flash-preview',
-      llama: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+      gptoss: 'openai/gpt-oss-120b',
       deepseek: 'deepseek/deepseek-chat',
       mistral: 'mistral/mistral-large-latest',
       kimi: 'moonshot/kimi-k2-0905-preview',
@@ -24,7 +24,7 @@ describe('model catalog', () => {
 
   it('shows the detailed model name and keeps a short label for tight spots', () => {
     expect(Object.fromEntries(keys.map((k) => [k, MODELS[k].name]))).toEqual({
-      claude: 'Claude Sonnet 4', gpt: 'GPT-5 mini', gemini: 'Gemini 3 Flash', llama: 'Llama 4 Maverick',
+      claude: 'Claude Sonnet 4', gpt: 'GPT-5 mini', gemini: 'Gemini 3 Flash', gptoss: 'GPT-OSS 120B',
       deepseek: 'DeepSeek V3', mistral: 'Mistral Large', kimi: 'Kimi K2',
     });
     expect(Object.fromEntries(keys.map((k) => [k, MODELS[k].label]))).toMatchObject({ claude: 'Claude', gpt: 'GPT', gemini: 'Gemini', kimi: 'Kimi' });

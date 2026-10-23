@@ -62,7 +62,7 @@ function FocusPeek(): ReactElement {
 
 /** Feature 4: the model picker over the board (static). */
 function PickerPeek(): ReactElement {
-  const rows = [MODELS.claude, MODELS.gpt, MODELS.gemini, MODELS.llama];
+  const rows = [MODELS.claude, MODELS.gpt, MODELS.gemini, MODELS.gptoss];
   return (
     <>
       <div className="pick" aria-hidden="true">

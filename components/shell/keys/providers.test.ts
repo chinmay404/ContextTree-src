@@ -75,7 +75,7 @@ describe('pickerPreview', () => {
     const p = pickerPreview(keys([['google', 'ok'], ['openai', 'ok'], ['groq', 'rejected']]));
     expect(p.ready.map((r) => r.key)).toEqual(['gpt', 'gemini']);
     expect(p.ready.find((r) => r.isDefault)?.key).toBe('gpt');
-    expect(p.locked.find((l) => l.key === 'llama')).toMatchObject({ reason: 'fix-key', providerName: 'Groq' });
+    expect(p.locked.find((l) => l.key === 'gptoss')).toMatchObject({ reason: 'fix-key', providerName: 'Groq' });
     expect(p.locked.find((l) => l.key === 'claude')).toMatchObject({ reason: 'needs-key', providerName: 'Anthropic' });
   });
 });
