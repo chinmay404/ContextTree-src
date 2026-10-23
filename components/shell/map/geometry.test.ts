@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Spring } from '@/components/board/engine/spring';
 import { deskBoxT, type Layout, type LayoutItem } from '@/components/board/engine/geometry';
-import { STRING_COL } from '@/components/board/lib/catalog';
 import { MAP_SIZE, fitLabel, mapGeometry, LINEAGE_COLOR } from './geometry';
 import type { BoardPreview, BoardPreviewCard } from './preview-types';
 
@@ -57,12 +56,12 @@ describe('mapGeometry', () => {
     expect(g.strings[0].d.startsWith(`M${MAP_SIZE.chatW} 22 C`)).toBe(true);
   });
 
-  it('a PDF wire takes the docs colour; an answer edge the answer colour', () => {
+  it('a PDF wire takes the docs string token; an answer edge the answer token', () => {
     const g = mapGeometry({
       cards: [chat('a', 0, 0), chat('b', 700, 0), src('s', -300, 0, null, 'pdf')],
       edges: [{ kind: 'wire', from: 's', to: 'a' }, { kind: 'answer', from: 'a', to: 'b' }],
     });
-    expect(g.strings.map((s) => s.color).sort()).toEqual([STRING_COL.answer, STRING_COL.docs].sort());
+    expect(g.strings.map((s) => s.color).sort()).toEqual(['var(--str-answer)', 'var(--str-docs)']);   // tokens, so a map follows light and dark
   });
 
   it('skips an edge to an unknown id', () => {
@@ -93,5 +92,15 @@ describe('fitLabel', () => {
   });
   it('always keeps at least three characters', () => {
     expect(fitLabel('abcdefghij', 5)).toBe('abc…');
+  });
+});
+
+describe('mapGeometry colours are theme tokens, never literals', () => {
+  it('pebbles and strings carry var(--...) values', () => {
+    const g = mapGeometry({ cards: [chat('a', 0, 0), chat('b', 700, 0), src('s', -300, 0, null, 'pdf')], edges: [{ kind: 'wire', from: 's', to: 'a' }] });
+    for (const p of g.pebbles) expect(p.fill).toMatch(/^var\(--/);
+    for (const s of g.strings) expect(s.color).toMatch(/^var\(--/);
+    expect(g.pebbles.find((p) => p.id === 's')!.fill).toBe('var(--fam-docs-fc)');
+    expect(g.pebbles.find((p) => p.id === 'a')!.fill).toBe('var(--pb-card)');
   });
 });

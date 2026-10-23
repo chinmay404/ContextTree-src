@@ -1,11 +1,11 @@
-import { FAMC, STRING_COL, TYPE_INFO, type Family } from '@/components/board/lib/catalog';
+import { FAMC, TYPE_INFO, type Family } from '@/components/board/lib/catalog';
 import type { Id } from '@/components/board/api/types';
 import type { BoardPreview, BoardPreviewCard } from './preview-types';
 
 /** Card sizes on the board (CHAT_W / SRC_W in engine/card-view.ts; a chat is about 220 tall, a source 90). */
 export const MAP_SIZE = { chatW: 320, chatH: 220, srcW: 212, srcH: 90, pileExtra: 14 } as const;
 /** Lineage strings use the board's edge grey (--pb-edge). */
-export const LINEAGE_COLOR = '#D2D2D7';
+export const LINEAGE_COLOR = 'var(--pb-edge)';
 
 export interface MapDesk { chatId: Id; x: number; y: number; w: number; h: number; label: string }
 export interface MapPebble { id: Id; kind: 'chat' | 'source'; x: number; y: number; w: number; h: number; fill: string; rim: string }
@@ -59,9 +59,9 @@ export function mapGeometry(preview: BoardPreview | undefined, opts: { pad?: num
 
   const pebbles: MapPebble[] = cards.map((c) => {
     const [w, h] = sizeOf(c);
-    if (c.kind === 'chat') return { id: c.id, kind: 'chat', x: c.x, y: c.y, w, h, fill: '#FFFFFF', rim: '#D2D2D7' };
-    const [fill, rim] = FAMC[familyOf(c)];
-    return { id: c.id, kind: 'source', x: c.x, y: c.y, w, h, fill, rim };
+    if (c.kind === 'chat') return { id: c.id, kind: 'chat', x: c.x, y: c.y, w, h, fill: 'var(--pb-card)', rim: 'var(--pb-edge)' };
+    const fam = familyOf(c);
+    return { id: c.id, kind: 'source', x: c.x, y: c.y, w, h, fill: `var(--fam-${fam}-fc)`, rim: FAMC[fam][1] };
   });
 
   const strings: MapString[] = [];
@@ -74,9 +74,9 @@ export function mapGeometry(preview: BoardPreview | undefined, opts: { pad?: num
     if (!from || !to) continue;
     if (e.kind === 'wire' && from.kind === 'source' && to.kind === 'chat') {
       const [w, h] = sizeOf(from);
-      strings.push({ d: curve(from.x + w, from.y + h / 2, to.x, to.y + 40), color: STRING_COL[familyOf(from)] });
+      strings.push({ d: curve(from.x + w, from.y + h / 2, to.x, to.y + 40), color: `var(--str-${familyOf(from)})` });
     } else if (e.kind === 'answer') {
-      strings.push({ d: curve(from.x + MAP_SIZE.chatW, from.y + 22, to.x, to.y + 40), color: STRING_COL.answer });
+      strings.push({ d: curve(from.x + MAP_SIZE.chatW, from.y + 22, to.x, to.y + 40), color: 'var(--str-answer)' });
     }
   }
 

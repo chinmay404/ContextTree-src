@@ -2,10 +2,12 @@ import type { ReactElement } from 'react';
 import { fitLabel, mapGeometry } from './geometry';
 import type { BoardPreview } from './preview-types';
 
-const DESK = '#EBEBF0';
-const HAIR = 'rgba(0,0,0,.08)';
-const INK = '#1D1D1F';
-const FILL = '#F2F2F5';
+// Theme tokens (components/shell/tokens.css), so a map follows light and dark without redrawing.
+const DESK = 'var(--pb-desk)';
+const HAIR = 'var(--hairline)';
+const INK = 'var(--pb-ink)';
+const FILL = 'var(--pb-fill)';
+const CARD = 'var(--pb-card)';
 
 /**
  * A board drawn zoomed out: desks, colour pebbles and strings from card positions (the board's below-42% look).
@@ -61,7 +63,7 @@ export function PebbleMap(p: {
             <rect x={q.x} y={q.y} width={q.w} height={q.h} rx={18} fill={q.fill} />
             {detail && (
               <>
-                <rect x={q.x + 14} y={q.y + 14} width={44} height={44} rx={10} fill="#fff" />
+                <rect x={q.x + 14} y={q.y + 14} width={44} height={44} rx={10} fill={CARD} />
                 <rect x={q.x + 70} y={q.y + 20} width={110} height={12} rx={6} fill={q.rim} />
                 <rect x={q.x + 70} y={q.y + 42} width={80} height={10} rx={5} fill={q.rim} opacity={0.6} />
               </>
@@ -77,7 +79,7 @@ export function PebbleMap(p: {
           const tw = (txt.length * 6.3 + 22) / k;
           return (
             <g key={`l-${d.chatId}`}>
-              <rect x={d.x + 14} y={d.y - th / 2} width={tw} height={th} rx={th / 2} fill="#fff" />
+              <rect x={d.x + 14} y={d.y - th / 2} width={tw} height={th} rx={th / 2} fill={CARD} />
               <text x={d.x + 14 + 10 / k} y={d.y + fs * 0.36} fontSize={fs} fontWeight={700} fill={INK} fontFamily="Inter, sans-serif">
                 {txt}
               </text>

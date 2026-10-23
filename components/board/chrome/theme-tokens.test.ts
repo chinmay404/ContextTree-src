@@ -115,3 +115,17 @@ describe('no light-only colours left in the board CSS', () => {
     expect(found).toEqual([]);
   });
 });
+
+describe('no light-only colours left in the shell CSS', () => {
+  const shellFiles = ['home/home.css', 'landing/landing.css', 'signin/signin.css', 'settings/settings.css', 'account/account.css'];
+  it('every hex outside a token definition is allowed', () => {
+    const ALLOWED = new Set(['#F5F5F7']);   // the page behind the landing page (dark: chrome/dark.css)
+    const found: string[] = [];
+    for (const f of shellFiles) {
+      for (const [i, line] of readFileSync(join('components/shell', f), 'utf8').split('\n').entries()) {
+        for (const m of line.matchAll(/#[0-9A-Fa-f]{3,8}\b/g)) if (!ALLOWED.has(m[0].toUpperCase())) found.push(`${f}:${i + 1} ${m[0]}`);
+      }
+    }
+    expect(found).toEqual([]);
+  });
+});

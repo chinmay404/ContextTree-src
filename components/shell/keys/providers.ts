@@ -14,7 +14,7 @@ const SPEC: Record<ProviderId, { letter: string; color: string; keyUrl: string }
   groq: { letter: 'G', color: '#D1467E', keyUrl: 'https://console.groq.com/keys' },
   deepseek: { letter: 'D', color: '#7A52D6', keyUrl: 'https://platform.deepseek.com/api_keys' },
   mistral: { letter: 'M', color: '#B8860B', keyUrl: 'https://console.mistral.ai/api-keys' },
-  moonshot: { letter: 'K', color: '#2B2340', keyUrl: 'https://platform.moonshot.ai/console/api-keys' },
+  moonshot: { letter: 'K', color: '#5A6B8C', keyUrl: 'https://platform.moonshot.ai/console/api-keys' },
 };
 
 const hostAndPath = (u: string) => { const x = new URL(u); return x.host + x.pathname; };

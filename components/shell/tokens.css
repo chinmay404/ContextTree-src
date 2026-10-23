@@ -11,6 +11,9 @@
   --sh-float: 0 0 0 .5px var(--hairline), 0 8px 28px rgba(0,0,0,.08);
   --sh-lift: 0 1px 2px rgba(0,0,0,.08), 0 24px 64px rgba(0,0,0,.16);
   --r-tile: 10px; --r-row: 14px; --r-card: 18px; --r-sheet: 26px;
+  --line: rgba(0,0,0,.16); --white: #FFFFFF; --body: #424245; --note-fc: #F6E0E6; --note-fd: #B0527A; --note-fx: #7A3E55;
+  --fam-media-fc: #F4E3DA; --fam-docs-fc: #F3EBCF; --fam-note-fc: #F3DEE4; --fam-web-fc: #DCE9F2; --fam-data-fc: #E0EBD9; --fam-image-fc: #DDE3EE; --fam-mixed-fc: #ECECF0;
+  --str-media: #E3B7A3; --str-docs: #DCCB8C; --str-note: #E0B3C3; --str-web: #A9CBE0; --str-data: #AFCDA3; --str-image: #AEB9D3; --str-mixed: #D2D2D7; --str-answer: #D1D1D6;
   --on-ink: #FFFFFF; --hover: rgba(0,0,0,.05); --danger-fg: #B4244A; --danger-bg: #F6E0E6; --av-bg: #DCEBF5; --av-fg: #173F5C;
   --ok-fg: #2F7A43; --ok-bg: #E3F4E7; --err-fg: #A3213F; --err-bg: #FBE9EE; --failed-ring: #FFC2CF; --scrim: rgba(0,0,0,.24);
   --ease-out: cubic-bezier(.23, 1, .32, 1);

@@ -10,6 +10,8 @@
   --ready: #3FAE5A; --stale: #E2A72A; --failed: #E5486B; --failed-ring: #FFC2CF; --failed-tile: #FFE1EA;
   --stale-fg: #8A5A00; --stale-bg: #FFF0D6; --pb-hero-a: #FFD9C7; --pb-hero-b: #FFE9DE; --pb-page-a: #E9E1C4; --pb-page-b: #EFEADF;
   --stale-fg: #8A5A00; --stale-bg: #FFF0D6; --pb-hero-a: #FFD9C7; --pb-hero-b: #FFE9DE; --pb-page-a: #E9E1C4; --pb-page-b: #EFEADF;
+  --stale-fg: #8A5A00; --stale-bg: #FFF0D6; --pb-hero-a: #FFD9C7; --pb-hero-b: #FFE9DE; --pb-page-a: #E9E1C4; --pb-page-b: #EFEADF;
+  --stale-fg: #8A5A00; --stale-bg: #FFF0D6; --pb-hero-a: #FFD9C7; --pb-hero-b: #FFE9DE; --pb-page-a: #E9E1C4; --pb-page-b: #EFEADF;
   --sh-node: 0 10px 24px -12px rgba(0,0,0,.28); --sh-card: 0 18px 40px -18px rgba(0,0,0,.32); --sh-float: 0 8px 24px -10px rgba(0,0,0,.22); --sh-lift: 0 26px 50px -18px rgba(0,0,0,.42);
   --ease-out: cubic-bezier(.23, 1, .32, 1);
   font-family: var(--pb-font), system-ui, sans-serif; font-variant-numeric: tabular-nums; color: var(--t1); -webkit-font-smoothing: antialiased; position: fixed; inset: 0; overflow: hidden; background: var(--pb-canvas); }

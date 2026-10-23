@@ -1,4 +1,4 @@
-.br-center { position: fixed; inset: 0; display: grid; place-items: center; background: #F5F5F7; color: #1D1D1F; }
+.br-center { position: fixed; inset: 0; display: grid; place-items: center; background: #F5F5F7; color: #1D1D1F; }   /* dark: chrome/dark.css */
 .br-msg { text-align: center; display: grid; gap: 16px; justify-items: center; font-family: system-ui, sans-serif; font-size: 16px; }
 .br-msg p { margin: 0; }
 .br-btn { height: 44px; padding: 0 20px; border-radius: 999px; font-size: 14px; font-weight: 600; background: #1D1D1F; color: #fff; display: inline-flex; align-items: center; cursor: pointer; border: 0; text-decoration: none; }

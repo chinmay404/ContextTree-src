@@ -8,7 +8,7 @@
 .ct-shell.lp .lp-links a.si { color: var(--t1); }
 .ct-shell.lp .lp-links .btn { height: 40px; }
 .ct-shell.lp .hero-top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 56px; align-items: end; padding-top: 88px; }
-.ct-shell.lp .pain { display: inline-block; margin: 0 0 28px; background: #fff; border-radius: 14px 14px 14px 4px; padding: 12px 18px; font-size: 17px; line-height: 1.4; color: var(--t2); box-shadow: var(--sh-float); }
+.ct-shell.lp .pain { display: inline-block; margin: 0 0 28px; background: var(--pb-card); border-radius: 14px 14px 14px 4px; padding: 12px 18px; font-size: 17px; line-height: 1.4; color: var(--t2); box-shadow: var(--sh-float); }
 .ct-shell.lp .pain b { color: var(--t1); font-weight: 600; }
 .ct-shell.lp h1 { margin: 0; font-size: 96px; font-weight: 700; letter-spacing: -.02em; line-height: .94; text-wrap: balance; }
 .ct-shell.lp .hero-copy p { margin: 0 0 26px; font-size: 19px; line-height: 1.5; color: var(--t2); max-width: 30em; }
@@ -40,18 +40,18 @@
 .ct-shell.lp .proof h3 { margin: 0 0 10px; font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
 .ct-shell.lp .proof p { margin: 0 auto; font-size: 17px; line-height: 1.55; color: var(--t2); max-width: 36em; }
 .ct-shell.lp .proof .slots { display: flex; gap: 16px; justify-content: center; margin-top: 32px; }
-.ct-shell.lp .proof .slots i { width: 212px; height: 84px; border-radius: 18px; box-shadow: inset 0 0 0 1px var(--pb-edge); background: rgba(255,255,255,.35); }
+.ct-shell.lp .proof .slots i { width: 212px; height: 84px; border-radius: 18px; box-shadow: inset 0 0 0 1px var(--pb-edge); background: color-mix(in srgb, var(--pb-card) 35%, transparent); }
 .ct-shell.lp .founder { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 56px; align-items: start; }
 .ct-shell.lp .founder .side h2 { font-size: 44px; }
 .ct-shell.lp .founder .side p { margin: 16px 0 0; font-size: 16px; color: var(--t2); line-height: 1.5; }
-.ct-shell.lp .fnote { --fc: #F6E0E6; --fd: #B0527A; --fx: #7A3E55; background: var(--fc); border-radius: 18px; padding: 32px 36px 30px; box-shadow: var(--sh-card); transform: rotate(-.6deg); }
+.ct-shell.lp .fnote { --fc: var(--note-fc); --fd: var(--note-fd); --fx: var(--note-fx); background: var(--fc); border-radius: 18px; padding: 32px 36px 30px; box-shadow: var(--sh-card); transform: rotate(-.6deg); }
 .ct-shell.lp .fnote .meta { font-size: 12px; margin-bottom: 14px; }
 .ct-shell.lp .fnote p { margin: 0 0 16px; font-size: 19px; line-height: 1.6; color: var(--t1); text-wrap: pretty; }
 .ct-shell.lp .fnote .sig { margin: 22px 0 0; font-size: 17px; font-weight: 700; color: var(--fx); }
 .ct-shell.lp .fnote .sig span { font-weight: 500; color: var(--fx); opacity: .8; }
 .ct-shell.lp .price { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; }
 .ct-shell.lp .pcard { border-radius: 26px; padding: 36px; position: relative; }
-.ct-shell.lp .pcard.free { background: #fff; box-shadow: var(--sh-card); }
+.ct-shell.lp .pcard.free { background: var(--pb-card); box-shadow: var(--sh-card); }
 .ct-shell.lp .pcard.soon { background: var(--pb-desk); box-shadow: inset 0 0 0 .5px var(--hl); }
 .ct-shell.lp .pcard .nm { font-size: 15px; font-weight: 700; color: var(--t2); display: flex; gap: 8px; align-items: center; }
 .ct-shell.lp .pcard .amt { margin: 10px 0 6px; font-size: 64px; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
@@ -61,30 +61,30 @@
 .ct-shell.lp .pcard li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.4; }
 .ct-shell.lp .pcard li svg { margin-top: 2px; color: var(--ready); }
 .ct-shell.lp .pcard.soon li svg { color: var(--t2); }
-.ct-shell.lp .soonchip { font-size: 11px; font-weight: 700; background: #fff; color: var(--t1); padding: 3px 9px; border-radius: 999px; }
+.ct-shell.lp .soonchip { font-size: 11px; font-weight: 700; background: var(--pb-card); color: var(--t1); padding: 3px 9px; border-radius: 999px; }
 .ct-shell.lp .faq { display: grid; grid-template-columns: 1fr 1fr; gap: 0 56px; margin-top: 72px; }
-.ct-shell.lp .faq div { padding: 22px 0; border-top: .5px solid rgba(0,0,0,.16); }
+.ct-shell.lp .faq div { padding: 22px 0; border-top: .5px solid var(--line); }
 .ct-shell.lp .faq h4 { margin: 0 0 6px; font-size: 17px; font-weight: 700; }
 .ct-shell.lp .faq p { margin: 0; font-size: 15.5px; line-height: 1.55; color: var(--t2); }
-.ct-shell.lp .lp-foot { margin-top: 120px; padding: 28px 0 40px; display: flex; align-items: center; gap: 24px; font-size: 14px; color: var(--t2); border-top: .5px solid rgba(0,0,0,.16); }
+.ct-shell.lp .lp-foot { margin-top: 120px; padding: 28px 0 40px; display: flex; align-items: center; gap: 24px; font-size: 14px; color: var(--t2); border-top: .5px solid var(--line); }
 .ct-shell.lp .lp-foot .bl { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--t1); font-size: 16px; }
 .ct-shell.lp .lp-foot .bl .lg { width: 32px; height: 32px; }
 .ct-shell.lp .lp-foot nav { display: flex; gap: 22px; margin-left: auto; }
 .ct-shell.lp .lp-foot a { color: var(--t2); text-decoration: none; font-weight: 600; }
 
 /* feature 3 — open any card big */
-.ct-shell.lp .focusmini { position: absolute; inset: 22px 22px 22px 22px; background: #fff; border-radius: 18px; box-shadow: var(--sh-lift); display: grid; grid-template-columns: 34% 1fr; gap: 14px; padding: 10px; transform-origin: 18% 30%; animation: morph 7s var(--ease-out) infinite; }
+.ct-shell.lp .focusmini { position: absolute; inset: 22px 22px 22px 22px; background: var(--pb-card); border-radius: 18px; box-shadow: var(--sh-lift); display: grid; grid-template-columns: 34% 1fr; gap: 14px; padding: 10px; transform-origin: 18% 30%; animation: morph 7s var(--ease-out) infinite; }
 .ct-shell.lp .focusmini .tlp { min-width: 0; overflow: hidden; background: var(--pb-desk); border-radius: 14px; padding: 12px 10px; display: flex; flex-direction: column; gap: 8px; }
 .ct-shell.lp .focusmini .tlp h5 { margin: 0; font-size: 10px; font-weight: 700; color: var(--t2); }
 .ct-shell.lp .focusmini .fst { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 7px; font-size: 10.5px; line-height: 1.3; }
 .ct-shell.lp .focusmini .fst i { width: 8px; height: 8px; border-radius: 4px; border: 2px solid var(--t3); margin-top: 3px; }
-.ct-shell.lp .focusmini .fst.now { background: #fff; border-radius: 10px; padding: 7px; font-weight: 700; box-shadow: 0 6px 16px -10px rgba(0,0,0,.3); }
+.ct-shell.lp .focusmini .fst.now { background: var(--pb-card); border-radius: 10px; padding: 7px; font-weight: 700; box-shadow: 0 6px 16px -10px rgba(0,0,0,.3); }
 .ct-shell.lp .focusmini .fst.now i { border: 0; background: var(--pb-ink); }
 .ct-shell.lp .focusmini .fst small { display: block; font-weight: 500; color: var(--t3); font-size: 9.5px; }
 .ct-shell.lp .focusmini .rd { min-width: 0; padding: 6px 8px; display: flex; flex-direction: column; gap: 9px; }
-.ct-shell.lp .focusmini .back { align-self: flex-start; font-size: 10px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: #fff; box-shadow: var(--sh-float); display: inline-flex; gap: 4px; align-items: center; }
+.ct-shell.lp .focusmini .back { align-self: flex-start; font-size: 10px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: var(--pb-card); box-shadow: var(--sh-float); display: inline-flex; gap: 4px; align-items: center; }
 .ct-shell.lp .focusmini .rt { font-size: 17px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
-.ct-shell.lp .focusmini .rp { font-size: 11.5px; line-height: 1.55; color: #424245; margin: 0; }
+.ct-shell.lp .focusmini .rp { font-size: 11.5px; line-height: 1.55; color: var(--body); margin: 0; }
 .ct-shell.lp .focusmini .ub { align-self: flex-end; background: var(--pb-fill); border-radius: 14px 14px 4px 14px; padding: 6px 10px; font-size: 10.5px; }
 @keyframes morph { 0%, 62% { transform: none; opacity: 1; } 72% { transform: translate(-6%, 4%) scale(.34); opacity: 0; } 82% { transform: translate(-6%, 4%) scale(.34); opacity: 0; } 94%, 100% { transform: none; opacity: 1; } }
 
@@ -92,13 +92,13 @@
 .ct-shell.lp .pick { position: absolute; z-index: 30; width: 250px; padding: 8px; border-radius: 18px; background: var(--glass); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); box-shadow: 0 0 0 .5px var(--hl), 0 8px 28px rgba(0,0,0,.08); }
 .ct-shell.lp .pick h6 { margin: 4px 8px 6px; font-size: 10.5px; font-weight: 700; color: var(--t3); }
 .ct-shell.lp .pick .pr { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 10px; font-size: 12.5px; font-weight: 600; }
-.ct-shell.lp .pick .pr.on { background: rgba(0,0,0,.05); }
+.ct-shell.lp .pick .pr.on { background: var(--hover); }
 .ct-shell.lp .pick .pr .r { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--t3); display: inline-flex; gap: 4px; align-items: center; }
 .ct-shell.lp .pick .pr.lock { color: var(--t3); }
 .ct-shell.lp .pick .pr.lock .mdot { opacity: .45; }
 .ct-shell.lp .pick .pr .ok { color: var(--ready); }
 .ct-shell.lp .carry { white-space: nowrap; position: absolute; z-index: 30; display: inline-flex; gap: 8px; align-items: center; padding: 8px 14px 8px 8px; border-radius: 999px; background: var(--glass); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); box-shadow: var(--sh-float); font-size: 12.5px; font-weight: 600; }
-.ct-shell.lp .carry .c { width: 26px; height: 26px; border-radius: 13px; background: var(--pb-ink); color: #fff; display: grid; place-items: center; }
+.ct-shell.lp .carry .c { width: 26px; height: 26px; border-radius: 13px; background: var(--pb-ink); color: var(--on-ink); display: grid; place-items: center; }
 
 /* gentle "live" motion: reading pulse on desk sources (feature 1), branch growing (feature 2) */
 @keyframes readpulse { 0%, 100% { box-shadow: var(--sh-node); } 12%, 22% { box-shadow: 0 0 0 3px var(--pb-accent), var(--sh-node); } 34% { box-shadow: var(--sh-node); } }
@@ -171,16 +171,16 @@
 .ct-shell.lp { min-height: 100vh; color-scheme: light; overflow-x: clip; }
 .ct-shell.lp a { color: inherit; }
 .ct-shell.lp .c-brand { display: inline-flex; align-items: center; gap: 10px; height: 56px; padding: 8px 22px 8px 8px; border-radius: 999px; text-decoration: none; }
-.ct-shell.lp .c-brand .lg, .ct-shell.lp .lp-foot .lg { border-radius: 50%; background: var(--pb-ink); color: #fff; display: grid; place-items: center; width: 40px; height: 40px; }
+.ct-shell.lp .c-brand .lg, .ct-shell.lp .lp-foot .lg { border-radius: 50%; background: var(--pb-ink); color: var(--on-ink); display: grid; place-items: center; width: 40px; height: 40px; }
 .ct-shell.lp .lp-foot .bl .lg { width: 32px; height: 32px; }
 .ct-shell.lp .c-brand b { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
-.ct-shell.lp .lp-links .btn.primary { color: #fff; padding: 0 18px; }
+.ct-shell.lp .lp-links .btn.primary { color: var(--on-ink); padding: 0 18px; }
 .ct-shell.lp .lp-links .btn .lbl-short { display: none; }
 .ct-shell.lp .btn.white.hosted { color: var(--pb-accent); }
-.ct-shell.lp .tabx { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 5px 12px; border-radius: var(--r-row); background: #fff; box-shadow: var(--sh-float); font-size: 12px; font-weight: 700; white-space: nowrap; position: absolute; }
+.ct-shell.lp .tabx { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 5px 12px; border-radius: var(--r-row); background: var(--pb-card); box-shadow: var(--sh-float); font-size: 12px; font-weight: 700; white-space: nowrap; position: absolute; }
 .ct-shell.lp .tabx.eyebrow { position: static; }
 .ct-shell.lp .dots { display: inline-flex; align-items: center; }
-.ct-shell.lp .dots i { width: 10px; height: 10px; border-radius: 5px; border: 1.5px solid #fff; margin-left: -4px; }
+.ct-shell.lp .dots i { width: 10px; height: 10px; border-radius: 5px; border: 1.5px solid var(--pb-card); margin-left: -4px; }
 .ct-shell.lp .dots i:first-child { margin-left: 0; }
 .ct-shell.lp .mdot { width: 9px; height: 9px; border-radius: 5px; flex: none; display: inline-block; }
 .ct-shell.lp .hero-board svg, .ct-shell.lp .mini > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -203,4 +203,4 @@
 @media (prefers-reduced-motion: reduce) {
   .ct-shell.lp *, .ct-shell.lp *::before, .ct-shell.lp *::after { animation: none !important; transition: none !important; }
 }
-html:has(.ct-shell.lp) { background: #F5F5F7; }
+html:has(.ct-shell.lp) { background: #F5F5F7; }   /* dark: dark.css */

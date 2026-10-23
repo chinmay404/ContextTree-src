@@ -101,4 +101,44 @@ test.describe('light and dark', () => {
     await page.waitForTimeout(300);
     await page.screenshot({ path: shot('dark-colour-menu') });
   });
+
+  test('the shell follows too: boards home, its maps, the landing page, sign-in and the route messages', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('ct-theme', 'dark'));
+    await page.goto('/boards?api=mock&keys=all');
+    await expect(page.locator('[data-board-card]').first()).toBeVisible();
+    await expect.poll(() => bg(page, '.ct-home')).toBe('rgb(28, 28, 30)');                // the desk grey of the dark palette
+    expect(await bg(page, '[data-board-card]')).toBe('rgb(44, 44, 46)');
+    await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)).toBe('rgb(28, 28, 30)');   // the page behind the home
+    const map = await page.locator('[data-board-card] svg rect').first().evaluate((e) => getComputedStyle(e).fill);
+    expect(map).toBe('rgb(28, 28, 30)');                                                  // a desk in the map, drawn from the token
+    await page.goto('/b/does-not-exist?api=mock');
+    await expect(page.getByText("This board doesn't exist or isn't yours.")).toBeVisible();
+    await expect.poll(() => bg(page, '.br-center')).toBe('rgb(0, 0, 0)');
+    await page.goto('/shell-dev?screen=landing');
+    expect(await bg(page, '.ct-shell.lp')).toBe('rgb(0, 0, 0)');
+    await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)).toBe('rgb(0, 0, 0)');
+    await page.goto('/shell-dev?screen=signin');
+    expect(await bg(page, '.si-sheet')).toBe('rgb(44, 44, 46)');
+    await page.screenshot({ path: shot('dark-signin') });
+  });
+
+  test('light stays light on the shell even when the OS is dark', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.addInitScript(() => localStorage.setItem('ct-theme', 'light'));
+    await page.goto('/boards?api=mock&keys=all');
+    await expect(page.locator('[data-board-card]').first()).toBeVisible();
+    expect(await bg(page, '.ct-home')).toBe('rgb(235, 235, 240)');
+    await page.goto('/shell-dev?screen=signin');
+    expect(await bg(page, '.si-sheet')).toBe('rgb(255, 255, 255)');
+  });
+
+  test('switching theme on a board repaints the page behind it', async ({ page }) => {
+    await page.goto(BOARD); await ready(page);
+    const html = () => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
+    expect(await html()).toBe('rgb(245, 245, 247)');
+    await choose(page, 'Dark');
+    await expect.poll(html).toBe('rgb(0, 0, 0)');
+    await choose(page, 'Light');
+    await expect.poll(html).toBe('rgb(245, 245, 247)');
+  });
 });

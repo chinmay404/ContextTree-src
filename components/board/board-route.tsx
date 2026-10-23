@@ -17,12 +17,15 @@ import { BoardsHome } from '@/components/shell/home/BoardsHome';
 import { HttpEngineApi } from './api/http';
 import { guardFirstLoad } from './first-load-guard';
 import type { ApiError, EngineApi } from './api/types';
+import { isDark, onThemeChange } from './lib/theme';
 import './board-route.css';
 
 /** Pebble board token (--pb-canvas): the board paints only inside .pb-root, so the page behind it must match. */
 const PB_CANVAS = '#F5F5F7';
+const PB_CANVAS_DARK = '#000000';
 /** The boards home sits on the desk grey (--pb-desk). */
 const HOME_BG = '#EBEBF0';
+const HOME_BG_DARK = '#1C1C1E';
 
 /** null while the dev mock is still loading. The mock is a dynamic import that production builds drop. */
 function useEngineApi(mock: boolean): EngineApi | null {
@@ -46,7 +49,7 @@ function useEngineApi(mock: boolean): EngineApi | null {
  * The app's root ThemeProvider (dark default) applies its class after our nested one, so the light class is
  * re-asserted whenever <html> changes.
  */
-function LightScope({ children, bg = PB_CANVAS }: { children: React.ReactNode; bg?: string }): ReactElement {
+function LightScope({ children, bg = PB_CANVAS, bgDark = PB_CANVAS_DARK }: { children: React.ReactNode; bg?: string; bgDark?: string }): ReactElement {
   useEffect(() => {
     const html = document.documentElement;
     const els = [html, document.body];
@@ -54,25 +57,27 @@ function LightScope({ children, bg = PB_CANVAS }: { children: React.ReactNode; b
     const prevClass = html.className;
     const prevScheme = html.style.colorScheme;
     const probe = document.createElement('i');
-    probe.style.backgroundColor = bg;
-    const want = probe.style.backgroundColor; // normalised, e.g. rgb(235, 235, 240)
+    const norm = (c: string): string => { probe.style.backgroundColor = c; return probe.style.backgroundColor; };   // e.g. rgb(235, 235, 240)
+    // The V2 class stays on `light` (the app's own ThemeProvider); the page behind the board follows the V3 choice (lib/theme.ts).
     // Only write when something differs: our own writes re-trigger the observer.
     const apply = () => {
+      const dark = isDark(), color = dark ? bgDark : bg, want = norm(color), scheme = dark ? 'dark' : 'light';
       if (html.classList.contains('dark')) html.classList.remove('dark');
       if (!html.classList.contains('light')) html.classList.add('light');
-      if (html.style.colorScheme !== 'light') html.style.colorScheme = 'light';
-      els.forEach((e) => { if (e.style.backgroundColor !== want) e.style.backgroundColor = bg; });
+      if (html.style.colorScheme !== scheme) html.style.colorScheme = scheme;
+      els.forEach((e) => { if (e.style.backgroundColor !== want) e.style.backgroundColor = color; });
     };
     apply();
     const mo = new MutationObserver(apply);
-    mo.observe(html, { attributes: true, attributeFilter: ['class', 'style'] });
+    mo.observe(html, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
+    const off = onThemeChange(apply);
     return () => {
-      mo.disconnect();
+      mo.disconnect(); off();
       html.className = prevClass;
       html.style.colorScheme = prevScheme;
       els.forEach((e, i) => { e.style.backgroundColor = prev[i]; });
     };
-  }, [bg]);
+  }, [bg, bgDark]);
   return (
     <ThemeProvider attribute="class" forcedTheme="light" enableSystem={false}>
       {children}
@@ -183,7 +188,7 @@ export function BoardsRoute({ mock = false }: { mock?: boolean }): ReactElement 
   const api = useEngineApi(mock);
   return (
     <ShellProvider mock={mock}>
-      <LightScope bg={HOME_BG}>
+      <LightScope bg={HOME_BG} bgDark={HOME_BG_DARK}>
         {gate === 'loading' || !api ? <Splash /> : <BoardsHome api={api} query={mock ? '?api=mock' : ''} />}
       </LightScope>
     </ShellProvider>
