@@ -127,7 +127,9 @@ export class CardView {
     const ex = d.excerpts ?? [];
     let body: string;
     if (c.sourceType === 'note') {
-      body = `<div class="note-in"><div class="meta">${esc(d.meta || 'Note · You')}</div><div class="n" contenteditable="true" spellcheck="false">${esc(d.text ?? '')}</div></div>`;
+      // Markdown is drawn while the note is not being edited; focusing it swaps in the plain text to edit (see bind)
+      const txt = d.text ?? '';
+      body = `<div class="note-in"><div class="meta">${esc(d.meta || 'Note · You')}</div><div class="n${txt ? ' md' : ''}" contenteditable="plaintext-only" spellcheck="false" data-text="${esc(txt)}">${txt ? renderMarkdown(txt, { breaks: true }) : ''}</div></div>`;
     } else if (n.open && st === 'ready') {
       const ms = pile ? membersOf(g, c.id) : [];
       const list = pile
@@ -322,9 +324,25 @@ export class CardView {
     });
     const note = el.querySelector<HTMLElement>('.note-in .n');
     if (note) {
+      if (note.contentEditable !== 'plaintext-only') note.contentEditable = 'true';   // older Firefox: the paste handler below keeps it plain
+      // Editing shows the Markdown source; leaving it draws the Markdown again (the blur re-render below).
+      note.addEventListener('focus', () => {
+        if (!note.classList.contains('md')) return;
+        note.classList.remove('md');
+        note.textContent = note.dataset.text ?? '';
+        const r = document.createRange(); r.selectNodeContents(note); r.collapse(false);
+        const s = getSelection(); s?.removeAllRanges(); s?.addRange(r);
+      });
+      note.addEventListener('click', (e) => { const a = e.target instanceof Element ? e.target.closest('a') : null; if (a && !(e.ctrlKey || e.metaKey)) e.preventDefault(); });   // a click edits; Ctrl/Cmd-click follows the link
+      note.addEventListener('paste', (e) => {   // pasted HTML becomes plain text
+        const t = e.clipboardData?.getData('text/plain');
+        if (t === undefined) return;
+        e.preventDefault();
+        document.execCommand('insertText', false, t);
+      });
       note.addEventListener('input', () => {
         note.classList.toggle('short', note.scrollHeight <= note.clientHeight + 2);
-        store.patchDataDebounced(id, { text: note.textContent ?? '' } as Partial<SourceData>);
+        store.patchDataDebounced(id, { text: (note.textContent ?? '').replace(/ /g, ' ') } as Partial<SourceData>);
       });
       // Pressing one of the card's own buttons blurs the note first; re-rendering then would swap the button out before its click.
       let onButton = false;

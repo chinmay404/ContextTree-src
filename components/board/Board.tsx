@@ -23,6 +23,7 @@ import { AddMenu } from './chrome/AddMenu';
 import { BoardInput } from './chrome/BoardInput';
 import { BranchSheet } from './chrome/BranchSheet';
 import { CardMenu } from './chrome/CardMenu';
+import { FormatBar } from './chrome/FormatBar';
 import { PasteBox } from './chrome/PasteBox';
 import { BrandBar } from './chrome/BrandBar';
 import { CompareSheet } from './chrome/CompareSheet';
@@ -150,6 +151,7 @@ function Chrome(): ReactElement {
           <AddMenu />
           <CardMenu />
           <PasteBox />
+          <FormatBar />
           <DropOverlay />
           <BoardInput />
           <BranchSheet />

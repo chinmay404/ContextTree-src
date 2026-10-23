@@ -10,3 +10,8 @@ it('typing is true inside fields and contenteditable, false elsewhere', () => {
   const el = (id: string) => document.getElementById(id);
   expect([typing(el('t')), typing(el('c')), typing(el('s')), typing(null)]).toEqual([true, true, false, false]);
 });
+
+it('a plain-text editor (the note on its card) counts as typing too', () => {
+  document.body.innerHTML = '<div contenteditable="plaintext-only"><b id="p"></b></div>';
+  expect(typing(document.getElementById('p'))).toBe(true);
+});

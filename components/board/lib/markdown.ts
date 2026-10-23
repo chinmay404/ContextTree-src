@@ -29,12 +29,12 @@ function inline(s: string): string {
  * Safe markdown subset to HTML for innerHTML: <think> removed, everything escaped, then rendered.
  * No raw HTML passes through; links are http(s)/mailto only. All heading levels render as <h3>.
  */
-export function renderMarkdown(md: string): string {
+export function renderMarkdown(md: string, opts: { breaks?: boolean } = {}): string {
   const text = esc(stripThink(String(md ?? '')).replace(/\u0000/g, '')).replace(/\r\n?/g, '\n');
   const out: string[] = [];
   let list: 'ol' | 'ul' | null = null;
   let para: string[] = [];
-  const flushPara = () => { if (para.length) out.push(`<p>${inline(para.join(' '))}</p>`); para = []; };
+  const flushPara = () => { if (para.length) out.push(`<p>${inline(para.join(opts.breaks ? '<br>' : ' '))}</p>`); para = []; };
   const closeList = () => { if (list) out.push(`</${list}>`); list = null; };
   for (const raw of text.split('\n')) {
     const line = raw.trim();

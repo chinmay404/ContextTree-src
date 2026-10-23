@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { icon, ICON_NAMES } from './icons';
 
-const USED = ['play', 'audio-lines', 'file-text', 'file-pen-line', 'sticky-note', 'globe', 'sheet', 'image', 'layers', 'message-circle', 'git-fork', 'plus', 'minus', 'maximize', 'link', 'maximize-2', 'chevrons-down-up', 'chevrons-up-down', 'ungroup', 'x', 'triangle-alert', 'unlink', 'git-branch', 'arrow-up', 'sliders-horizontal', 'chevron-down', 'arrow-left', 'copy', 'upload', 'more-horizontal', 'globe-lock', 'trash-2', 'rotate-ccw', 'square-dashed', 'spline', 'arrow-right', 'book-open', 'corner-left-up', 'mouse', 'sparkles'];
+const USED = ['play', 'audio-lines', 'file-text', 'file-pen-line', 'sticky-note', 'globe', 'sheet', 'image', 'layers', 'message-circle', 'git-fork', 'plus', 'minus', 'maximize', 'link', 'maximize-2', 'chevrons-down-up', 'chevrons-up-down', 'ungroup', 'x', 'triangle-alert', 'unlink', 'git-branch', 'arrow-up', 'sliders-horizontal', 'chevron-down', 'arrow-left', 'copy', 'upload', 'more-horizontal', 'globe-lock', 'trash-2', 'rotate-ccw', 'square-dashed', 'spline', 'arrow-right', 'book-open', 'corner-left-up', 'mouse', 'sparkles', 'bold', 'italic', 'heading', 'list', 'list-ordered', 'code'];
 
 describe('icon', () => {
   it('returns an svg in a sized span', () => {

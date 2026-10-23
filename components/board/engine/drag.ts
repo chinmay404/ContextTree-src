@@ -104,6 +104,9 @@ export function attachPointer(ctx: EngineContext): PointerRouting {
     if (port && n) { e.preventDefault(); ctx.modules.strings.startString(n, port.dataset.port as 'src' | 'chat', e); return; }
     if (n && t.closest(PASS)) { if (selectedId() !== n.id) store.select(n.id); return; }
     if (t.closest('button, textarea, input, select, a')) return;
+    // pressing the board (not the field being typed in) ends the edit: a note then draws its Markdown again
+    const ae = document.activeElement;
+    if (ae instanceof HTMLElement && ae !== t && !ae.contains(t) && ae.matches('input, textarea, [contenteditable]')) ae.blur();
     e.preventDefault();
     if (n) { drag(n, e); return; }
     if (ce) return;

@@ -4,6 +4,7 @@ import {
   GitFork, Plus, Minus, Maximize, Link, Maximize2, ChevronsDownUp, ChevronsUpDown, Ungroup, X, TriangleAlert,
   Unlink, GitBranch, ArrowUp, SlidersHorizontal, ChevronDown, ArrowLeft, Copy, Upload, Ellipsis, GlobeLock,
   Trash2, RotateCcw, SquareDashed, Spline, ArrowRight, BookOpen, CornerLeftUp, Mouse, Sparkles,
+  Bold, Italic, Heading, List, ListOrdered, Code,
 } from 'lucide';
 
 /** Prototype's lucide-static names mapped to lucide@0.460.0 canonical export keys (more-horizontal is Ellipsis). */
@@ -19,6 +20,8 @@ const NODES = {
   // welcome tour
   'square-dashed': SquareDashed, 'spline': Spline, 'arrow-right': ArrowRight, 'book-open': BookOpen,
   'corner-left-up': CornerLeftUp, 'mouse': Mouse, 'sparkles': Sparkles,
+  // note formatting bar
+  'bold': Bold, 'italic': Italic, 'heading': Heading, 'list': List, 'list-ordered': ListOrdered, 'code': Code,
 } as const;
 
 export const ICON_NAMES: string[] = Object.keys(NODES);
