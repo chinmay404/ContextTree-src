@@ -554,7 +554,7 @@ export class MockEngineApi implements EngineApi {
     checkAbort();
     await wait(this.o.firstTokenMs);
     checkAbort();
-    if (req.webSearch) onEvent({ type: 'web', results: [{ title: 'Pricing pages compared', url: 'https://example.com/pricing' }] });
+    if (req.webSearch) onEvent({ type: 'web', results: [{ title: 'Pricing pages compared', url: 'https://example.com/pricing' }], query: req.message });
     for (let i = 0; i < words.length; i += 2) {
       checkAbort();
       const more = i + 2 < words.length;

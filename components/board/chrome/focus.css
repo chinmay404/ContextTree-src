@@ -23,10 +23,20 @@
 
 /* answers with web results above them */
 .pb-root .amsg { display: flex; flex-direction: column; gap: 16px; }
-.pb-root .webrows { display: flex; flex-direction: column; gap: 8px; }
-.pb-root a.webrow { color: inherit; text-decoration: none; }
-.pb-root .webrow .q1 { font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--t1); }
-.pb-root .webrow .q2 { font-size: 12px; font-weight: 600; color: var(--fd); margin-top: 2px; }
+.pb-root .webrows { display: block; min-width: 0; }
+.pb-root .webline { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pb-root .webline .wh { font-size: 12px; font-weight: 600; color: var(--t2); }
+.pb-root .wscroll { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  padding: 1px 14px 1px 1px; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+.pb-root .wscroll::-webkit-scrollbar { display: none; }
+.pb-root .wchip { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 260px; height: 30px; padding: 0 12px; border-radius: 14px;
+  background: var(--pb-fill); color: var(--t1); font-size: 12.5px; line-height: 1; text-decoration: none; white-space: nowrap; box-shadow: 0 0 0 .5px var(--hairline); }
+.pb-root .wchip .i { --s: 13px; --c: var(--t2); flex: none; }
+.pb-root .wchip .wt { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.pb-root .wchip .ws { color: var(--t3); flex: none; }
+.pb-root .wchip.count { color: var(--t2); font-weight: 600; font-size: 11.5px; height: 26px; padding: 0 10px; align-self: flex-start; }
+@media (hover: hover) and (pointer: fine) { .pb-root a.wchip:hover { background: var(--pb-edge); } }
+.pb-root a.wchip:focus-visible { outline: 2px solid var(--pb-edge-strong); outline-offset: 1px; }
 
 /* composer chips */
 .pb-root .fcomp .row .cp { transition: background-color 150ms ease, color 150ms ease; }

@@ -102,7 +102,7 @@ export interface ChatRequest { boardId: Id; chatId: Id; messageId: string; messa
 export type StreamErrorCode = 'missing_key' | 'key_rejected' | 'unsupported_model' | 'key_store_unavailable';
 export type StreamEvent =
   | { type: 'delta'; text: string } | { type: 'summary'; text: string }
-  | { type: 'web'; results: { title?: string; url?: string }[] }
+  | { type: 'web'; results: { title?: string; url?: string }[]; query?: string }
   | { type: 'error'; message: string; code?: StreamErrorCode; provider?: ProviderId } | { type: 'done' };
 
 export interface EngineApi {

@@ -177,7 +177,7 @@ describe('MockEngineApi', () => {
     expect(joined(await run(req({ chatId: 'second', messageId: 'a' })))).toMatch(new RegExp(`^\\(Skeptic\\) Reading .+ and .+ plus ${n - 2} more: try`));
     await m.createCard('b_seed', { id: 'empty', kind: 'chat', x: 0, y: 0, data: { name: 'E' } });
     const ev = await run(req({ chatId: 'empty', messageId: 'b', webSearch: true }));
-    expect(ev[0]).toEqual({ type: 'web', results: [{ title: 'Pricing pages compared', url: 'https://example.com/pricing' }] });
+    expect(ev[0]).toEqual({ type: 'web', results: [{ title: 'Pricing pages compared', url: 'https://example.com/pricing' }], query: expect.any(String) });
     expect(joined(ev)).toMatch(/^Nothing on this desk yet, so going on the conversation alone: try/);
     await run(req({ chatId: 'empty', messageId: 'c', regenerateLastUser: true }));
     const msgs = await m.getMessages('b_seed', 'empty');
