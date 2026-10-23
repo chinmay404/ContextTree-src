@@ -45,4 +45,7 @@ describe('pebble.css', () => {
   it('defines the V3 rules', () => {
     for (const s of ['.soon-pill', '.dots i.soon', '.card.demoted', '.pb-toast', '.pb-confirm', '.err', '.soonbox', '.webrow']) expect(css).toContain(s);
   });
+  it('caps a long note so the card and its port stay in reach', () => {
+    expect(css).toMatch(/\.note-in \.n \{[^}]*max-height: 240px[^}]*overflow: auto/);
+  });
 });

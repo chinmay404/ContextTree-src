@@ -113,7 +113,7 @@ export function attachPointer(ctx: EngineContext): PointerRouting {
 
   const onWheel = (e: WheelEvent) => {
     const t = e.target as Element;
-    const b = t.closest?.('.cbody');
+    const b = t.closest?.('.cbody, .note-in .n');
     if (b && !e.ctrlKey && b.scrollHeight > b.clientHeight) return;
     e.preventDefault();
     if (ctx.modules.piles.onWheel(e)) return;

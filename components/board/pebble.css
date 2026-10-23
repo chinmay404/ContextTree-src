@@ -87,7 +87,8 @@
 .pb-root .ask-desc { align-self: flex-start; margin-top: 4px; font-size: 10.5px; font-weight: 600; color: var(--fd); text-decoration: underline; text-underline-offset: 2px; }
 .pb-root .face.ghost { position: absolute; left: 0; top: 0; width: 100%; z-index: 5; pointer-events: none; }
 .pb-root .note-in { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
-.pb-root .note-in .n { font-size: 13.5px; line-height: 1.4; outline: none; cursor: text; user-select: text; -webkit-user-select: text; min-height: 38px; }
+.pb-root .note-in .n { font-size: 13.5px; line-height: 1.4; outline: none; cursor: text; user-select: text; -webkit-user-select: text; min-height: 38px; max-height: 240px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--pb-edge) transparent; -webkit-mask-image: linear-gradient(#000 calc(100% - 22px), transparent); mask-image: linear-gradient(#000 calc(100% - 22px), transparent); }
+.pb-root .note-in .n.short { -webkit-mask-image: none; mask-image: none; }
 .pb-root .note-in .n:empty::before { content: 'Write a note…'; color: var(--t3); }
 .pb-root .src.processing .face { background: var(--pb-fill); box-shadow: none; }
 .pb-root .src.processing .tile { background: linear-gradient(90deg, #fff 0%, #F5F5F7 50%, #fff 100%); background-size: 200% 100%; animation: pbshimmer 1.4s linear infinite; }

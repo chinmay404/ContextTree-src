@@ -250,7 +250,7 @@ export class CardView {
     const ta = el.querySelector<HTMLTextAreaElement>('.compose textarea');
     const focus = !!ta && ta === active, draft = ta?.value ?? '', taSel = ta ? [ta.selectionStart, ta.selectionEnd] : null;
     const dta = el.querySelector<HTMLTextAreaElement>('.desc'), dFocus = !!dta && dta === active, dSel = dta ? [dta.selectionStart, dta.selectionEnd] : null;
-    const sc = el.querySelector('.cbody')?.scrollTop;
+    const sc = el.querySelector('.cbody')?.scrollTop, nsc = nt0?.scrollTop;
     const chat = isChat(c), S = this.ctx.size() === 'S';
     el.className = this.classes(n, c);
     el.style.width = (S ? (chat ? CHAT_W_S : SRC_W_S) : chat ? CHAT_W : SRC_W) + 'px';
@@ -258,6 +258,9 @@ export class CardView {
     this.bind(n, c);
     const b = el.querySelector('.cbody');
     if (b) { b.scrollTop = sc ?? (this.ctx.store.isStreaming(c.id) ? b.scrollHeight : 0); b.classList.toggle('short', b.scrollHeight <= b.clientHeight + 2); }
+    // a long note scrolls inside its card, so the card (and its port) stays a reachable size
+    const nb = el.querySelector<HTMLElement>('.note-in .n');
+    if (nb) { nb.scrollTop = nsc ?? 0; nb.classList.toggle('short', nb.scrollHeight <= nb.clientHeight + 2); }
     const nt = el.querySelector<HTMLTextAreaElement>('.compose textarea');
     if (nt) {
       nt.value = draft;
@@ -316,7 +319,10 @@ export class CardView {
     });
     const note = el.querySelector<HTMLElement>('.note-in .n');
     if (note) {
-      note.addEventListener('input', () => store.patchDataDebounced(id, { text: note.textContent ?? '' } as Partial<SourceData>));
+      note.addEventListener('input', () => {
+        note.classList.toggle('short', note.scrollHeight <= note.clientHeight + 2);
+        store.patchDataDebounced(id, { text: note.textContent ?? '' } as Partial<SourceData>);
+      });
       // Pressing one of the card's own buttons blurs the note first; re-rendering then would swap the button out before its click.
       let onButton = false;
       note.closest('.face')?.addEventListener('pointerdown', (e) => { onButton = e.target instanceof Element && !!e.target.closest('button'); }, true);
