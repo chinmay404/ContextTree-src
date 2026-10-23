@@ -1,0 +1,27 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vitest/globals"],
+    "incremental": false,
+    "paths": {
+      "@/lib/auth-utils": ["./types/auth-utils-stub.d.ts"],
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "components/shell/**/*",
+    "app/boards/**/*",
+    "app/b/**/*",
+    "app/landing/**/*",
+    "app/auth/signin/**/*",
+    "app/page.tsx",
+    "app/home-client.tsx",
+    "app/api/user-api-keys/**/*",
+    "lib/key-check.ts",
+    "lib/byok.ts",
+    "tests/unit/**/*",
+    "e2e/shell/**/*",
+    "next-env.d.ts"
+  ],
+  "exclude": ["node_modules", ".next", "tests/unit/engine-proxy.test.ts"]
+}

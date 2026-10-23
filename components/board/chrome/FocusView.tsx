@@ -481,7 +481,7 @@ function Composer(p: {
         {pop && (
           <div className="mpop" data-pb="modelpop" role="dialog" aria-label="Ask another model">
             <div className="mpt">This chat keeps its model. Pick another to branch from here.</div>
-            <ModelPicker value={p.modelId} onChange={pick} isLocked={props.isModelLocked} onLockedClick={(m) => props.onOpenSettings?.(providerOf(m) ?? undefined)} />
+            <ModelPicker value={p.modelId} onChange={pick} isLocked={props.isModelLocked} live={props.liveModels} onLockedClick={(m) => props.onOpenSettings?.(providerOf(m) ?? undefined)} />
           </div>
         )}
         <textarea ref={ta} rows={1} placeholder="Ask a follow-up" aria-label="Message" value={text} disabled={p.streaming}

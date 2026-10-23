@@ -1536,6 +1536,28 @@ export class MongoDBService {
     }
   }
 
+  async setUserApiKeyCheck(
+    userEmail: string,
+    provider: string,
+    check: { status: "ok" | "rejected" | "unchecked"; checkedAt: string }
+  ) {
+    await ensureInit();
+    if (!userEmail || !provider) return false;
+
+    try {
+      const res = await pool.query(
+        `UPDATE user_api_keys
+         SET metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object('keyCheck', $3::jsonb)
+         WHERE user_email = $1 AND provider = $2`,
+        [userEmail, provider, JSON.stringify(check)]
+      );
+      return (res.rowCount ?? 0) > 0;
+    } catch (error) {
+      console.error("Error saving user API key check:", error);
+      return false;
+    }
+  }
+
   async deleteUserApiKey(userEmail: string, provider: string) {
     await ensureInit();
     if (!userEmail || !provider) return false;

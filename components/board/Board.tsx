@@ -18,6 +18,7 @@ import { installTestHook } from './engine/test-hook';
 import { inter } from './fonts';
 import { BoardStore } from './store';
 import { typing } from './lib/util';
+import type { LiveModels } from './lib/catalog';
 import { AddMenu } from './chrome/AddMenu';
 import { BoardInput } from './chrome/BoardInput';
 import { BranchSheet } from './chrome/BranchSheet';
@@ -51,6 +52,8 @@ export interface BoardProps {
   /** Engine id for new question chats (a model the user has a key for). */
   defaultModel?: string;
   isModelLocked?: (engineModelId: string) => boolean;
+  /** Every chat model each working key offers, listed from the provider; shown under "More models". */
+  liveModels?: LiveModels;
   topRight?: ReactNode;
   testHook?: boolean;
 }
@@ -113,10 +116,10 @@ function BoardShell(p: BoardProps): ReactElement {
     return () => document.removeEventListener('keydown', onKey);
   }, [inst, showcase]);
 
-  const { onOpenBoard, onOpenSettings, isModelLocked, topRight } = p;
+  const { onOpenBoard, onOpenSettings, isModelLocked, liveModels, topRight } = p;
   const value = useMemo(
-    () => (inst ? { store: inst.store, engine: inst.engine, props: { api, boardId, onOpenBoard, onOpenSettings, isModelLocked, topRight, testHook, defaultModel } } : null),
-    [inst, api, boardId, onOpenBoard, onOpenSettings, isModelLocked, topRight, testHook, defaultModel],
+    () => (inst ? { store: inst.store, engine: inst.engine, props: { api, boardId, onOpenBoard, onOpenSettings, isModelLocked, liveModels, topRight, testHook, defaultModel } } : null),
+    [inst, api, boardId, onOpenBoard, onOpenSettings, isModelLocked, liveModels, topRight, testHook, defaultModel],
   );
 
   return (

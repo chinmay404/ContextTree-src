@@ -23,7 +23,7 @@ export const STRING_COL: Record<Family, string> = {
   media: '#E3B7A3', docs: '#DCCB8C', note: '#E0B3C3', web: '#A9CBE0', data: '#AFCDA3', image: '#AEB9D3', mixed: '#D2D2D7', answer: '#D1D1D6',
 };
 
-export type ModelKey = 'claude' | 'gpt' | 'gemini' | 'llama' | 'deepseek' | 'mistral' | 'kimi';
+export type ModelKey = 'claude' | 'gpt' | 'gemini' | 'gptoss' | 'deepseek' | 'mistral' | 'kimi';
 
 export const PROVIDER_NAME: Record<ProviderId, string> = {
   anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google', groq: 'Groq', deepseek: 'DeepSeek', mistral: 'Mistral', moonshot: 'Moonshot',
@@ -36,7 +36,7 @@ export const MODELS: Record<ModelKey, { label: string; name: string; color: stri
   claude: { label: 'Claude', name: 'Claude Sonnet 4', color: '#E0673A', engineId: 'anthropic/claude-sonnet-4-20250514', provider: 'anthropic' },
   gpt: { label: 'GPT', name: 'GPT-5 mini', color: '#3FAE5A', engineId: 'openai/gpt-5-mini', provider: 'openai' },
   gemini: { label: 'Gemini', name: 'Gemini 3 Flash', color: '#2A86C4', engineId: 'gemini/gemini-3-flash-preview', provider: 'google' },
-  llama: { label: 'Llama', name: 'Llama 4 Maverick', color: '#7A52D6', engineId: 'meta-llama/llama-4-maverick-17b-128e-instruct', provider: 'groq' },
+  gptoss: { label: 'GPT-OSS', name: 'GPT-OSS 120B', color: '#7A52D6', engineId: 'openai/gpt-oss-120b', provider: 'groq' },
   deepseek: { label: 'DeepSeek', name: 'DeepSeek V3', color: '#3B6FD8', engineId: 'deepseek/deepseek-chat', provider: 'deepseek' },
   mistral: { label: 'Mistral', name: 'Mistral Large', color: '#E2A72A', engineId: 'mistral/mistral-large-latest', provider: 'mistral' },
   kimi: { label: 'Kimi', name: 'Kimi K2', color: '#D1467E', engineId: 'moonshot/kimi-k2-0905-preview', provider: 'moonshot' },
@@ -53,19 +53,34 @@ const LEGACY_PROVIDER: [string, ProviderId][] = [
   ['moonshotai/', 'moonshot'], ['moonshot/', 'moonshot'],
 ];
 
-/** Which provider key runs this engine id: the catalog first, then the legacy prefixes; null means unsupported. */
+/** A model listed live from the provider with the user's key: `<provider>:<provider's own id>` (lib/model-list.ts). */
+export interface LiveModel { id: string; name: string }
+export type LiveModels = Partial<Record<ProviderId, LiveModel[]>>;
+
+/** The provider of a live-listed id ("groq:qwen/qwen3.8-27b"), or null for any other id. */
+export function liveProvider(engineId: string): ProviderId | null {
+  const m = /^([a-z]+):./.exec(String(engineId || ''));
+  return m && m[1] in PROVIDER_NAME ? (m[1] as ProviderId) : null;
+}
+
+/** Which provider key runs this engine id: the catalog first, then live-listed ids, then the legacy prefixes; null means unsupported. */
 export function providerOf(engineId: string): ProviderId | null {
   const id = String(engineId || '');
   const k = (Object.keys(MODELS) as ModelKey[]).find((m) => MODELS[m].engineId === id);
   if (k) return MODELS[k].provider;
-  return LEGACY_PROVIDER.find(([prefix]) => id.startsWith(prefix))?.[1] ?? null;
+  return liveProvider(id) ?? LEGACY_PROVIDER.find(([prefix]) => id.startsWith(prefix))?.[1] ?? null;
 }
+
+/** The catalog model that shares this provider, for its colour on live-listed models. */
+const providerModel = (p: ProviderId): ModelKey | undefined => (Object.keys(MODELS) as ModelKey[]).find((k) => MODELS[k].provider === p);
 
 export function modelInfo(engineId: string): { key: ModelKey | null; label: string; name: string; color: string } {
   const key = (Object.keys(MODELS) as ModelKey[]).find((k) => MODELS[k].engineId === engineId);
   if (key) return { key, label: MODELS[key].label, name: MODELS[key].name, color: MODELS[key].color };
-  const last = String(engineId || '').split('/').filter(Boolean).pop() ?? '';
-  return { key: null, label: last, name: last, color: '#6E6585' };
+  const live = liveProvider(engineId), id = live ? String(engineId).slice(live.length + 1) : String(engineId || '');
+  const last = id.split('/').filter(Boolean).pop() ?? '';
+  const pk = live ? providerModel(live) : undefined;
+  return { key: null, label: last, name: last, color: pk ? MODELS[pk].color : '#6E6585' };
 }
 
 export const PERSONAS: Record<'none' | 'skeptic' | 'teacher' | 'coach' | 'analyst', { label: string; text: string }> = {

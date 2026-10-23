@@ -2,12 +2,16 @@ export const BYOK_PROVIDERS = ["openai", "anthropic", "litellm"] as const;
 
 export type ByokProvider = (typeof BYOK_PROVIDERS)[number];
 
-export type ProviderKeyStatus = {
-  provider: ByokProvider;
+export type ProviderKeyStatus<P extends string = ByokProvider> = {
+  provider: P;
   configured: boolean;
   keyHint: string | null;
   apiBaseHint?: string | null;
   updatedAt: string | null;
+  /** V3 key store only: last four characters, and the result of the provider check. */
+  last4?: string | null;
+  status?: "ok" | "rejected" | "unchecked" | null;
+  checkedAt?: string | null;
 };
 
 export type ProviderKeyStatusMap = Record<ByokProvider, ProviderKeyStatus>;
@@ -40,4 +44,45 @@ export function cloneEmptyProviderKeyStatus(): ProviderKeyStatusMap {
     anthropic: { ...EMPTY_PROVIDER_KEY_STATUS.anthropic },
     litellm: { ...EMPTY_PROVIDER_KEY_STATUS.litellm },
   };
+}
+
+/** V3 board providers (one per model on the board). V2's BYOK_PROVIDERS above stays as it is. */
+export const V3_KEY_PROVIDERS = ["anthropic", "openai", "google", "groq", "deepseek", "mistral", "moonshot"] as const;
+
+export type V3KeyProvider = (typeof V3_KEY_PROVIDERS)[number];
+
+/** Every provider the key store accepts: the V3 seven plus V2's `litellm`, deduped. */
+export const KEY_STORE_PROVIDERS = Array.from(
+  new Set<string>([...V3_KEY_PROVIDERS, ...BYOK_PROVIDERS])
+) as readonly (V3KeyProvider | ByokProvider)[];
+
+export type KeyStoreProvider = (typeof KEY_STORE_PROVIDERS)[number];
+
+export const PROVIDER_LABEL: Record<KeyStoreProvider, string> = {
+  anthropic: "Anthropic",
+  openai: "OpenAI",
+  google: "Google",
+  groq: "Groq",
+  deepseek: "DeepSeek",
+  mistral: "Mistral",
+  moonshot: "Moonshot",
+  litellm: "LiteLLM",
+};
+
+/** Empty status for every store provider (V2 shape stays in cloneEmptyProviderKeyStatus). */
+export function cloneEmptyStoreStatus(): Record<KeyStoreProvider, ProviderKeyStatus<KeyStoreProvider>> {
+  const out = {} as Record<KeyStoreProvider, ProviderKeyStatus<KeyStoreProvider>>;
+  for (const provider of KEY_STORE_PROVIDERS) {
+    out[provider] = {
+      provider,
+      configured: false,
+      keyHint: null,
+      updatedAt: null,
+      last4: null,
+      status: null,
+      checkedAt: null,
+      ...(provider === "litellm" ? { apiBaseHint: null } : {}),
+    };
+  }
+  return out;
 }

@@ -9,5 +9,5 @@
     "vitest.config.ts",
     "playwright.config.ts"
   ],
-  "exclude": ["node_modules", ".next"]
+  "exclude": ["node_modules", ".next", "tests/unit/engine-proxy.test.ts"]
 }

@@ -1,46 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-utils";
 import { mongoService } from "@/lib/mongodb";
-import {
-  BYOK_PROVIDERS,
-  cloneEmptyProviderKeyStatus,
-  type ByokProvider,
-} from "@/lib/byok";
+import { V3_KEY_PROVIDERS, PROVIDER_LABEL, type V3KeyProvider } from "@/lib/byok";
 import { encryptApiKey, formatKeyHint } from "@/lib/byok-crypto";
+import { checkProviderKey } from "@/lib/key-check";
+import {
+  buildKeyStatuses,
+  formatApiBaseHint,
+  last4FromHint,
+  normalizeApiBase,
+  parseStoreProvider as parseProvider,
+} from "@/lib/user-api-keys-status";
 
 export const runtime = "nodejs";
 
-const VALID_PROVIDERS = new Set<ByokProvider>(BYOK_PROVIDERS);
-
-function parseProvider(value: unknown): ByokProvider | null {
-  const provider = String(value || "").trim().toLowerCase() as ByokProvider;
-  return VALID_PROVIDERS.has(provider) ? provider : null;
-}
-
-function normalizeApiBase(value: unknown) {
-  const apiBase = String(value || "").trim();
-  if (!apiBase) return null;
-
-  try {
-    const url = new URL(apiBase);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    return url.toString().replace(/\/$/, "");
-  } catch {
-    return null;
-  }
-}
-
-function formatApiBaseHint(value: unknown) {
-  const apiBase = normalizeApiBase(value);
-  if (!apiBase) return null;
-
-  try {
-    const url = new URL(apiBase);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return null;
-  }
-}
+const isV3 = (p: string): p is V3KeyProvider => (V3_KEY_PROVIDERS as readonly string[]).includes(p);
 
 async function getAuthenticatedUserEmail() {
   const user = await getCurrentUser();
@@ -54,21 +28,7 @@ export async function GET() {
   }
 
   const rows = await mongoService.getUserApiKeyStatuses(userEmail);
-  const providers = cloneEmptyProviderKeyStatus();
-
-  for (const row of rows) {
-    const provider = parseProvider(row.provider);
-    if (!provider) continue;
-    providers[provider] = {
-      provider,
-      configured: true,
-      keyHint: row.key_hint || null,
-      apiBaseHint: formatApiBaseHint(row.metadata?.apiBase),
-      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
-    };
-  }
-
-  return NextResponse.json({ providers });
+  return NextResponse.json(buildKeyStatuses(rows));
 }
 
 export async function POST(request: NextRequest) {
@@ -110,6 +70,23 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+
+  let metadata: Record<string, unknown> = provider === "litellm" ? { apiBase } : {};
+  let keyCheck: { status: "ok" | "unchecked"; checkedAt: string } | null = null;
+  if (isV3(provider)) {
+    const status = await checkProviderKey(provider, apiKey);
+    if (status === "rejected") {
+      return NextResponse.json(
+        {
+          code: "key_rejected",
+          error: `${PROVIDER_LABEL[provider]} turned this key down. Check that you copied all of it.`,
+        },
+        { status: 422 }
+      );
+    }
+    keyCheck = { status, checkedAt: new Date().toISOString() };
+    metadata = { keyCheck };
+  }
   const keyHint =
     provider === "litellm" && !apiKey
       ? "LiteLLM private endpoint"
@@ -119,7 +96,7 @@ export async function POST(request: NextRequest) {
     provider,
     encryptedKey,
     keyHint,
-    provider === "litellm" ? { apiBase } : {}
+    metadata
   );
 
   if (!saved) {
@@ -135,6 +112,9 @@ export async function POST(request: NextRequest) {
     keyHint: saved.key_hint || keyHint,
     apiBaseHint: formatApiBaseHint(saved.metadata?.apiBase),
     updatedAt: saved.updated_at ? new Date(saved.updated_at).toISOString() : null,
+    ...(keyCheck
+      ? { last4: last4FromHint(saved.key_hint || keyHint), status: keyCheck.status, checkedAt: keyCheck.checkedAt }
+      : {}),
   });
 }
 

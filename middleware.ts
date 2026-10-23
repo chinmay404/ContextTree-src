@@ -22,7 +22,11 @@ export default withAuth(
           pathname === "/terms" ||
           pathname.startsWith("/_next/") ||
           pathname.startsWith("/favicon.ico") ||
-          (process.env.NODE_ENV !== "production" && pathname === "/board-dev") // v3 dev board page (404s in prod)
+          (process.env.NODE_ENV !== "production" && pathname === "/board-dev") || // v3 dev board page (404s in prod)
+          // v3 board routes on the dev-only mock engine (?api=mock); production still requires a session
+          (process.env.NODE_ENV !== "production" &&
+            req.nextUrl.searchParams.get("api") === "mock" &&
+            (pathname === "/boards" || pathname.startsWith("/b/")))
         ) {
           return true;
         }

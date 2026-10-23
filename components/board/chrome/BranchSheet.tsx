@@ -105,7 +105,7 @@ export function BranchSheet(): ReactElement {
         <div className="grp">
           <div className="fl">Model</div>
           <ModelPicker value={d.model} disabled={locked} onChange={(m) => store.setDraft({ model: m })}
-            isLocked={props.isModelLocked} onLockedClick={(m) => props.onOpenSettings?.(providerOf(m) ?? undefined)} />
+            isLocked={props.isModelLocked} live={props.liveModels} onLockedClick={(m) => props.onOpenSettings?.(providerOf(m) ?? undefined)} />
         </div>
         <div className="grp">
           <div className="fl">Persona</div>

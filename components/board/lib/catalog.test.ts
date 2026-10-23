@@ -1,4 +1,4 @@
-import { MODELS, PROVIDER_NAME, modelInfo, providerOf, type ModelKey } from './catalog';
+import { MODELS, PROVIDER_NAME, liveProvider, modelInfo, providerOf, type ModelKey } from './catalog';
 
 const keys = Object.keys(MODELS) as ModelKey[];
 
@@ -15,7 +15,7 @@ describe('model catalog', () => {
       claude: 'anthropic/claude-sonnet-4-20250514',
       gpt: 'openai/gpt-5-mini',
       gemini: 'gemini/gemini-3-flash-preview',
-      llama: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+      gptoss: 'openai/gpt-oss-120b',
       deepseek: 'deepseek/deepseek-chat',
       mistral: 'mistral/mistral-large-latest',
       kimi: 'moonshot/kimi-k2-0905-preview',
@@ -24,7 +24,7 @@ describe('model catalog', () => {
 
   it('shows the detailed model name and keeps a short label for tight spots', () => {
     expect(Object.fromEntries(keys.map((k) => [k, MODELS[k].name]))).toEqual({
-      claude: 'Claude Sonnet 4', gpt: 'GPT-5 mini', gemini: 'Gemini 3 Flash', llama: 'Llama 4 Maverick',
+      claude: 'Claude Sonnet 4', gpt: 'GPT-5 mini', gemini: 'Gemini 3 Flash', gptoss: 'GPT-OSS 120B',
       deepseek: 'DeepSeek V3', mistral: 'Mistral Large', kimi: 'Kimi K2',
     });
     expect(Object.fromEntries(keys.map((k) => [k, MODELS[k].label]))).toMatchObject({ claude: 'Claude', gpt: 'GPT', gemini: 'Gemini', kimi: 'Kimi' });
@@ -41,6 +41,14 @@ describe('model catalog', () => {
 
   it('providerOf finds every catalog model first', () => {
     for (const k of keys) expect(providerOf(MODELS[k].engineId)).toBe(MODELS[k].provider);
+  });
+
+  it('reads live-listed ids as <provider>:<model id>', () => {
+    expect(providerOf('groq:qwen/qwen3.8-27b')).toBe('groq');
+    expect(providerOf('google:gemini-2.5-pro')).toBe('google');
+    expect(liveProvider('nvidia:x')).toBeNull();
+    expect(liveProvider('openai/gpt-5')).toBeNull();
+    expect(modelInfo('groq:qwen/qwen3.8-27b')).toMatchObject({ key: null, name: 'qwen3.8-27b', color: MODELS.gptoss.color });
   });
 
   it('modelInfo of an unknown id is still readable', () => {

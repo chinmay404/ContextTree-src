@@ -9,3 +9,4 @@
 .pb-root [data-pb="boardmenu"] button .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
 .pb-root [data-pb="boardmenu"] button[data-current="true"] { background: var(--pb-desk); }
 .pb-root [data-pb="boardmenu"] .empty { padding: 8px 14px; font-size: 13px; color: var(--t3); }
+.pb-root [data-pb="brand"] .lg { color: #fff; }

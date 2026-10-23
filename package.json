@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "typecheck:board": "tsc -p tsconfig.board.json --noEmit"
+    "typecheck:board": "tsc -p tsconfig.board.json --noEmit && tsc -p tsconfig.engine.json --noEmit"
   },
   "dependencies": {
     "@aws-sdk/credential-providers": "latest",

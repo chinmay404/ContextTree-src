@@ -60,7 +60,7 @@ test('the model picker lists detailed names, each pill with its mark', async ({ 
   await expect(pills.locator('[data-model="gemini"]')).toHaveText('Gemini 3 Flash');
   for (const k of ['claude', 'gpt', 'gemini']) await expect(pills.locator(`[data-model="${k}"] svg.mmark`)).toHaveCount(1);
   const more = await pills.locator('#d-more option').allTextContents();
-  expect(more).toEqual(['More models', 'Llama 4 Maverick', 'DeepSeek V3', 'Mistral Large', 'Kimi K2']);
+  expect(more).toEqual(['More models', 'GPT-OSS 120B', 'DeepSeek V3', 'Mistral Large', 'Kimi K2']);
   await pills.screenshot({ path: shot('model-picker') });
   await page.screenshot({ path: shot('branch-sheet') });
   expect(errs).toEqual([]);
