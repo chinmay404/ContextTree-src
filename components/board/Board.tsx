@@ -38,7 +38,8 @@ import { ChatBar } from './chrome/ChatBar';
 import { WelcomeTour } from './chrome/WelcomeTour';
 import { ZoomControl } from './chrome/ZoomControl';
 import './chrome/materials.css'; // its rules override pebble.css and the chrome CSS at equal specificity
-import './chrome/colors.css'; // keep last: card colours and the chat rim win over materials.css
+import './chrome/colors.css'; // card colours and the chat rim win over materials.css
+import './chrome/dark.css'; // keep last: the dark palette re-defines the tokens and tones above
 
 export interface BoardProps {
   api: EngineApi;

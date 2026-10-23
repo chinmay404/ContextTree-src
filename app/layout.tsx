@@ -5,6 +5,7 @@ import "./globals.css";
 import AuthProvider from "@/components/auth-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { THEME_SCRIPT } from "@/components/board/lib/theme";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://contexttree.tech";
 
@@ -73,6 +74,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <style>{`
 html {
   font-family: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

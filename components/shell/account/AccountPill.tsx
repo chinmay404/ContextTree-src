@@ -1,12 +1,13 @@
 'use client';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
 import { signOut } from 'next-auth/react';
-import { Download, HelpCircle, Key, LogOut, Settings } from 'lucide-react';
+import { Download, HelpCircle, Key, LogOut, Settings, SunMoon } from 'lucide-react';
 import { inter } from '@/components/board/fonts';
 import { useEscape } from '@/components/board/chrome/escape';
 import { useShell } from '../shell-context';
 import { keyStatusLine } from '../keys/status-line';
 import { initials } from './initials';
+import { readChoice, setChoice, type ThemeChoice } from '@/components/board/lib/theme';
 import '../tokens.css';
 import './account.css';
 
@@ -28,6 +29,35 @@ function Row({ icon, children, right, danger, ...rest }: {
   if (rest.href) return <a role="menuitem" className={cls} href={rest.href} tabIndex={-1}>{inner}</a>;
   if (rest.disabled) return <div role="menuitem" className={cls} aria-disabled="true">{inner}</div>;
   return <button type="button" role="menuitem" className={cls} tabIndex={-1} onClick={rest.onClick}>{inner}</button>;
+}
+
+const THEMES: { v: ThemeChoice; label: string }[] = [{ v: 'system', label: 'System' }, { v: 'light', label: 'Light' }, { v: 'dark', label: 'Dark' }];
+
+/** System / Light / Dark: remembered per browser, applied at once (lib/theme.ts). */
+function ThemeRow(): ReactElement {
+  const [choice, setC] = useState<ThemeChoice>(() => readChoice());
+  const pick = (v: ThemeChoice): void => { setChoice(v); setC(v); };
+  const onKey = (e: KeyboardEvent<HTMLDivElement>): void => {
+    const i = THEMES.findIndex((t) => t.v === choice);
+    const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (!step) return;
+    e.preventDefault(); e.stopPropagation();
+    const next = THEMES[(i + step + THEMES.length) % THEMES.length].v;
+    pick(next);
+    const group = e.currentTarget;   // read now: React clears currentTarget once the handler returns
+    requestAnimationFrame(() => group.querySelector<HTMLElement>('[aria-checked="true"]')?.focus());
+  };
+  return (
+    <div className="theme">
+      <span className="c"><SunMoon size={16} strokeWidth={2} /></span>
+      <span className="tl" id="ct-theme-l">Appearance</span>
+      <div className="seg3" role="radiogroup" aria-labelledby="ct-theme-l" onKeyDown={onKey}>
+        {THEMES.map((t) => (
+          <button key={t.v} type="button" role="radio" aria-checked={choice === t.v} data-theme-choice={t.v} tabIndex={choice === t.v ? 0 : -1} onClick={() => pick(t.v)}>{t.label}</button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /** The account avatar (56 px glass pill) and its menu. Lives in the board's top-right and on /boards. */
@@ -116,6 +146,7 @@ export function AccountPill(): ReactElement | null {
           <Row icon={<Settings size={16} strokeWidth={2} />} onClick={run(() => openSettings({ section: 'account' }))}>Settings</Row>
           <Row icon={<Download size={16} strokeWidth={2} />} disabled right={<span className="r soon">Soon</span>}>Export my boards</Row>
           <Row icon={<HelpCircle size={16} strokeWidth={2} />} href={HELP_MAILTO}>Help &amp; feedback</Row>
+          <ThemeRow />
           <div className="sep" role="separator" />
           <Row icon={<LogOut size={16} strokeWidth={2} />} danger onClick={run(() => { void signOut({ callbackUrl: '/' }); })}>Sign out</Row>
           <div className="ver"><span>Context Tree V3</span><span><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span></div>

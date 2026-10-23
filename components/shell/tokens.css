@@ -1,8 +1,9 @@
+@import "../board/chrome/dark.css"; /* the dark palette (html[data-theme=dark] or the system preference); the specificity there does not depend on order */
 /* Shell tokens. Values copied from components/board/pebble.css + chrome/materials.css (Apple grey, one accent).
    Everything is scoped under .ct-shell so nothing leaks into V2. Light only. */
 .ct-shell {
   --pb-canvas: #F5F5F7; --pb-desk: #EBEBF0; --pb-card: #FFFFFF; --pb-fill: #F2F2F5; --pb-edge: #D2D2D7; --pb-accent: #0071E3; --pb-ink: #1D1D1F; --dot: #C7C7CC;
-  --t1: #1D1D1F; --t2: #6E6E73; --t3: #86868B;
+  --t1: #1D1D1F; --t2: #68686D; --t3: #86868B;
   --ready: #3FAE5A; --stale: #E2A72A; --failed: #E5486B;
   --hairline: rgba(0,0,0,.08); --hairline-strong: rgba(0,0,0,.12);
   --glass-bg: rgba(255,255,255,.62); --glass-solid: #FFFFFF;
@@ -10,6 +11,8 @@
   --sh-float: 0 0 0 .5px var(--hairline), 0 8px 28px rgba(0,0,0,.08);
   --sh-lift: 0 1px 2px rgba(0,0,0,.08), 0 24px 64px rgba(0,0,0,.16);
   --r-tile: 10px; --r-row: 14px; --r-card: 18px; --r-sheet: 26px;
+  --on-ink: #FFFFFF; --hover: rgba(0,0,0,.05); --danger-fg: #B4244A; --danger-bg: #F6E0E6; --av-bg: #DCEBF5; --av-fg: #173F5C;
+  --ok-fg: #2F7A43; --ok-bg: #E3F4E7; --err-fg: #A3213F; --err-bg: #FBE9EE; --failed-ring: #FFC2CF; --scrim: rgba(0,0,0,.24);
   --ease-out: cubic-bezier(.23, 1, .32, 1);
   font-family: var(--pb-font), system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; color: var(--t1); -webkit-font-smoothing: antialiased;
 }
@@ -24,7 +27,7 @@
 /* Buttons (mockup .btn) */
 .ct-shell .btn { height: 44px; padding: 0 20px; border-radius: 999px; font-size: 14px; font-weight: 600; background: var(--pb-fill); display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; text-decoration: none; color: var(--t1); transition: transform 120ms var(--ease-out); }
 .ct-shell .btn:active { transform: scale(.97); }
-.ct-shell .btn.primary { background: var(--pb-ink); color: #fff; }
+.ct-shell .btn.primary { background: var(--pb-ink); color: var(--on-ink); }
 .ct-shell .btn.white { background: var(--glass-bg); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); box-shadow: var(--sh-float); }
 .ct-shell .btn.big { height: 54px; padding: 0 26px; font-size: 16px; }
 .ct-shell .btn[disabled] { opacity: .6; cursor: default; }
@@ -32,10 +35,10 @@
 /* Menus (mockup .menu / .mi) */
 .ct-shell .menu { position: absolute; z-index: 65; min-width: 250px; padding: 8px; border-radius: var(--r-card); background: var(--glass-bg); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); box-shadow: 0 0 0 .5px var(--hairline), var(--sh-card); }
 .ct-shell .menu .mi { width: 100%; display: flex; align-items: center; gap: 12px; padding: 6px 12px 6px 6px; border-radius: var(--r-row); font-size: 14px; font-weight: 600; text-align: left; color: var(--t1); }
-.ct-shell .menu .mi:hover, .ct-shell .menu .mi:focus-visible { background: rgba(0,0,0,.05); outline: none; }
+.ct-shell .menu .mi:hover, .ct-shell .menu .mi:focus-visible { background: var(--hover); outline: none; }
 .ct-shell .menu .mi .c { width: 36px; height: 36px; border-radius: 18px; display: grid; place-items: center; flex: none; background: var(--pb-fill); color: var(--pb-ink); }
 .ct-shell .menu .mi .r { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--t3); }
-.ct-shell .menu .mi.danger { color: #B4244A; }
-.ct-shell .menu .mi.danger .c { background: #F6E0E6; color: var(--failed); }
+.ct-shell .menu .mi.danger { color: var(--danger-fg); }
+.ct-shell .menu .mi.danger .c { background: var(--danger-bg); color: var(--failed); }
 .ct-shell .menu .sep { height: .5px; background: var(--hairline); margin: 6px 12px; }
 @media (prefers-reduced-transparency: reduce) { .ct-shell .btn.white, .ct-shell .menu { background: var(--glass-solid); -webkit-backdrop-filter: none; backdrop-filter: none; } }

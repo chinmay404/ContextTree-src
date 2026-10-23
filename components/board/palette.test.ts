@@ -28,7 +28,7 @@ describe('Apple-grey palette', () => {
   });
   it('defines the neutral tokens', () => {
     for (const t of ['--pb-canvas: #F5F5F7', '--pb-desk: #EBEBF0', '--pb-fill: #F2F2F5', '--pb-edge: #D2D2D7', '--pb-edge-strong: #0071E3',
-      '--pb-ink: #1D1D1F', '--t1: #1D1D1F', '--t2: #6E6E73', '--t3: #86868B']) expect(css).toContain(t);
+      '--pb-ink: #1D1D1F', '--t1: #1D1D1F', '--t2: #68686D', '--t3: #86868B']) expect(css).toContain(t);
   });
   it('family colours keep text contrast >= 4.5:1', () => {
     const fams = [...css.matchAll(/\.pb-root \.f-(\w+) \{([^}]*)\}/g)];

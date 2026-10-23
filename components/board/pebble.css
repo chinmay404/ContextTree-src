@@ -2,12 +2,14 @@
    Everything is scoped under .pb-root so nothing leaks into V2. Light only. Frozen after Task 6:
    new rules go in components/board/chrome/<feature>.css, imported by their own component. */
 .pb-root { --pb-canvas: #F5F5F7; --pb-desk: #EBEBF0; --pb-card: #FFFFFF; --pb-fill: #F2F2F5; --pb-edge: #D2D2D7; --pb-edge-strong: #0071E3; --pb-ink: #1D1D1F;
-  --t1: #1D1D1F; --t2: #6E6E73; --t3: #86868B;
+  --t1: #1D1D1F; --t2: #68686D; --t3: #86868B;
   /* tokens the dark theme (P13) re-defines; light values are what the CSS always used */
   --pb-on-ink: #FFFFFF; --pb-white: #FFFFFF; --pb-spark: #FFFFFF; --pb-body: #3A3A3C; --pb-disabled: #D1D1D6; --pb-rule: #E0E0E5; --pb-rule2: #E5E5EA;
   --pb-dotgrid: #C7C7CC; --pb-img-a: #DDE3EE; --pb-scrim: rgba(29,29,31,.24); --pb-scrim-strong: rgba(29,29,31,.34);
   --pb-wash: rgba(245,245,247,.86); --pb-wash-b: rgba(245,245,247,.9); --pb-code-bg: rgba(0,0,0,.07);
   --ready: #3FAE5A; --stale: #E2A72A; --failed: #E5486B; --failed-ring: #FFC2CF; --failed-tile: #FFE1EA;
+  --stale-fg: #8A5A00; --stale-bg: #FFF0D6; --pb-hero-a: #FFD9C7; --pb-hero-b: #FFE9DE; --pb-page-a: #E9E1C4; --pb-page-b: #EFEADF;
+  --stale-fg: #8A5A00; --stale-bg: #FFF0D6; --pb-hero-a: #FFD9C7; --pb-hero-b: #FFE9DE; --pb-page-a: #E9E1C4; --pb-page-b: #EFEADF;
   --sh-node: 0 10px 24px -12px rgba(0,0,0,.28); --sh-card: 0 18px 40px -18px rgba(0,0,0,.32); --sh-float: 0 8px 24px -10px rgba(0,0,0,.22); --sh-lift: 0 26px 50px -18px rgba(0,0,0,.42);
   --ease-out: cubic-bezier(.23, 1, .32, 1);
   font-family: var(--pb-font), system-ui, sans-serif; font-variant-numeric: tabular-nums; color: var(--t1); -webkit-font-smoothing: antialiased; position: fixed; inset: 0; overflow: hidden; background: var(--pb-canvas); }
@@ -193,7 +195,7 @@
 .pb-root .skel i { height: 8px; border-radius: 4px; background: var(--pb-fill); }
 .pb-root .cfoot { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--t2); }
 .pb-root .cfoot .sp { flex: 1; }
-.pb-root .stale { font-size: 10px; font-weight: 600; color: #8A5A00; background: #FFF0D6; padding: 2px 7px; border-radius: 999px; display: inline-flex; gap: 4px; align-items: center; }
+.pb-root .stale { font-size: 10px; font-weight: 600; color: var(--stale-fg); background: var(--stale-bg); padding: 2px 7px; border-radius: 999px; display: inline-flex; gap: 4px; align-items: center; }
 .pb-root .stale::before { content: ''; width: 6px; height: 6px; border-radius: 3px; background: var(--stale); }
 .pb-root .compose { display: none; align-items: flex-end; gap: 6px; cursor: auto; }
 .pb-root .card.chat.selected .compose, .pb-root .card.chat.empty .compose { display: flex; }
@@ -302,7 +304,7 @@
 .pb-root .hero .pb { position: relative; width: 72px; height: 72px; border-radius: 36px; background: color-mix(in srgb, var(--pb-card) 92%, transparent); display: grid; place-items: center; box-shadow: 0 12px 30px -10px rgba(0,0,0,.4); }
 .pb-root .hero .pb .i { --s: 28px; --c: #E0673A; }
 .pb-root .hero .dur { position: absolute; right: 14px; bottom: 12px; background: rgba(0,0,0,.6); color: var(--pb-white); font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; }
-.pb-root .hero.audio { background: linear-gradient(135deg, #FFD9C7, #FFE9DE); aspect-ratio: 16 / 5; }
+.pb-root .hero.audio { background: linear-gradient(135deg, var(--pb-hero-a), var(--pb-hero-b)); aspect-ratio: 16 / 5; }
 .pb-root .hero .bars { position: absolute; inset: 24px 28px; display: flex; align-items: center; gap: 3px; }
 .pb-root .hero .bars i { flex: 1; border-radius: 3px; background: #E0673A; opacity: .35; }
 .pb-root .hero .bars i.on { opacity: 1; }
@@ -313,8 +315,8 @@
 .pb-root .sec { font-size: 15px; font-weight: 700; color: var(--t2); margin: 6px 0 -6px; }
 .pb-root .pages { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 10px; scrollbar-width: thin; flex: none; }
 .pb-root .pages .pg { flex: none; width: 92px; height: 120px; border-radius: 10px; background: var(--pb-card); box-shadow: var(--sh-node); padding: 12px 10px; display: flex; flex-direction: column; gap: 5px; position: relative; }
-.pb-root .pages .pg b { height: 6px; width: 80%; border-radius: 3px; background: #E9E1C4; }
-.pb-root .pages .pg span { height: 3px; border-radius: 2px; background: #EFEADF; }
+.pb-root .pages .pg b { height: 6px; width: 80%; border-radius: 3px; background: var(--pb-page-a); }
+.pb-root .pages .pg span { height: 3px; border-radius: 2px; background: var(--pb-page-b); }
 .pb-root .pages .pg em { position: absolute; left: 8px; bottom: 6px; font-size: 10px; font-style: normal; font-weight: 700; color: var(--t3); }
 .pb-root .pages .pg.hit { box-shadow: 0 0 0 2px var(--fk), var(--sh-node); }
 .pb-root .pages .pg.hit em { color: var(--fd); }
@@ -330,7 +332,7 @@
 .pb-root .mock3 { display: flex; gap: 14px; padding: 30px; }
 .pb-root .mock3 div { width: 140px; height: 190px; border-radius: 18px; background: var(--pb-card); box-shadow: var(--sh-node); padding: 16px; display: flex; flex-direction: column; gap: 8px; }
 .pb-root .mock3 div.mid { transform: translateY(-12px); box-shadow: 0 0 0 3px var(--pb-edge-strong), var(--sh-card); }
-.pb-root .mock3 b { height: 8px; width: 60%; border-radius: 4px; background: #DDE3EE; }
+.pb-root .mock3 b { height: 8px; width: 60%; border-radius: 4px; background: var(--pb-img-a); }
 .pb-root .mock3 i { height: 16px; width: 50%; border-radius: 4px; background: var(--pb-edge-strong); opacity: .6; }
 .pb-root .mock3 span { height: 5px; border-radius: 3px; background: var(--pb-fill); }
 .pb-root .webprev { flex: none; border-radius: 22px; background: var(--pb-card); box-shadow: var(--sh-node); overflow: hidden; }

@@ -4,7 +4,7 @@
  * frame 1204-1236). Every string keeps a spring pair for its sagging midpoint, so it hangs and swings as cards move.
  */
 import type { Edge, Id } from '../api/types';
-import { FAMC, STRING_COL } from '../lib/catalog';
+import { FAMC, stringColor } from '../lib/catalog';
 import { ancestors, canPlug, chatData, famOf, isChat, nameOf, sourceData, tubeW, wireKey, type Graph } from '../lib/graph';
 import { cut } from '../lib/format';
 import { icon } from './icons';
@@ -115,7 +115,7 @@ export function createStrings(ctx: EngineContext): StringsModule {
       w = { p, b, a, hit, k, edgeId: edge.id, from: edge.from, seen: true }; wires.set(key, w);
     }
     w.edgeId = edge.id; w.from = edge.from;
-    w.p.style.stroke = color; w.a.style.fill = `color-mix(in srgb, ${color} 30%, #6E6E73)`; w.k.style.setProperty('--kd', deep); w.seen = true;
+    w.p.style.stroke = color; w.a.style.fill = `color-mix(in srgb, ${color} 30%, var(--t2))`; w.k.style.setProperty('--kd', deep); w.seen = true;
     return w;
   }
 
@@ -148,7 +148,7 @@ export function createStrings(ctx: EngineContext): StringsModule {
   function startString(n: ViewNode, kind: 'src' | 'chat', e: PointerEvent): void {
     endLive(); selWire = null; paintSel(); store.select(n.id);
     const p = path('live'); ctx.tubes.append(p);
-    p.style.stroke = kind === 'src' ? STRING_COL[famOf(store.graph(), store.graph().cards.get(n.id)!)] : '#D2D2D7';
+    p.style.stroke = kind === 'src' ? stringColor(famOf(store.graph(), store.graph().cards.get(n.id)!)) : 'var(--pb-edge)';
     ctx.root.classList.add('stringing');
     ctx.root.querySelector('.tip')?.classList.remove('show');
     n.el.querySelector('.port[data-port]')?.classList.add('grab');
@@ -232,7 +232,7 @@ export function createStrings(ctx: EngineContext): StringsModule {
       const A = ctx.nodes.get(e.from), C = ctx.nodes.get(e.to); if (!A || !C) continue;
       const key = wireKey(e), card = g.cards.get(e.from)!;
       const fam = famOf(g, card), isAns = e.kind === 'answer';
-      const color = isAns ? STRING_COL.answer : STRING_COL[fam], deep = isAns ? '#6E6E73' : FAMC[fam][1];
+      const color = isAns ? stringColor('answer') : stringColor(fam), deep = isAns ? 'var(--t2)' : FAMC[fam][1];
       const fade = isAns
         ? !!selChat && selChat.id !== C.id && selChat.id !== A.id
         : !!selChat && selChat.id !== C.id && !ancestors(g, C.id).some((x) => x.id === selChat.id);

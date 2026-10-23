@@ -1,3 +1,4 @@
+import { isDark } from './theme';
 import type { AdvancedSettings, ChatData, ProviderId, SourceType } from '../api/types';
 
 export type Family = 'media' | 'docs' | 'note' | 'web' | 'data' | 'image' | 'mixed' | 'answer';
@@ -22,6 +23,13 @@ export const FAMC: Record<Family, [string, string]> = {
 export const STRING_COL: Record<Family, string> = {
   media: '#E3B7A3', docs: '#DCCB8C', note: '#E0B3C3', web: '#A9CBE0', data: '#AFCDA3', image: '#AEB9D3', mixed: '#D2D2D7', answer: '#D1D1D6',
 };
+
+/** The strings' colours on the dark canvas: the same hues, muted, so a string is seen but never louder than a card. */
+export const STRING_COL_DARK: Record<Family, string> = {
+  media: '#8A5A47', docs: '#8C7A3A', note: '#8E5069', web: '#4F7A96', data: '#5E8553', image: '#667AA3', mixed: '#5A5A5F', answer: '#636366',
+};
+/** The string colour for a family under the theme on screen (the strings are drawn from JavaScript, so CSS tokens cannot reach them). */
+export const stringColor = (f: Family): string => (isDark() ? STRING_COL_DARK[f] : STRING_COL[f]);
 
 export type ModelKey = 'claude' | 'gpt' | 'gemini' | 'gptoss' | 'deepseek' | 'mistral' | 'kimi';
 
