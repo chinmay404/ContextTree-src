@@ -8,7 +8,7 @@ import { colorOf } from '../lib/colors';
 import { keyErrorView } from '../lib/key-errors';
 import { modelMarkHtml } from '../lib/model-icons';
 import { cut, esc } from '../lib/format';
-import { answersInto, chatData, iconOf, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, wiresInto, type Graph } from '../lib/graph';
+import { answersInto, chatData, deskOf, iconOf, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, wiresInto, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
 import { webRowHTML } from '../lib/web-results';
 import { countSources, foldPiles, isRead, tokensRead } from '../lib/reads';
@@ -122,6 +122,7 @@ export class CardView {
     const sheets = pile && !set ? '<div class="sheet s2"></div><div class="sheet s1"></div>' : '';
     // zoomed out: a plain coloured pebble; the desk names carry the words (map view)
     if (this.ctx.size() === 'S') {
+      if (!pile && c.deskId) return '<div class="face"></div>';   // on a desk: counted in its question's label
       const label = pile ? `${nameOf(g, c)} (${membersOf(g, c.id).length})` : nameOf(g, c);
       return `<div class="face" title="${esc(label)}"><div class="maplabel srcl">${icon(iconOf(c))}<span class="nm">${esc(label)}</span></div></div>`;
     }
@@ -202,7 +203,12 @@ export class CardView {
   private chatHTML(_n: ViewNode, c: Card): string {
     const g = this.g, d = chatData(c), store = this.ctx.store, m = modelInfo(d.model);
     // zoomed out the board is a map of names: a chat is its question with its model's mark (a folded chat stays a mark)
-    if (this.ctx.size() === 'S' && !d.demoted) return `<div class="face" title="${esc(d.name)}"><div class="maplabel chatl" style="--c:${esc(m.color)}">${modelMarkHtml(m)}<span class="nm">${esc(d.name)}</span>${this.ctx.store.isStreaming(c.id) ? '<i class="rundot"></i>' : ''}</div></div>`;
+    if (this.ctx.size() === 'S' && !d.demoted) {
+      // the sources on its desk have no label of their own here: they ride on their question's, as dots and a count
+      const own = deskOf(g, c.id).filter((x) => x.sourceType !== 'pile');
+      const line = own.length ? `<span class="deskline">${dotsHTML(g, own)}<span>${own.length} ${own.length === 1 ? 'source' : 'sources'}</span></span>` : '';
+      return `<div class="face" title="${esc(d.name)}"><div class="maplabel chatl" style="--c:${esc(m.color)}"><span class="r1">${modelMarkHtml(m)}<span class="nm">${esc(d.name)}</span>${this.ctx.store.isStreaming(c.id) ? '<i class="rundot"></i>' : ''}</span>${line}</div></div>`;
+    }
     if (d.demoted) return `<div class="face" title="${esc(d.name)}"><div class="s blob">${modelMarkHtml(m)}</div></div>`;
     const items = store.readsOf(c.id).items, read = items.filter(isRead);
     const nRead = countSources(g, read);
@@ -255,7 +261,8 @@ export class CardView {
     const empty = chat && !(msgs?.length) && !(c.messageCount ?? 0) && !this.ctx.store.isStreaming(c.id);
     const keep = ['lift', 'drop', 'target'].filter((k) => n.el.classList.contains(k));
     const isSet = !chat && c.sourceType === 'pile' && sourceData(c).layout === 'open';
-    return ['card', chat ? 'chat' : `src f-${famOf(g, c)}${isSet ? ' set' : ''}`, `size-${this.ctx.size().toLowerCase()}`, c.id === sel && 'selected',
+    const folded = !chat && c.sourceType !== 'pile' && !!c.deskId && this.ctx.size() === 'S';   // in the map: part of its question's label
+    return ['card', folded && 'ondesk', chat ? 'chat' : `src f-${famOf(g, c)}${isSet ? ' set' : ''}`, `size-${this.ctx.size().toLowerCase()}`, c.id === sel && 'selected',
       !!rel && !rel.has(c.id) && 'faded', empty && 'empty', !chat && this.reading(c) && 'reading', !chat && st !== 'ready' && st,
       loose && (st === 'ready' || st === 'soon') && 'muted', chat && (c.data as ChatData).demoted && 'demoted', colorOf(c.data) && `tone-${colorOf(c.data)}`, ...keep]
       .filter(Boolean).join(' ');
@@ -297,6 +304,13 @@ export class CardView {
       if (d2) { d2.focus({ preventScroll: true }); const L = d2.value.length; d2.setSelectionRange(Math.min(dSel?.[0] ?? L, L), Math.min(dSel?.[1] ?? L, L)); }
     }
     n.h = el.offsetHeight;
+    if (S) this.applyNudge(n);
+  }
+
+  /** Puts the node's map-label nudge (see BoardEngine.nudgeLabels) on its freshly drawn label. */
+  applyNudge(n: ViewNode): void {
+    const l = n.el.querySelector<HTMLElement>('.maplabel');
+    if (l) { l.style.setProperty('--nx', String(n.nx ?? 0)); l.style.setProperty('--ny', String(n.ny ?? 0)); }
   }
 
   /** A later stream delta only touches `.ans.live` (prototype stream(), 877-883). False when a full render is needed. */

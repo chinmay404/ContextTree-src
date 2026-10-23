@@ -60,6 +60,7 @@ export class BoardEngine {
   private tipTimer: ReturnType<typeof setTimeout> | null = null;
   private tipWarm = 0;
   private dots: HTMLElement;
+  private nudgeKey = '';
   private dotKey = '';
 
   constructor(o: { store: BoardStore; root: HTMLElement; rm: boolean; showcase?: boolean }) {
@@ -400,7 +401,10 @@ export class BoardEngine {
     const want = this.ctx.showcase ? 'M' : this.size === 'S' ? (z > .5 ? 'M' : 'S') : (z < .42 ? 'S' : 'M');
     if (want !== this.size) { this.size = want; this.ctx.renderAll(); }
     this.ctx.world.style.transform = `translate3d(${this.camera.x.x}px,${this.camera.y.x}px,0) scale(${z})`;
-    if (this.size === 'S') this.ctx.world.style.setProperty('--iz', (1 / z).toFixed(3));   // the map's labels counter-scale to a steady size on screen
+    if (this.size === 'S') {
+      this.ctx.world.style.setProperty('--iz', (1 / z).toFixed(3));   // the map's labels counter-scale to a steady size on screen
+      this.nudgeLabels();
+    } else this.nudgeKey = '';
     this.paintDots(this.camera.x.x, this.camera.y.x, z);
     this.place();
     this.ctx.nodes.forEach((n) => {
@@ -413,6 +417,38 @@ export class BoardEngine {
     const m = this.ctx.modules;
     m.desks.frame(z); m.strings.frame(); m.persistence.frame(now);
     for (const cb of [...this.frameSubs]) cb(dt, now);
+  }
+
+  /**
+   * The map's labels keep one size on screen, so at low zoom they land on each other. After layout (and again whenever the zoom,
+   * a card or the size changes) they are pushed apart: chats first, so a question never moves for a source, then the rest in
+   * board order; a label that meets one already placed steps down below it, then right of it, up to 14 tries. Offsets are in
+   * screen px (`--nx`, `--ny`); the card and its strings stay where they are, the label drifts a little from its centre.
+   */
+  private nudgeLabels(): void {
+    const nodes = [...this.ctx.nodes.values()];
+    const key = `${this.camera.z.x.toFixed(3)}|${nodes.map((n) => `${n.id}:${Math.round(n.px.x)},${Math.round(n.py.x)},${Math.round(n.h)},${n.el.className.includes('ondesk') ? 1 : 0}:${n.el.textContent?.length ?? 0}`).join(';')}`;
+    if (key === this.nudgeKey) return;
+    this.nudgeKey = key;
+    const items = nodes.filter((n) => !n.el.classList.contains('ondesk')).map((n) => ({ n, el: n.el.querySelector<HTMLElement>('.maplabel') })).filter((x): x is { n: ViewNode; el: HTMLElement } => !!x.el);
+    items.sort((a, b) => Number(b.n.isChat) - Number(a.n.isChat));
+    for (const { n, el } of items) { n.nx = 0; n.ny = 0; el.style.setProperty('--nx', '0'); el.style.setProperty('--ny', '0'); }
+    const GAP = 6, placed: DOMRect[] = [];
+    const hit = (r: { left: number; right: number; top: number; bottom: number }) => placed.find((p) => r.left < p.right + GAP && p.left < r.right + GAP && r.top < p.bottom + GAP && p.top < r.bottom + GAP);
+    for (const { n, el } of items) {
+      const b = el.getBoundingClientRect();
+      let dx = 0, dy = 0;
+      for (let i = 0; i < 14; i++) {
+        const r = { left: b.left + dx, right: b.right + dx, top: b.top + dy, bottom: b.bottom + dy };
+        const p = hit(r);
+        if (!p) break;
+        if (i < 9) dy += p.bottom + GAP - r.top;      // down, past what is in the way
+        else dx += p.right + GAP - r.left;            // then sideways
+      }
+      n.nx = Math.round(dx); n.ny = Math.round(dy);
+      el.style.setProperty('--nx', String(n.nx)); el.style.setProperty('--ny', String(n.ny));
+      placed.push(new DOMRect(b.left + dx, b.top + dy, b.width, b.height));
+    }
   }
 
   // ---- tooltips (prototype 1192-1193) ----

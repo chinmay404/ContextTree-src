@@ -1,11 +1,21 @@
 /* The zoomed-out board is a map of names (P7). Below the size threshold every card is a label: it keeps one size on screen
    whatever the zoom (the world's scale is handed over as --iz = 1 / zoom), so a name stays readable at 20% and at 40%. */
+.pb-root .card.size-s { pointer-events: none; }   /* the card's own box is tiny against its label: only the label takes the pointer */
 .pb-root .card.size-s .face { background: none; box-shadow: none; border-radius: 0; padding: 0; height: 44px; }
-.pb-root .card.size-s .maplabel { position: absolute; left: 50%; top: 50%; width: max-content; max-width: 188px; display: flex; align-items: center; gap: 7px; padding: 7px 13px 7px 11px; border-radius: 999px; font-weight: 700; line-height: 1.25; letter-spacing: -.005em; color: var(--t1); text-align: left;
-  transform: translate(-50%, -50%) scale(var(--iz, 1)); transform-origin: 50% 50%; box-shadow: 0 0 0 .5px var(--hairline), var(--sh-float); transition: box-shadow 160ms ease; }
+.pb-root .card.size-s .maplabel { pointer-events: auto; position: absolute; left: 50%; top: 50%; width: max-content; max-width: 188px; display: flex; align-items: center; gap: 7px; padding: 7px 13px 7px 11px; border-radius: 999px; font-weight: 700; line-height: 1.25; letter-spacing: -.005em; color: var(--t1); text-align: left;
+  transform: translate(-50%, -50%) scale(var(--iz, 1)); transform-origin: 50% 50%;
+  translate: calc(var(--nx, 0) * var(--iz, 1) * 1px) calc(var(--ny, 0) * var(--iz, 1) * 1px);   /* the overlap pass's nudge, in screen px */
+  box-shadow: 0 0 0 .5px var(--hairline), var(--sh-float); transition: box-shadow 160ms ease; }
 .pb-root .card.size-s .maplabel .nm { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 /* a question: its model's colour family, the mark in front */
-.pb-root .card.size-s .maplabel.chatl { font-size: 14px; background: color-mix(in srgb, var(--c) 15%, var(--pb-card)); }
+.pb-root .card.size-s .maplabel.chatl { font-size: 14px; background: color-mix(in srgb, var(--c) 15%, var(--pb-card)); flex-direction: column; align-items: flex-start; gap: 3px; border-radius: 18px; padding: 7px 13px 7px 11px; }
+.pb-root .card.size-s .maplabel.chatl .r1 { display: flex; align-items: center; gap: 7px; min-width: 0; max-width: 100%; }
+.pb-root .card.size-s .maplabel .deskline { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--t2); white-space: nowrap; }
+.pb-root .card.size-s .maplabel .deskline .dots { display: inline-flex; }
+.pb-root .card.size-s .maplabel .deskline .dots i { width: 8px; height: 8px; border-radius: 4px; margin-left: -2px; box-shadow: 0 0 0 1.5px var(--pb-card); }
+.pb-root .card.size-s .maplabel .deskline .dots i:first-child { margin-left: 0; }
+/* a source on a desk: its question's label counts it, so it has no label here */
+.pb-root .card.size-s.ondesk { visibility: hidden; pointer-events: none; }
 .pb-root .card.size-s .maplabel.chatl .mmark { width: 15px; height: 15px; flex: none; }
 /* a source: smaller and lighter, in its family tint with its type icon */
 .pb-root .card.size-s .maplabel.srcl { font-size: 11.5px; font-weight: 600; background: var(--fc); color: var(--fx); gap: 6px; padding: 5px 11px 5px 8px; }

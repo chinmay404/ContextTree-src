@@ -24,18 +24,23 @@ test('zoomed out, every card is a name: chats by their question, sources by thei
   await openBoard(page);
   await zoomTo(page, 0.3);
   expect(await page.evaluate(() => window.__board!.size())).toBe('S');
-  const labels = await page.locator('.card.size-s .maplabel').evaluateAll((els) => els.map((e) => ({ id: (e.closest('.card') as HTMLElement).dataset.id!, text: e.textContent!.trim() })));
+  const labels = await page.locator('.card.size-s .maplabel').evaluateAll((els) => els.map((e) => ({ id: (e.closest('.card') as HTMLElement).dataset.id!, text: e.textContent!.replace(/\s+/g, ' ').trim() })));
   const by = Object.fromEntries(labels.map((l) => [l.id, l.text]));
-  expect(labels.length).toBe(12);                                           // the 12 cards on the board: chats, sources and the pile
+  // a source on a desk is folded into its question's label; chats, loose sources, piles and sets have their own
+  const own = await page.evaluate(() => window.__board!.cards().filter((c) => !c.pileId && (c.kind === 'chat' || c.sourceType === 'pile' || !c.deskId)).map((c) => c.id).sort());
+  expect(labels.map((l) => l.id).sort()).toEqual(own);
+  expect(labels.length).toBeLessThan(12);
   expect(by.main).toContain('How should I price Context Tree?');
   expect(by.side).toContain('What does value-based pricing mean?');
   expect(by.second).toContain('Second opinion with real customers');
   expect(by.deep).toContain('Would a team plan change this?');
-  expect(by.pdf).toContain('Pricing survey 2025');
   expect(by.csv).toContain('Competitor prices');
-  expect(by.web).toContain('Why we doubled our price');
   expect(by.interviews).toContain('Customer interviews');
   expect(by.interviews).toContain('4');                                     // a pile says how many it holds
+  // the desk's sources ride on their question's label as a second line: dots and a count
+  expect(by.main).toContain('3 sources');
+  await expect(page.locator('[data-id="main"] .maplabel .deskline .dots i')).toHaveCount(3);
+  await expect(page.locator('[data-id="pdf"] .maplabel')).toHaveCount(0);
   await expect(page.locator('.card.size-s')).toHaveCount(12);               // the class the acceptance specs lean on stays
   await expect(page.locator('.card.size-s .s.blob')).toHaveCount(0);        // no blobs any more
   await page.screenshot({ path: shot('map-of-names') });
@@ -61,7 +66,7 @@ test('the labels stay readable at any zoom: 11 to 16 px on screen at 20% and at 
   for (const z of [0.2, 0.4]) {
     await zoomTo(page, z);
     const chat = await screenFont(page, '[data-id="main"] .maplabel .nm');
-    const src = await screenFont(page, '[data-id="pdf"] .maplabel .nm');
+    const src = await screenFont(page, '[data-id="csv"] .maplabel .nm');
     for (const px of [chat, src]) { expect(px, `z ${z}`).toBeGreaterThanOrEqual(11); expect(px, `z ${z}`).toBeLessThanOrEqual(16); }
     expect(chat).toBeGreaterThan(src);                                       // a question outranks a source
   }
@@ -74,7 +79,7 @@ test('a chat label carries its model mark in its colour; a source label its type
   await zoomTo(page, 0.3);
   await expect(page.locator('[data-id="main"] .maplabel svg.mmark')).toHaveCount(1);
   expect(await page.locator('[data-id="main"] .maplabel').evaluate((e) => getComputedStyle(e).getPropertyValue('--c').trim())).toBe('#E0673A');   // Claude's colour
-  await expect(page.locator('[data-id="pdf"] .maplabel .i')).toHaveCount(1);
+  await expect(page.locator('[data-id="csv"] .maplabel .i')).toHaveCount(1);
   const lines = await page.locator('[data-id="main"] .maplabel .nm').evaluate((e) => { const s = getComputedStyle(e); return Math.round(e.getBoundingClientRect().height / (parseFloat(s.lineHeight) * (e.getBoundingClientRect().width / (e as HTMLElement).offsetWidth))); });
   expect(lines).toBeLessThanOrEqual(2);
 });
@@ -103,15 +108,76 @@ test('a chat that is answering shows a dot on its label', async ({ page }) => {
 
 test('a coloured card keeps its colour in the map', async ({ page }) => {
   await openBoard(page);
-  await page.evaluate(() => window.__mock!.updateCard('b_seed', 'pdf', { data: { color: 'blue' } }));
+  await page.evaluate(() => window.__mock!.updateCard('b_seed', 'csv', { data: { color: 'blue' } }));
   await page.evaluate(() => window.__board!.refresh());
   await zoomTo(page, 0.3);
-  expect(await page.locator('[data-id="pdf"] .maplabel').evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgb(220, 233, 247)');
+  expect(await page.locator('[data-id="csv"] .maplabel').evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgb(220, 233, 247)');
 });
 
-test('sets and notes are named too', async ({ page }) => {
+test('a note on a desk is folded in; a loose note, and a set, keep their own labels', async ({ page }) => {
   await openBoard(page);
   await page.evaluate(() => window.__board!.refresh());
   await zoomTo(page, 0.3);
+  await expect(page.locator('[data-id="note"] .maplabel')).toHaveCount(0);        // on a desk: part of its question's label
+  await page.evaluate(() => window.__mock!.updateCard('b_seed', 'note', { deskId: null }));
+  await page.evaluate(() => window.__board!.refresh());
+  await page.waitForTimeout(300);
   await expect(page.locator('[data-id="note"] .maplabel')).toContainText('Costs');
+  await page.click('[data-pb="add"]'); await page.click('[data-pb="menu"] [data-m="set"]');
+  await expect(page.locator('.card.set .maplabel')).toContainText('New set (0)');
+});
+
+for (const z of [0.2, 0.3, 0.4]) {
+  test(`at ${z * 100}% no two labels overlap and every question can be read`, async ({ page }) => {
+    await openBoard(page);
+    await zoomTo(page, z);
+    await page.waitForTimeout(300);
+    const r = await page.evaluate(() => {
+      const labels = [...document.querySelectorAll<HTMLElement>('.card.size-s .maplabel')];
+      const rects = labels.map((l) => { const b = l.getBoundingClientRect(); return { id: (l.closest('.card') as HTMLElement).dataset.id!, l: b.left, t: b.top, r: b.right, b: b.bottom }; });
+      const overlaps: string[] = [];
+      for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i], c = rects[j];
+        if (a.l < c.r && c.l < a.r && a.t < c.b && c.t < a.b) overlaps.push(`${a.id}/${c.id}`);
+      }
+      // the question of every chat: what is under the label's centre is that label
+      const covered = labels.filter((l) => (l.closest('.card') as HTMLElement).classList.contains('chat')).filter((l) => {
+        const b = l.getBoundingClientRect(), hit = document.elementFromPoint((b.left + b.right) / 2, (b.top + b.bottom) / 2);
+        return hit?.closest('.maplabel') !== l;
+      }).map((l) => (l.closest('.card') as HTMLElement).dataset.id);
+      const visible = labels.filter((l) => (l.closest('.card') as HTMLElement).classList.contains('chat')).every((l) => { const b = l.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight; });
+      return { n: labels.length, overlaps, covered, visible };
+    });
+    expect(r.n).toBeGreaterThan(5);
+    expect(r.overlaps, 'overlapping label pairs').toEqual([]);
+    expect(r.covered, 'chat labels with something on top').toEqual([]);
+    expect(r.visible).toBe(true);
+    await page.screenshot({ path: shot(`map-of-names-${Math.round(z * 100)}`) });
+  });
+}
+
+test('the strings still reach the labels after they are nudged apart', async ({ page }) => {
+  await openBoard(page);
+  await zoomTo(page, 0.3);
+  await page.waitForTimeout(300);
+  const far = await page.evaluate(() => {
+    const out: string[] = [];
+    for (const c of window.__board!.chats()) {
+      if (!c.parentId) continue;
+      const lab = document.querySelector<HTMLElement>(`[data-id="${c.id}"] .maplabel`)!.getBoundingClientRect(), card = document.querySelector<HTMLElement>(`[data-id="${c.id}"]`)!.getBoundingClientRect();
+      const cx = (lab.left + lab.right) / 2, cy = (lab.top + lab.bottom) / 2, nx = (card.left + card.right) / 2, ny = (card.top + card.bottom) / 2;
+      if (Math.hypot(cx - nx, cy - ny) > 140) out.push(c.id);               // a label stays close to the card it names
+    }
+    return out;
+  });
+  expect(far).toEqual([]);
+});
+
+test('the map in dark: same labels, same layout', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ct-theme', 'dark'));
+  await openBoard(page);
+  await zoomTo(page, 0.3);
+  await page.waitForTimeout(400);
+  expect(await page.locator('.card.chat .maplabel').first().evaluate((e) => getComputedStyle(e).color)).toBe('rgb(245, 245, 247)');
+  await page.screenshot({ path: shot('map-of-names-30-dark') });
 });
