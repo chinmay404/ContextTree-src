@@ -220,7 +220,7 @@ export class HttpEngineApi implements EngineApi {
     let coded = false; // a coded error frame (key_rejected) ends the stream without [DONE]
     const emit = (events: unknown[]) => {
       for (const ev of events) {
-        const p = ev as { error?: unknown; code?: unknown; provider?: unknown; summary?: unknown; web_search?: { results?: { title?: string; url?: string }[] }; message?: unknown; delta?: unknown } | null;
+        const p = ev as { error?: unknown; code?: unknown; provider?: unknown; summary?: unknown; web_search?: { query?: string; results?: { title?: string; url?: string }[] }; message?: unknown; delta?: unknown } | null;
         if (!p) continue;
         if (p.error) {
           const code = isCode(p.code) ? p.code : undefined;
@@ -229,7 +229,7 @@ export class HttpEngineApi implements EngineApi {
           continue;
         }
         if (typeof p.summary === 'string' && p.summary) onEvent({ type: 'summary', text: p.summary });
-        if (p.web_search?.results) onEvent({ type: 'web', results: p.web_search.results });
+        if (p.web_search?.results) onEvent({ type: 'web', results: p.web_search.results, ...(typeof p.web_search.query === 'string' && p.web_search.query ? { query: p.web_search.query } : {}) });
         const chunk = p.message ?? p.delta;
         if (typeof chunk === 'string' && chunk) onEvent({ type: 'delta', text: chunk });
       }

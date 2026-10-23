@@ -81,9 +81,34 @@ test('web search shows its results first', async ({ page }) => {
   const web = page.locator(`${F} .fcomp .cp`, { hasText: 'Web' });
   await expect(web).not.toHaveClass(/on/); await web.click(); await expect(web).toHaveClass(/on/);
   await page.locator(`${F} .fcomp textarea`).fill('Compare pricing pages'); await page.keyboard.press('Enter');
-  await expect(page.locator(`${F} .webrow`)).toContainText('Pricing pages compared');
+  await expect(page.locator(`${F} .wchip`)).toContainText('Pricing pages compared');
   await expect(page.locator(`${F} .art`).last()).toContainText('try $12 a month', { timeout: 5000 });
-  await expect(page.locator(`${F} .webrow`)).toHaveCount(1);   // it stays above its answer
+  await expect(page.locator(`${F} .wchip`)).toHaveCount(1);   // it stays above its answer
+  await expect(page.locator(`${F} .wh`)).toContainText('Searched the web for “Compare pricing pages”');
+  const chip = page.locator(`${F} a.wchip`);
+  await expect(chip).toHaveAttribute('target', '_blank');
+  await expect(chip).toHaveAttribute('rel', 'noopener noreferrer');
+  await expect(page.locator(`${F} .art .who`).last()).toContainText('answered with 2 sources · 1 web');
+});
+
+test('web chips stay on one line and scroll sideways', async ({ page }) => {
+  await openBoard(page, '?firstTokenMs=100&wordMs=5'); await openFocus(page, 'main');
+  await page.locator(`${F} .fcomp .cp`, { hasText: 'Web' }).click();
+  await page.locator(`${F} .fcomp textarea`).fill('Compare pricing pages'); await page.keyboard.press('Enter');
+  await expect(page.locator(`${F} .art.live`)).toHaveCount(0, { timeout: 8000 });
+  await page.waitForTimeout(1000);
+  await expect(page.locator(`${F} .wchip`)).toHaveCount(1);
+  await page.evaluate(() => {
+    const sc = document.querySelector('.wscroll')!;
+    for (let i = 0; i < 12; i++) { const a = sc.firstElementChild!.cloneNode(true) as HTMLElement; sc.appendChild(a); }
+  });
+  const m = await page.evaluate(() => {
+    const sc = document.querySelector('.wscroll') as HTMLElement;
+    const tops = [...sc.children].map((c) => Math.round(c.getBoundingClientRect().top));
+    sc.scrollLeft = 200;
+    return { oneLine: new Set(tops).size === 1, over: sc.scrollWidth > sc.clientWidth, moved: sc.scrollLeft > 0, h: sc.getBoundingClientRect().height };
+  });
+  expect(m).toMatchObject({ oneLine: true, over: true, moved: true }); expect(m.over).toBe(true); expect(m.moved).toBe(true); expect(m.h).toBeLessThan(50);
 });
 
 test('re-ask a question in a new branch', async ({ page }) => {
@@ -293,4 +318,15 @@ test('reply actions show on hover or focus-within only', async ({ page }) => {
   await expect.poll(() => op(copy), { timeout: 3000 }).toBe(1);
   const dur = await copy.evaluate((el) => getComputedStyle(el).transitionDuration);
   expect(dur.split(',').every((d) => parseFloat(d) <= 0.15)).toBe(true);
+});
+
+test('on the board card the web results collapse to one chip', async ({ page }) => {
+  await openBoard(page, '?firstTokenMs=100&wordMs=150'); await openFocus(page, 'main');
+  await page.locator(`${F} .fcomp .cp`, { hasText: 'Web' }).click();
+  await page.locator(`${F} .fcomp textarea`).fill('Compare pricing pages'); await page.keyboard.press('Enter');
+  await expect(page.locator(`${F} .wchip`)).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  const chip = page.locator('[data-id="main"] .webline .wchip.count');
+  await expect(chip).toHaveText('1 web result');
+  expect(await page.locator('[data-id="main"] .webline a').count()).toBe(0);
 });

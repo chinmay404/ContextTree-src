@@ -37,7 +37,7 @@ export interface UiState { selected: Id | null; dialog: DialogState | null;
   cardMenu: { x: number; y: number; cardId: Id } | null }
 
 /** One chat's answer in flight, or its kept error. `asked` is the question being answered (a key error re-asks it). */
-export interface StreamState { messageId: string; text: string; web: { title?: string; url?: string }[] | null; error: string | null;
+export interface StreamState { messageId: string; text: string; web: { title?: string; url?: string }[] | null; webQuery?: string; error: string | null;
   code?: StreamErrorCode; provider?: ProviderId; asked: string }
 
 export interface BoardSnapshot { version: number; status: 'loading' | 'ready' | 'error'; error: string | null;
@@ -1204,7 +1204,7 @@ export class BoardStore {
       };
       await this.api.streamChat(req, (e) => {
         if (e.type === 'delta') update({ text: (this.streams.get(chatId)?.text ?? '') + e.text });
-        else if (e.type === 'web') update({ web: e.results });
+        else if (e.type === 'web') update({ web: e.results, webQuery: e.query });
         else if (e.type === 'error') { errored = true; update({ error: e.message, code: e.code, provider: e.provider }); }
       }, ctrl.signal);
     } catch (e) {

@@ -26,9 +26,10 @@ import type { StreamState } from '../store';
 import { Icon } from './Icon';
 import { useEscape } from './escape';
 import { readRows, sourceRows, type SourceRow } from './focus-rows';
+import { sourcesPhrase, webRowHTML } from '../lib/web-results';
 
 type Rect = { l: number; t: number; r: number; b: number; rad: number };
-type Web = { title?: string; url?: string }[];
+type Web = { results: { title?: string; url?: string }[]; query?: string };
 
 const FALLBACK = (): Rect => ({ l: innerWidth / 2 - 120, t: innerHeight / 2 - 80, r: innerWidth / 2 - 120, b: innerHeight / 2 - 80, rad: 20 });
 const FOCUSABLE = 'button:not([disabled]), textarea:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -52,8 +53,6 @@ function rowMeta(g: Graph, r: SourceRow): string {
   return d.meta || TYPE_INFO[c.sourceType ?? 'pdf'].label;
 }
 
-const safeUrl = (u?: string): string | null => (u && /^https?:\/\//i.test(u) ? u : null);
-const host = (u?: string): string => { try { return u ? new URL(u).host : ''; } catch { return ''; } };
 
 export function FocusView(): ReactElement {
   const { store, engine } = useBoard();
@@ -179,7 +178,7 @@ export function FocusView(): ReactElement {
   const stream = id ? snap.streaming.get(id) : undefined;
   const msgs: Message[] = id ? snap.messages.get(id) ?? [] : [];
   // Keyed `<messageId>_a`: the id the engine gives the assistant message of this stream (api contract), so the list finds its answer after the stream ends.
-  useEffect(() => { if (stream?.web) webMap.current.set(`${stream.messageId}_a`, stream.web); });
+  useEffect(() => { if (stream?.web) webMap.current.set(`${stream.messageId}_a`, { results: stream.web, query: stream.webQuery }); });
 
   let body: ReactElement | null = null;
   if (id && chat && isChat(chat)) {
@@ -264,22 +263,9 @@ function FocusBody(p: {
   const who = (text: string): ReactElement => (
     <div className="who"><span className="av" style={{ '--c': mi.color } as CSSProperties}><ModelMark model={mi} /></span>{text}</div>
   );
-  const webRows = (list: Web | null | undefined): ReactElement | null => (list?.length ? (
-    <div className="webrows">
-      {list.map((w, i) => {
-        const url = safeUrl(w.url);
-        const inner = (
-          <>
-            <span className="tile"><Icon name="globe" /></span>
-            <div><div className="q1">{w.title || host(w.url) || 'Web result'}</div><div className="q2">{host(w.url)}</div></div>
-          </>
-        );
-        return url
-          ? <a key={i} className="webrow f-web" href={url} target="_blank" rel="noopener noreferrer">{inner}</a>
-          : <div key={i} className="webrow f-web">{inner}</div>;
-      })}
-    </div>
-  ) : null);
+  const webRows = (w: Web | null | undefined): ReactElement | null => (w?.results.length
+    ? <div className="webrows" dangerouslySetInnerHTML={{ __html: webRowHTML(w.results, w.query, false) }} /> : null);
+  const nSrc = (w?: Web | null): string => sourcesPhrase(read.length, w?.results.length ?? 0);
 
   return (
     <>
@@ -374,7 +360,7 @@ function FocusBody(p: {
                 <div key={m.id} className="amsg">
                   {webRows(webMap.get(m.id))}
                   <article className="art">
-                    {who(`${mi.name} answered with ${read.length} source${read.length === 1 ? '' : 's'}`)}
+                    {who(`${mi.name} answered with ${nSrc(webMap.get(m.id))}`)}
                     <div className="body" dangerouslySetInnerHTML={{ __html: html }} />
                     <div className="aacts">
                       <button type="button" data-copy onClick={() => copy(m)}><Icon name="copy" />{copied === m.id ? 'Copied' : 'Copy'}</button>
@@ -387,10 +373,10 @@ function FocusBody(p: {
             })}
             {stream && !stream.error ? (
               <div className="amsg" key="live">
-                {webRows(stream.web)}
+                {webRows(stream.web ? { results: stream.web, query: stream.webQuery } : null)}
                 {stream.text ? (
                   <article className="art live" aria-busy="true">
-                    {who(`${mi.name} is answering with ${read.length} source${read.length === 1 ? '' : 's'}`)}
+                    {who(`${mi.name} is answering with ${nSrc(stream.web ? { results: stream.web, query: stream.webQuery } : null)}`)}
                     <div className="body" dangerouslySetInnerHTML={{ __html: renderMarkdown(stream.text) }} />
                   </article>
                 ) : (

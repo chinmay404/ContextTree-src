@@ -65,15 +65,15 @@
 .pb-root .fcomp .box { border-radius: var(--r-sheet); }
 
 /* ---- rows, bubbles, tiles ---- */
-.pb-root .tile, .pb-root .tile img, .pb-root .vhead .tile, .pb-root .quote .tile, .pb-root .webrow .tile, .pb-root .srow .tile { border-radius: var(--r-tile); }
+.pb-root .tile, .pb-root .tile img, .pb-root .vhead .tile, .pb-root .quote .tile, .pb-root .srow .tile { border-radius: var(--r-tile); }
 .pb-root .s .tile { border-radius: 18px; }
 .pb-root .pages .pg { border-radius: var(--r-tile); }
 .pb-root .qb, .pb-root .thinking, .pb-root .compose textarea, .pb-root .exl, .pb-root .desc, .pb-root .vside .desc,
 .pb-root .used > span, .pb-root .ts .row, .pb-root .srow, .pb-root .passages button, .pb-root .members button,
-.pb-root .quote, .pb-root .webrow, .pb-root .soonbox, .pb-root .fi, .pb-root .fta, .pb-root .tog, .pb-root .tbl,
+.pb-root .quote, .pb-root .wchip, .pb-root .soonbox, .pb-root .fi, .pb-root .fta, .pb-root .tog, .pb-root .tbl,
 .pb-root .tl .cur { border-radius: var(--r-row); }
 .pb-root .ub { border-radius: var(--r-row) var(--r-row) 6px var(--r-row); }
-.pb-root .srow, .pb-root .used > span, .pb-root .webrow, .pb-root .quote, .pb-root .soonbox, .pb-root .members button { box-shadow: 0 0 0 .5px var(--hairline); }
+.pb-root .srow, .pb-root .used > span, .pb-root .wchip, .pb-root .quote, .pb-root .soonbox, .pb-root .members button { box-shadow: 0 0 0 .5px var(--hairline); }
 .pb-root .srow.off { box-shadow: 0 0 0 .5px var(--hairline); }
 
 /* ---- hairlines instead of 1px lines ---- */

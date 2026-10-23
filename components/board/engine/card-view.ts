@@ -10,6 +10,7 @@ import { modelMarkHtml } from '../lib/model-icons';
 import { cut, esc } from '../lib/format';
 import { answersInto, chatData, iconOf, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, wiresInto, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
+import { webRowHTML } from '../lib/web-results';
 import { countSources, foldPiles, isRead, tokensRead } from '../lib/reads';
 import { icon } from './icons';
 import type { BoardStore } from '../store';
@@ -199,6 +200,7 @@ export class CardView {
     }
     else if (stream && stream.text) live = `<div class="ans live">${renderMarkdown(stream.text)}</div>`;
     else if (streaming) live = `<div class="thinking"><i></i>Thinking with ${nRead} source${nRead === 1 ? '' : 's'}…</div><div class="skel"><i style="width:92%"></i><i style="width:76%"></i><i style="width:84%"></i></div>`;
+    if (stream?.web?.length) live = webRowHTML(stream.web, stream.webQuery, true) + live;
     const ap = (a: string, ico: string, label: string) => `<button class="apill" data-act="${a}">${icon(ico)}${label}</button>`;
     const incoming = !!c.parentId || answersInto(g, c.id).length > 0 || wiresInto(g, c.id).length > 0;
     const outgoing = kids(g, c.id).length > 0 || edgesFrom(g, c.id).some((e) => e.kind === 'answer');

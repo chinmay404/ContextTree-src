@@ -446,9 +446,6 @@
 .pb-root .pb-confirm .sheetbox.dlg { width: min(440px, calc(100vw - 32px)); }
 .pb-root .err { font-size: 12px; color: var(--failed); }
 .pb-root .soonbox { background: var(--pb-desk); border-radius: 18px; padding: 16px; font-size: 15px; line-height: 1.5; color: var(--t1); }
-.pb-root .webrow { display: flex; gap: 12px; background: var(--pb-desk); border-radius: 18px; padding: 14px 16px; text-align: left; width: 100%; }
-.pb-root .webrow .tile { width: 32px; height: 32px; border-radius: 10px; background: var(--fc); }
-.pb-root .webrow .tile .i { --s: 15px; }
 
 /* reduced motion, per component (never a blanket * override: it can turn a loop into a strobe) */
 @media (prefers-reduced-motion: reduce) {
