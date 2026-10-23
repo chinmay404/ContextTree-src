@@ -183,3 +183,45 @@ soft shadows, and lines are 0.5px hairlines." Plus "canvas like Miro with dots o
   (dots are static relative to the board).
 - Tests: the glass fallback rule exists; the dot layer's background-size/position change with `camSnap` zoom/pan;
   screenshots of board (100% and 40%), focus view, branch sheet, viewer, tour.
+
+### Task P8: Drag a desk by its box (owner, 2026-10-20)
+
+Owner: "right now I can drag all of this with the chat node but can't drag with the BOX — we want to drag with the chat
+node and the box, not with the context nodes." Today pressing a desk's empty area (or its title tab) pans the board.
+- Pressing and dragging a desk's empty area or its title tab moves the whole desk group exactly like dragging its chat
+  card (chat + every source on the desk, same springs, same makeRoom/separateDesks on drop, same single position save).
+- Dragging a source card still moves only that card (and can take it off the desk, as today). Dragging empty canvas
+  outside desks still pans. Double-click on a desk's empty area keeps its current behaviour.
+- Cursor: `grab`/`grabbing` on the desk box; text inside the title tab is not selectable during a drag.
+- Tests: drag a desk by its empty area → chat and all its sources move by the same delta; drag by the title tab → same;
+  drag a source → only it moves; drag empty canvas → camera pans, no card moves; one savePositions after the drop.
+
+### Task P9: Change a card's colour (owner, 2026-10-21)
+
+Owner: "I want something by which I can change the colour of nodes."
+- Any card (chat or source) can take a colour from a fixed palette of 8 Apple-like, muted tones: Default (no tint),
+  Graphite, Blue, Teal, Green, Yellow, Orange, Red, Pink (no purple — owner removed it). Stored as `data.color`
+  (`'graphite' | 'blue' | …`, absent = default) through the normal card PATCH; the engine stores `data` as-is (no
+  engine change; contract note added).
+- Where: right-click a card → a "Colour" row of 9 swatches (current one ringed); the same swatches in the focus view's
+  "…" menu. Keyboard: the swatches are a radio group (arrow keys, Enter). Undo is not needed (re-pick).
+- Look: a coloured source card replaces its family tint with the chosen tone (same lightness band, contrast ≥ 4.5:1 for
+  its text — reuse palette.test's contrast check); a coloured chat gets a tinted header strip + a 2 px tinted rim, body
+  stays white for reading. The card's strings keep their meaning colours. The zoomed-out map uses the colour too.
+  Piles: colouring a pile colours its face, not the members.
+- Tests: pick a colour → PATCH `{data:{color}}` once, the face shows the tone, reload keeps it; Default removes the key;
+  the radio group is keyboard-operable; contrast unit test for all tones.
+
+### Task P10: Show which way a string goes (owner, 2026-10-21)
+
+Owner: "how can I know which is going from where — where it starts and ends via those edges — any arrow or something?"
+- **Arrowhead at the receiving end** of every string: source → the chat that reads it; lineage parent → child question;
+  answer → the chat that uses that answer. Small (≈ 7 px), neutral (the string's own colour), sitting just outside the
+  receiving port so it never covers it; scales with zoom like the string; hidden in the zoomed-out map below 35 % if it
+  becomes noise.
+- **Flow on focus**: the strings of the selected card, and a hovered string, show soft dots flowing from start to end
+  (stroke-dasharray animation, ~1.2 s per cycle, ease linear). Only those strings animate; others stay still.
+  `prefers-reduced-motion: reduce` → arrows only, no motion.
+- **Hover label**: hovering a string shows "<start name> → <end name>" near the pointer (the Disconnect pill keeps working).
+- Tests: every string kind renders an arrow marker at its `to` end; selecting a chat animates exactly its strings;
+  reduced motion → no animation; hover label text; the 24 + 6 acceptance specs stay green.

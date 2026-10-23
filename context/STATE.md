@@ -1,35 +1,34 @@
 # State — Context Tree
 
-_Updated: 2026-10-19 by Claude (with owner) · at commit d47aef3_
+_Updated: 2026-10-23 by Claude (with Chinmay) · at commit 20b3535_
 
 ## Where we are
-V3 build in progress (subagent-driven, one task at a time per repo, each reviewed). Plans: `docs/superpowers/plans/2026-10-19-v3-{engine,board-frontend,integration}.md` + `…-v3-api-contract.md`. Ledgers (git-ignored): `ContextTree/.superpowers/sdd/2026-10-19-v3-engine/progress.md`, `ContextTree-src/.superpowers/sdd/2026-10-19-v3-board-frontend/progress.md`.
-- Engine (`ContextTree` branch `v3`, local only): Tasks 1–11 done; 12 (ingestion) in fix review; 13–15 left.
-- Board (`ContextTree-src` branch `v3`): Tasks 1–8 done; 9 (board shell on `/board-dev`) in progress; 10–20 left.
-- Local servers for the owner: Next `:3100` (`/board-dev`), engine `:8000` against local Docker DB `v3dev` (container `ctx-pg`, port 55432), prototype `:8090`.
+V3 is on main in both repos and deployed to Vercel (frontend and engine; Railway is retired). Board polish round 2 is done except P16. Plans: `docs/superpowers/plans/2026-10-2*-v3-*.md`; ledgers in `.superpowers/sdd/` (git-ignored).
+- Frontend `ContextTree-src` main @20b3535 (= branch `v3`): Apple-grey look + dark mode (System/Light/Dark), app shell, BYOK for seven providers, paste box (V), string arrows, card colours, desk glow, browser Back, note formatting, one-line web results, source sets, branch slide, map of names.
+- Engine `ContextTree` main @aab02a2: citations, BYOK, Vercel ingest route, guarded page fetcher (size/time caps), standalone web-search query, chat turns off the event loop.
+- Local: :3100 board test server (no V3 flag, so landing/sign-in e2e need a flagged server), :3101 dev server.
 
 ## What moved
-- 2026-10-19: owner returned after a ~3-month pause; decided to continue; competitor study of Slashspace done; `context/` created.
-- 2026-10-19: design frozen; V3 spec written (`docs/superpowers/specs/2026-10-19-v3-board-design.md`): Pebble board as the frontend, same FastAPI engine, FastAPI becomes the only writer. Approved with owner answers (fresh boards, replace V2, video/image/audio reading coming soon, same DB).
-- 2026-10-19 (last design round): What if removed; knob-drag strings for connecting and branching; double-click viewers per source type; Add button + right-click menu replace the rail; scroll cycles piles; swinging strings back.
-- Last code change: fresh forks no longer vanish after first reply (20b3e37, 2026-07-24).
+- 2026-10-21: released to main and Vercel; engine moved off Railway.
+- 2026-10-23: search rewrite + one-line results; polish-2 P9–P15, P13 dark mode (board + shell), S3 sets, P4 branch slide, P7 map of names (with overlap + string-anchor fixes) all pushed.
 
 ## What's live
 | Env | Running | Since |
 |---|---|---|
-| prod frontend (Vercel, contexttree.tech) | d47aef3 (main) | 2026-07-24 |
-| prod backend (Railway) | 049bfa1 (ContextTree main) | 2026-07-24 |
+| prod frontend (Vercel, contexttree.tech) | main, auto-deploy (last checked by owner after 09fae64) | 2026-10-21 |
+| prod engine (Vercel) | main | 2026-10-21 |
 
 ## Not done yet
-- V3 design rounds R1–R5 (`DIRECTION.md` → "How we are working").
-- Single writer: Next.js and FastAPI both still write canvas/node/message data.
-- Payments (Stripe) — never built. Legal review of /privacy + /terms.
+- P16 "Read all of it" per source (contract amendment → engine → board).
+- Citations board side B1–B3 (chips, PDF side panel, eye icon); landing showcase hookup (ShowcaseApi).
+- Follow-ups: streaming fallback (answers arrive in one frame), persist web results on messages, flaky `user-api-keys-route` test, V2 duplicate `color` in `lib/storage.ts`, Tailwind "Invalid code point" build warning, shared-store rate limits, multi-select "Group as set", scrapers.
+- Payments (Stripe); legal review of /privacy + /terms.
 
 ## Blocked
-- Nothing for design work. Prod DB reads from an agent session need the owner's permission.
+- Owner: check `GOOGLE_API_KEY` in the engine's Vercel project ("Failed to generate embeddings"), rotate the DB password, pause Railway.
 
 ## Next step
-Finish engine Tasks 12–15 and board Tasks 9–20 (rulings recorded in each ledger), then the integration plan (proxy, HttpEngineApi, `/boards` + `/b/[id]`, live e2e). Owner deploys; the DB password in git history still needs rotating.
+Write the P16 contract amendment (`SourceData.readAll`, `ReadItem.trimmed`) in `2026-10-19-v3-api-contract.md`, then the engine task in `ContextTree` (TDD on numbering + token budget).
 
 ## Run it locally
 ```
@@ -37,10 +36,6 @@ cd ContextTree-src && npm install && npm run dev        # frontend :3000
 cd ContextTree && .venv/Scripts/python main.py           # backend (needs .env)
 ```
 
-## Branch / PR
-`main` — none.
-
 ## Watch out for
-- Don't touch prod or the backend during design rounds; mock data only.
-- Workspace root (not in git) holds `DB.txt` and a `.pem` key in plain text — keys still need rotating. The DB password is also in git history (`V2/08-CHECKPOINT.md`, checkpoint 005, on main); owner will rotate it.
-- `V2/08-CHECKPOINT.md` is the V2 history log; new state goes here, not there.
+- Never read or connect to the prod DB from an agent session. Workspace root holds `DB.txt` and a `.pem` in plain text; the DB password is also in git history (`V2/08-CHECKPOINT.md`) — rotate.
+- Pushes are fast-forward only, secret scan first, owner approval per batch.

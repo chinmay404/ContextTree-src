@@ -274,3 +274,31 @@ type StreamErrorCode = 'missing_key' | 'key_rejected' | 'unsupported_model' | 'k
 - **Mock.** `MockEngineApi.listBoards` builds `preview`; `setKeys(providers | 'all')` (default `'all'`) says which
   providers are keyed; `streamChat` on a model whose provider is not keyed emits one
   `{type:'error', code:'missing_key', provider, message:'No <Name> key'}` and returns without storing the question.
+
+## Amendment 2026-10-21: the engine runs on Vercel (Railway is down)
+
+Owner decision: host the FastAPI engine as its own Vercel project (Hobby plan: 300 s per request, Fluid compute).
+Work after a response is best-effort there, so source ingest no longer runs in FastAPI `BackgroundTasks`.
+
+- `POST /boards/{b}/sources/file` and `POST /boards/{b}/sources/link` still return 202 with the card in `processing`,
+  but they no longer start ingest themselves.
+- New `POST /boards/{b}/cards/{id}/ingest` → 200 `Card`. Runs ingest for that source inside the request (≤ 280 s budget)
+  and returns the card with its final status (`ready` / `failed`). Idempotent: a `ready`/`failed`/`soon` card returns
+  as is; a card whose ingest started < 300 s ago returns 202 `{ status: "processing" }` without starting a second run
+  (a lease stamp in the card's engine-only data); an older lease is taken over. Owner-scoped; 404/400 as other card routes.
+- `HttpEngineApi.uploadFile` / `addLink` call the ingest route right after the 202 (the browser request keeps the function
+  alive) and resolve with the 202 card as before; the board's normal poll shows the status change. `getBoard` re-kicks
+  ingest (fire-and-forget, at most once per card per minute) for sources still `processing` whose lease has expired.
+  The mock API needs no change.
+- Migrations no longer run at engine start; they run as a one-off `python scripts/migrate.py` step against the target DB.
+
+- 2026-10-21 note: cards may carry `data.color` (`'graphite'|'blue'|'teal'|'green'|'yellow'|'orange'|'red'|'pink'`; absent = default), set by the board via the normal PATCH. The engine stores `data` as-is.
+
+## Amendment 2026-10-23: link preview for the paste box (polish-2 P11)
+- `GET /links/preview?url=<encoded>` → 200 `{ url, kind: 'web' | 'video', title: string | null, site: string,
+  description: string | null, image: string | null }`. Owner-agnostic but authenticated (same JWT as other routes),
+  rate-limited per user. Same SSRF guard as `POST /sources/link` (http/https only, no private/loopback/link-local
+  addresses after DNS resolution, redirects re-checked, ≤ 3 redirects), 4 s total timeout, reads at most 256 KB of HTML,
+  parses `<title>`, `og:title`, `og:description`, `og:image`, `og:site_name`; YouTube via oEmbed. Nothing is stored.
+  Blocked or unreachable → 400 `invalid` / 422 `unreachable`. `EngineApi.previewLink?(url)` is optional; without it the
+  board builds a preview from the URL alone.
