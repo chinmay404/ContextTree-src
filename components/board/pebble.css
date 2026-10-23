@@ -159,7 +159,10 @@
 .pb-root .mdot { width: 9px; height: 9px; border-radius: 5px; background: var(--c); flex: none; }
 /* The model's mark replaces the dot: same slot, tinted by the model colour through currentColor. */
 .pb-root .mmark { width: 13px; height: 13px; flex: none; color: var(--c); fill: currentColor; vertical-align: -2px; }
-.pb-root .mtag { font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.pb-root .mtag { font-size: 10.5px; font-weight: 600; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Open / Branch never shrink or leave the card; a long "Q1.2.1 · Model name" label gives way instead (it used to push them onto the out-port). */
+.pb-root .chd { min-width: 0; }
+.pb-root .chd > .apill, .pb-root .chd > .mmark, .pb-root .chd > .mdot { flex: none; }
 .pb-root .mtag u { text-underline-offset: 2px; }
 .pb-root .ptag { vertical-align: 2px; font-size: 9.5px; font-weight: 600; background: var(--pb-fill); color: var(--t2); padding: 2px 6px; border-radius: 999px; white-space: nowrap; }
 .pb-root .chd .sp { flex: 1; }

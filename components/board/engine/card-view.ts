@@ -204,7 +204,7 @@ export class CardView {
     const persona = personaLabel(d.persona);
     const hasMsgs = msgs.length > 0 || (c.messageCount ?? 0) > 0;
     return `<div class="face">
-    <div class="chd">${modelMarkHtml(m)}<span class="mtag"><u>${esc(qNum(g, c.id))}</u> · ${esc(m.name)}</span><span class="sp"></span>${streaming ? '' : `${ap('open', 'maximize-2', 'Open')}${ap('branch', 'git-branch', 'Branch')}`}</div>
+    <div class="chd">${modelMarkHtml(m)}<span class="mtag" title="${esc(qNum(g, c.id))} · ${esc(m.name)}"><u>${esc(qNum(g, c.id))}</u> · ${esc(m.name)}</span><span class="sp"></span>${streaming ? '' : `${ap('open', 'maximize-2', 'Open')}${ap('branch', 'git-branch', 'Branch')}`}</div>
     <div class="ttl">${esc(d.name)}${persona ? ` <span class="ptag">${esc(persona)}</span>` : ''}</div>
     ${body || live ? `<div class="cbody">${body}${live}</div>` : ''}
     <div class="compose"><textarea rows="1" placeholder="${hasMsgs ? 'Ask a follow-up' : 'Type the question you want to ask…'}" aria-label="Message"></textarea><button class="send" aria-label="Send" disabled>${icon('arrow-up')}</button></div>
