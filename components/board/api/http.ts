@@ -2,9 +2,10 @@ import { parseSse } from '@/lib/sse';
 import {
   ApiError,
   type Board, type BoardSummary, type Card, type CardCreate, type CardPatch, type ChatRequest,
-  type Edge, type EngineApi, type Id, type Message, type ProviderId, type Reads, type StreamErrorCode, type StreamEvent,
+  type Edge, type EngineApi, type Id, type LinkPreview, type Message, type ProviderId, type Reads, type StreamErrorCode, type StreamEvent,
 } from './types';
 import { PROVIDER_NAME } from '../lib/catalog';
+import { urlOnlyPreview } from '../lib/link-preview';
 
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
@@ -159,6 +160,31 @@ export class HttpEngineApi implements EngineApi {
       throw new ApiError(503, 'engine_unavailable');
     }
     return this.afterAccepted(boardId, await this.handle<Card>(res));
+  }
+
+  /** The engine's link preview; any failure but "that link cannot be opened" (400 / 422) falls back to a preview from the address alone. */
+  async previewLink(url: string, signal?: AbortSignal): Promise<LinkPreview> {
+    try {
+      const r = await fetch(`${this.base}/links/preview?url=${enc(url)}`, { signal });
+      if (r.ok) {
+        const b = await r.json() as Partial<LinkPreview> | null;
+        const base = urlOnlyPreview(url);
+        if (b && typeof b === 'object') {
+          return {
+            url: typeof b.url === 'string' ? b.url : url, kind: b.kind === 'video' ? 'video' : b.kind === 'web' ? 'web' : base.kind,
+            title: typeof b.title === 'string' && b.title ? b.title : base.title, site: typeof b.site === 'string' && b.site ? b.site : base.site,
+            description: typeof b.description === 'string' && b.description ? b.description : null,
+            image: typeof b.image === 'string' && /^https?:\/\//i.test(b.image) ? b.image : base.image,
+          };
+        }
+        return base;
+      }
+      if (r.status === 400 || r.status === 422) throw await this.toError(r);
+    } catch (e) {
+      if (e instanceof ApiError) throw e;
+      if (isAbort(e) || signal?.aborted) throw abortError();
+    }
+    return urlOnlyPreview(url);   // route missing, engine down or a hiccup: the address alone still makes a usable preview
   }
 
   async addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card> {

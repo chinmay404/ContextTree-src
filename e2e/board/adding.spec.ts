@@ -33,7 +33,7 @@ test('the menu has the prototype items and is out of reach when closed', async (
   await expect(page.locator('[data-pb="menu"]')).toHaveAttribute('aria-hidden', 'true');
   await expect(page.locator('[data-pb="menu"]')).toHaveAttribute('inert', '');
   await page.click('[data-pb="add"]');
-  await expect(page.locator('[data-pb="menu"] [data-m]')).toHaveText(['NoteN', 'New questionQ', 'Upload files', 'Paste a link']);
+  await expect(page.locator('[data-pb="menu"] [data-m]')).toHaveText(['NoteN', 'New questionQ', 'Upload files', 'Paste a link or textV']);
   await expect(page.locator('[data-pb="menu"]')).toHaveAttribute('aria-hidden', 'false');
   await page.keyboard.press('Escape');
   expect(await page.evaluate(() => window.__board!.menuOpen())).toBe(false);
@@ -57,20 +57,20 @@ test('right-click → New question opens the root sheet at that spot', async ({ 
   expect(d?.at).not.toBeNull();
 });
 
-test('Paste a link opens the pop, adds https:// and makes a web card', async ({ page }) => {
+test('Paste a link opens the paste box, adds https:// and makes a web card', async ({ page }) => {
   await openBoard(page, '?ingestMs=200');
   const n = await sourceCount(page);
   await page.click('[data-pb="add"]'); await page.click('[data-m="link"]');
-  const input = page.locator('[data-pb="linkpop"] input');
+  const input = page.locator('[data-pb="paste"] textarea');
   await expect(input).toBeFocused();
-  await expect(input).toHaveAttribute('placeholder', 'Paste a link to a page or a YouTube video');
+  await expect(input).toHaveAttribute('placeholder', 'Paste a link or some text');
   await input.fill('example.com/pricing');
-  await page.click('[data-pb="linkpop"] .go');
+  await page.click('[data-pb="paste"] [data-act="pb-add"]');
   expect(await sourceCount(page)).toBe(n + 1);
   const added = await page.evaluate(() => window.__board!.sources().find((c) => (c.data as { url?: string }).url?.includes('example.com/pricing')));
   expect(added?.sourceType).toBe('web');
   expect((added!.data as { url: string }).url).toBe('https://example.com/pricing');
-  await expect(page.locator('[data-pb="linkpop"]')).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.locator('[data-pb="paste"]')).toHaveAttribute('aria-hidden', 'true');
 });
 
 test('double-click empty board spawns a note; on a card it does not', async ({ page }) => {
@@ -147,7 +147,9 @@ test('a file that fails offers Retry and Paste text', async ({ page }) => {
 test('pasting a YouTube link makes a coming-soon video', async ({ page }) => {
   await openBoard(page);
   await page.evaluate(() => window.__board!.select('main'));
-  await paste(page, 'https://youtu.be/abc123');
+  await paste(page, 'https://youtu.be/abc123');   // a paste opens the paste box with it; Enter adds
+  await expect(page.locator('[data-pb="paste"] [data-act="pv-link"]')).toHaveAttribute('data-kind', 'video');
+  await page.keyboard.press('Enter');
   await page.waitForTimeout(500);
   const v = await page.evaluate(() => window.__board!.sources().find((c) => (c.data as { ytid?: string }).ytid === 'abc123'));
   expect(v).toBeTruthy();
@@ -157,7 +159,9 @@ test('pasting a YouTube link makes a coming-soon video', async ({ page }) => {
 test('pasting text makes a note', async ({ page }) => {
   await openBoard(page);
   await page.evaluate(() => window.__board!.select('main'));
-  await paste(page, 'Remember to ask about the discount tiers');
+  await paste(page, 'Remember to ask about the discount tiers');   // text shows as a note in the paste box; Enter adds
+  await expect(page.locator('[data-pb="paste"] [data-act="pv-note"]')).toContainText('Remember to ask about the discount tiers');
+  await page.keyboard.press('Enter');
   await page.waitForTimeout(300);
   const c = await page.evaluate(() => window.__board!.sources().find((x) => (x.data as { text?: string }).text === 'Remember to ask about the discount tiers'));
   expect(c).toBeTruthy();

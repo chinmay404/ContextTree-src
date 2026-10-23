@@ -1,0 +1,25 @@
+/* The paste box (P11). It sits in the middle on the same scrim as the other sheets. */
+.pb-root .pastebox { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; }
+.pb-root .pastebox textarea { width: 100%; border: 0; outline: none; resize: none; background: var(--pb-desk); border-radius: 18px; padding: 14px 16px; font-size: 16px; line-height: 1.45; min-height: 56px; max-height: 160px; }
+.pb-root .pastebox textarea:focus { box-shadow: 0 0 0 2px var(--pb-ink); }
+.pb-root .pastebox .pbhint { margin: 0; padding: 0 6px; font-size: 13px; color: var(--t2); }
+.pb-root .pastebox .pv { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px; border-radius: 18px; background: var(--fc, var(--pb-fill)); text-align: left; transition: transform 140ms var(--ease-out), box-shadow 140ms ease; box-shadow: 0 0 0 .5px var(--hairline, rgba(0,0,0,.08)); }
+.pb-root .pastebox button.pv { cursor: pointer; }
+@media (hover: hover) and (pointer: fine) { .pb-root .pastebox button.pv:hover { box-shadow: 0 0 0 2px var(--pb-edge-strong); } }
+.pb-root .pastebox button.pv:active { transform: scale(.992); }
+.pb-root .pastebox button.pv:focus-visible { outline: 2px solid var(--pb-edge-strong); outline-offset: 2px; }
+.pb-root .pastebox .pvlink { background: #fff; }
+.pb-root .pastebox .tile { width: 56px; height: 56px; border-radius: 14px; flex: none; background: var(--pb-fill) center / cover no-repeat; display: grid; place-items: center; }
+.pb-root .pastebox .tile .i { --s: 22px; --c: var(--t2); }
+.pb-root .pastebox .tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.pb-root .pastebox .tx b { font-size: 14px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-root .pastebox .tx .site { font-size: 12px; font-weight: 600; color: var(--t2); }
+.pb-root .pastebox .tx .body { font-size: 12.5px; line-height: 1.4; color: var(--t2); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.pb-root .pastebox .pvnote .body { color: var(--fx); -webkit-line-clamp: 5; }
+.pb-root .pastebox .add { align-self: center; flex: none; height: 30px; padding: 0 14px; border-radius: 999px; background: var(--pb-ink); color: #fff; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; }
+.pb-root .pastebox .loading .body { color: var(--t3); }
+.pb-root .pastebox .pverr { background: #fff; box-shadow: 0 0 0 2px var(--failed-ring, #F2B8B5); }
+.pb-root .pastebox .pverr .tile .i { --c: var(--failed, #C0463F); }
+.pb-root .pastebox .pbfoot { display: flex; align-items: center; gap: 10px; }
+.pb-root .pastebox .pbkeys { flex: 1; font-size: 12px; color: var(--t3); }
+.pb-root .pastebox .btn:disabled { opacity: .4; cursor: default; }

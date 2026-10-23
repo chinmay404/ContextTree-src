@@ -107,6 +107,9 @@ export type StreamEvent =
   | { type: 'web'; results: { title?: string; url?: string }[]; query?: string }
   | { type: 'error'; message: string; code?: StreamErrorCode; provider?: ProviderId } | { type: 'done' };
 
+/** What the paste box shows for a link before it is added (engine `GET /links/preview`, or built from the address alone). */
+export interface LinkPreview { url: string; kind: 'web' | 'video'; title: string | null; site: string; description: string | null; image: string | null }
+
 export interface EngineApi {
   listBoards(): Promise<BoardSummary[]>;
   createBoard(input: { id: Id; title: string }): Promise<Board>;
@@ -125,6 +128,8 @@ export interface EngineApi {
   uploadFile(boardId: Id, input: { id: Id; file: File; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card>;
   addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card>;
   streamChat(req: ChatRequest, onEvent: (e: StreamEvent) => void, signal?: AbortSignal): Promise<void>;
+  /** Optional: without it the board previews a link from its address alone. Throws 400 invalid / 422 unreachable for a link that cannot be opened. */
+  previewLink?(url: string, signal?: AbortSignal): Promise<LinkPreview>;
   rawFileUrl(cardId: Id): string | null;   // URL of GET /files/{cardId}/raw for <img>/<audio>; mock returns an object URL for files it was given, else null
 }
 

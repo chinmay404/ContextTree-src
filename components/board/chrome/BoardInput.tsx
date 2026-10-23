@@ -25,7 +25,7 @@ export function BoardInput(): null {
     if (!engine) return;
     const ui = () => store.getSnapshot().ui;
     // A sheet, viewer, focus view, confirm or compare sheet owns the pointer; the Add menu and link pop do not block.
-    const covered = () => { const u = ui(); return !!(u.dialog || u.viewer || u.focus || u.confirm || u.compare); };
+    const covered = () => { const u = ui(); return !!(u.dialog || u.viewer || u.focus || u.confirm || u.compare || u.pasteBox); };
     const { viewport } = engine.ctx;
 
     let depth = 0;
@@ -57,9 +57,7 @@ export function BoardInput(): null {
       const text = (e.clipboardData?.getData('text') ?? '').trim();
       if (!text) return;
       e.preventDefault();
-      const deskId = engine.selectedDesk();
-      if (isUrl(text) && engine.addLink(text, deskId, null)) return;
-      engine.addPastedNote(text, deskId);
+      store.openPaste(text);   // what was pasted is shown in the paste box first, then added with Enter
     };
 
     const onKey = (e: KeyboardEvent) => {
@@ -79,6 +77,9 @@ export function BoardInput(): null {
         e.preventDefault();
         const [x, y] = engine.ctx.s2w(innerWidth / 2, innerHeight / 2);
         engine.spawnNote(...engine.freeSpot(x - 106, y - 30, 212, 90));
+      } else if (k === 'v' && !e.repeat) {
+        e.preventDefault();
+        store.openPaste('');
       } else if (k === 'q' && !e.repeat) {
         e.preventDefault();
         store.openDialog({ mode: 'root' });

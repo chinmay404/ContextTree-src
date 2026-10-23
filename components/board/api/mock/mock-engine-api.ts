@@ -1,12 +1,13 @@
 import { ApiError } from '../types';
 import type {
   Board, BoardPreview, BoardSummary, Card, CardCreate, CardPatch, ChatData, ChatRequest, Edge, EngineApi, Id, Message, Reads,
-  ProviderId, SourceData, SourceType, Status, StreamEvent,
+  LinkPreview, ProviderId, SourceData, SourceType, Status, StreamEvent,
 } from '../types';
 import { PERSONAS, PROVIDER_NAME, TYPE_INFO, defaultChatData, personaLabel, providerOf } from '../../lib/catalog';
 import { cut, sizeOf } from '../../lib/format';
 import { canPlug, graphOf, nameOf } from '../../lib/graph';
 import { computeReads, isRead } from '../../lib/reads';
+import { urlOnlyPreview } from '../../lib/link-preview';
 import { seedBoard } from './seed';
 
 export { SEED_BOARD_ID } from './seed';
@@ -499,6 +500,15 @@ export class MockEngineApi implements EngineApi {
       excerpts: [{ loc: '§ 1', text: 'Page read.', on: true }], summary: `A read of ${host}.`,
     }));
     return structuredClone(this.view(b, card));
+  }
+
+  /** A canned preview; a host with "blocked" in it cannot be opened (422), as the engine's SSRF guard would say. */
+  async previewLink(url: string): Promise<LinkPreview> {
+    await this.enter('previewLink', [url]);
+    const base = urlOnlyPreview(url);
+    if (/blocked/i.test(base.site)) throw new ApiError(422, 'unreachable');
+    if (base.kind === 'video') return { ...base, description: 'Reading YouTube videos is coming soon.' };
+    return { ...base, title: `A page at ${base.site}`, description: 'A short description of what the page is about.' };
   }
 
   rawFileUrl(cardId: Id): string | null {

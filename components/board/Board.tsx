@@ -23,6 +23,7 @@ import { AddMenu } from './chrome/AddMenu';
 import { BoardInput } from './chrome/BoardInput';
 import { BranchSheet } from './chrome/BranchSheet';
 import { CardMenu } from './chrome/CardMenu';
+import { PasteBox } from './chrome/PasteBox';
 import { BrandBar } from './chrome/BrandBar';
 import { CompareSheet } from './chrome/CompareSheet';
 import { DeleteConfirm } from './chrome/DeleteConfirm';
@@ -148,6 +149,7 @@ function Chrome(): ReactElement {
           <ZoomControl />
           <AddMenu />
           <CardMenu />
+          <PasteBox />
           <DropOverlay />
           <BoardInput />
           <BranchSheet />

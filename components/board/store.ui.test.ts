@@ -136,7 +136,7 @@ describe('branch dialog', () => {
   it('opening the tour closes the add menu and link pop', () => {
     s.openMenu({ x: 1, y: 2, at: null, fromAdd: true });
     s.openTour();
-    expect(snap().ui).toMatchObject({ tour: true, menu: null, linkPop: null });
+    expect(snap().ui).toMatchObject({ tour: true, menu: null, pasteBox: null });
   });
 });
 
@@ -358,9 +358,14 @@ describe('compare, selection and small state', () => {
     s.openFocus('main');
     expect(snap().ui.focus).toBe('main');
     s.closeFocus();
-    s.openLinkPop({ x: 1, y: 2, at: null });
-    expect(snap().ui.linkPop).not.toBeNull();
-    s.closeLinkPop();
+    s.openPaste('https://example.com');
+    expect(snap().ui.pasteBox).toMatchObject({ text: 'https://example.com' });
+    expect(overlayOpen(snap().ui)).toBe(true);
+    const first = snap().ui.pasteBox!.seq;
+    s.openPaste('');
+    expect(snap().ui.pasteBox!.seq).toBeGreaterThan(first);   // every opening is a new box
+    s.closePaste();
+    expect(snap().ui.pasteBox).toBeNull();
     s.setDropping(true);
     expect(snap().ui.dropping).toBe(true);
     s.setWebSearch('main', true);

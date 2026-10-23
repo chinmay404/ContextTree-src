@@ -31,7 +31,7 @@ test('the desk glows while its chat is answering and stops when it is done', asy
 
 test('an error stops the glow too', async ({ page }) => {
   await openBoard(page, slow);
-  await page.evaluate(() => window.__mock!.failNext('streamChat', new (window.__mock!.constructor as unknown as { ApiError: new (s: number, c: string) => Error }).ApiError(500, 'boom')));
+  await page.evaluate(() => window.__mock!.failNext('streamChat', new (window.__mock!.constructor as unknown as { ApiError: new (s: number, c: string) => never }).ApiError(500, 'boom')));
   await ask(page);
   await expect(page.locator('[data-id="side"] .err')).toBeVisible({ timeout: 10000 });
   await expect(page.locator(DESK)).not.toHaveClass(/running/);

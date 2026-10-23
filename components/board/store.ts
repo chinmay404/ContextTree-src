@@ -27,7 +27,8 @@ export interface DialogState { mode: 'branch' | 'root' | 'edit'; parentId: Id | 
 export interface UiState { selected: Id | null; dialog: DialogState | null;
   viewer: { cardId: Id; memberId: Id | null; anchor: DOMRect | null } | null; focus: Id | null;
   menu: { x: number; y: number; at: [number, number] | null; fromAdd: boolean } | null;
-  linkPop: { x: number; y: number; at: [number, number] | null } | null;
+  /** The paste box (V): `text` is what it opens with; `seq` makes each opening a new one. */
+  pasteBox: { text: string; seq: number } | null;
   confirm: { cardId: Id; text: string; pile?: { frontId: Id; front: string; count: number } } | null;
   toast: { id: number; text: string; undoCardId: Id | null } | null;
   compare: Id | null; dropping: boolean; webSearch: Readonly<Record<Id, boolean>>;
@@ -59,11 +60,11 @@ const LOCKED_ONCE_STARTED = ['model', 'persona', 'systemPrompt', 'inheritDesk', 
 
 /** True while any overlay is up. */
 export function overlayOpen(ui: UiState): boolean {
-  return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.cardMenu || ui.linkPop || ui.confirm || ui.compare || ui.tour);
+  return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.cardMenu || ui.pasteBox || ui.confirm || ui.compare || ui.tour);
 }
 
 const initialUi = (): UiState => ({
-  selected: null, dialog: null, viewer: null, focus: null, menu: null, linkPop: null, confirm: null, toast: null,
+  selected: null, dialog: null, viewer: null, focus: null, menu: null, pasteBox: null, confirm: null, toast: null,
   compare: null, dropping: false, webSearch: {}, tour: false, cardMenu: null,
 });
 
@@ -143,6 +144,7 @@ export class BoardStore {
   private readonly deleted = new Map<Id, { ids: Id[]; roots: Id[]; edges: Edge[]; done: Promise<boolean>; dissolved?: { pile: Card; members: Id[]; added: Id[]; gone: Edge[] } }>();
   private probe: ViewProbe | null = null;
   private disposed = false;
+  private pasteSeq = 0;
   private defaultModel: string;
 
   private readonly changeListeners = new Set<(c: StoreChange[]) => void>();
@@ -1009,10 +1011,10 @@ export class BoardStore {
   openCompare(id: Id): void { this.setUi({ compare: id }); }
   closeCompare(): void { if (this.ui.compare) this.setUi({ compare: null }); }
   /** The welcome tour sits above everything, so anything else that was open closes. */
-  openTour(): void { if (!this.ui.tour) this.setUi({ tour: true, menu: null, linkPop: null }); }
+  openTour(): void { if (!this.ui.tour) this.setUi({ tour: true, menu: null, pasteBox: null }); }
   closeTour(): void { if (this.ui.tour) this.setUi({ tour: false }); }
-  openMenu(m: UiState['menu']): void { this.setUi({ menu: m, linkPop: null, cardMenu: null }); }
-  openCardMenu(x: number, y: number, cardId: Id): void { if (this.cards.has(cardId)) this.setUi({ cardMenu: { x, y, cardId }, menu: null, linkPop: null }); }
+  openMenu(m: UiState['menu']): void { this.setUi({ menu: m, pasteBox: null, cardMenu: null }); }
+  openCardMenu(x: number, y: number, cardId: Id): void { if (this.cards.has(cardId)) this.setUi({ cardMenu: { x, y, cardId }, menu: null, pasteBox: null }); }
   closeCardMenu(): void { if (this.ui.cardMenu) this.setUi({ cardMenu: null }); }
   /** Colours a card (null = default). One normal PATCH of `data.color`; a pile's colour is its face's, not its members'. */
   setColor(id: Id, color: CardColor | null): void {
@@ -1021,8 +1023,8 @@ export class BoardStore {
     this.patchCard(id, { data: { color } });
   }
   closeMenu(): void { if (this.ui.menu) this.setUi({ menu: null }); }
-  openLinkPop(p: UiState['linkPop']): void { this.setUi({ linkPop: p, menu: null, cardMenu: null }); }
-  closeLinkPop(): void { if (this.ui.linkPop) this.setUi({ linkPop: null }); }
+  openPaste(text = ''): void { this.setUi({ pasteBox: { text, seq: ++this.pasteSeq }, menu: null, cardMenu: null }); }
+  closePaste(): void { if (this.ui.pasteBox) this.setUi({ pasteBox: null }); }
   setDropping(on: boolean): void { if (this.ui.dropping !== on) this.setUi({ dropping: on }); }
   setWebSearch(chatId: Id, on: boolean): void { this.setUi({ webSearch: { ...this.ui.webSearch, [chatId]: on } }); }
 
@@ -1058,7 +1060,7 @@ export class BoardStore {
       }, () => undefined);
     }
     this.setUi({
-      menu: null, linkPop: null,
+      menu: null, pasteBox: null,
       dialog: {
         mode: o.mode, parentId, chatId: chat ? chat.id : null, at: o.at ?? null, anchor: o.anchor ?? null,
         forkedFromMessageId: o.forkedFromMessageId ?? null, draft,

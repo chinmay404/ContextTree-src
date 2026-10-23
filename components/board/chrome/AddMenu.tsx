@@ -1,5 +1,5 @@
 'use client';
-/** The Add button, the add / right-click menu, the link pop-up and the hidden file input (prototype 1155-1181). */
+/** The Add button, the add / right-click menu and the hidden file input (prototype 1155-1181). Links and pasted text go through the paste box. */
 import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties, type KeyboardEvent, type ReactElement } from 'react';
 import { useBoard, useSnapshot } from '../context';
 import type { UiState } from '../store';
@@ -13,34 +13,29 @@ const ITEMS: Item[] = [
   { k: 'note', label: 'Note', icon: 'sticky-note', bg: '#FFE1EA', fg: '#D1467E', kbd: 'N' },
   { k: 'chat', label: 'New question', icon: 'message-circle', bg: '#1D1D1F', fg: '#FFFFFF', kbd: 'Q' },
   { k: 'file', label: 'Upload files', icon: 'upload', bg: '#FFF0B3', fg: '#B8860B', kbd: '' },
-  { k: 'link', label: 'Paste a link', icon: 'link', bg: '#C9ECFF', fg: '#2A86C4', kbd: '' },
+  { k: 'link', label: 'Paste a link or text', icon: 'link', bg: '#C9ECFF', fg: '#2A86C4', kbd: 'V' },
 ];
-const withScheme = (v: string): string => (/^https?:\/\//i.test(v) ? v : `https://${v}`);
 
 export function AddMenu(): ReactElement {
   const { store, engine } = useBoard();
   const { ui } = useSnapshot();
-  const menu = ui.menu, pop = ui.linkPop;
+  const menu = ui.menu;
   const addRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const inRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const target = useRef<{ at: [number, number] | null; deskId: string | null }>({ at: null, deskId: null });
   const shownMenu = useRef<NonNullable<UiState['menu']> | null>(null);
-  const shownPop = useRef<NonNullable<UiState['linkPop']> | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   if (menu) shownMenu.current = menu;
-  if (pop) shownPop.current = pop;
-  const m = menu ?? shownMenu.current, lp = pop ?? shownPop.current;
+  const m = menu ?? shownMenu.current;
 
-  useEscape(!!menu || !!pop, () => { store.closeMenu(); store.closeLinkPop(); });
+  useEscape(!!menu, () => { store.closeMenu(); });
 
-  // Outside presses close the menu and the link pop (the button and the menu themselves do not).
+  // Outside presses close the menu (the button and the menu themselves do not).
   useEffect(() => {
     const down = (e: PointerEvent) => {
       const t = e.target instanceof Element ? e.target : null;
       if (!t?.closest('[data-pb="menu"], [data-pb="add"]')) store.closeMenu();
-      if (!t?.closest('[data-pb="linkpop"], [data-pb="menu"]')) store.closeLinkPop();
     };
     document.addEventListener('pointerdown', down);
     return () => document.removeEventListener('pointerdown', down);
@@ -62,24 +57,19 @@ export function AddMenu(): ReactElement {
   }, [pick]);
 
   // Focus: into the menu when opened from the button, into the link field; back to the opener when closed and nothing took it.
-  const menuOpen = !!menu, popOpen = !!pop, fromAdd = !!menu?.fromAdd;
+  const menuOpen = !!menu, fromAdd = !!menu?.fromAdd;
   useLayoutEffect(() => {
     if (!menuOpen) return;
     if (!opener.current) opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (fromAdd) menuRef.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
   }, [menuOpen, fromAdd]);
   useLayoutEffect(() => {
-    if (!popOpen) return;
-    if (!opener.current) opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    if (inRef.current) { inRef.current.value = ''; inRef.current.focus({ preventScroll: true }); }
-  }, [popOpen]);
-  useLayoutEffect(() => {
-    if (menuOpen || popOpen || !opener.current) return;
+    if (menuOpen || !opener.current) return;
     const o = opener.current;
     opener.current = null;
     const a = document.activeElement;
-    if (o.isConnected && !o.closest('[inert]') && (!a || a === document.body || menuRef.current?.contains(a) || a === inRef.current)) o.focus({ preventScroll: true });
-  }, [menuOpen, popOpen]);
+    if (o.isConnected && !o.closest('[inert]') && (!a || a === document.body || menuRef.current?.contains(a))) o.focus({ preventScroll: true });
+  }, [menuOpen]);
 
   const toggle = () => {
     if (menu) { store.closeMenu(); return; }
@@ -97,15 +87,7 @@ export function AddMenu(): ReactElement {
       engine.spawnNote(fx, fy);
     } else if (k === 'chat') store.openDialog({ mode: 'root', at: at ? [p[0] - 160, p[1] - 40] : null });
     else if (k === 'file') pick(at, at ? engine.deskAt(p[0], p[1]) : null);
-    else store.openLinkPop({ x: mm.x, y: mm.fromAdd ? mm.y - 70 : mm.y, at });
-  };
-
-  const linkGo = () => {
-    const v = inRef.current?.value.trim();
-    if (!v || !pop || !engine) return;
-    const deskId = pop.at ? engine.deskAt(pop.at[0], pop.at[1]) : engine.selectedDesk();
-    if (engine.addLink(withScheme(v), deskId, pop.at)) store.closeLinkPop();
-    else store.toast("That doesn't look like a link.");
+    else store.openPaste('');
   };
 
   const menuKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -121,7 +103,6 @@ export function AddMenu(): ReactElement {
     left: clamp(m.x, 12, w - 270), top: clamp(m.fromAdd ? m.y - MENU_H - 8 : m.y, 12, h - MENU_H - 12),
     transformOrigin: m.fromAdd ? '0 100%' : '0 0',
   } : undefined;
-  const popStyle: CSSProperties | undefined = lp ? { left: clamp(lp.x, 12, w - 440), top: clamp(lp.y, 12, h - 70) } : undefined;
 
   return (
     <>
@@ -138,11 +119,6 @@ export function AddMenu(): ReactElement {
             </button>
           </span>
         ))}
-      </div>
-      <div className={`float${pop ? ' on' : ''}`} data-pb="linkpop" style={popStyle} inert={!pop} aria-hidden={!pop}>
-        <input ref={inRef} placeholder="Paste a link to a page or a YouTube video" aria-label="Link" autoComplete="off"
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); linkGo(); } }} />
-        <button type="button" className="go" data-act="linkgo" onClick={linkGo}>Add</button>
       </div>
       <input ref={fileRef} type="file" multiple hidden data-pb="filein" tabIndex={-1} aria-hidden="true"
         onChange={(e) => {

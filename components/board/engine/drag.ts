@@ -96,7 +96,7 @@ export function attachPointer(ctx: EngineContext): PointerRouting {
 
   const onDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
-    store.closeMenu(); store.closeLinkPop();
+    store.closeMenu();
     const t = e.target as Element, ce = t.closest<HTMLElement>('.card'), port = t.closest<HTMLElement>('.port[data-port]');
     downOnCard = !!ce;
     if (!t.closest('.wk')) ctx.modules.strings.clearWire();
