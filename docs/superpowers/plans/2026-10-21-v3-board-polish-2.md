@@ -87,3 +87,31 @@ member (the engine already expands a strung pile into its members). Create from 
 selecting several sources → "Group as set"; drop files/links straight into a set; rename via its title tab; a set can be
 collapsed back into a pile and vice versa. Members inside an open set lay out in a grid; dragging the set moves them.
 Tests: create, drop into, string to two chats → both read all members, collapse/expand, delete set (same choices as pile).
+
+## Added 2026-10-24 (owner)
+
+### S5 [V]: Answers render real markdown (tables, code blocks, quotes, rules)
+Bug: a GFM table and a fenced code block in an answer rendered as one run-on paragraph with raw pipes and backticks.
+`lib/markdown.ts` now renders fenced code (``` and ~~~, language label, unclosed fence runs to the end while streaming),
+GFM tables (alignment, `\|`, short/long rows, header-only while streaming), blockquotes, rules and ~~strike~~; still
+escape-first, no raw HTML. Styles in `chrome/markdown.css` (tokens only, light and dark). Tests: unit + `e2e/board/markdown.spec.ts`.
+
+### S6 [V]: Select text in an answer → "Add to note" or "Ask in a new branch"
+Owner: "if I select any text we want an option: add in note or ask in new branch … the notepad must open at the right,
+where I can add notes from the conversation and edit them, and that note must show on the desk of that node and be
+context for the conversation."
+- Selecting text inside an answer (focus view; also the compare sheet) shows a small floating bar above the selection:
+  "Add to note" and "Ask in a new branch". Esc or clicking away hides it. Keyboard: the bar is reachable with Tab.
+- **Add to note** opens the **notepad**: a panel on the right of the focus view (the timeline stays on the left; the
+  conversation column narrows). The notepad is ONE note card per chat, living on that chat's desk (created on first
+  use, titled "Notes · <chat name>", `data.notepadFor = <chatId>`), so it is a desk source and the chat reads it as
+  context on the next turn with no engine change. The selection is appended as a Markdown block quote plus a blank
+  line, with the cursor placed after it so the user can type a comment. The notepad is fully editable (same Markdown and
+  format bar as notes, P15), saves with the usual debounced PATCH, shows "Saved", and has a close button; the board
+  shows the note on the desk at once. Reopen it from the focus view's header ("Notes") when it exists.
+- **Ask in a new branch** opens the existing branch sheet from the selection, with the selected text quoted at the
+  top of the new question (`> …` then the cursor on the next line); confirming follows P4 (land on the branch).
+- Branches: a branch's notepad is its own (one per chat); the parent's notepad is inherited like any desk source.
+- Tests: select → bar appears near the selection; Add to note creates one note on the chat's desk with the quote, a
+  second add appends to the same note; the notepad edits and saves; the next ask's reads include the note; Ask in a
+  new branch prefills the quote; Esc hides the bar; selection outside answers shows nothing; light + dark screenshots.

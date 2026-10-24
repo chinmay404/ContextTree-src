@@ -44,4 +44,70 @@ describe('renderMarkdown', () => {
   it('handles empty input', () => {
     expect(renderMarkdown('')).toBe('');
   });
+
+  describe('code blocks', () => {
+    it('renders a fenced block with its language, keeping lines and indentation, nothing inline inside', () => {
+      expect(renderMarkdown('Run:\n```bash\ndocker run \\\n  -t **x** `y` <z>\n```\nDone')).toBe(
+        '<p>Run:</p><pre class="md-code" data-lang="bash"><code>docker run \\\n  -t **x** `y` &lt;z&gt;</code></pre><p>Done</p>',
+      );
+    });
+    it('takes ~~~ fences and no language', () => {
+      expect(renderMarkdown('~~~\na\n~~~')).toBe('<pre class="md-code"><code>a</code></pre>');
+    });
+    it('keeps blank lines inside the block', () => {
+      expect(renderMarkdown('```\na\n\nb\n```')).toBe('<pre class="md-code"><code>a\n\nb</code></pre>');
+    });
+    it('an unclosed fence (a stream mid-block) runs to the end', () => {
+      expect(renderMarkdown('```py\nx = 1')).toBe('<pre class="md-code" data-lang="py"><code>x = 1</code></pre>');
+    });
+    it('a language that is not a plain word is dropped', () => {
+      expect(renderMarkdown('```"onclick=alert(1)\nx\n```')).toBe('<pre class="md-code"><code>x</code></pre>');
+    });
+    it('strips the fence indent from a block inside a list item', () => {
+      expect(renderMarkdown('- a\n  ```\n  b\n    c\n  ```')).toBe('<ul><li>a</li></ul><pre class="md-code"><code>b\n  c</code></pre>');
+    });
+  });
+
+  describe('tables', () => {
+    it('renders a GFM table with a header, alignment and inline spans in cells', () => {
+      expect(renderMarkdown('| Parameter | Example | Does |\n|:--|:-:|--:|\n| `-t` | **x** | a \\| b |')).toBe(
+        '<div class="md-tw"><table><thead><tr><th class="al-l">Parameter</th><th class="al-c">Example</th><th class="al-r">Does</th></tr></thead>' +
+        '<tbody><tr><td class="al-l"><code>-t</code></td><td class="al-c"><b>x</b></td><td class="al-r">a | b</td></tr></tbody></table></div>',
+      );
+    });
+    it('works without the outer pipes, pads short rows and cuts long ones', () => {
+      expect(renderMarkdown('a | b\n--- | ---\n1\n1 | 2 | 3')).toBe(
+        '<div class="md-tw"><table><thead><tr><th>a</th><th>b</th></tr></thead>' +
+        '<tbody><tr><td>1</td><td></td></tr><tr><td>1</td><td>2</td></tr></tbody></table></div>',
+      );
+    });
+    it('ends at a blank line and needs the delimiter row', () => {
+      expect(renderMarkdown('| a |\n|---|\n| 1 |\n\nafter')).toBe(
+        '<div class="md-tw"><table><thead><tr><th>a</th></tr></thead><tbody><tr><td>1</td></tr></tbody></table></div><p>after</p>',
+      );
+      expect(renderMarkdown('a | b\nc | d')).toBe('<p>a | b c | d</p>');
+    });
+    it('a header with no body rows yet (streaming) still renders', () => {
+      expect(renderMarkdown('| a | b |\n|---|---|')).toBe(
+        '<div class="md-tw"><table><thead><tr><th>a</th><th>b</th></tr></thead><tbody></tbody></table></div>',
+      );
+    });
+  });
+
+  describe('other blocks', () => {
+    it('renders quotes, rules and strikethrough', () => {
+      expect(renderMarkdown('> **Note** one\n> two\n\n---\n~~old~~ new')).toBe(
+        '<blockquote><p><b>Note</b> one two</p></blockquote><hr><p><s>old</s> new</p>',
+      );
+    });
+    it('a quote can hold a list', () => {
+      expect(renderMarkdown('> - a\n> - b')).toBe('<blockquote><ul><li>a</li><li>b</li></ul></blockquote>');
+    });
+    it('keeps the screenshot answer apart: table, heading, code', () => {
+      const h = renderMarkdown('**Key parameters**\n\n| P | V |\n|---|---|\n| -t | url |\n\n**Example**\n\n```bash\ndocker run x\n```');
+      expect(h).toContain('<table>');
+      expect(h).toContain('<pre class="md-code" data-lang="bash"><code>docker run x</code></pre>');
+      expect(h).not.toContain('|');
+    });
+  });
 });

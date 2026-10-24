@@ -21,7 +21,7 @@ export interface BoardTestHook {
   openSheet(mode: 'branch' | 'root' | 'edit', id?: Id, at?: [number, number]): void; setDialogFirst(text: string): void; confirmDialog(): Id | null;
   viewer(): { cardId: Id; memberId: Id | null } | null; openViewer(id: Id, memberId?: Id): void;
   focus(): Id | null; openFocus(id: Id): void; menuOpen(): boolean; pileFront(id: Id): number;
-  refresh(): Promise<void>;
+  refresh(): Promise<void>; reload(): Promise<void>;
   calls(): { method: string; args: unknown[] }[];
 }
 
@@ -84,6 +84,7 @@ export function installTestHook(engine: BoardEngine, store: BoardStore, api: Eng
     menuOpen: () => !!ui().menu,
     pileFront: (id) => m.piles.front(id),
     refresh: () => store.refresh(),
+    reload: () => store.load(), // re-reads the board and every chat's messages
     calls: () => (api as unknown as { calls?: { method: string; args: unknown[] }[] }).calls ?? [],
   };
   window.__board = hook;
