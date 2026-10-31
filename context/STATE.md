@@ -1,32 +1,33 @@
 # State — Context Tree
 
-_Updated: 2026-10-31 by Claude (with Chinmay) · at commit 9c27df2_
+_Updated: 2026-10-31 by Claude (with Chinmay) · at commit 961c373_
 
 ## Where we are
-V3 is on main in both repos, with drawing, the PWA and an iPad pass on the board. The iPad work was tested in Chromium touch emulation, so the owner's real iPad is the remaining check. Then: whether notes should be read past 4,000 characters, then P16.
+V3 is on main in both repos, with drawing, the PWA, an iPad pass and connectors (YouTube, PDF links, whole sites, search that reads pages). Two checks need the owner: one YouTube link on production, and the real iPad. Then: whether notes should be read past 4,000 characters, then P16.
 
 ## What moved
 - 2026-10-31: tree timeline and status mark (d660766), desk sources read as what the question is about (engine 3e880ac), notes keep line breaks and join piles and sets (136a110), select text → notepad or new branch (5875af8, dffe89f). Another session: context engine, inspector, visible turn errors.
-- 2026-10-31: free NIM embeddings, drawing and note pages (d0952e4), PWA (ff3073a), pinch and tour slides (6a46286), iPad gestures and sizes (4b0afe5), no text selection while the pen is on (9c27df2).
+- 2026-10-31: free NIM embeddings, drawing and note pages (d0952e4), PWA (ff3073a), pinch and tour slides (6a46286), iPad gestures and sizes (4b0afe5), no text selection while the pen is on (9c27df2), connectors (engine 627e106, frontend 961c373).
 
 ## What's live
 | Env | Running | Since |
 |---|---|---|
-| prod frontend (Vercel, contexttree.tech) | main @9c27df2 pushed; auto-deploy assumed, not checked when this was written | 2026-10-31 |
-| prod engine (Vercel) | main @ebe32b7 pushed; Vercel status success | 2026-10-31 |
+| prod frontend (Vercel, contexttree.tech) | main @961c373 pushed; deploy status is in the session's report, not here | 2026-10-31 |
+| prod engine (Vercel) | main @b6a2ea8; Vercel status success, and context-tree-api.vercel.app health reports that sha | 2026-10-31 |
 
 ## Not done yet
+- YouTube captions are proven from home only. Vercel's addresses may be blocked: the card then fails with "didn't let our server" and takes a pasted transcript. The Gemini fallback (off, `YOUTUBE_GEMINI_FALLBACK`) has never run live, because the local `GOOGLE_API_KEY` is invalid.
 - Production re-embed for NIM: needs the current `DATABASE_URL` in `ContextTree/.env`; meaning search stays unreliable until it runs.
 - Owner decision: read notes past `NOTE_MAX_CHARS` = 4000 (engine `app/agent/reads.py`, mirrored in `components/board/lib/note-text.ts`).
 - P16 "Read all of it" per source (contract amendment → engine → board).
 - Citations board side B1–B3; landing showcase hookup (ShowcaseApi); payments (Stripe); legal review of /privacy + /terms.
-- Follow-ups: Ctrl+Z after a paste into a note, a new upload landing dimmed over its neighbour on the seed board, "2 files" wording on a pile of notes, streaming fallback, persist web results, V2 duplicate `color`, Tailwind build warning, shared-store rate limits, multi-select "Group as set", scrapers.
+- Follow-ups: Ctrl+Z after a paste into a note, a new upload landing dimmed over its neighbour on the seed board, "2 files" wording on a pile of notes, streaming fallback, persist web results, V2 duplicate `color`, Tailwind build warning, shared-store rate limits, multi-select "Group as set".
 
 ## Blocked
 - Owner: check `GOOGLE_API_KEY` in the engine's Vercel project, rotate the DB password, pause Railway; decide on the plugin's new CLAUDE.md block ("never push to main"), not applied because this repo pushes to main by owner instruction and has no CI.
 
 ## Next step
-Ask the owner whether notes should be read in full; if yes, raise `NOTE_MAX_CHARS` in the engine under the context budget, TDD, and update the notepad warning's constant.
+Owner adds one YouTube link on production. If it fails as blocked, decide between the Gemini fallback and a proxy. Then ask whether notes should be read in full; if yes, raise `NOTE_MAX_CHARS` in the engine under the context budget, TDD, and update the notepad warning's constant.
 
 ## Run it locally
 ```
