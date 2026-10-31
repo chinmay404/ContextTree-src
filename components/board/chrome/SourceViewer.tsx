@@ -78,7 +78,7 @@ export function SourceViewer(): ReactElement {
     const tokens = readBy ? tokensRead(g, store.engineReads(readBy)?.items ?? [], v) : null;
     const meta = isPile ? `Pile · ${members.length} files` : d.meta || info.label;
     content = (
-      <div ref={boxRef} className={`sheetbox vw f-${family}`} role="dialog" aria-modal="true" aria-label={nameOf(g, v)} tabIndex={-1}>
+      <div ref={boxRef} className={`sheetbox vw f-${family}${v.sourceType === 'note' ? ' vw-page' : ''}`} role="dialog" aria-modal="true" aria-label={nameOf(g, v)} tabIndex={-1}>
         <button type="button" className="ic vclose" aria-label="Close" onClick={close}><Icon name="x" /></button>
         <div className="vmain">
           <div className="vhead">

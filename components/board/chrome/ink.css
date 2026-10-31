@@ -1,0 +1,38 @@
+.pb-root .ink-c-ink { --ink: var(--t1); }
+.pb-root .ink-c-red { --ink: var(--failed); }
+.pb-root .ink-c-blue { --ink: var(--pb-edge-strong); }
+
+/* The layer sits above the cards inside the world, so it pans and zooms with them; it never takes a click. */
+.pb-root .inklayer { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; z-index: 2000000; pointer-events: none; }
+.pb-root .ink { fill: var(--ink); stroke: none; }
+.pb-root .ink-highlight { opacity: .32; }
+.pb-root .ink-arrow { fill: none; stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; }
+
+.pb-root .inkcatch { position: absolute; inset: 0; display: none; touch-action: none; cursor: crosshair; }
+.pb-root .inkcatch.on { display: block; z-index: 1; }
+.pb-root .inkcatch[data-tool="eraser"] { cursor: cell; }
+
+.pb-root .drawbtn { position: fixed; bottom: 16px; left: 136px; z-index: 20; width: 56px; height: 56px; border-radius: 28px; display: grid; place-items: center; }
+.pb-root .drawbtn .i { --s: 20px; }
+.pb-root .drawbtn.on { background: var(--pb-ink); }
+.pb-root .drawbtn.on .i { --c: var(--pb-on-ink); }
+.pb-root .drawhide { left: 200px; }
+.pb-root .drawbtn:active { transform: scale(.96); }
+.pb-root .drawbar { position: fixed; left: 16px; bottom: 84px; z-index: 20; padding: 6px 10px; border-radius: 28px; }
+
+.pb-root .inktools { display: flex; align-items: center; gap: 4px; }
+.pb-root .inkbtn { width: 36px; height: 36px; border-radius: 18px; display: grid; place-items: center; }
+.pb-root .inkbtn .i { --s: 17px; }
+.pb-root .inkbtn:hover { background: var(--pb-fill); }
+.pb-root .inkbtn[aria-pressed="true"] { background: var(--pb-ink); }
+.pb-root .inkbtn[aria-pressed="true"] .i { --c: var(--pb-on-ink); }
+.pb-root .inksep { width: .5px; height: 20px; margin: 0 6px; background: var(--pb-edge); }
+.pb-root .inkdot { width: 22px; height: 22px; margin: 0 3px; border-radius: 11px; background: var(--ink); }
+.pb-root .inkdot[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--pb-card), 0 0 0 4px var(--ink); }
+
+/* A note page: the text and the ink share one sheet. */
+.pb-root .notepage { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 320px; }
+.pb-root .noteink { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; touch-action: none; border-radius: var(--r-card); }
+.pb-root .notepage.penon .noteink { pointer-events: auto; cursor: crosshair; }
+.pb-root .notetools { position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 24px; background: var(--pb-card); box-shadow: var(--sh-float, 0 2px 12px rgba(0, 0, 0, .12)); }
+.pb-root .vw.vw-page { width: calc(100vw - 32px); height: calc(100vh - 32px); }

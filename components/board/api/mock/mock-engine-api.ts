@@ -1,6 +1,6 @@
 import { ApiError } from '../types';
 import type {
-  ContextTrace,
+  ContextTrace, Mark, MarkCreate,
   Board, BoardPreview, BoardSummary, Card, CardCreate, CardPatch, ChatData, ChatRequest, Edge, EngineApi, Id, Message, Reads,
   LinkPreview, ProviderId, SourceData, SourceType, Status, StreamEvent,
 } from '../types';
@@ -427,6 +427,28 @@ export class MockEngineApi implements EngineApi {
   /** Tests: frames the next streamed answer sends first, and what the trace route returns. */
   nextStreamExtras: StreamEvent[] = [];
   nextTrace: ContextTrace | null = null;
+
+  private readonly marks = new Map<Id, Mark>();
+
+  async listMarks(boardId: Id): Promise<Mark[]> {
+    await this.enter('listMarks', [boardId]);
+    const b = this.board(boardId);
+    return [...this.marks.values()].filter((m) => m.boardId === boardId
+      && (!m.anchorId || this.live(b, m.anchorId)) && (!m.noteId || this.live(b, m.noteId)));
+  }
+
+  async createMark(boardId: Id, input: MarkCreate): Promise<Mark> {
+    await this.enter('createMark', [boardId, input]);
+    this.board(boardId);
+    const mark: Mark = { anchorId: null, noteId: null, touches: [], ...input, boardId, createdAt: this.now() };
+    this.marks.set(mark.id, mark);
+    return mark;
+  }
+
+  async deleteMark(boardId: Id, markId: Id): Promise<void> {
+    await this.enter('deleteMark', [boardId, markId]);
+    if (!this.marks.delete(markId)) throw new ApiError(404, 'not_found');
+  }
 
   async getContextTrace(boardId: Id, chatId: Id): Promise<ContextTrace | null> {
     await this.enter('getContextTrace', [boardId, chatId]);

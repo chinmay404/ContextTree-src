@@ -311,3 +311,10 @@ Work after a response is best-effort there, so source ingest no longer runs in F
 - Answer strings may run from a chat to its own descendant, not to its own ancestor. `canPlug` in `components/board/lib/graph.ts` and `_can_plug` in the engine change together.
 - `externalContextTopK` is passages per source, which is what the token meter already counted. A chat with no budget of its own gets 12,000 tokens, and always at least 4,000 for its sources.
 - Migration `011_context_engine.sql` must run before this engine deploys: fork init writes `nodes.lineage_summary`.
+
+## Amendment 2026-10-31: marks
+
+- `GET /boards/{b}/marks` returns `{marks}`. `POST /boards/{b}/marks` takes `{id, kind, color, size, points, anchorId?, noteId?, touches?}` and answers 201, or 200 for a retry of the same id. `DELETE /boards/{b}/marks/{m}` answers 204.
+- `kind` is `pen`, `arrow` or `highlight`; `color` is `ink`, `red` or `blue`. `points` holds at most 5,000 `[x, y]` or `[x, y, pressure]`, relative to the anchor card when there is one.
+- A mark on a deleted card is hidden with it and returns if the card is restored. A board holds at most 2,000 marks. Nothing here reaches a chat's read set.
+- Migration `012_board_marks.sql` must run before this engine deploys, and the engine before the board.

@@ -115,6 +115,21 @@ export type StreamEvent =
 /** What the paste box shows for a link before it is added (engine `GET /links/preview`, or built from the address alone). */
 export interface LinkPreview { url: string; kind: 'web' | 'video'; title: string | null; site: string; description: string | null; image: string | null }
 
+/** Pen, arrow and highlight marks, on the board or on a note page. Points are [x, y] or [x, y, pressure]. */
+export type MarkKind = 'pen' | 'arrow' | 'highlight';
+export type MarkColor = 'ink' | 'red' | 'blue';
+export type DrawTool = MarkKind | 'eraser';
+export type InkPoint = [number, number] | [number, number, number];
+export interface Mark {
+  id: Id; boardId: Id; kind: MarkKind; color: MarkColor; size: number; points: InkPoint[];
+  /** The card it moves with; points are then relative to that card. */
+  anchorId: Id | null;
+  /** The note page it is on; null is the board. */
+  noteId: Id | null;
+  touches: Id[]; createdAt: string;
+}
+export type MarkCreate = Pick<Mark, 'kind' | 'color' | 'size' | 'points'> & { id: Id; anchorId?: Id | null; noteId?: Id | null; touches?: Id[] };
+
 /** What one turn sent and left out (engine `GET .../context-trace`). */
 export interface TracePassage { n?: number; cardId: Id; loc: string | null; score: number | null }
 export interface ContextTrace {
@@ -142,6 +157,9 @@ export interface EngineApi {
   getReads(boardId: Id, chatId: Id): Promise<Reads>;
   getContextTrace(boardId: Id, chatId: Id): Promise<ContextTrace | null>;
   setEdgeWhy(boardId: Id, edgeId: Id, why: string): Promise<Edge>;
+  listMarks(boardId: Id): Promise<Mark[]>;
+  createMark(boardId: Id, input: MarkCreate): Promise<Mark>;
+  deleteMark(boardId: Id, markId: Id): Promise<void>;
   uploadFile(boardId: Id, input: { id: Id; file: File; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card>;
   addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card>;
   streamChat(req: ChatRequest, onEvent: (e: StreamEvent) => void, signal?: AbortSignal): Promise<void>;

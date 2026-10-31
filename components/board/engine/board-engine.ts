@@ -18,6 +18,7 @@ import { attachPointer, type PointerRouting } from './drag';
 import { freeSpot as geoFreeSpot, placeFor as geoPlaceFor, type Layout } from './geometry';
 import { FrameLoop } from './loop';
 import { createPersistence } from './persistence';
+import { createMarks } from './marks';
 import { createPiles } from './piles';
 import { clamp, SpringSystem, type Spring } from './spring';
 import { createStrings } from './strings';
@@ -106,7 +107,7 @@ export class BoardEngine {
       modules: null as unknown as EngineContext['modules'],
     };
     this.ctx = ctx;
-    ctx.modules = { desks: createDesks(ctx), strings: createStrings(ctx), piles: createPiles(ctx), persistence: createPersistence(ctx) };
+    ctx.modules = { desks: createDesks(ctx), strings: createStrings(ctx), piles: createPiles(ctx), persistence: createPersistence(ctx), marks: createMarks(ctx) };
     this.view = new CardView(ctx, {
       related: () => this.related,
       bindTips: (el) => this.bindTips(el),
@@ -165,7 +166,7 @@ export class BoardEngine {
     this.pointer?.dispose();
     this.ro?.disconnect();
     const m = this.ctx.modules;
-    m.desks.dispose(); m.strings.dispose(); m.piles.dispose(); m.persistence.dispose();
+    m.desks.dispose(); m.strings.dispose(); m.piles.dispose(); m.persistence.dispose(); m.marks.dispose();
     this.dying.forEach((d) => clearTimeout(d.timer));
     this.timers.forEach((t) => clearTimeout(t));
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -242,6 +243,7 @@ export class BoardEngine {
   private onChange(changes: StoreChange[]): void {
     if (this.disposed) return;
     const g = this.store.graph();
+    if (changes.some((c) => c.kind === 'marks' || c.kind === 'ui' || c.kind === 'card-removed' || c.kind === 'card')) this.ctx.modules.marks.sync();
     for (const ch of changes) {
       switch (ch.kind) {
         case 'card': this.cardChanged(ch.id, ch.fields); break;
@@ -417,7 +419,7 @@ export class BoardEngine {
     });
     this.dying.forEach(({ n }) => { n.el.style.opacity = String(clamp(n.o.x, 0, 1)); });
     const m = this.ctx.modules;
-    m.desks.frame(z); m.strings.frame(); m.persistence.frame(now);
+    m.desks.frame(z); m.strings.frame(); m.persistence.frame(now); m.marks.frame();
     for (const cb of [...this.frameSubs]) cb(dt, now);
   }
 

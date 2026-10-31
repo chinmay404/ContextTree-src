@@ -78,6 +78,9 @@ export function BoardInput(): null {
         e.preventDefault();
         const [x, y] = engine.ctx.s2w(innerWidth / 2, innerHeight / 2);
         engine.spawnNote(...engine.freeSpot(x - 106, y - 30, 212, 90));
+      } else if (k === 'd' && !e.repeat) {
+        e.preventDefault();
+        store.toggleDraw();
       } else if (k === 'v' && !e.repeat) {
         e.preventDefault();
         store.openPaste('');

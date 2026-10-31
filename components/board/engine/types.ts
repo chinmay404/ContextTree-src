@@ -29,6 +29,7 @@ export interface PilesModule {
   hoverTarget(n: ViewNode, ev: PointerEvent): ViewNode | null; drop(n: ViewNode, target: ViewNode): void;
   onWheel(e: WheelEvent): boolean; cycle(id: Id, dir: 1 | -1): void; front(id: Id): number; unstack(id: Id): void; dispose(): void;
 }
+export interface MarksModule { sync(): void; frame(): void; dispose(): void }
 export interface PersistenceModule { frame(now: number): void; resetViewportBase(): void; markSynced(id: Id, x: number, y: number): void; isDirty(id: Id): boolean; dispose(): void }
 
 export interface EngineContext {
@@ -41,5 +42,5 @@ export interface EngineContext {
   openSettings: ((provider: ProviderId) => void) | null;
   /** Read-only landing mode: the camera fits the root, nothing is saved, nothing takes input. */
   showcase: boolean;
-  modules: { desks: DesksModule; strings: StringsModule; piles: PilesModule; persistence: PersistenceModule };
+  modules: { desks: DesksModule; strings: StringsModule; piles: PilesModule; persistence: PersistenceModule; marks: MarksModule };
 }

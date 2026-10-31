@@ -1,5 +1,6 @@
 import { ApiError } from './api/types';
 import type {
+  DrawTool, Mark, MarkColor, MarkCreate,
   ContextTrace,
   AdvancedSettings, Board, Card, CardPatch, Carry, ChatData, ChatRequest, Edge, EngineApi, Id, Message, ProviderId, Reads, SourceData, SourceType, Status, StreamErrorCode,
 } from './api/types';
@@ -18,7 +19,7 @@ export type StoreChange =
   | { kind: 'card'; id: Id; fields: string[] } | { kind: 'card-removed'; id: Id }
   | { kind: 'edge'; id: Id } | { kind: 'edge-removed'; id: Id }
   | { kind: 'messages'; chatId: Id } | { kind: 'stream'; chatId: Id } | { kind: 'reads'; chatId: Id }
-  | { kind: 'ui' } | { kind: 'board' };
+  | { kind: 'ui' } | { kind: 'board' } | { kind: 'marks' };
 
 export interface BranchDraft { name: string; first: string; model: string /* engine id */; persona: string; personaText: string;
   inheritDesk: boolean; carry: Carry; advanced: AdvancedSettings; advOpen: boolean;
@@ -41,7 +42,10 @@ export interface UiState { selected: Id | null; dialog: DialogState | null;
   /** The context inspector: what a chat's last turn read. */
   inspector: { chatId: Id } | null;
   /** The notepad panel of the focus view is open for this chat; `seq` makes every opening or addition a fresh one. */
-  notepad: { chatId: Id; seq: number } | null }
+  notepad: { chatId: Id; seq: number } | null;
+  /** The board's pen: on with this tool, or null. */
+  draw: { tool: DrawTool; color: MarkColor } | null;
+  marksHidden: boolean }
 
 /** One chat's answer in flight, or its kept error. `asked` is the question being answered (a key error re-asks it). */
 export interface StreamState { messageId: string; text: string; web: { title?: string; url?: string }[] | null; webQuery?: string; error: string | null;
@@ -49,7 +53,7 @@ export interface StreamState { messageId: string; text: string; web: { title?: s
 
 export interface BoardSnapshot { version: number; status: 'loading' | 'ready' | 'error'; error: string | null;
   board: { id: Id; title: string; viewport: Board['viewport'] } | null;
-  cards: ReadonlyMap<Id, Card>; edges: ReadonlyMap<Id, Edge>; messages: ReadonlyMap<Id, Message[]>;
+  cards: ReadonlyMap<Id, Card>; edges: ReadonlyMap<Id, Edge>; marks: ReadonlyMap<Id, Mark>; messages: ReadonlyMap<Id, Message[]>;
   streaming: ReadonlyMap<Id, StreamState>;
   ui: UiState }
 
@@ -78,7 +82,7 @@ export function overlayOpen(ui: UiState): boolean {
 
 const initialUi = (): UiState => ({
   selected: null, dialog: null, viewer: null, focus: null, menu: null, pasteBox: null, confirm: null, toast: null,
-  compare: null, dropping: false, webSearch: {}, tour: false, cardMenu: null, inspector: null, notepad: null,
+  compare: null, dropping: false, webSearch: {}, tour: false, cardMenu: null, inspector: null, notepad: null, draw: null, marksHidden: false,
 });
 
 const FILE_TYPES: Record<string, [SourceType, Status]> = {
@@ -120,6 +124,8 @@ export class BoardStore {
   private board: { id: Id; title: string; viewport: Board['viewport'] } | null = null;
   private cards = new Map<Id, Card>();
   private edges = new Map<Id, Edge>();
+  private marks = new Map<Id, Mark>();
+  private readonly drawnHere: { id: Id; noteId: Id | null }[] = [];   // what undo can take back, newest last
   private messages = new Map<Id, Message[]>();
   private ui: UiState = initialUi();
   private version = 0;
@@ -177,7 +183,7 @@ export class BoardStore {
     if (!this.snap) {
       this.snap = {
         version: this.version, status: this.status, error: this.error, board: this.board,
-        cards: new Map(this.cards), edges: new Map(this.edges), messages: new Map(this.messages),
+        cards: new Map(this.cards), edges: new Map(this.edges), marks: new Map(this.marks), messages: new Map(this.messages),
         streaming: new Map(this.streams), ui: this.ui,
       };
     }
@@ -215,6 +221,7 @@ export class BoardStore {
     try {
       const board = await this.api.getBoard(this.boardId);
       this.applyBoard(board, true);
+      void this.loadMarks();
       await Promise.all(board.cards.filter((c) => c.kind === 'chat').map(async (c) => {
         try {
           const [msgs, reads] = await Promise.all([this.api.getMessages(this.boardId, c.id), this.api.getReads(this.boardId, c.id)]);
@@ -1094,6 +1101,62 @@ export class BoardStore {
   openMenu(m: UiState['menu']): void { this.setUi({ menu: m, pasteBox: null, cardMenu: null }); }
   openCardMenu(x: number, y: number, cardId: Id): void { if (this.cards.has(cardId)) this.setUi({ cardMenu: { x, y, cardId }, menu: null, pasteBox: null }); }
   closeCardMenu(): void { if (this.ui.cardMenu) this.setUi({ cardMenu: null }); }
+
+  // ---- drawing ----
+  private async loadMarks(): Promise<void> {
+    try {
+      const marks = await this.api.listMarks(this.boardId);
+      if (this.disposed) return;
+      for (const m of marks) this.marks.set(m.id, m);
+      this.emit([{ kind: 'marks' }]);
+    } catch {
+      if (!this.disposed) this.toast("Couldn't load your drawings. Reload to try again.");
+    }
+  }
+  toggleDraw(): void { this.setUi({ draw: this.ui.draw ? null : { tool: 'pen', color: 'ink' }, marksHidden: false }); }
+  setDraw(patch: Partial<NonNullable<UiState['draw']>>): void {
+    this.setUi({ draw: { tool: 'pen', color: 'ink', ...this.ui.draw, ...patch } });
+  }
+  toggleMarksHidden(): void { this.setUi({ marksHidden: !this.ui.marksHidden }); }
+  /** Marks on a note page, or on the board (null). A mark on a card that is gone waits with it. */
+  marksOn(noteId: Id | null): Mark[] {
+    return [...this.marks.values()].filter((m) => (m.noteId ?? null) === noteId && (!m.anchorId || this.cards.has(m.anchorId)));
+  }
+  addMark(input: Omit<MarkCreate, 'id'>): Id {
+    const id = newId('mk');
+    const mark: Mark = { anchorId: null, noteId: null, touches: [], ...input, id, boardId: this.boardId, createdAt: new Date().toISOString() };
+    this.marks.set(id, mark);
+    this.drawnHere.push({ id, noteId: mark.noteId });
+    this.emit([{ kind: 'marks' }]);
+    this.api.createMark(this.boardId, { ...input, id }).catch(() => {
+      if (this.disposed) return;
+      this.marks.delete(id);
+      this.emit([{ kind: 'marks' }]);
+      this.toast("Couldn't save that drawing. Try again.");
+    });
+    return id;
+  }
+  eraseMark(id: Id): void {
+    const mark = this.marks.get(id);
+    if (!mark) return;
+    this.marks.delete(id);
+    this.emit([{ kind: 'marks' }]);
+    this.api.deleteMark(this.boardId, id).catch(() => {
+      if (this.disposed) return;
+      this.marks.set(id, mark);
+      this.emit([{ kind: 'marks' }]);
+      this.toast("Couldn't erase that drawing. Try again.");
+    });
+  }
+  /** Takes back the newest mark drawn here on this surface that still exists. */
+  undoMark(noteId: Id | null): void {
+    for (let i = this.drawnHere.length - 1; i >= 0; i--) {
+      const entry = this.drawnHere[i];
+      if (entry.noteId !== noteId) continue;
+      this.drawnHere.splice(i, 1);
+      if (this.marks.has(entry.id)) { this.eraseMark(entry.id); return; }
+    }
+  }
 
   // ---- what a chat read ----
   private traces = new Map<Id, ContextTrace | null>();

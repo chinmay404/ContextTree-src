@@ -1,11 +1,12 @@
 'use client';
 /** The body of the source viewer, one component per source type (prototype viewBody, lines 986-1013). */
-import { useEffect, useRef, type KeyboardEvent, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import type { Card, SourceData } from '../api/types';
 import { TYPE_INFO } from '../lib/catalog';
 import { memberName } from '../lib/graph';
 import { useBoard } from '../context';
 import { Icon } from './Icon';
+import { NoteInk } from './NoteInk';
 
 export interface ViewerBodyProps {
   card: Card;
@@ -92,6 +93,7 @@ function PdfBody({ card }: { card: Card }): ReactElement {
 function NoteBody({ card }: { card: Card }): ReactElement {
   const { store, engine } = useBoard();
   const ref = useRef<HTMLTextAreaElement>(null);
+  const [, setScrolled] = useState(0);   // ink rides on the page, so it moves with the text's scroll
   useEffect(() => { const t = setTimeout(() => ref.current?.focus(), 80); return () => clearTimeout(t); }, [card.id]);
   const onInput = (text: string): void => {
     store.patchDataDebounced(card.id, { text });
@@ -101,8 +103,10 @@ function NoteBody({ card }: { card: Card }): ReactElement {
     }
   };
   return (
-    <textarea ref={ref} key={card.id} className="editor" placeholder="Write here…" defaultValue={data(card).text ?? ''}
-      onChange={(e) => onInput(e.target.value)} />
+    <NoteInk noteId={card.id} scroller={() => ref.current}>
+      <textarea ref={ref} key={card.id} className="editor" placeholder="Write here…" defaultValue={data(card).text ?? ''}
+        onChange={(e) => onInput(e.target.value)} onScroll={() => setScrolled((n) => n + 1)} />
+    </NoteInk>
   );
 }
 

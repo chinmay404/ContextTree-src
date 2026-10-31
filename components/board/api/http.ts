@@ -1,6 +1,6 @@
 import { parseSse } from '@/lib/sse';
 import {
-  ApiError, type ContextTrace,
+  ApiError, type ContextTrace, type Mark, type MarkCreate,
   type Board, type BoardSummary, type Card, type CardCreate, type CardPatch, type ChatRequest,
   type Edge, type EngineApi, type Id, type LinkPreview, type Message, type ProviderId, type Reads, type StreamErrorCode, type StreamEvent,
 } from './types';
@@ -145,6 +145,15 @@ export class HttpEngineApi implements EngineApi {
   }
   setEdgeWhy(boardId: Id, edgeId: Id, why: string) {
     return this.req<Edge>('PATCH', `/boards/${enc(boardId)}/edges/${enc(edgeId)}`, { why });
+  }
+  async listMarks(boardId: Id): Promise<Mark[]> {
+    return (await this.req<{ marks: Mark[] }>('GET', `/boards/${enc(boardId)}/marks`)).marks;
+  }
+  createMark(boardId: Id, input: MarkCreate) {
+    return this.req<Mark>('POST', `/boards/${enc(boardId)}/marks`, input);
+  }
+  async deleteMark(boardId: Id, markId: Id): Promise<void> {
+    await this.req('DELETE', `/boards/${enc(boardId)}/marks/${enc(markId)}`);
   }
 
   async uploadFile(
