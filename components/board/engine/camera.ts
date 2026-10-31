@@ -14,6 +14,8 @@ export function fitTransform(b: Box, vw: number, vh: number, pad: FitPad = APP_P
   return { x, y, z };
 }
 
+export const clampZoom = (z: number): number => clamp(z, .2, 2);
+
 export class Camera {
   x: Spring; y: Spring; z: Spring;
   constructor(sys: SpringSystem) {
@@ -24,7 +26,7 @@ export class Camera {
   s2w(cx: number, cy: number): [number, number] { return [(cx - this.x.x) / this.z.x, (cy - this.y.x) / this.z.x]; }
   snap(x: number, y: number, z?: number): void { this.x.snap(x); this.y.snap(y); if (z !== undefined) this.z.snap(z); }
   zoomAt(px: number, py: number, nz: number, anim: boolean): void {
-    nz = clamp(nz, .2, 2);
+    nz = clampZoom(nz);
     const z = anim ? this.z.t : this.z.x, bx = anim ? this.x.t : this.x.x, by = anim ? this.y.t : this.y.x;
     const nx = px - (px - bx) * nz / z, ny = py - (py - by) * nz / z;
     if (anim) { this.z.to(nz); this.x.to(nx); this.y.to(ny); } else this.snap(nx, ny, nz);

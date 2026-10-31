@@ -22,4 +22,10 @@ export const SLIDES: readonly Slide[] = [
   { scene: 'pile', icon: 'layers', term: 'Pile',
     title: 'Stack sources into a pile',
     body: 'Drop one source on another to make a pile. Scroll over it to flip through what’s inside.' },
+  { scene: 'draw', icon: 'pencil', term: 'Draw',
+    title: 'Mark up the board',
+    body: 'Press D or the pen beside Add to circle, point and highlight. A mark on a card moves with it, and the AI doesn’t read your drawings.' },
+  { scene: 'note', icon: 'sticky-note', term: 'Note page',
+    title: 'Type or write on a note',
+    body: 'Open a note and tap the pen to write on the same page. Your palm leaves no marks on a tablet. The AI reads what you type.' },
 ];

@@ -1,6 +1,6 @@
 'use client';
 /**
- * The first-visit welcome tour: a modal of six slides, one board word each (chat, source, desk, string, branch, pile),
+ * The first-visit welcome tour: a modal of slides, one board word each (chat, source, desk, string, branch, pile, draw, note),
  * each with a looping scene. Opens by itself per tour/tour-state.ts; the board menu's "Take the tour" replays it.
  * Design source: docs/design/onboarding-tour.html.
  */

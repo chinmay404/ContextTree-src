@@ -2,7 +2,7 @@
 
 export const TOUR_KEY = 'ct-tour';
 /** Bump when the tour gains slides: everyone sees it once more. */
-export const TOUR_VERSION = 1;
+export const TOUR_VERSION = 2;
 
 export interface TourSeen { version: number; at: number; finished: boolean }
 

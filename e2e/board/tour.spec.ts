@@ -24,10 +24,14 @@ test('the welcome tour opens on the first visit, steps through, and stays shut a
   await expect(tour(page).locator('h2')).toHaveText('Every question gets its own card');
   for (let i = 0; i < 5; i++) await tour(page).locator('[data-act="next"]').click();
   await expect(tour(page).locator('h2')).toHaveText('Stack sources into a pile');
+  await tour(page).locator('[data-act="next"]').click();
+  await expect(tour(page).locator('h2')).toHaveText('Mark up the board');
+  await tour(page).locator('[data-act="next"]').click();
+  await expect(tour(page).locator('h2')).toHaveText('Type or write on a note');
   await expect(tour(page).locator('[data-act="next"]')).toHaveText('Start building');
   await tour(page).locator('[data-act="next"]').click();
   await expect(tour(page)).toHaveCount(0);
-  expect(await seen(page)).toMatchObject({ version: 1, finished: true });
+  expect(await seen(page)).toMatchObject({ version: 2, finished: true });
 
   await page.reload();
   await openBoard(page);

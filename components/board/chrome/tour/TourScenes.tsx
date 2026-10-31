@@ -1,5 +1,5 @@
 /**
- * The six looping scenes of the welcome tour, drawn with the board's own card markup (pebble.css classes) on a
+ * The looping scenes of the welcome tour, drawn with the board's own card markup (pebble.css classes) on a
  * 640×320 stage. Timing lives in welcome-tour.css: every animation in a scene runs on that scene's `--T` clock.
  * Spec and visual source: docs/design/onboarding-tour.html.
  */
@@ -8,7 +8,7 @@ import { MODELS, type ModelKey } from '../../lib/catalog';
 import { Icon } from '../Icon';
 import { ModelMark } from '../ModelMark';
 
-export type SceneKey = 'chat' | 'source' | 'desk' | 'string' | 'branch' | 'pile';
+export type SceneKey = 'chat' | 'source' | 'desk' | 'string' | 'branch' | 'pile' | 'draw' | 'note';
 
 const Cursor = (): ReactElement => (
   <svg className="t-cur" viewBox="0 0 24 24" aria-hidden="true">
@@ -138,6 +138,55 @@ function PileScene(): ReactElement {
   );
 }
 
+const CIRCLE = 'M64 44 C110 12, 262 14, 276 62 C288 110, 118 138, 58 104 C22 84, 34 56, 96 38';
+const POINT = 'M292 92 C330 96, 352 104, 382 120';
+const POINT_HEAD = 'M366 104 L384 121 L362 130';
+
+function DrawScene(): ReactElement {
+  return (
+    <>
+      <Src kind="docs" icon="file-text" meta="PDF · 24 pages" title="Pricing survey 2025" />
+      <div className="card chat"><div className="face">
+        <Head model="claude" q="Q1" />
+        <div className="ttl">Which pricing tier should we launch with?</div>
+        <div className="ans"><p>Launch with <b>Free</b> and <b>Pro at $12</b>.</p></div>
+      </div></div>
+      <svg className="t-lines" aria-hidden="true">
+        <path className="t-ink t-circle" pathLength={1} d={CIRCLE} />
+        <path className="t-ink t-point" pathLength={1} d={POINT} />
+        <path className="t-ink t-head" pathLength={1} d={POINT_HEAD} />
+      </svg>
+      <span className="t-pen" style={{ offsetPath: `path('${CIRCLE}')` }}><Icon name="pencil" /></span>
+      <div className="t-penbar">
+        <span className="t-tool on"><Icon name="pencil" /></span><span className="t-tool"><Icon name="arrow-up-right" /></span>
+        <span className="t-tool"><Icon name="highlighter" /></span><span className="t-tool"><Icon name="eraser" /></span>
+        <i className="t-dot" /><i className="t-dot t-red" /><i className="t-dot t-blue" />
+      </div>
+    </>
+  );
+}
+
+const UNDERLINE = 'M40 112 C110 104, 190 120, 268 108';
+const WHY = 'M330 100 C356 74, 390 76, 398 98 C404 118, 372 124, 372 142 M372 164 L373 166';
+
+function NoteScene(): ReactElement {
+  return (
+    <div className="t-page f-note">
+      <div className="t-pagehd"><span className="tile"><Icon name="sticky-note" /></span><b>Launch notes</b></div>
+      <p className="t-line"><span className="t-typed">Launch with Free and Pro at $12</span></p>
+      <svg className="t-lines" aria-hidden="true">
+        <path className="t-ink t-under" pathLength={1} d={UNDERLINE} />
+        <path className="t-ink t-why" pathLength={1} d={WHY} />
+      </svg>
+      <div className="t-penbar">
+        <span className="t-tool t-typeb"><Icon name="type" /></span><span className="t-tool t-writeb"><Icon name="pencil" /></span>
+        <i className="t-dot t-red" /><i className="t-dot t-blue" />
+      </div>
+    </div>
+  );
+}
+
 export const SCENES: Record<SceneKey, () => ReactElement> = {
   chat: ChatScene, source: SourceScene, desk: DeskScene, string: StringScene, branch: BranchScene, pile: PileScene,
+  draw: DrawScene, note: NoteScene,
 };

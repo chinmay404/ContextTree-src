@@ -2,6 +2,7 @@
  * Pointer routing, card drag, board pan and wheel, ported from the prototype (lines 772-851).
  * Ports go to strings; piles and desks answer hover and drop questions.
  */
+import { attachPinch } from './pinch';
 import type { Id } from '../api/types';
 import { clamp, project, velocity } from './spring';
 import type { EngineContext, ViewNode } from './types';
@@ -133,8 +134,9 @@ export function attachPointer(ctx: EngineContext): PointerRouting {
   vp.addEventListener('pointermove', onHover);
   vp.addEventListener('pointerdown', onDown);
   vp.addEventListener('wheel', onWheel, { passive: false });
+  const detachPinch = attachPinch(ctx, vp);
   return {
     downOnCard: () => downOnCard,
-    dispose: () => { vp.removeEventListener('pointermove', onHover); vp.removeEventListener('pointerdown', onDown); vp.removeEventListener('wheel', onWheel); },
+    dispose: () => { detachPinch(); vp.removeEventListener('pointermove', onHover); vp.removeEventListener('pointerdown', onDown); vp.removeEventListener('wheel', onWheel); },
   };
 }

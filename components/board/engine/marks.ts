@@ -147,6 +147,8 @@ export function createMarks(ctx: EngineContext): MarksModule {
         if (el && mark.anchorId) place(mark, el);
       }
     },
+    penDown: () => active?.type === 'pen',
+    dropTouchStroke() { if (active?.type === 'touch') stop(); },
     dispose() { stop(); svg.remove(); catcher.remove(); },
   };
 }

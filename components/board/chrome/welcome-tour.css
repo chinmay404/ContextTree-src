@@ -190,3 +190,45 @@
   .pb-root .pb-tour, .pb-root .pb-tour .t-box, .pb-root .pb-tour .t-scene, .pb-root .pb-tour .t-pips button { transition-duration: 1ms !important; }
   .pb-root .pb-tour .t-copy-in { animation: none; }
 }
+
+/* Draw: the pen circles a source and points at the chat. */
+.pb-root .pb-tour .t-draw, .pb-root .pb-tour .t-note { --T: 6s; }
+.pb-root .pb-tour .t-draw .card.src { position: absolute; left: 70px; top: 36px; width: 196px; }
+.pb-root .pb-tour .t-draw .card.chat { position: absolute; left: 388px; top: 40px; width: 228px; }
+.pb-root .pb-tour .t-ink { fill: none; stroke: var(--failed); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.pb-root .pb-tour .t-circle { animation-name: pbt-ink-a; }
+.pb-root .pb-tour .t-point { animation-name: pbt-ink-b; }
+.pb-root .pb-tour .t-head { animation-name: pbt-ink-c; }
+@keyframes pbt-ink-a { 0%, 6% { stroke-dashoffset: 1; } 42%, 88% { stroke-dashoffset: 0; opacity: 1; } 95%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes pbt-ink-b { 0%, 46% { stroke-dashoffset: 1; } 58%, 88% { stroke-dashoffset: 0; opacity: 1; } 95%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes pbt-ink-c { 0%, 58% { stroke-dashoffset: 1; } 66%, 88% { stroke-dashoffset: 0; opacity: 1; } 95%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+.pb-root .pb-tour .t-pen { position: absolute; left: 0; top: 0; offset-rotate: 0deg; width: 22px; height: 22px; display: grid; place-items: center; transform: translate(9px, -9px); animation-name: pbt-pen; }
+.pb-root .pb-tour .t-pen .i { --s: 20px; --c: var(--t1); }
+@keyframes pbt-pen { 0%, 6% { offset-distance: 0%; opacity: 1; } 42% { offset-distance: 100%; opacity: 1; } 46%, 100% { offset-distance: 100%; opacity: 0; } }
+.pb-root .pb-tour .t-penbar { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 24px; background: var(--pb-card); box-shadow: var(--sh-float, 0 2px 12px rgba(0, 0, 0, .12)); }
+.pb-root .pb-tour .t-tool { width: 30px; height: 30px; border-radius: 15px; display: grid; place-items: center; }
+.pb-root .pb-tour .t-tool .i { --s: 15px; }
+.pb-root .pb-tour .t-tool.on { background: var(--pb-ink); }
+.pb-root .pb-tour .t-tool.on .i { --c: var(--pb-on-ink); }
+.pb-root .pb-tour .t-dot { width: 16px; height: 16px; border-radius: 8px; background: var(--t1); }
+.pb-root .pb-tour .t-dot.t-red { background: var(--failed); }
+.pb-root .pb-tour .t-dot.t-blue { background: var(--pb-edge-strong); }
+
+/* Note page: typed text, then the pen writes on the same sheet. */
+.pb-root .pb-tour .t-page { position: absolute; left: 40px; right: 40px; top: 16px; bottom: 16px; border-radius: 22px; background: var(--fc); padding: 16px 22px; }
+.pb-root .pb-tour .t-pagehd { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+.pb-root .pb-tour .t-pagehd .tile { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--pb-card); }
+.pb-root .pb-tour .t-pagehd .i { --s: 15px; }
+.pb-root .pb-tour .t-line { position: absolute; left: 42px; top: 84px; margin: 0; font-size: 17px; white-space: nowrap; }
+.pb-root .pb-tour .t-typed { display: inline-block; animation-name: pbt-typed; }
+@keyframes pbt-typed { 0%, 4% { clip-path: inset(0 100% 0 0); animation-timing-function: steps(31, end); } 30%, 100% { clip-path: inset(0 0 0 0); } }
+.pb-root .pb-tour .t-note .t-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pb-root .pb-tour .t-under { animation-name: pbt-ink-under; }
+.pb-root .pb-tour .t-why { animation-name: pbt-ink-why; }
+@keyframes pbt-ink-under { 0%, 40% { stroke-dashoffset: 1; } 56%, 88% { stroke-dashoffset: 0; opacity: 1; } 95%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes pbt-ink-why { 0%, 58% { stroke-dashoffset: 1; } 78%, 88% { stroke-dashoffset: 0; opacity: 1; } 95%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+.pb-root .pb-tour .t-typeb { animation-name: pbt-tab-a; }
+.pb-root .pb-tour .t-writeb { animation-name: pbt-tab-b; }
+.pb-root .pb-tour .t-typeb .i, .pb-root .pb-tour .t-writeb .i { animation-duration: inherit; }
+@keyframes pbt-tab-a { 0%, 34% { background: var(--pb-fill); } 38%, 100% { background: transparent; } }
+@keyframes pbt-tab-b { 0%, 34% { background: transparent; } 38%, 100% { background: var(--pb-fill); } }
