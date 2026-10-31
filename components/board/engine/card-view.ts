@@ -8,9 +8,10 @@ import { colorOf } from '../lib/colors';
 import { keyErrorView } from '../lib/key-errors';
 import { modelMarkHtml } from '../lib/model-icons';
 import { cut, esc } from '../lib/format';
-import { answersInto, chatData, deskOf, iconOf, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, wiresInto, type Graph } from '../lib/graph';
+import { answersInto, chatData, deskOf, iconOf, edgesFrom, famOf, isChat, kids, memberName, membersOf, nameOf, pileLabel, qNum, sourceData, wiresInto, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
 import { DONE_MS, statusMark } from '../lib/status-mark';
+import { editableText, insertPlain, noteRest } from '../lib/note-text';
 import { webRowHTML } from '../lib/web-results';
 import { countSources, foldPiles, isRead, tokensRead } from '../lib/reads';
 import { icon } from './icons';
@@ -112,7 +113,7 @@ export class CardView {
     let base = d.meta ?? TYPE_INFO[c.sourceType ?? 'pdf'].label;
     if (c.sourceType === 'pile') {
       const ms = membersOf(g, c.id), N = ms.length || 1;
-      base = `${ms.every((m) => m.sourceType === 'pdf') ? 'PDF' : 'Mixed'} · ${n.open ? `${ms.length} files` : `${(this.ctx.modules.piles.front(c.id) % N) + 1} of ${ms.length}`}`;
+      base = `${pileLabel(ms)} · ${n.open ? `${ms.length} files` : `${(this.ctx.modules.piles.front(c.id) % N) + 1} of ${ms.length}`}`;
     }
     const w = wireCount(g, c.id);
     return esc(base) + (w ? ` · ${icon('link')} ${w + (c.deskId ? 1 : 0)} chats` : '');
@@ -150,7 +151,7 @@ export class CardView {
     } else if (n.open && st === 'ready') {
       const ms = pile ? membersOf(g, c.id) : [];
       const list = pile
-        ? ms.map((m, i) => `<button data-mem="${i}" class="${sourceData(m).off ? 'off' : ''}"><span class="chipl">${String(i + 1).padStart(2, '0')}</span><span>${esc(sourceData(m).title ?? 'Untitled')}</span></button>`).join('')
+        ? ms.map((m, i) => `<button data-mem="${i}" class="${sourceData(m).off ? 'off' : ''}"><span class="chipl">${String(i + 1).padStart(2, '0')}</span><span>${esc(memberName(g, m))}</span></button>`).join('')
         : ex.map((e, i) => `<button data-ex="${i}" class="${e.on ? '' : 'off'}">${e.loc ? `<span class="chipl">${esc(e.loc)}</span>` : ''}<span>${esc(e.text)}</span></button>`).join('');
       const tot = pile ? ms.length : ex.length, used = pile ? ms.filter((m) => !sourceData(m).off).length : ex.filter((e) => e.on).length;
       body = `<div class="l"><div class="top">${this.tileHTML(n, c)}<div class="sx"><div class="meta">${this.metaOf(n, c)}</div><div class="ttl">${esc(d.title ?? 'Untitled')}</div></div></div>
@@ -160,7 +161,9 @@ export class CardView {
     } else if (pile && st === 'ready') {
       const ms = membersOf(g, c.id), f = ms.length ? ms[this.ctx.modules.piles.front(c.id) % ms.length] : null;
       const fd = f ? sourceData(f) : {}, e = (fd.excerpts ?? [])[0];
-      body = `<div class="sn" title="Scroll to flip through the pile">${this.tileHTML(n, c)}<div class="sx"><div class="meta">${this.metaOf(n, c)}</div><div class="ttl">${esc(fd.title ?? d.title ?? 'Pile')}</div>${e ? `<div class="exr">${e.loc ? `<span class="chipl">${esc(e.loc)}</span>` : ''}<span>${esc(e.text)}</span></div>` : ''}</div></div>`;
+      const frontNote = f?.sourceType === 'note', rest = frontNote ? noteRest(fd.text ?? '') : '';   // a note has no title or excerpts: its first line and what follows
+      const line = e ? `<div class="exr">${e.loc ? `<span class="chipl">${esc(e.loc)}</span>` : ''}<span>${esc(e.text)}</span></div>` : rest ? `<div class="exr"><span>${esc(cut(rest, 90))}</span></div>` : '';
+      body = `<div class="sn" title="Scroll to flip through the pile">${this.tileHTML(n, c)}<div class="sx"><div class="meta">${this.metaOf(n, c)}</div><div class="ttl">${esc(frontNote ? nameOf(g, f) : fd.title ?? d.title ?? 'Pile')}</div>${line}</div></div>`;
     } else {
       const e = ex.find((x) => x.on) ?? ex[0];
       const line = st === 'failed' ? `<div class="fix">${d.error ? `${esc(d.error)}<br>` : ''}<button data-retry>Retry</button> · <button data-pastetext>Paste text</button></div>`
@@ -390,15 +393,17 @@ export class CardView {
         const s = getSelection(); s?.removeAllRanges(); s?.addRange(r);
       });
       note.addEventListener('click', (e) => { const a = e.target instanceof Element ? e.target.closest('a') : null; if (a && !(e.ctrlKey || e.metaKey)) e.preventDefault(); });   // a click edits; Ctrl/Cmd-click follows the link
-      note.addEventListener('paste', (e) => {   // pasted HTML becomes plain text
+      const saveNote = (): void => {
+        note.classList.toggle('short', note.scrollHeight <= note.clientHeight + 2);
+        store.patchDataDebounced(id, { text: editableText(note) } as Partial<SourceData>);
+      };
+      note.addEventListener('input', saveNote);
+      note.addEventListener('paste', (e) => {   // pasted HTML becomes plain text: one text node with its new lines (the note is pre-wrap)
         const t = e.clipboardData?.getData('text/plain');
         if (t === undefined) return;
         e.preventDefault();
-        document.execCommand('insertText', false, t);
-      });
-      note.addEventListener('input', () => {
-        note.classList.toggle('short', note.scrollHeight <= note.clientHeight + 2);
-        store.patchDataDebounced(id, { text: (note.textContent ?? '').replace(/ /g, ' ') } as Partial<SourceData>);
+        insertPlain(note, t);
+        saveNote();
       });
       // Pressing one of the card's own buttons blurs the note first; re-rendering then would swap the button out before its click.
       let onButton = false;

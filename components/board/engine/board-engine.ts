@@ -8,6 +8,7 @@
  */
 import type { Card, Id, ProviderId } from '../api/types';
 import { ancestors, chatsOf, isChat } from '../lib/graph';
+import { NOTE_MAX_CHARS, plainLines } from '../lib/note-text';
 import type { BoardStore, StoreChange } from '../store';
 import { Camera, type Box } from './camera';
 import { CardView, CHAT_W, SRC_W } from './card-view';
@@ -597,10 +598,10 @@ export class BoardEngine {
     return id;
   }
 
-  /** Pasted text becomes a note with the first 600 characters (prototype 1153). */
+  /** Pasted text becomes a note, up to what the engine reads of a note. */
   addPastedNote(text: string, deskId: Id | null): Id {
     const [x, y] = this.placeFor(deskId, 0, null);
-    const id = this.store.createNote({ x, y, deskId, text: text.slice(0, 600), meta: 'Note · pasted' });
+    const id = this.store.createNote({ x, y, deskId, text: plainLines(text).slice(0, NOTE_MAX_CHARS), meta: 'Note · pasted' });
     this.land(id);
     this.store.select(id);
     return id;

@@ -27,6 +27,20 @@ export async function dragPath(page: Page, from: [number, number], to: [number, 
   await page.mouse.up();
 }
 
+/** A close-up of one card, with room around it, centred at a readable zoom. */
+export async function closeUp(page: Page, id: string, path: string): Promise<void> {
+  await page.mouse.move(4, 4);
+  await page.evaluate((i) => {
+    const b = window.__board!; b.select(null);
+    const [x0, y0, x1, y1] = b.box(i), z = 1.3;
+    b.camSnap(720 - ((x0 + x1) / 2) * z, 450 - ((y0 + y1) / 2) * z, z);
+  }, id);
+  await page.evaluate(() => window.__board!.settle());
+  await page.waitForTimeout(300);
+  const box = (await page.locator(`.card[data-id="${id}"]`).boundingBox())!;
+  await page.screenshot({ path, clip: { x: Math.max(0, box.x - 48), y: Math.max(0, box.y - 48), width: box.width + 96, height: box.height + 96 } });
+}
+
 const IGNORE = /Failed to load resource|next-auth|CLIENT_FETCH_ERROR|React DevTools/;
 
 /** Collects page errors and console errors (minus known dev noise) for an `expect(errs).toEqual([])`. */

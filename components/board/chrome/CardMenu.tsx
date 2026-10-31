@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, type ReactElement } from 'react';
 import { useBoard, useSnapshot } from '../context';
 import { colorOf } from '../lib/colors';
+import { setAction } from '../lib/graph';
 import { clamp } from '../lib/util';
 import { ColorSwatches } from './ColorSwatches';
 import { Icon } from './Icon';
@@ -40,10 +41,7 @@ export function CardMenu(): ReactElement {
     }
   }, [open]);
 
-  // What a source can become: a pile opens as a set and a set closes into a pile; a loose source can start a set.
-  const kind: 'open' | 'close' | 'start' | null = !card || card.kind !== 'source' || card.status !== 'ready' ? null
-    : card.sourceType === 'pile' ? ((card.data as { layout?: string | null }).layout === 'open' ? 'close' : 'open')
-    : card.sourceType !== 'note' && !card.pileId ? 'start' : null;
+  const kind = setAction(card);
   const act = (): void => {
     if (!m || !card) return;
     if (kind === 'open') store.setLayout(m.cardId, 'open');

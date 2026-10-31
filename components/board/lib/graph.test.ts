@@ -2,7 +2,7 @@ import { seedBoard } from '../api/mock/seed';
 import type { Board, Card, SourceData } from '../api/types';
 import { MODELS, defaultChatData, modelInfo, personaLabel, PERSONAS } from './catalog';
 import {
-  ancestors, canPlug, descendants, famOf, graphOf, hasAnswer, kids, membersOf, nameOf, qNum, sourcesOf, subtree, tokensOf, tubeW, wireKey,
+  ancestors, canPile, canPlug, descendants, famOf, graphOf, hasAnswer, kids, membersOf, nameOf, pileLabel, qNum, setAction, sourcesOf, subtree, tokensOf, tubeW, wireKey,
 } from './graph';
 
 const board = (): Board => seedBoard().board;
@@ -75,4 +75,44 @@ it('catalog helpers', () => {
 it('seed excerpts keep contract shape', () => {
   const ex = (g.cards.get('pdf')!.data as SourceData).excerpts!;
   expect(ex[0]).toEqual({ loc: 'p. 3', text: 'Solo-dev tools cluster between $8 and $20.', on: true });
+});
+
+describe('notes mix with other sources (piles and sets)', () => {
+  const withNote = (patch: Partial<Card>, data: Partial<SourceData> = {}): Card => {
+    const n = g.cards.get('note')!;
+    return { ...n, ...patch, data: { ...(n.data as SourceData), ...data } };
+  };
+
+  it('a ready note can be piled like any ready source; chats, unready cards and missing cards cannot', () => {
+    expect(canPile(g.cards.get('note'))).toBe(true);
+    expect(canPile(g.cards.get('pdf'))).toBe(true);
+    expect(canPile(g.cards.get('interviews'))).toBe(true);
+    expect(canPile(g.cards.get('main'))).toBe(false);
+    expect(canPile(g.cards.get('video'))).toBe(false);   // coming soon
+    expect(canPile(withNote({ status: 'processing' }))).toBe(false);
+    expect(canPile(undefined)).toBe(false);
+  });
+
+  it('the card menu offers "Start a set" on a loose note, and nothing on one already in a pile', () => {
+    expect(setAction(g.cards.get('note'))).toBe('start');
+    expect(setAction(g.cards.get('pdf'))).toBe('start');
+    expect(setAction(withNote({ pileId: 'interviews' }))).toBeNull();
+    expect(setAction(g.cards.get('interviews'))).toBe('open');
+    expect(setAction({ ...g.cards.get('interviews')!, data: { title: 'S', layout: 'open' } })).toBe('close');
+    expect(setAction(g.cards.get('main'))).toBeNull();
+    expect(setAction(g.cards.get('video'))).toBeNull();
+  });
+
+  it('a note is named by its first line', () => {
+    expect(nameOf(g, withNote({}, { text: '## Pricing tiers\nSolo is $8.\nTeam is $14.' }))).toBe('Pricing tiers');
+    expect(nameOf(g, withNote({}, { text: '' }))).toBe('Note');
+  });
+
+  it('a pile is labelled by the one type its members share, else Mixed', () => {
+    const note = g.cards.get('note')!, pdf = g.cards.get('pdf')!;
+    expect(pileLabel([note, { ...note, id: 'n2' }])).toBe('Note');
+    expect(pileLabel([pdf, { ...pdf, id: 'p2' }])).toBe('PDF');
+    expect(pileLabel([note, pdf])).toBe('Mixed');
+    expect(pileLabel(membersOf(g, 'interviews'))).toBe('Mixed');   // three PDFs and a document
+  });
 });

@@ -3,6 +3,7 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactElement } from 'react';
 import type { Card, SourceData } from '../api/types';
 import { TYPE_INFO } from '../lib/catalog';
+import { memberName } from '../lib/graph';
 import { useBoard } from '../context';
 import { Icon } from './Icon';
 
@@ -171,9 +172,9 @@ function PileBody({ card, members, onOpenMember }: { card: Card; members: Card[]
             <div key={m.id} className={`mrow f-${info.family} ${off ? 'off' : ''}`}>
               <button type="button" onClick={(e) => onOpenMember?.(card, m, e.currentTarget.getBoundingClientRect())}>
                 <span className="tile"><Icon name={info.icon} /></span>
-                <span className="sx"><span className="meta">{data(m).meta || info.label}</span><span className="ttl">{data(m).title || 'Untitled'}</span></span>
+                <span className="sx"><span className="meta">{data(m).meta || info.label}</span><span className="ttl">{memberName(store.graph(), m)}</span></span>
               </button>
-              <span role="switch" tabIndex={0} data-memoff aria-checked={!off} aria-label={`Read ${data(m).title || 'this file'}`} title={off ? 'Switched off: the AI does not read it' : 'Switch off so the AI skips it'}
+              <span role="switch" tabIndex={0} data-memoff aria-checked={!off} aria-label={`Read ${memberName(store.graph(), m)}`} title={off ? 'Switched off: the AI does not read it' : 'Switch off so the AI skips it'}
                 className="msw" onClick={() => toggle(m)} onKeyDown={(e) => onKey(e, m)}><i /></span>
             </div>
           );

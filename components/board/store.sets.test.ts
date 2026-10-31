@@ -141,3 +141,40 @@ describe('source sets', () => {
     });
   });
 });
+
+describe('notes in piles and sets (a deck of notes and sources)', () => {
+  it('a note dropped on a note makes a Note pile; another source joins it', async () => {
+    const n2 = s.createNote({ x: 0, y: 400, deskId: null, text: 'Second thought\nmore' });
+    await flush();
+    const id = s.makePile(n2, 'note', [0, 238]);
+    await flush();
+    expect(data(id).title).toBe('Note pile');
+    expect(members(id)).toEqual(['note', n2].sort());
+    s.makePile('pdf', id, [0, 0]); await flush();
+    expect(members(id)).toEqual(['note', n2, 'pdf'].sort());
+  });
+
+  it('a note on another source makes a Mixed pile', async () => {
+    const id = s.makePile('note', 'web', [0, 0]); await flush();
+    expect(data(id).title).toBe('Mixed pile');
+    expect(card('note')).toMatchObject({ pileId: id, deskId: null });
+  });
+
+  it('a set started from a note, with a PDF dropped in and strung to a chat, makes the chat read the note', async () => {
+    const id = s.makeSet([0, 0], null, 'note');
+    s.makePile('pdf', id, [0, 0]); await flush();
+    expect(members(id)).toEqual(['note', 'pdf']);
+    expect(s.connect('wire', id, 'deep')).toBeTruthy();
+    await flush();
+    expect(s.readsOf('deep').items.map((i) => i.cardId)).toEqual(expect.arrayContaining(['note', 'pdf']));
+    expect((await m.getReads('b_seed', 'deep')).items.map((i) => i.cardId)).toEqual(expect.arrayContaining(['note', 'pdf']));
+  });
+
+  it('a note taken out of a set is a loose note again, its text untouched', async () => {
+    const id = s.makeSet([300, 300], null, 'note'); await flush();
+    s.takeOut('note'); await flush();
+    expect(card('note')).toMatchObject({ sourceType: 'note', pileId: null, status: 'ready' });
+    expect(data('note').text).toBe('Costs ≈ $0.40 per active user a month. Never go below $8.');
+    expect(members(id)).toEqual([]);
+  });
+});

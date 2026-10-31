@@ -1,6 +1,6 @@
 import type { Board, Card, ChatData, Edge, Id, SourceData } from '../api/types';
 import { TYPE_INFO, type Family } from './catalog';
-import { cut } from './format';
+import { noteTitle } from './note-text';
 
 export type Graph = { cards: ReadonlyMap<Id, Card>; edges: ReadonlyMap<Id, Edge> };
 
@@ -60,7 +60,26 @@ export function qNum(g: Graph, id: Id): string {
 export function nameOf(g: Graph, c: Card): string {
   if (isChat(c)) return `${qNum(g, c.id)} answer`;
   const d = sourceData(c);
-  return d.title || cut(d.text || 'Note', 34);
+  return d.title || noteTitle(d.text ?? '') || 'Note';
+}
+
+/** A member's name in its pile: a note by its first line; anything else by its title. */
+export const memberName = (g: Graph, m: Card): string => (m.sourceType === 'note' ? nameOf(g, m) : sourceData(m).title || 'Untitled');
+
+/** What can go in a pile or a set, or take one: any ready source, notes included. */
+export const canPile = (c?: Card | null): boolean => !!c && c.kind === 'source' && c.status === 'ready';
+
+/** What a source can become from its menu: a pile opens as a set, a set closes into a pile, a loose source starts a set. */
+export function setAction(c?: Card | null): 'open' | 'close' | 'start' | null {
+  if (!canPile(c)) return null;
+  if (c!.sourceType === 'pile') return (c!.data as SourceData).layout === 'open' ? 'close' : 'open';
+  return c!.pileId ? null : 'start';
+}
+
+/** A pile's kind on its face: the one type its members share, else Mixed. */
+export function pileLabel(members: Card[]): string {
+  const t = members[0]?.sourceType;
+  return t && members.every((m) => m.sourceType === t) ? TYPE_INFO[t].label : 'Mixed';
 }
 
 export function famOf(g: Graph, c: Card): Family {

@@ -6,6 +6,7 @@
 import './format-bar.css';
 import { memo, useEffect, useRef, useState, type ReactElement } from 'react';
 import { applyFormat, type FormatKind } from '../lib/md-format';
+import { editableOffset, editableText, selectText } from '../lib/note-text';
 import { Icon } from './Icon';
 
 /** The editable a format applies to: a note on its card (plain-text editing) or the note viewer's textarea. */
@@ -14,12 +15,6 @@ const EDITABLE = '.pb-root .note-in .n:not(.md), .pb-root textarea.editor';
 const isEditable = (el: Element | null): el is HTMLElement => !!el && el.matches(EDITABLE);
 
 interface Field { get(): { value: string; start: number; end: number }; set(v: string, start: number, end: number): void }
-
-function textOffset(root: HTMLElement, node: Node, off: number): number {
-  const r = document.createRange();
-  r.selectNodeContents(root); r.setEnd(node, off);
-  return r.toString().length;
-}
 
 function fieldOf(el: HTMLElement): Field {
   if (el instanceof HTMLTextAreaElement) {
@@ -36,15 +31,14 @@ function fieldOf(el: HTMLElement): Field {
   return {
     get() {
       const s = getSelection();
-      const value = el.textContent ?? '';
+      const value = editableText(el);   // new lines included, whatever the browser wrote for them
       if (!s || !s.rangeCount || !el.contains(s.anchorNode) || !el.contains(s.focusNode)) return { value, start: value.length, end: value.length };
-      const a = textOffset(el, s.anchorNode!, s.anchorOffset), b = textOffset(el, s.focusNode!, s.focusOffset);
+      const a = editableOffset(el, s.anchorNode!, s.anchorOffset), b = editableOffset(el, s.focusNode!, s.focusOffset);
       return { value, start: Math.min(a, b), end: Math.max(a, b) };
     },
     set(v, start, end) {
       el.textContent = v;
-      const t = el.firstChild;
-      if (t) { const r = document.createRange(); r.setStart(t, Math.min(start, v.length)); r.setEnd(t, Math.min(end, v.length)); const s = getSelection(); s?.removeAllRanges(); s?.addRange(r); }
+      if (el.firstChild) selectText(el, start, end);
       el.dispatchEvent(new Event('input', { bubbles: true }));
     },
   };

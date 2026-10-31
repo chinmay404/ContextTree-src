@@ -1,4 +1,4 @@
-import { membersOf } from '../lib/graph';
+import { canPile, membersOf } from '../lib/graph';
 import type { EngineContext, PilesModule, ViewNode } from './types';
 
 export interface WheelState { acc: number; t: number }
@@ -24,7 +24,7 @@ const EASE = 'cubic-bezier(.23, 1, .32, 1)';
 export function createPiles(ctx: EngineContext): PilesModule {
   const wheels = new Map<string, WheelState>();
   const card = (id: string) => ctx.store.graph().cards.get(id);
-  const live = (id: string) => { const c = card(id); return !!c && c.kind === 'source' && c.status === 'ready' && c.sourceType !== 'note'; };
+  const live = (id: string) => canPile(card(id));
 
   const cycle = (id: string, dir: 1 | -1): void => {
     const n = ctx.nodes.get(id);

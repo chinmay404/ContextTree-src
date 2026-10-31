@@ -6,7 +6,7 @@ import type { Card, SourceData } from '../api/types';
 import { TYPE_INFO, modelInfo } from '../lib/catalog';
 import { ModelMark } from './ModelMark';
 import { cut } from '../lib/format';
-import { chatData, famOf, isChat, membersOf, qNum } from '../lib/graph';
+import { chatData, famOf, isChat, membersOf, nameOf, qNum } from '../lib/graph';
 import { isRead, tokensRead } from '../lib/reads';
 import { useBoard, useSnapshot } from '../context';
 import type { UiState } from '../store';
@@ -78,14 +78,14 @@ export function SourceViewer(): ReactElement {
     const tokens = readBy ? tokensRead(g, store.engineReads(readBy)?.items ?? [], v) : null;
     const meta = isPile ? `Pile · ${members.length} files` : d.meta || info.label;
     content = (
-      <div ref={boxRef} className={`sheetbox vw f-${family}`} role="dialog" aria-modal="true" aria-label={d.title || 'Note'} tabIndex={-1}>
+      <div ref={boxRef} className={`sheetbox vw f-${family}`} role="dialog" aria-modal="true" aria-label={nameOf(g, v)} tabIndex={-1}>
         <button type="button" className="ic vclose" aria-label="Close" onClick={close}><Icon name="x" /></button>
         <div className="vmain">
           <div className="vhead">
             <div className="tile"><Icon name={info.icon} /></div>
             <div className="sx">
               <div className="meta">{member ? `${(pile.data as SourceData).title ?? 'Pile'} · ` : ''}{meta}</div>
-              <h2>{d.title || 'Note'}</h2>
+              <h2>{nameOf(g, v)}</h2>
             </div>
           </div>
           <ViewerBody card={v} members={members} url={store.fileUrl(v.id)}
