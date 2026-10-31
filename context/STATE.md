@@ -1,34 +1,34 @@
 # State — Context Tree
 
-_Updated: 2026-10-23 by Claude (with Chinmay) · at commit 20b3535_
+_Updated: 2026-10-31 by Claude (with Chinmay) · at commit dffe89f_
 
 ## Where we are
-V3 is on main in both repos and deployed to Vercel (frontend and engine; Railway is retired). Board polish round 2 is done except P16. Plans: `docs/superpowers/plans/2026-10-2*-v3-*.md`; ledgers in `.superpowers/sdd/` (git-ignored).
-- Frontend `ContextTree-src` main @20b3535 (= branch `v3`): Apple-grey look + dark mode (System/Light/Dark), app shell, BYOK for seven providers, paste box (V), string arrows, card colours, desk glow, browser Back, note formatting, one-line web results, source sets, branch slide, map of names.
-- Engine `ContextTree` main @aab02a2: citations, BYOK, Vercel ingest route, guarded page fetcher (size/time caps), standalone web-search query, chat turns off the event loop.
-- Local: :3100 board test server (no V3 flag, so landing/sign-in e2e need a flagged server), :3101 dev server.
+V3 is on main in both repos. The owner's latest board batch has shipped; next is whether notes should be read past 4,000 characters, then P16.
 
 ## What moved
-- 2026-10-21: released to main and Vercel; engine moved off Railway.
-- 2026-10-23: search rewrite + one-line results; polish-2 P9–P15, P13 dark mode (board + shell), S3 sets, P4 branch slide, P7 map of names (with overlap + string-anchor fixes) all pushed.
+- 2026-10-31: tree timeline and status mark on sources (7956460 before rebase, on main in d660766's history), desk sources read as what the question is about (engine 3e880ac), notes keep line breaks and join piles and sets (136a110), select text → notepad or new branch (5875af8), notepad warns past the read limit (dffe89f).
+- 2026-10-31, another session: context engine, context inspector, visible turn errors, sources stack on the map (see `git log`).
+- 2026-10-24: answers render tables, code, quotes and rules (b40ef11).
 
 ## What's live
 | Env | Running | Since |
 |---|---|---|
-| prod frontend (Vercel, contexttree.tech) | main, auto-deploy (last checked by owner after 09fae64) | 2026-10-21 |
-| prod engine (Vercel) | main | 2026-10-21 |
+| prod frontend (Vercel, contexttree.tech) | main @dffe89f pushed; auto-deploy assumed, not checked this session | 2026-10-31 |
+| prod engine (Vercel) | main @3e880ac pushed; deploy not checked this session | 2026-10-31 |
 
 ## Not done yet
+- Owner decision: read notes past `NOTE_MAX_CHARS` = 4000 (engine `app/agent/reads.py`, mirrored in `components/board/lib/note-text.ts`).
 - P16 "Read all of it" per source (contract amendment → engine → board).
-- Citations board side B1–B3 (chips, PDF side panel, eye icon); landing showcase hookup (ShowcaseApi).
-- Follow-ups: streaming fallback (answers arrive in one frame), persist web results on messages, flaky `user-api-keys-route` test, V2 duplicate `color` in `lib/storage.ts`, Tailwind "Invalid code point" build warning, shared-store rate limits, multi-select "Group as set", scrapers.
+- Citations board side B1–B3; landing showcase hookup (ShowcaseApi).
+- Follow-ups: Ctrl+Z after a paste into a note, a new upload landing dimmed over its neighbour on the seed board, "2 files" wording on a pile of notes, a note's name when it has left its desk's notepad role, streaming fallback, persist web results, V2 duplicate `color`, Tailwind build warning, shared-store rate limits, multi-select "Group as set", scrapers.
 - Payments (Stripe); legal review of /privacy + /terms.
 
 ## Blocked
 - Owner: check `GOOGLE_API_KEY` in the engine's Vercel project ("Failed to generate embeddings"), rotate the DB password, pause Railway.
+- Owner: whether to adopt the plugin's new CLAUDE.md block ("never push to main, PR + CI"); this repo pushes to main by owner instruction and has no CI, so it is not applied.
 
 ## Next step
-Write the P16 contract amendment (`SourceData.readAll`, `ReadItem.trimmed`) in `2026-10-19-v3-api-contract.md`, then the engine task in `ContextTree` (TDD on numbering + token budget).
+Ask the owner whether notes should be read in full; if yes, raise `NOTE_MAX_CHARS` in the engine under the context budget, TDD, and update the notepad warning's constant.
 
 ## Run it locally
 ```
@@ -36,6 +36,12 @@ cd ContextTree-src && npm install && npm run dev        # frontend :3000
 cd ContextTree && .venv/Scripts/python main.py           # backend (needs .env)
 ```
 
+## Branch / PR
+`v3` (main checkout) tracks main; pushes are fast-forward to `main`, no PRs.
+
 ## Watch out for
+- e2e: landing and sign-in specs need `NEXT_PUBLIC_BOARD_V3=1`, so those 10 fail on a plain dev server. Under low memory, specs and unit tests time out: rerun alone before believing a failure. Exclude `e2e/_tmp`.
+- Several sessions push to main: check it has not moved right before pushing, and gate the exact commit.
+- A worktree whose `node_modules` is a link (`ContextTree-src-notelimits`) cannot run Turbopack.
+- Engine tests need `TEST_DATABASE_URL`, otherwise ~400 skip silently; new migrations must be applied to local `v3test`.
 - Never read or connect to the prod DB from an agent session. Workspace root holds `DB.txt` and a `.pem` in plain text; the DB password is also in git history (`V2/08-CHECKPOINT.md`) — rotate.
-- Pushes are fast-forward only, secret scan first, owner approval per batch.
