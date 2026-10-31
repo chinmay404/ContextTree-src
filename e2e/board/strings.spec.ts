@@ -30,12 +30,14 @@ test('chat port to empty board opens the branch sheet there', async ({ page }) =
   const d = await page.evaluate(() => window.__board!.dialog());
   expect(d?.mode).toBe('branch'); expect(d?.parentId).toBe('deep'); expect(d?.at).not.toBeNull();
 });
-test('chat port onto a chat shares its answer; ancestors are refused', async ({ page }) => {
+test('chat port onto a chat shares its answer; a parent may string to its branch, a branch not to its ancestor', async ({ page }) => {
   await openBoard(page); await page.evaluate(() => window.__board!.fit(false)); await page.waitForTimeout(600);
   await dragPath(page, await center(page, '[data-id="side"] .port.out'), await center(page, '[data-id="second"] .ttl'));
   expect(await page.evaluate(() => window.__board!.hasAnswer('side', 'second'))).toBe(true);
+  await dragPath(page, await center(page, '[data-id="deep"] .port.out'), await center(page, '[data-id="main"] .ttl'));
+  expect(await page.evaluate(() => window.__board!.hasAnswer('deep', 'main'))).toBe(false);
   await dragPath(page, await center(page, '[data-id="main"] .port.out'), await center(page, '[data-id="deep"] .ttl'));
-  expect(await page.evaluate(() => window.__board!.hasAnswer('main', 'deep'))).toBe(false);
+  expect(await page.evaluate(() => window.__board!.hasAnswer('main', 'deep'))).toBe(true);   // decided 2026-10-30, to follow a parent's answer
 });
 test('clicking a string shows Disconnect; Disconnect removes it', async ({ page }) => {
   await openBoard(page); await page.evaluate(() => { window.__board!.select(null); window.__board!.fit(false); }); await page.waitForTimeout(600);

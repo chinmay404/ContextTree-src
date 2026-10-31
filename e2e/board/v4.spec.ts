@@ -62,11 +62,11 @@ test.describe.serial('prototype v4test.js acceptance', () => {
 
     await test.step('4. chat knob onto another chat = answer link', async () => {
       await p.evaluate(() => window.__board!.fit(false)); await wait(p, 400);
-      const [x, y] = await center(p, '[data-id="main"] .port.out');
-      const [dx, dy] = await center(p, '[data-id="deep"] .ttl');
+      const [x, y] = await center(p, '[data-id="deep"] .port.out');
+      const [dx, dy] = await center(p, '[data-id="main"] .ttl');
       await p.mouse.move(x, y); await p.mouse.down(); await p.mouse.move(dx, dy, { steps: 15 }); await p.mouse.up(); await wait(p, 500);
-      // tightened: the prototype's `|| true` always passed; main is deep's ancestor, so the answer link must be refused
-      ok(await p.evaluate(() => window.__board!.hasAnswer('main', 'deep') === false), 'main to deep blocked (ancestor rule)');
+      // tightened: the prototype's `|| true` always passed; a branch may not string into its own ancestor (the reverse is allowed since 2026-10-30)
+      ok(await p.evaluate(() => window.__board!.hasAnswer('deep', 'main') === false), 'deep to main blocked (ancestor rule)');
       ok(await p.evaluate(() => window.__board!.canPlug('side', 'chat', 'second')), 'side answer can be strung into second');
     });
 
