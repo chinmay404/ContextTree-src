@@ -9,7 +9,9 @@ export interface ViewNode extends LayoutItem { el: HTMLDivElement; s: Spring; o:
   /** The zoomed-out map nudges overlapping labels apart: this label's offset in screen px (engine/board-engine.ts nudgeLabels). */
   nx?: number; ny?: number;
   /** Its map label's width in CSS px (the strings end on the label's edges in the map). */
-  lw?: number }
+  lw?: number;
+  /** The status mark: this source is being read; when reading ended (performance.now), while its result still shows. */
+  reading?: boolean; settledAt?: number }
 
 export interface DesksModule {
   sync(): void; frame(z: number): void; deskAt(x: number, y: number, except?: ViewNode | null): Id | null;

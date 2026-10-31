@@ -10,14 +10,15 @@ import {
   type CSSProperties, type KeyboardEvent, type ReactElement,
 } from 'react';
 import type { Card, ChatData, Id, Message } from '../api/types';
-import { FAMC, TYPE_INFO, modelInfo, personaLabel, providerOf, type ModelKey } from '../lib/catalog';
+import { TYPE_INFO, modelInfo, personaLabel, providerOf, type ModelKey } from '../lib/catalog';
 import { ColorSwatches } from './ColorSwatches';
+import { FocusTimeline } from './FocusTimeline';
 import { colorOf } from '../lib/colors';
 import { ModelPicker } from './ModelPicker';
 import { keyErrorView } from '../lib/key-errors';
 import { ModelMark } from './ModelMark';
-import { formatWhen, strip } from '../lib/format';
-import { ancestors, chatData, chatsOf, famOf, iconOf, isChat, membersOf, nameOf, qNum, sourceData, type Graph } from '../lib/graph';
+import { strip } from '../lib/format';
+import { chatData, chatsOf, famOf, iconOf, isChat, membersOf, nameOf, qNum, sourceData, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
 import { isRead } from '../lib/reads';
 import { clamp } from '../engine/spring';
@@ -33,15 +34,6 @@ type Web = { results: { title?: string; url?: string }[]; query?: string };
 
 const FALLBACK = (): Rect => ({ l: innerWidth / 2 - 120, t: innerHeight / 2 - 80, r: innerWidth / 2 - 120, b: innerHeight / 2 - 80, rad: 20 });
 const FOCUSABLE = 'button:not([disabled]), textarea:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-const Dots = ({ g, cards }: { g: Graph; cards: Card[] }): ReactElement => (
-  <span className="dots">
-    {cards.slice(0, 6).map((c, i) => (
-      <i key={i} className={c.status === 'soon' ? 'soon' : undefined}
-        style={{ background: FAMC[famOf(g, c)][1], '--dc': FAMC[famOf(g, c)][1] } as CSSProperties} />
-    ))}
-  </span>
-);
 
 function rowMeta(g: Graph, r: SourceRow): string {
   const c = r.card;
@@ -70,6 +62,7 @@ export function FocusView(): ReactElement {
   const opener = useRef<HTMLElement | null>(null);
   const openerAt = useRef<{ cardId: string; act: string } | null>(null);   // the card button, found again after the card re-renders
   const webMap = useRef(new Map<string, Web>());
+  const folded = useRef(new Set<Id>());
   const [, force] = useReducer((n: number) => n + 1, 0);
   const [menu, setMenu] = useState<{ top: number; right: number } | null>(null);
   const [menuOn, setMenuOn] = useState(false);
@@ -207,7 +200,7 @@ export function FocusView(): ReactElement {
 
   let body: ReactElement | null = null;
   if (id && chat && isChat(chat)) {
-    body = <FocusBody key={id} chat={chat} g={g} msgs={msgs} stream={stream} webMap={webMap.current} moreRef={moreRef}
+    body = <FocusBody key={id} chat={chat} g={g} msgs={msgs} stream={stream} webMap={webMap.current} moreRef={moreRef} folded={folded.current}
       menu={menu} menuOn={menuOn} setMenu={setMenu} setMenuOn={setMenuOn} />;
   }
 
@@ -226,12 +219,14 @@ export function FocusView(): ReactElement {
 function FocusBody(p: {
   chat: Card; g: Graph; msgs: Message[]; stream: StreamState | undefined;
   webMap: Map<string, Web>; moreRef: React.RefObject<HTMLButtonElement | null>;
+  /** root questions the user folded; outlives the switch from one chat to another */
+  folded: Set<Id>;
   menu: { top: number; right: number } | null; menuOn: boolean;
   setMenu: (m: { top: number; right: number } | null) => void; setMenuOn: (on: boolean) => void;
 }): ReactElement {
   const { store, props } = useBoard();
   const snap = useSnapshot();
-  const { chat: c, g, msgs, stream, webMap, moreRef, menu, menuOn, setMenu, setMenuOn } = p;
+  const { chat: c, g, msgs, stream, webMap, moreRef, folded, menu, menuOn, setMenu, setMenuOn } = p;
   const d = chatData(c) as ChatData;
   const mi = modelInfo(d.model);
   const reads = store.readsOf(c.id);
@@ -244,7 +239,6 @@ function FocusBody(p: {
   const webOn = !!snap.ui.webSearch[c.id];
   const streaming = store.isStreaming(c.id);
   const siblings = c.parentId ? chatsOf(g).filter((x) => x.parentId === c.parentId && x.id !== c.id) : [];
-  const path = [...ancestors(g, c.id)].reverse().concat(c);
   const [copied, setCopied] = useState<string | null>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
@@ -297,39 +291,7 @@ function FocusBody(p: {
       <aside className="panel">
         <div>
           <div className="ph">Timeline</div>
-          <div className="tl">
-            {path.map((s, i) => {
-              const isHere = s.id === c.id, sd = chatData(s), sm = modelInfo(sd.model);
-              const sr = sourceRows(g, store.readsOf(s.id).items, sd.hide ?? []);
-              const asked = readRows(sr).length;
-              const added = sr.filter((r) => !r.inherited);
-              const head = (
-                <>
-                  <div className="h"><ModelMark model={sm} /><u>{qNum(g, s.id)}</u> · {sm.name}<span className="when">{isHere ? 'Now' : formatWhen(s.createdAt)}</span></div>
-                  <div className="t">{sd.name}</div>
-                  <div className="s2">Asked with {asked} source{asked === 1 ? '' : 's'}</div>
-                </>
-              );
-              return (
-                <div key={s.id} style={{ display: 'contents' }}>
-                  {i > 0 && (
-                    <>
-                      <div className="rl"><span className="kn small" /><span className="ln" /></div>
-                      <div className="ev"><Icon name="git-branch" />Branched{sd.inheritDesk === false ? ', fresh start' : ''}
-                        {added.length ? <>, added<span className="sp"><Dots g={g} cards={added.map((r) => r.card)} />{added.length} source{added.length > 1 ? 's' : ''}</span></> : null}
-                      </div>
-                    </>
-                  )}
-                  {isHere ? (
-                    <><div className="rl"><span className="kn now" /></div><div className="cur" aria-current="true">{head}</div></>
-                  ) : (
-                    <><div className="rl"><span className="kn" /><span className="ln" /></div>
-                      <button type="button" className="st" data-go={s.id} onClick={() => store.openFocus(s.id)}>{head}</button></>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <FocusTimeline g={g} chatId={c.id} folded={folded} />
         </div>
         <div>
           <div className="ph">Connected sources<span className="cnt">{read.length}</span></div>

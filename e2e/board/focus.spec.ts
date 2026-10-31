@@ -9,8 +9,8 @@ test('opening a chat shows its timeline and connected sources', async ({ page })
   const errs = trackErrors(page);
   await openBoard(page); await openFocus(page, 'deep');
   await expect(page.locator(`${F} .tl .cur`)).toContainText('Q1.2.1');
-  await expect(page.locator(`${F} .tl button.st`)).toHaveCount(2);
-  await expect(page.locator(`${F} .tl .ev`).first()).toContainText('Branched');
+  await expect(page.locator(`${F} .tl button.st`)).toHaveCount(3);   // the whole family: Q1, Q1.1, Q1.2
+  await expect(page.locator(`${F} .tl [data-go="second"]`)).toHaveAttribute('title', /Branched/);
   // own 3 (desk shot, wire csv, answer side) + web + one pile row + main's 3
   await expect(page.locator(`${F} .srow`)).toHaveCount(8);
   const pile = page.locator(`${F} .srow`, { hasText: 'Customer interviews' });

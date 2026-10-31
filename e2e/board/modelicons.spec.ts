@@ -42,7 +42,7 @@ test('the focus view says which model answered, by name, with its mark', async (
   await expect(who.locator('svg.mmark')).toHaveCount(1);
   await expect(page.locator(`${F} .fmeta svg.mmark`)).toHaveCount(1);
   await expect(page.locator(`${F} .fmeta b`)).toHaveText('Claude Sonnet 4');
-  await expect(page.locator(`${F} .tl .h svg.mmark`).first()).toBeVisible();
+  await expect(page.locator(`${F} .tl svg.mmark`).first()).toBeVisible();
   await expect(page.locator(`${F} .cp[data-settings]`)).toContainText('Claude Sonnet 4');
   await page.locator(`${F} .art`).first().screenshot({ path: shot('answered-with') });
   await page.screenshot({ path: shot('focus-view') });

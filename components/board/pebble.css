@@ -99,7 +99,6 @@
 .pb-root .note-in .n.short { -webkit-mask-image: none; mask-image: none; }
 .pb-root .note-in .n:empty::before { content: 'Write a note…'; color: var(--t3); }
 .pb-root .src.processing .face { background: var(--pb-fill); box-shadow: none; }
-.pb-root .src.processing .tile { background: linear-gradient(90deg, var(--pb-card) 0%, var(--pb-canvas) 50%, var(--pb-card) 100%); background-size: 200% 100%; animation: pbshimmer 1.4s linear infinite; }
 .pb-root .src.processing .meta { color: var(--t3); }
 .pb-root .src.processing .ttl { color: var(--t2); }
 .pb-root .prog { height: 4px; border-radius: 2px; background: var(--pb-card); overflow: hidden; margin-top: 3px; }
@@ -357,24 +356,6 @@
 .pb-root .panel { background: var(--pb-desk); border-radius: 28px; padding: 22px 18px; display: flex; flex-direction: column; gap: 28px; overflow: auto; scrollbar-width: thin; }
 .pb-root .ph { font-size: 13px; font-weight: 700; color: var(--t2); display: flex; align-items: center; gap: 8px; }
 .pb-root .ph .cnt { font-size: 11px; font-weight: 700; background: var(--pb-card); color: var(--t1); padding: 2px 7px; border-radius: 999px; }
-.pb-root .tl { display: grid; grid-template-columns: 22px minmax(0, 1fr); column-gap: 10px; margin-top: 14px; }
-.pb-root .tl .rl { display: flex; flex-direction: column; align-items: center; }
-.pb-root .tl .kn { width: 12px; height: 12px; border-radius: 6px; background: var(--pb-card); border: 2.5px solid var(--pb-edge-strong); margin-top: 4px; flex: none; }
-.pb-root .tl .kn.small { width: 8px; height: 8px; border: 0; background: var(--pb-edge); margin-top: 5px; }
-.pb-root .tl .kn.now { width: 14px; height: 14px; border: 0; background: var(--pb-ink); box-shadow: 0 0 0 4px var(--pb-rule2); margin-top: 12px; }
-.pb-root .tl .ln { width: 2px; flex: 1; background: var(--pb-edge); margin-top: 4px; }
-.pb-root .tl .st { display: flex; flex-direction: column; gap: 4px; padding-bottom: 16px; text-align: left; }
-.pb-root .tl .h { display: flex; gap: 6px; align-items: center; font-size: 11px; font-weight: 600; }
-.pb-root .tl .h .when { margin-left: auto; color: var(--t3); font-weight: 500; }
-.pb-root .tl .h u { text-underline-offset: 2px; }
-.pb-root .tl .t { font-size: 15px; line-height: 1.3; }
-.pb-root .tl .s2 { font-size: 12px; color: var(--t2); }
-.pb-root .tl .ev { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding-bottom: 16px; font-size: 12px; color: var(--t2); }
-.pb-root .tl .ev .i { --s: 12px; --c: var(--pb-edge-strong); }
-.pb-root .tl .ev .sp { display: inline-flex; gap: 4px; align-items: center; background: var(--pb-card); border-radius: 999px; padding: 2px 8px 2px 4px; font-size: 11px; font-weight: 600; color: var(--t1); }
-.pb-root .tl .cur { background: var(--pb-card); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 8px 24px -14px rgba(0,0,0,.3); }
-.pb-root .tl .cur .h .when { color: var(--pb-edge-strong); }
-.pb-root .tl .cur .t { font-weight: 700; }
 .pb-root .srows { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .pb-root .srow { display: flex; gap: 10px; align-items: center; background: var(--pb-card); border-radius: 14px; padding: 8px 10px 8px 8px; text-align: left; transition: opacity 200ms ease, filter 200ms ease; width: 100%; }
 .pb-root .srow.off { opacity: .45; filter: saturate(.6); }
@@ -454,7 +435,7 @@
 /* reduced motion, per component (never a blanket * override: it can turn a loop into a strobe) */
 @media (prefers-reduced-motion: reduce) {
   .pb-root .bub.flow, .pb-root .ans.live p:last-child::after, .pb-root .art.live .body p:last-child::after,
-  .pb-root .thinking i, .pb-root .src.processing .tile, .pb-root .prog i, .pb-root .compose, .pb-root .caret { animation: none; }
+  .pb-root .thinking i, .pb-root .prog i, .pb-root .compose, .pb-root .caret { animation: none; }
   .pb-root .menu, .pb-root .wk, .pb-root .sheetbox, .pb-root .tools { transition-property: opacity; transform: none; }
 }
 .pb-root .keyerr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

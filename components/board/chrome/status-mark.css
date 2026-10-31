@@ -1,0 +1,19 @@
+/* A source's reading status on its tile (lib/status-mark.ts): a ring with a turning arc that closes into a check or an
+   exclamation. --sm-at is a negative delay, so a card that re-renders keeps its place in the animation. */
+.pb-root .smark { display: block; width: 58%; height: 58%; fill: none; overflow: visible; stroke-width: 2; }
+.pb-root .sm-ring { stroke: var(--pb-edge); }
+.pb-root .sm-arc { stroke: var(--pb-edge-strong); stroke-linecap: round; transform-origin: 12px 12px; transform: rotate(-90deg); }
+.pb-root .sm-glyph { stroke: var(--pb-edge-strong); stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; }
+
+.pb-root .smark[data-state="reading"] .sm-arc { stroke-dasharray: .27 .73; animation: sm-spin 900ms linear var(--sm-at) infinite; }
+.pb-root .smark[data-state="done"] .sm-arc, .pb-root .smark[data-state="failed"] .sm-arc { stroke-dasharray: 1 0; animation: sm-close 240ms var(--ease-out) var(--sm-at) backwards; }
+.pb-root .smark[data-state="done"] .sm-glyph, .pb-root .smark[data-state="failed"] .sm-glyph { animation: sm-draw 220ms var(--ease-out) calc(var(--sm-at) + 180ms) backwards; }
+.pb-root .smark[data-state="failed"] :is(.sm-arc, .sm-glyph) { stroke: var(--failed); }
+
+@keyframes sm-spin { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+@keyframes sm-close { from { stroke-dasharray: .27 .73; } }
+@keyframes sm-draw { from { stroke-dashoffset: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-root .smark .sm-arc, .pb-root .smark .sm-glyph { animation: none !important; }
+}

@@ -48,7 +48,6 @@
 .pb-root .card.chat.selected .face { box-shadow: 0 0 0 2px var(--pb-ink), var(--sh-card); }
 .pb-root .sheet { border-radius: var(--r-card); box-shadow: 0 0 0 .5px var(--hairline); }
 .pb-root .pages .pg.hit { box-shadow: 0 0 0 2px var(--fk), var(--sh-node); }
-.pb-root .tl .cur { box-shadow: 0 0 0 .5px var(--hairline), var(--sh-node); }
 .pb-root .pages .pg, .pb-root .webprev { box-shadow: 0 0 0 .5px var(--hairline), var(--sh-node); }
 .pb-root .mock3 div { box-shadow: 0 0 0 .5px var(--hairline), var(--sh-node); }
 .pb-root .mock3 div.mid { box-shadow: 0 0 0 3px var(--pb-edge-strong), var(--sh-card); }
@@ -71,7 +70,6 @@
 .pb-root .qb, .pb-root .thinking, .pb-root .compose textarea, .pb-root .exl, .pb-root .desc, .pb-root .vside .desc,
 .pb-root .used > span, .pb-root .ts .row, .pb-root .srow, .pb-root .passages button, .pb-root .members button,
 .pb-root .quote, .pb-root .wchip, .pb-root .soonbox, .pb-root .fi, .pb-root .fta, .pb-root .tog, .pb-root .tbl,
-.pb-root .tl .cur { border-radius: var(--r-row); }
 .pb-root .ub { border-radius: var(--r-row) var(--r-row) 6px var(--r-row); }
 .pb-root .srow, .pb-root .used > span, .pb-root .wchip, .pb-root .quote, .pb-root .soonbox, .pb-root .members button { box-shadow: 0 0 0 .5px var(--hairline); }
 .pb-root .srow.off { box-shadow: 0 0 0 .5px var(--hairline); }

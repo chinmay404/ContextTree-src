@@ -10,6 +10,7 @@ import { modelMarkHtml } from '../lib/model-icons';
 import { cut, esc } from '../lib/format';
 import { answersInto, chatData, deskOf, iconOf, edgesFrom, famOf, isChat, kids, membersOf, nameOf, qNum, sourceData, wiresInto, type Graph } from '../lib/graph';
 import { renderMarkdown } from '../lib/markdown';
+import { DONE_MS, statusMark } from '../lib/status-mark';
 import { webRowHTML } from '../lib/web-results';
 import { countSources, foldPiles, isRead, tokensRead } from '../lib/reads';
 import { icon } from './icons';
@@ -57,8 +58,9 @@ export class CardView {
 
   private tileHTML(n: ViewNode, c: Card, big = false): string {
     const g = this.g;
-    if (c.status === 'failed') return `<div class="tile">${icon('triangle-alert')}</div>`;
-    if (c.status === 'processing') return '<div class="tile"></div>';
+    if (c.status === 'failed') return `<div class="tile">${statusMark('failed', n.settledAt === undefined ? DONE_MS : performance.now() - n.settledAt)}</div>`;
+    if (c.status === 'processing') return `<div class="tile">${statusMark('reading', performance.now())}</div>`;
+    if (c.status === 'ready' && n.settledAt !== undefined) return `<div class="tile">${statusMark('done', performance.now() - n.settledAt)}</div>`;
     if (c.sourceType === 'pile' && !big) {
       const ms = membersOf(g, c.id), f = ms.length ? ms[this.ctx.modules.piles.front(c.id) % ms.length] : null;
       return `<div class="tile">${icon(TYPE_INFO[f?.sourceType ?? 'pdf'].icon)}<span class="badge">${ms.length}</span></div>`;
@@ -137,7 +139,7 @@ export class CardView {
       const ms = membersOf(g, c.id);
       const tiles = ms.map((m, i) => {
         const md = sourceData(m);
-        return `<div class="setm f-${famOf(g, m)}${md.off ? ' off' : ''}"><button class="sm-open" data-setm="${i}" title="${esc(nameOf(g, m))}"><span class="tile">${m.status === 'processing' ? '' : icon(iconOf(m))}</span><span class="tx"><b>${esc(nameOf(g, m))}</b><span>${m.status === 'processing' ? 'Reading…' : esc(md.meta ?? TYPE_INFO[m.sourceType ?? 'pdf'].label)}</span></span></button><button class="sm-x" data-act="takeout" data-i="${i}" aria-label="Take ${esc(nameOf(g, m))} out of the set" data-tip="Take out of the set">${icon('x')}</button></div>`;
+        return `<div class="setm f-${famOf(g, m)}${md.off ? ' off' : ''}"><button class="sm-open" data-setm="${i}" title="${esc(nameOf(g, m))}"><span class="tile">${m.status === 'processing' ? statusMark('reading', performance.now()) : icon(iconOf(m))}</span><span class="tx"><b>${esc(nameOf(g, m))}</b><span>${m.status === 'processing' ? 'Reading…' : esc(md.meta ?? TYPE_INFO[m.sourceType ?? 'pdf'].label)}</span></span></button><button class="sm-x" data-act="takeout" data-i="${i}" aria-label="Take ${esc(nameOf(g, m))} out of the set" data-tip="Take out of the set">${icon('x')}</button></div>`;
       }).join('');
       body = `<div class="setbox"><div class="sethd"><input class="setname" value="${esc(d.title ?? 'New set')}" aria-label="Set name" maxlength="80" spellcheck="false"><span class="setmeta">${esc(d.meta ?? '')}</span></div>`
         + `<div class="setgrid" style="grid-template-columns: repeat(${ms.length < 2 ? 1 : Math.min(3, Math.ceil(Math.sqrt(ms.length)))}, 150px)">${ms.length ? tiles : '<p class="sethint">Drop sources here, or drag them onto this box.</p>'}</div></div>`;
@@ -161,8 +163,7 @@ export class CardView {
       body = `<div class="sn" title="Scroll to flip through the pile">${this.tileHTML(n, c)}<div class="sx"><div class="meta">${this.metaOf(n, c)}</div><div class="ttl">${esc(fd.title ?? d.title ?? 'Pile')}</div>${e ? `<div class="exr">${e.loc ? `<span class="chipl">${esc(e.loc)}</span>` : ''}<span>${esc(e.text)}</span></div>` : ''}</div></div>`;
     } else {
       const e = ex.find((x) => x.on) ?? ex[0];
-      const line = st === 'processing' ? '<div class="prog"><i></i></div>'
-        : st === 'failed' ? `<div class="fix">${d.error ? `${esc(d.error)}<br>` : ''}<button data-retry>Retry</button> · <button data-pastetext>Paste text</button></div>`
+      const line = st === 'failed' ? `<div class="fix">${d.error ? `${esc(d.error)}<br>` : ''}<button data-retry>Retry</button> · <button data-pastetext>Paste text</button></div>`
         : c.sourceType === 'doc' ? `<div class="exr"><span>${esc(cut(d.text || 'Empty document', 90))}</span></div>`
         : e ? `<div class="exr">${e.loc ? `<span class="chipl">${esc(e.loc)}</span>` : ''}<span>${esc(e.text)}</span></div>` : '';
       const desc = live ? (d.desc ? `<div class="dsc">“${esc(d.desc)}”</div>` : n.fresh && st === 'ready' ? `<button class="ask-desc" data-act="describe">Say what it's for</button>` : '') : '';
@@ -270,6 +271,15 @@ export class CardView {
 
   // ---- render ----
 
+  /** Reading has just ended: the tile shows how it went for a moment, however often the card re-renders. */
+  private trackReading(n: ViewNode, c: Card): void {
+    if (c.status === 'processing') { n.reading = true; n.settledAt = undefined; return; }
+    if (!n.reading) return;
+    n.reading = false;
+    n.settledAt = performance.now();
+    if (c.status === 'ready') setTimeout(() => { n.settledAt = undefined; if (this.ctx.nodes.get(n.id) === n) this.render(n); }, DONE_MS);
+  }
+
   render(n: ViewNode): void {
     const c = this.ctx.store.graph().cards.get(n.id);
     if (!c) return;
@@ -282,6 +292,7 @@ export class CardView {
     const dta = el.querySelector<HTMLTextAreaElement>('.desc'), dFocus = !!dta && dta === active, dSel = dta ? [dta.selectionStart, dta.selectionEnd] : null;
     const sc = el.querySelector('.cbody')?.scrollTop, nsc = nt0?.scrollTop;
     const chat = isChat(c), S = this.ctx.size() === 'S';
+    if (!chat) this.trackReading(n, c);
     el.className = this.classes(n, c);
     const isSet = !chat && c.sourceType === 'pile' && sourceData(c).layout === 'open' && c.status === 'ready';
     if (!S) n.w = chat ? CHAT_W : isSet ? setWidth(membersOf(this.g, c.id).length) : SRC_W;

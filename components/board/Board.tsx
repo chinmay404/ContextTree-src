@@ -39,6 +39,8 @@ import { ChatBar } from './chrome/ChatBar';
 import { WelcomeTour } from './chrome/WelcomeTour';
 import { ZoomControl } from './chrome/ZoomControl';
 import './chrome/markdown.css'; // code blocks, tables, quotes and rules in answers and notes
+import './chrome/timeline.css'; // the focus view's tree of questions
+import './chrome/status-mark.css'; // a source's reading status on its tile
 import './chrome/materials.css'; // its rules override pebble.css and the chrome CSS at equal specificity
 import './chrome/map-names.css'; // the zoomed-out map of names
 import './chrome/sets.css'; // open sets (a pile drawn as a box of sources)
