@@ -4,6 +4,7 @@ import './brand.css';
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import type { BoardSummary } from '../api/types';
 import { newId } from '../api/ids';
+import { installWay, promptInstall, type InstallWay } from '@/lib/pwa';
 import { useBoard, useSnapshot } from '../context';
 import { Icon } from './Icon';
 import { BrandMark } from './BrandMark';
@@ -24,6 +25,7 @@ export function BrandBar(): ReactElement {
   const [open, setOpen] = useState(false);
   const [boards, setBoards] = useState<BoardSummary[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [install, setInstall] = useState<InstallWay>(null);
   const logoRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const returnFocus = useRef(false);
@@ -57,6 +59,7 @@ export function BrandBar(): ReactElement {
     if (!open) return;
     let alive = true;
     setBoards(null);
+    setInstall(installWay());
     api.listBoards().then((b) => { if (alive) setBoards(b); }).catch(() => { if (alive) setBoards([]); });
     const down = (e: PointerEvent) => {
       const t = e.target instanceof Element ? e.target : null;
@@ -141,6 +144,15 @@ export function BrandBar(): ReactElement {
         {onOpenSettings && (
           <button type="button" role="menuitem" data-m="keys" onClick={() => { close(); onOpenSettings(); }}>
             <span className="c"><Icon name="sliders-horizontal" /></span>API keys
+          </button>
+        )}
+        {install && (
+          <button type="button" role="menuitem" data-m="install" onClick={() => {
+            close();
+            if (install === 'prompt') void promptInstall();
+            else store.toast('To install: tap Share, then Add to Home Screen.');
+          }}>
+            <span className="c"><Icon name="arrow-down-to-line" /></span>Install app
           </button>
         )}
         <button type="button" role="menuitem" data-m="tour" onClick={() => { close(); store.openTour(); }}>

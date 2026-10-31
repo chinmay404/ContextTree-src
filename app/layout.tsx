@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import AuthProvider from "@/components/auth-provider";
+import { PwaRegister } from "@/components/pwa-register";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { THEME_SCRIPT } from "@/components/board/lib/theme";
@@ -58,8 +59,16 @@ export const metadata: Metadata = {
   icons: {
     icon: "/tree-icon.svg",
     shortcut: "/tree-icon.svg",
-    apple: "/tree-icon.svg",
+    apple: "/icons/apple-touch-icon.png",
   },
+  appleWebApp: { capable: true, title: "Context Tree", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F5F5F7" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
 };
 
 export default function RootLayout({
@@ -92,6 +101,7 @@ html {
           <AuthProvider>
             {children}
             <Toaster />
+            <PwaRegister />
           </AuthProvider>
         </ThemeProvider>
       </body>

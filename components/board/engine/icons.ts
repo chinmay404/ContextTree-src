@@ -5,7 +5,7 @@ import {
   Unlink, GitBranch, ArrowUp, SlidersHorizontal, ChevronDown, ArrowLeft, Copy, Upload, Ellipsis, GlobeLock,
   Trash2, RotateCcw, SquareDashed, Spline, ArrowRight, BookOpen, CornerLeftUp, Mouse, Sparkles,
   Bold, Italic, Heading, List, ListOrdered, Code,
-  House, Pencil, ArrowUpRight, Highlighter, Eraser, Undo2, Eye, EyeOff, Type,
+  House, ArrowDownToLine, Pencil, ArrowUpRight, Highlighter, Eraser, Undo2, Eye, EyeOff, Type,
 } from 'lucide';
 
 /** Prototype's lucide-static names mapped to lucide@0.460.0 canonical export keys (more-horizontal is Ellipsis). */
@@ -20,7 +20,7 @@ const NODES = {
   'trash-2': Trash2, 'rotate-ccw': RotateCcw,
   // welcome tour
   'square-dashed': SquareDashed, 'spline': Spline, 'arrow-right': ArrowRight, 'book-open': BookOpen,
-  'corner-left-up': CornerLeftUp, 'mouse': Mouse, 'sparkles': Sparkles, 'house': House, 'pencil': Pencil, 'arrow-up-right': ArrowUpRight,
+  'corner-left-up': CornerLeftUp, 'mouse': Mouse, 'sparkles': Sparkles, 'house': House, 'arrow-down-to-line': ArrowDownToLine, 'pencil': Pencil, 'arrow-up-right': ArrowUpRight,
   'highlighter': Highlighter, 'eraser': Eraser, 'undo-2': Undo2, 'eye': Eye, 'eye-off': EyeOff, 'type': Type,
   // note formatting bar
   'bold': Bold, 'italic': Italic, 'heading': Heading, 'list': List, 'list-ordered': ListOrdered, 'code': Code,

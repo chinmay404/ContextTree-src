@@ -20,6 +20,9 @@ export default withAuth(
           pathname === "/landing" || // Direct marketing URL, no auth check
           pathname === "/privacy" || // Legal pages must be public
           pathname === "/terms" ||
+          pathname === "/manifest.webmanifest" || // the app's install files
+          pathname === "/sw.js" ||
+          pathname === "/offline.html" ||
           pathname.startsWith("/_next/") ||
           pathname.startsWith("/favicon.ico") ||
           (process.env.NODE_ENV !== "production" && (pathname === "/board-dev" || pathname === "/shell-dev")) || // v3 dev pages (404 in prod)
