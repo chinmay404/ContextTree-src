@@ -232,3 +232,20 @@ test('light: the bar over a selection', async ({ page }) => {
   await page.waitForTimeout(300);
   await page.screenshot({ path: shot('selection-bar-light') });
 });
+
+test('a notepad past what the chat reads says so, and how much is left out', async ({ page }) => {
+  await openBoard(page); await openFocus(page, 'main');
+  await selectInAnswer(page);
+  await page.locator(`${BAR} [data-sel="note"]`).click();
+  const editor = page.locator(`${NOTEPAD} textarea.editor`);
+  const hint = page.locator(`${NOTEPAD} .nphint`);
+  await expect(hint).toHaveText('The chat reads this with its other sources.');
+  await editor.fill('x'.repeat(4000));
+  await expect(hint).toHaveText('The chat reads this with its other sources.');   // exactly the limit: nothing is lost
+  await editor.fill('x'.repeat(5250));
+  await expect(hint).toHaveText('The chat reads the first 4,000 characters. The last 1,250 are left out.');
+  await expect(page.locator(`${NOTEPAD} .npfoot`)).toHaveAttribute('data-over', '');
+  await editor.fill('short again');
+  await expect(hint).toHaveText('The chat reads this with its other sources.');
+  await expect(page.locator(`${NOTEPAD} .npfoot`)).not.toHaveAttribute('data-over', '');
+});

@@ -21,6 +21,7 @@
 .pb-root .npfoot { display: flex; align-items: baseline; gap: 10px; font-size: 12px; color: var(--t2); }
 .pb-root .npstate { font-weight: 600; flex: none; }
 .pb-root .nphint { color: var(--t3); min-width: 0; }
+.pb-root .npfoot[data-over] .nphint { color: var(--failed); font-weight: 500; }
 /* the focus header's reopen button */
 .pb-root .backp[data-act="notes"][aria-pressed="true"] { background: var(--pb-ink); color: var(--pb-on-ink); }
 .pb-root .backp[data-act="notes"][aria-pressed="true"] .i { --c: var(--pb-on-ink); }

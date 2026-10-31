@@ -8,6 +8,7 @@ import './notepad.css';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react';
 import type { Card, SourceData } from '../api/types';
 import { chatData } from '../lib/graph';
+import { NOTE_MAX_CHARS } from '../lib/note-text';
 import { useBoard, useSnapshot } from '../context';
 import { Icon } from './Icon';
 import { useEscape } from './escape';
@@ -64,6 +65,7 @@ export function Notepad({ chat }: { chat: Card }): ReactElement | null {
 
   if (!note) return null;
   const name = chatData(chat).name;
+  const leftOut = text.length - NOTE_MAX_CHARS;
   return (
     <aside className={`notepad${on ? ' on' : ''}`} aria-label="Notes" aria-hidden={!on} inert={!on}>
       <div className="npad">
@@ -80,8 +82,10 @@ export function Notepad({ chat }: { chat: Card }): ReactElement | null {
             store.patchDataDebounced(note.id, { text: v });
             track(note.id);
           }} />
-        <div className="npfoot"><span className="npstate" role="status" aria-live="polite">{state === 'saving' ? 'Saving…' : 'Saved'}</span>
-          <span className="nphint">The chat reads this with its other sources.</span></div>
+        <div className="npfoot" data-over={leftOut > 0 ? '' : undefined}><span className="npstate" role="status" aria-live="polite">{state === 'saving' ? 'Saving…' : 'Saved'}</span>
+          <span className="nphint">{leftOut > 0
+            ? `The chat reads the first ${NOTE_MAX_CHARS.toLocaleString('en-US')} characters. The last ${leftOut.toLocaleString('en-US')} are left out.`
+            : 'The chat reads this with its other sources.'}</span></div>
       </div>
     </aside>
   );
