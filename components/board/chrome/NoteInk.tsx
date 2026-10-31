@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, ty
 import type { DrawTool, InkPoint, MarkColor, MarkKind } from '../api/types';
 import { useBoard, useSnapshot } from '../context';
 import { SIMPLIFY_PX, hitsMark, markPath, simplify, sizeFor } from '../lib/ink';
-import { palmGuard, pointsOf } from '../lib/pen-input';
+import { clearSelection, palmGuard, pointsOf } from '../lib/pen-input';
 import { Icon } from './Icon';
 import { InkTools } from './InkTools';
 
@@ -85,6 +85,7 @@ export function NoteInk({ noteId, children, scroller }: { noteId: string; childr
   };
   const write = (): void => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();   // no keyboard over the page, and a palm can't type
+    clearSelection();
     setTool(lastTool.current);
   };
 

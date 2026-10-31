@@ -34,6 +34,27 @@ export class PalmGuard {
 
 export const palmGuard = new PalmGuard(() => (typeof window === 'undefined' ? null : window.localStorage));
 
+export function clearSelection(): void { window.getSelection()?.removeAllRanges(); }
+
+/** The CSS stops a palm selecting text where it can. This removes whatever still gets through while the pen is on. */
+export function keepSelectionClear(root: HTMLElement): () => void {
+  const penOn = (): boolean => !!root.querySelector('.inkcatch.on, .notepage.penon');
+  const inField = (node: EventTarget | null): boolean => node instanceof Element && !!node.closest('input, textarea, [contenteditable]');
+  const onStart = (e: Event): void => {
+    const target = e.target instanceof Node && !(e.target instanceof Element) ? e.target.parentElement : e.target;
+    if (penOn() && !inField(target)) e.preventDefault();
+  };
+  const onChange = (): void => {
+    if (penOn() && !inField(document.activeElement) && window.getSelection()?.isCollapsed === false) clearSelection();
+  };
+  document.addEventListener('selectstart', onStart);
+  document.addEventListener('selectionchange', onChange);
+  return () => {
+    document.removeEventListener('selectstart', onStart);
+    document.removeEventListener('selectionchange', onChange);
+  };
+}
+
 type Point = [number, number] | [number, number, number];
 
 /** Every point the hardware reported since the last event: a stylus reports far more than the screen draws. */

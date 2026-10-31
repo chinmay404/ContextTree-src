@@ -1,7 +1,7 @@
 /** The board's pen layer: draws marks above the cards and takes the pointer only while the pen is on. */
 import type { InkPoint, Mark } from '../api/types';
 import { SIMPLIFY_PX, chooseAnchor, hitsMark, markPath, simplify, sizeFor, touchedBy, type InkBox } from '../lib/ink';
-import { palmGuard, pointsOf } from '../lib/pen-input';
+import { clearSelection, palmGuard, pointsOf } from '../lib/pen-input';
 import { deskBounds } from './geometry';
 import type { EngineContext, MarksModule } from './types';
 
@@ -124,7 +124,9 @@ export function createMarks(ctx: EngineContext): MarksModule {
     sync() {
       const { ui } = ctx.store.getSnapshot();
       svg.style.display = ui.marksHidden ? 'none' : '';
-      catcher.classList.toggle('on', !!ui.draw && !ctx.showcase);
+      const penOn = !!ui.draw && !ctx.showcase;
+      if (penOn && !catcher.classList.contains('on')) clearSelection();
+      catcher.classList.toggle('on', penOn);
       catcher.dataset.tool = ui.draw?.tool ?? '';
       const marks = ctx.store.marksOn(null), keep = new Set(marks.map((m) => m.id));
       for (const [id, el] of drawn) if (!keep.has(id)) { el.remove(); drawn.delete(id); }

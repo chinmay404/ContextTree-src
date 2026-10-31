@@ -97,3 +97,66 @@ test('the live line ends where the pen is, with no lag behind it', async ({ page
   expect(reach).toBeGreaterThan(530);
   await pen(cdp, 'mouseReleased', 540, 300);
 });
+
+const selected = (page: Page) => page.evaluate(() => window.getSelection()!.toString());
+const userSelect = (page: Page, sel: string) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).userSelect);
+const selectText = (page: Page, sel: string) => page.locator(sel).first().evaluate((el) => { window.getSelection()!.selectAllChildren(el); });
+
+test('with the pen on, a card\'s text cannot be selected, and it can again once the pen is off', async ({ page }) => {
+  await openBoard(page);
+  expect(await userSelect(page, '[data-id="main"] .cbody')).toBe('text');
+  await page.keyboard.press('d');
+  expect(await userSelect(page, '[data-id="main"] .cbody')).toBe('none');
+  await page.keyboard.press('d');
+  expect(await userSelect(page, '[data-id="main"] .cbody')).toBe('text');
+});
+
+test('a selection that slips through while the pen is on goes away at once', async ({ page }) => {
+  await openBoard(page);
+  await page.keyboard.press('d');
+  await selectText(page, '[data-id="main"] .cbody');
+  await expect.poll(() => selected(page)).toBe('');
+});
+
+test('turning the pen on clears a selection made before it', async ({ page }) => {
+  await openBoard(page);
+  await selectText(page, '[data-id="main"] .cbody');
+  expect(await selected(page)).not.toBe('');
+  await page.keyboard.press('d');
+  await expect.poll(() => selected(page)).toBe('');
+});
+
+test('with the pen off, a selection stays', async ({ page }) => {
+  await openBoard(page);
+  await selectText(page, '[data-id="main"] .cbody');
+  await page.waitForTimeout(100);
+  expect(await selected(page)).not.toBe('');
+});
+
+test('with the pen on, the chat bar can still be typed in and selected', async ({ page }) => {
+  await openBoard(page);
+  await page.keyboard.press('d');
+  const field = page.locator('[data-pb="chatbar"] textarea');
+  expect(await userSelect(page, '[data-pb="chatbar"] textarea')).toBe('text');
+  await field.click();
+  await page.keyboard.type('hello');
+  await expect(field).toHaveValue('hello');
+  await field.evaluate((el: HTMLTextAreaElement) => el.select());
+  await page.waitForTimeout(100);
+  expect(await field.evaluate((el: HTMLTextAreaElement) => el.selectionEnd - el.selectionStart)).toBe(5);
+});
+
+test('on a note page, the pen takes the text out of reach until Type is pressed', async ({ page }) => {
+  await openBoard(page);
+  await page.evaluate(() => window.__board!.openViewer('note'));
+  const sheet = page.locator('[data-pb="notepage"]'), editor = sheet.locator('textarea.editor');
+  await expect(editor).toBeVisible();
+  const reach = () => editor.evaluate((el) => { const c = getComputedStyle(el); return `${c.userSelect} ${c.pointerEvents}`; });
+  expect(await reach()).toBe('auto auto');
+  await sheet.locator('[data-act="write"]').click();
+  expect(await reach()).toBe('none none');
+  await selectText(page, '.vw');
+  await expect.poll(() => selected(page)).toBe('');
+  await sheet.locator('[data-act="type"]').click();
+  expect(await reach()).toBe('auto auto');
+});

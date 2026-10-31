@@ -1,6 +1,7 @@
 'use client';
 /** Window-level input for adding things: drag and drop, paste, N / Q / Enter, double-click and right-click on the board. */
 import { useEffect } from 'react';
+import { keepSelectionClear } from '../lib/pen-input';
 import { attachTouchGestures, keyboardInset } from './touch-gestures';
 import { useBoard } from '../context';
 import { typing } from '../lib/util';
@@ -115,6 +116,7 @@ export function BoardInput(): null {
       store.openMenu({ x: e.clientX, y: e.clientY, at: engine.ctx.s2w(e.clientX, e.clientY), fromAdd: false });
     };
 
+    const detachSelection = keepSelectionClear(engine.ctx.root);
     const detachGestures = attachTouchGestures(viewport, {
       active: () => !covered() && !ui().draw && !overlayOpen(ui()),
       hold(cardId, x, y) {
@@ -143,6 +145,7 @@ export function BoardInput(): null {
     viewport.addEventListener('contextmenu', onContext);
     return () => {
       detachGestures();
+      detachSelection();
       view?.removeEventListener('resize', onViewport);
       view?.removeEventListener('scroll', onViewport);
       window.removeEventListener('dragenter', onEnter);
