@@ -1,5 +1,6 @@
 import { ApiError } from './api/types';
 import type {
+  ContextTrace,
   AdvancedSettings, Board, Card, CardPatch, Carry, ChatData, ChatRequest, Edge, EngineApi, Id, Message, ProviderId, Reads, SourceData, SourceType, Status, StreamErrorCode,
 } from './api/types';
 import { genMessageId, newId } from './api/ids';
@@ -35,7 +36,9 @@ export interface UiState { selected: Id | null; dialog: DialogState | null;
   /** The first-visit welcome tour (chrome/WelcomeTour.tsx) is open. */
   tour: boolean;
   /** The right-click menu on a card (its colour row). */
-  cardMenu: { x: number; y: number; cardId: Id } | null }
+  cardMenu: { x: number; y: number; cardId: Id } | null;
+  /** The context inspector: what a chat's last turn read. */
+  inspector: { chatId: Id } | null }
 
 /** One chat's answer in flight, or its kept error. `asked` is the question being answered (a key error re-asks it). */
 export interface StreamState { messageId: string; text: string; web: { title?: string; url?: string }[] | null; webQuery?: string; error: string | null;
@@ -63,13 +66,16 @@ const setMeta = (n: number): string => (n === 0 ? 'Empty set' : n === 1 ? '1 sou
 const LOCKED_ONCE_STARTED = ['model', 'persona', 'systemPrompt', 'inheritDesk', 'carry', 'advanced'] as const;
 
 /** True while any overlay is up. */
+/** The names the branch sheet gives a chat; anything else was chosen by the user. */
+const DEFAULT_CHAT_NAMES: ReadonlySet<string> = new Set(['A new question', 'New question, same desk', 'Untitled']);
+
 export function overlayOpen(ui: UiState): boolean {
-  return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.cardMenu || ui.pasteBox || ui.confirm || ui.compare || ui.tour);
+  return !!(ui.dialog || ui.viewer || ui.focus || ui.menu || ui.cardMenu || ui.pasteBox || ui.confirm || ui.compare || ui.tour || ui.inspector);
 }
 
 const initialUi = (): UiState => ({
   selected: null, dialog: null, viewer: null, focus: null, menu: null, pasteBox: null, confirm: null, toast: null,
-  compare: null, dropping: false, webSearch: {}, tour: false, cardMenu: null,
+  compare: null, dropping: false, webSearch: {}, tour: false, cardMenu: null, inspector: null,
 });
 
 const FILE_TYPES: Record<string, [SourceType, Status]> = {
@@ -1058,6 +1064,49 @@ export class BoardStore {
   openMenu(m: UiState['menu']): void { this.setUi({ menu: m, pasteBox: null, cardMenu: null }); }
   openCardMenu(x: number, y: number, cardId: Id): void { if (this.cards.has(cardId)) this.setUi({ cardMenu: { x, y, cardId }, menu: null, pasteBox: null }); }
   closeCardMenu(): void { if (this.ui.cardMenu) this.setUi({ cardMenu: null }); }
+
+  // ---- what a chat read ----
+  private traces = new Map<Id, ContextTrace | null>();
+  openInspector(chatId: Id): void {
+    if (!this.cards.has(chatId)) return;
+    this.setUi({ inspector: { chatId }, cardMenu: null, menu: null });
+    void this.loadTrace(chatId);
+  }
+  closeInspector(): void { if (this.ui.inspector) this.setUi({ inspector: null }); }
+  /** undefined while loading or after a failed load, null when the chat has no answered turn yet. */
+  traceOf(chatId: Id): ContextTrace | null | undefined { return this.traces.get(chatId); }
+  private async loadTrace(chatId: Id): Promise<void> {
+    this.traces.delete(chatId);
+    try {
+      const trace = await this.api.getContextTrace(this.boardId, chatId);
+      if (this.disposed) return;
+      this.traces.set(chatId, trace);
+      this.emit([{ kind: 'ui' }]);
+    } catch {
+      if (!this.disposed) this.toast("Couldn't load what this question read.");
+    }
+  }
+
+  /** The user's own words for why a string exists; shown at once, put back if the save fails. */
+  setEdgeWhy(edgeId: Id, why: string): void {
+    const edge = this.edges.get(edgeId);
+    if (!edge || (edge.why ?? '') === why) return;
+    const before = edge.why;
+    this.edges.set(edgeId, { ...edge, why });
+    this.emit([{ kind: 'ui' }]);
+    this.api.setEdgeWhy(this.boardId, edgeId, why).catch(() => {
+      if (this.disposed) return;
+      const now = this.edges.get(edgeId);
+      if (now) this.edges.set(edgeId, { ...now, why: before });
+      this.toast("Couldn't save that. Try again.");
+    });
+  }
+
+  /** A name the engine suggested after the first answer; a name the user chose is never replaced. */
+  private applySuggestedName(chatId: Id, name: string): void {
+    const card = this.cards.get(chatId);
+    if (card && DEFAULT_CHAT_NAMES.has((card.data as ChatData).name)) this.patchCard(chatId, { data: { name } });
+  }
   /** Colours a card (null = default). One normal PATCH of `data.color`; a pile's colour is its face's, not its members'. */
   setColor(id: Id, color: CardColor | null): void {
     const c = this.cards.get(id);
@@ -1249,7 +1298,13 @@ export class BoardStore {
       await this.api.streamChat(req, (e) => {
         if (e.type === 'delta') update({ text: (this.streams.get(chatId)?.text ?? '') + e.text });
         else if (e.type === 'web') update({ web: e.results, webQuery: e.query });
-        else if (e.type === 'error') { errored = true; update({ error: e.message, code: e.code, provider: e.provider }); }
+        else if (e.type === 'context') {
+          if (e.embeddingFailed) this.toast('Searched your sources by keyword only: meaning search is down right now.');
+          else if (e.agentSteps.length) this.toast('Read more of your sources to answer this.');
+        } else if (e.type === 'suggest') {
+          if (e.branch) this.toast('This looks like a side question. A branch might suit it better.');
+          if (e.name) this.applySuggestedName(chatId, e.name);
+        } else if (e.type === 'error') { errored = true; update({ error: e.message, code: e.code, provider: e.provider }); }
       }, ctrl.signal);
     } catch (e) {
       finish();

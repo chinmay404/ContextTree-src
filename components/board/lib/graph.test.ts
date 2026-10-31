@@ -14,7 +14,7 @@ it('numbers questions like the prototype', () => {
 
 it('canPlug follows the prototype rules', () => {
   expect(canPlug(g, 'side', 'chat', 'second')).toBe(true);
-  expect(canPlug(g, 'main', 'chat', 'deep')).toBe(false); // ancestor
+  expect(canPlug(g, 'main', 'chat', 'deep')).toBe(true); // a parent's answer into its own branch
   expect(canPlug(g, 'deep', 'chat', 'main')).toBe(false); // descendant
   expect(canPlug(g, 'side', 'chat', 'deep')).toBe(false); // already strung
   expect(canPlug(g, 'side', 'chat', 'side')).toBe(false);

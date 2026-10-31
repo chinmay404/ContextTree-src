@@ -1,0 +1,11 @@
+.pb-root .ci h4 { margin: 18px 0 6px; font-size: 12px; font-weight: 600; color: var(--t2); }
+.pb-root .ci .vhead + h4 { margin-top: 4px; }
+.pb-root .ci-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.pb-root .ci-list li { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; font-size: 13px; border-bottom: .5px solid var(--pb-edge); }
+.pb-root .ci-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-root .ci-loc, .pb-root .ci-why { color: var(--t2); font-size: 12px; white-space: nowrap; }
+.pb-root .ci-score { margin-left: auto; color: var(--t2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.pb-root .ci-out .ci-name { color: var(--t2); }
+.pb-root .ci-empty { color: var(--t2); font-size: 13px; margin: 6px 0; }
+.pb-root .ci-string { display: grid; gap: 4px; margin-bottom: 12px; font-size: 13px; }
+.pb-root .ci-string input { width: 100%; box-sizing: border-box; padding: 7px 9px; font: inherit; font-size: 12px; color: inherit; background: transparent; border: .5px solid var(--pb-edge); border-radius: 8px; }

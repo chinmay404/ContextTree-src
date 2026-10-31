@@ -1,6 +1,6 @@
 import { parseSse } from '@/lib/sse';
 import {
-  ApiError,
+  ApiError, type ContextTrace,
   type Board, type BoardSummary, type Card, type CardCreate, type CardPatch, type ChatRequest,
   type Edge, type EngineApi, type Id, type LinkPreview, type Message, type ProviderId, type Reads, type StreamErrorCode, type StreamEvent,
 } from './types';
@@ -140,6 +140,12 @@ export class HttpEngineApi implements EngineApi {
   getReads(boardId: Id, chatId: Id) {
     return this.req<Reads>('GET', `/boards/${enc(boardId)}/cards/${enc(chatId)}/reads`);
   }
+  async getContextTrace(boardId: Id, chatId: Id): Promise<ContextTrace | null> {
+    return (await this.req<{ trace: ContextTrace | null }>('GET', `/boards/${enc(boardId)}/cards/${enc(chatId)}/context-trace`)).trace;
+  }
+  setEdgeWhy(boardId: Id, edgeId: Id, why: string) {
+    return this.req<Edge>('PATCH', `/boards/${enc(boardId)}/edges/${enc(edgeId)}`, { why });
+  }
 
   async uploadFile(
     boardId: Id,
@@ -246,7 +252,7 @@ export class HttpEngineApi implements EngineApi {
     let coded = false; // a coded error frame (key_rejected) ends the stream without [DONE]
     const emit = (events: unknown[]) => {
       for (const ev of events) {
-        const p = ev as { error?: unknown; code?: unknown; provider?: unknown; summary?: unknown; web_search?: { query?: string; results?: { title?: string; url?: string }[] }; message?: unknown; delta?: unknown } | null;
+        const p = ev as { error?: unknown; code?: unknown; provider?: unknown; summary?: unknown; web_search?: { query?: string; results?: { title?: string; url?: string }[] }; message?: unknown; delta?: unknown; context?: { embeddingFailed?: unknown; agentSteps?: unknown }; suggest?: { branch?: unknown; name?: unknown } } | null;
         if (!p) continue;
         if (p.error) {
           const code = isCode(p.code) ? p.code : undefined;
@@ -256,6 +262,8 @@ export class HttpEngineApi implements EngineApi {
         }
         if (typeof p.summary === 'string' && p.summary) onEvent({ type: 'summary', text: p.summary });
         if (p.web_search?.results) onEvent({ type: 'web', results: p.web_search.results, ...(typeof p.web_search.query === 'string' && p.web_search.query ? { query: p.web_search.query } : {}) });
+        if (p.context) onEvent({ type: 'context', embeddingFailed: !!p.context.embeddingFailed, agentSteps: Array.isArray(p.context.agentSteps) ? p.context.agentSteps.map(String) : [] });
+        if (p.suggest) onEvent({ type: 'suggest', ...(p.suggest.branch ? { branch: true } : {}), ...(typeof p.suggest.name === 'string' && p.suggest.name ? { name: p.suggest.name } : {}) });
         const chunk = p.message ?? p.delta;
         if (typeof chunk === 'string' && chunk) onEvent({ type: 'delta', text: chunk });
       }

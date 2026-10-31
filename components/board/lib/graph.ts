@@ -84,8 +84,7 @@ export function canPlug(g: Graph, fromId: Id, kind: 'src' | 'chat', chatId: Id):
   if (kind === 'src') return n.deskId !== chatId && !wiresInto(g, chatId).some((e) => e.from === fromId);
   return chatId !== fromId
     && !answersInto(g, chatId).some((e) => e.from === fromId)
-    && !ancestors(g, fromId).some((a) => a.id === chatId)
-    && !ancestors(g, chatId).some((a) => a.id === fromId);
+    && !ancestors(g, fromId).some((a) => a.id === chatId);   // a parent may string to its own branch, not the reverse
 }
 
 export function hasAnswer(c: Card): boolean {

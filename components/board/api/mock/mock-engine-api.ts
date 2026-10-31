@@ -1,5 +1,6 @@
 import { ApiError } from '../types';
 import type {
+  ContextTrace,
   Board, BoardPreview, BoardSummary, Card, CardCreate, CardPatch, ChatData, ChatRequest, Edge, EngineApi, Id, Message, Reads,
   LinkPreview, ProviderId, SourceData, SourceType, Status, StreamEvent,
 } from '../types';
@@ -423,6 +424,23 @@ export class MockEngineApi implements EngineApi {
     return structuredClone(b.messages.get(chatId) ?? []);
   }
 
+  /** Tests: frames the next streamed answer sends first, and what the trace route returns. */
+  nextStreamExtras: StreamEvent[] = [];
+  nextTrace: ContextTrace | null = null;
+
+  async getContextTrace(boardId: Id, chatId: Id): Promise<ContextTrace | null> {
+    await this.enter('getContextTrace', [boardId, chatId]);
+    return this.nextTrace;
+  }
+
+  async setEdgeWhy(boardId: Id, edgeId: Id, why: string): Promise<Edge> {
+    await this.enter('setEdgeWhy', [boardId, edgeId, why]);
+    const row = this.board(boardId).edges.get(edgeId);
+    if (!row || row.del) throw new ApiError(404, 'not_found');
+    row.edge = { ...row.edge, why: why || null };
+    return row.edge;
+  }
+
   async getReads(boardId: Id, chatId: Id): Promise<Reads> {
     await this.enter('getReads', [boardId, chatId]);
     const b = this.board(boardId);
@@ -564,6 +582,7 @@ export class MockEngineApi implements EngineApi {
     checkAbort();
     await wait(this.o.firstTokenMs);
     checkAbort();
+    for (const extra of this.nextStreamExtras.splice(0)) onEvent(extra);
     if (req.webSearch) onEvent({ type: 'web', results: [{ title: 'Pricing pages compared', url: 'https://example.com/pricing' }], query: req.message });
     for (let i = 0; i < words.length; i += 2) {
       checkAbort();

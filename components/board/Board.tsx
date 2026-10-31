@@ -23,6 +23,7 @@ import { AddMenu } from './chrome/AddMenu';
 import { BoardInput } from './chrome/BoardInput';
 import { BranchSheet } from './chrome/BranchSheet';
 import { CardMenu } from './chrome/CardMenu';
+import { ContextInspector } from './chrome/ContextInspector';
 import { FormatBar } from './chrome/FormatBar';
 import { PasteBox } from './chrome/PasteBox';
 import { BrandBar } from './chrome/BrandBar';
@@ -160,6 +161,7 @@ function Chrome(): ReactElement {
           <BoardInput />
           <BranchSheet />
           <SourceViewer />
+          <ContextInspector />
           <FocusView />
           <CompareSheet />
           <DeleteConfirm />

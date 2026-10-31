@@ -302,3 +302,12 @@ Work after a response is best-effort there, so source ingest no longer runs in F
   parses `<title>`, `og:title`, `og:description`, `og:image`, `og:site_name`; YouTube via oEmbed. Nothing is stored.
   Blocked or unreachable → 400 `invalid` / 422 `unreachable`. `EngineApi.previewLink?(url)` is optional; without it the
   board builds a preview from the URL alone.
+
+## Amendment 2026-10-31: the context engine
+
+- `GET /boards/{b}/cards/{c}/context-trace` returns `{trace}`: the last turn's `sent`, `dropped` (with `reason`: `budget`, `jev` or `per_source`), `jev`, `enough`, `estimatedTokens`, `budgetTokens`, `embeddingFailed`, `agent`, or `null` before any answered turn.
+- `PATCH /boards/{b}/edges/{e}` takes `{why}` (at most 200 characters, empty clears it). Edges carry `why` only when they have one.
+- Stream frames, both optional and ignored by older clients: `{context: {embeddingFailed, agentSteps}}` before the answer; `{suggest: {branch: true}}` before the answer and `{suggest: {name}}` after it.
+- Answer strings may run from a chat to its own descendant, not to its own ancestor. `canPlug` in `components/board/lib/graph.ts` and `_can_plug` in the engine change together.
+- `externalContextTopK` is passages per source, which is what the token meter already counted. A chat with no budget of its own gets 12,000 tokens, and always at least 4,000 for its sources.
+- Migration `011_context_engine.sql` must run before this engine deploys: fork init writes `nodes.lineage_summary`.

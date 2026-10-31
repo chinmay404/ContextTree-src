@@ -110,7 +110,7 @@ it('toast expires after toastMs', async () => {
 });
 
 it('connect refuses what canPlug refuses without calling the API', () => {
-  expect(s.connect('answer', 'main', 'deep')).toBeNull();
+  expect(s.connect('answer', 'deep', 'main')).toBeNull();
   expect(calls('createEdge')).toHaveLength(0);
 });
 

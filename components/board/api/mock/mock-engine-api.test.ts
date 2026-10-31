@@ -65,7 +65,7 @@ describe('MockEngineApi', () => {
   it('edges: duplicate and not_allowed', async () => {
     const m = api();
     await expect(m.createEdge('b_seed', { id: 'e1', kind: 'wire', from: 'csv', to: 'deep' })).rejects.toMatchObject({ status: 409, code: 'duplicate' });
-    await expect(m.createEdge('b_seed', { id: 'e2', kind: 'answer', from: 'main', to: 'deep' })).rejects.toMatchObject({ code: 'not_allowed' });
+    await expect(m.createEdge('b_seed', { id: 'e2', kind: 'answer', from: 'deep', to: 'main' })).rejects.toMatchObject({ code: 'not_allowed' });
     await expect(m.createEdge('b_seed', { id: 'e3', kind: 'wire', from: 'pdf', to: 'main' })).rejects.toMatchObject({ code: 'not_allowed' });
     await expect(m.deleteEdge('b_seed', 'lin_side')).rejects.toMatchObject({ status: 400 });
     const e = await m.createEdge('b_seed', { id: 'e4', kind: 'wire', from: 'csv', to: 'main' });

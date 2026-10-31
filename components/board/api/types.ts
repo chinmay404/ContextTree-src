@@ -64,7 +64,7 @@ export interface Card {
   lastMessage?: { role: 'user' | 'assistant'; content: string } | null;  // chats; content ≤ 280 chars
 }
 
-export interface Edge { id: Id; boardId: Id; kind: 'lineage' | 'wire' | 'answer'; from: Id; to: Id; createdAt: string }
+export interface Edge { id: Id; boardId: Id; kind: 'lineage' | 'wire' | 'answer'; from: Id; to: Id; createdAt: string; why?: string | null }
 
 export interface Board {
   id: Id; title: string;
@@ -106,10 +106,20 @@ export type StreamErrorCode = 'missing_key' | 'key_rejected' | 'unsupported_mode
 export type StreamEvent =
   | { type: 'delta'; text: string } | { type: 'summary'; text: string }
   | { type: 'web'; results: { title?: string; url?: string }[]; query?: string }
+  | { type: 'context'; embeddingFailed: boolean; agentSteps: string[] }
+  | { type: 'suggest'; branch?: boolean; name?: string }
   | { type: 'error'; message: string; code?: StreamErrorCode; provider?: ProviderId } | { type: 'done' };
 
 /** What the paste box shows for a link before it is added (engine `GET /links/preview`, or built from the address alone). */
 export interface LinkPreview { url: string; kind: 'web' | 'video'; title: string | null; site: string; description: string | null; image: string | null }
+
+/** What one turn sent and left out (engine `GET .../context-trace`). */
+export interface TracePassage { n?: number; cardId: Id; loc: string | null; score: number | null }
+export interface ContextTrace {
+  messageId: string | null; jev: string; enough: boolean | null; estimatedTokens: number; budgetTokens: number | null;
+  embeddingFailed: boolean; sent: (TracePassage & { n: number })[]; dropped: (TracePassage & { reason: string })[];
+  agent: { ran: boolean; failed: boolean; steps: { tool: string }[] };
+}
 
 export interface EngineApi {
   listBoards(): Promise<BoardSummary[]>;
@@ -126,6 +136,8 @@ export interface EngineApi {
   deleteEdge(boardId: Id, edgeId: Id): Promise<void>;
   getMessages(boardId: Id, chatId: Id): Promise<Message[]>;
   getReads(boardId: Id, chatId: Id): Promise<Reads>;
+  getContextTrace(boardId: Id, chatId: Id): Promise<ContextTrace | null>;
+  setEdgeWhy(boardId: Id, edgeId: Id, why: string): Promise<Edge>;
   uploadFile(boardId: Id, input: { id: Id; file: File; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card>;
   addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card>;
   streamChat(req: ChatRequest, onEvent: (e: StreamEvent) => void, signal?: AbortSignal): Promise<void>;
