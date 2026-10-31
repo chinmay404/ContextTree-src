@@ -46,11 +46,14 @@ export function createPiles(ctx: EngineContext): PilesModule {
   return {
     hoverTarget(n: ViewNode, ev: PointerEvent) {
       if (!live(n.id)) return null;
-      n.el.style.pointerEvents = 'none';
-      const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>('.card.src');
-      n.el.style.pointerEvents = '';
-      const t = under?.dataset.id ? ctx.nodes.get(under.dataset.id) : undefined;
-      return t && t !== n && live(t.id) ? t : null;
+      // Every element under the pointer, not just the top one: in the zoomed-out map the dragged
+      // card's own label takes pointer events and would hide whatever it is being dropped on.
+      for (const el of document.elementsFromPoint(ev.clientX, ev.clientY)) {
+        const under = el.closest<HTMLElement>('.card.src');
+        const t = under?.dataset.id ? ctx.nodes.get(under.dataset.id) : undefined;
+        if (t && t !== n) return live(t.id) ? t : null;
+      }
+      return null;
     },
     drop(n, t) {
       const id = ctx.store.makePile(n.id, t.id, [t.px.x, t.py.x]);
