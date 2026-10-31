@@ -20,11 +20,14 @@ test('a chat shows what its last answer read, what it left out, and why it is co
       sent: [{ n: 1, cardId: 'main', loc: null, score: 0.91 }],
       dropped: [{ cardId: 'main', loc: 'p. 3', score: 0.12, reason: 'jev' }],
       agent: { ran: true, failed: false, steps: [{ tool: 'read_section' }] },
+      issues: [{ code: 'sources_unavailable', message: "Your sources couldn't be read, so this answer doesn't use them. Try again.", shown: true }],
     };
   });
   await openInspector(page, 'deep');   // the seed strings a file and an answer into it
   const sheet = page.locator(SHEET);
   await expect(sheet.getByRole('dialog')).toBeVisible();
+  await expect(sheet).toContainText('What went wrong');
+  await expect(sheet).toContainText("Your sources couldn't be read");
   await expect(sheet).toContainText('Sent to the model');
   await expect(sheet).toContainText('91%');
   await expect(sheet).toContainText('judged not to help');

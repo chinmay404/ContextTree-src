@@ -30,9 +30,15 @@ function PassageRow({ title, passage, note }: { title: string; passage: TracePas
 }
 
 function Passages({ trace, title }: { trace: ContextTrace; title: (id: Id) => string }): ReactElement {
-  const { sent, dropped, agent } = trace;
+  const { sent, dropped, agent, issues } = trace;
   return (
     <>
+      {issues?.length ? (
+        <div className="ci-issues" role="alert">
+          <h4>What went wrong</h4>
+          <ul className="ci-list">{issues.map((i) => <li key={i.code}><span className="ci-issue">{i.message}</span></li>)}</ul>
+        </div>
+      ) : null}
       <h4>Sent to the model</h4>
       {sent.length ? <ul className="ci-list">{sent.map((p) => <PassageRow key={p.n} title={title(p.cardId)} passage={p} />)}</ul>
         : <p className="ci-empty">No sources this turn.</p>}

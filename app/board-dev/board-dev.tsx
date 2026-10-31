@@ -71,6 +71,7 @@ export default function BoardDev({ params }: { params: BoardDevParams }) {
   return (
     <div data-pb="board-dev" style={{ position: 'fixed', inset: 0 }}>
       {ready && <Board key={gen} api={api} boardId={boardId} testHook onOpenBoard={setBoardId}
+        onOpenHome={() => { (window as unknown as { __wentHome?: boolean }).__wentHome = true; }}
         initialAsk={params.ask} keyEpoch={keyEpoch} defaultModel={defaultModel} onOpenSettings={params.keys ? (p) => { spy.calls.push(p); } : undefined} />}
     </div>
   );

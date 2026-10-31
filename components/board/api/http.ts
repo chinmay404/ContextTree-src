@@ -252,7 +252,7 @@ export class HttpEngineApi implements EngineApi {
     let coded = false; // a coded error frame (key_rejected) ends the stream without [DONE]
     const emit = (events: unknown[]) => {
       for (const ev of events) {
-        const p = ev as { error?: unknown; code?: unknown; provider?: unknown; summary?: unknown; web_search?: { query?: string; results?: { title?: string; url?: string }[] }; message?: unknown; delta?: unknown; context?: { embeddingFailed?: unknown; agentSteps?: unknown }; suggest?: { branch?: unknown; name?: unknown } } | null;
+        const p = ev as { error?: unknown; code?: unknown; provider?: unknown; summary?: unknown; web_search?: { query?: string; results?: { title?: string; url?: string }[] }; message?: unknown; delta?: unknown; context?: { embeddingFailed?: unknown; agentSteps?: unknown }; suggest?: { branch?: unknown; name?: unknown }; issues?: unknown } | null;
         if (!p) continue;
         if (p.error) {
           const code = isCode(p.code) ? p.code : undefined;
@@ -264,6 +264,12 @@ export class HttpEngineApi implements EngineApi {
         if (p.web_search?.results) onEvent({ type: 'web', results: p.web_search.results, ...(typeof p.web_search.query === 'string' && p.web_search.query ? { query: p.web_search.query } : {}) });
         if (p.context) onEvent({ type: 'context', embeddingFailed: !!p.context.embeddingFailed, agentSteps: Array.isArray(p.context.agentSteps) ? p.context.agentSteps.map(String) : [] });
         if (p.suggest) onEvent({ type: 'suggest', ...(p.suggest.branch ? { branch: true } : {}), ...(typeof p.suggest.name === 'string' && p.suggest.name ? { name: p.suggest.name } : {}) });
+        if (Array.isArray(p.issues)) {
+          const issues = (p.issues as { code?: unknown; message?: unknown }[])
+            .filter((i) => typeof i?.message === 'string' && i.message)
+            .map((i) => ({ code: String(i.code ?? ''), message: String(i.message) }));
+          if (issues.length) onEvent({ type: 'issues', issues });
+        }
         const chunk = p.message ?? p.delta;
         if (typeof chunk === 'string' && chunk) onEvent({ type: 'delta', text: chunk });
       }

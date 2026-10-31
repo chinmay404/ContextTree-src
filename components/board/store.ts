@@ -1301,6 +1301,9 @@ export class BoardStore {
         else if (e.type === 'context') {
           if (e.embeddingFailed) this.toast('Searched your sources by keyword only: meaning search is down right now.');
           else if (e.agentSteps.length) this.toast('Read more of your sources to answer this.');
+        } else if (e.type === 'issues') {
+          const [first, ...rest] = e.issues;
+          this.toast(rest.length ? `${first.message} (and ${rest.length} more: see What it read)` : first.message);
         } else if (e.type === 'suggest') {
           if (e.branch) this.toast('This looks like a side question. A branch might suit it better.');
           if (e.name) this.applySuggestedName(chatId, e.name);

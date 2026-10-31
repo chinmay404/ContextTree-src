@@ -12,7 +12,7 @@ import { useEscape } from './escape';
 export function BrandBar(): ReactElement {
   const { store, props } = useBoard();
   const { board } = useSnapshot();
-  const { api, boardId, onOpenBoard, onOpenSettings, defaultModel } = props;
+  const { api, boardId, onOpenBoard, onOpenSettings, onOpenHome, defaultModel } = props;
   const title = board?.title ?? '';
 
   const [editing, setEditing] = useState(false);
@@ -116,6 +116,14 @@ export function BrandBar(): ReactElement {
       </div>
       <div ref={menuRef} className={`menu${open ? ' on' : ''}`} data-pb="boardmenu" role="menu" style={{ left: 16, top: 72 }}
         inert={!open} aria-hidden={!open} onKeyDown={menuKey}>
+        {onOpenHome && (
+          <>
+            <button type="button" role="menuitem" data-m="home" onClick={() => { setOpen(false); onOpenHome(); }}>
+              <span className="c"><Icon name="house" /></span>All boards
+            </button>
+            <div className="sep" role="separator" />
+          </>
+        )}
         {boards?.map((b) => (
           <button key={b.id} type="button" role="menuitem" data-board={b.id} data-current={b.id === boardId ? 'true' : undefined}
             aria-current={b.id === boardId ? 'true' : undefined} onClick={() => openBoard(b.id)}>

@@ -49,6 +49,8 @@ export interface BoardProps {
   api: EngineApi;
   boardId: Id;
   onOpenBoard?: (id: Id) => void;
+  /** Back to the boards home page. */
+  onOpenHome?: () => void;
   onOpenSettings?: (provider?: ProviderId) => void;
   /** Asked once, in the board's first question chat, after the first successful load of an empty board. */
   initialAsk?: string;
@@ -123,10 +125,10 @@ function BoardShell(p: BoardProps): ReactElement {
     return () => document.removeEventListener('keydown', onKey);
   }, [inst, showcase]);
 
-  const { onOpenBoard, onOpenSettings, isModelLocked, liveModels, topRight } = p;
+  const { onOpenBoard, onOpenHome, onOpenSettings, isModelLocked, liveModels, topRight } = p;
   const value = useMemo(
-    () => (inst ? { store: inst.store, engine: inst.engine, props: { api, boardId, onOpenBoard, onOpenSettings, isModelLocked, liveModels, topRight, testHook, defaultModel } } : null),
-    [inst, api, boardId, onOpenBoard, onOpenSettings, isModelLocked, liveModels, topRight, testHook, defaultModel],
+    () => (inst ? { store: inst.store, engine: inst.engine, props: { api, boardId, onOpenBoard, onOpenHome, onOpenSettings, isModelLocked, liveModels, topRight, testHook, defaultModel } } : null),
+    [inst, api, boardId, onOpenBoard, onOpenHome, onOpenSettings, isModelLocked, liveModels, topRight, testHook, defaultModel],
   );
 
   return (

@@ -34,6 +34,16 @@ test('the brand shows and renames the board', async ({ page }) => {
   expect(calls.some((c) => c.method === 'updateBoard' && (c.args[1] as { title?: string }).title === 'Pricing study 2')).toBe(true);
   expect(errs).toEqual([]);
 });
+test('the logo menu leads back to all boards', async ({ page }) => {
+  await openBoard(page);
+  await page.click('[data-pb="brand"] .lg');
+  const home = page.locator('[data-pb="boardmenu"] [data-m="home"]');
+  await expect(home).toContainText('All boards');
+  await expect(home).toBeFocused();   // the first thing in the menu, for the keyboard too
+  await home.click();
+  expect(await page.evaluate(() => (window as unknown as { __wentHome?: boolean }).__wentHome)).toBe(true);
+  await expect(page.locator('[data-pb="boardmenu"]')).toHaveAttribute('aria-hidden', 'true');
+});
 test('the logo lists boards; New board creates and opens it', async ({ page }) => {
   await openBoard(page);
   await page.click('[data-pb="brand"] .lg');

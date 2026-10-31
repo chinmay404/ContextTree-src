@@ -9,3 +9,4 @@
 .pb-root .ci-empty { color: var(--t2); font-size: 13px; margin: 6px 0; }
 .pb-root .ci-string { display: grid; gap: 4px; margin-bottom: 12px; font-size: 13px; }
 .pb-root .ci-string input { width: 100%; box-sizing: border-box; padding: 7px 9px; font: inherit; font-size: 12px; color: inherit; background: transparent; border: .5px solid var(--pb-edge); border-radius: 8px; }
+.pb-root .ci-issue { white-space: normal; font-weight: 500; color: var(--t1); }

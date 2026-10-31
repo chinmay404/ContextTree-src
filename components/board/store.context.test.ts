@@ -58,6 +58,32 @@ describe('what a turn tells the board', () => {
   });
 });
 
+describe('when something goes wrong on a turn', () => {
+  const issue = { code: 'sources_unavailable', message: "Your sources couldn't be read, so this answer doesn't use them." };
+
+  it('tells the user in the engine\'s own words', async () => {
+    m.nextStreamExtras = [{ type: 'issues', issues: [issue] }];
+    await s.send('main', 'hello');
+    await flush();
+    expect(snap().ui.toast?.text).toBe(issue.message);
+  });
+
+  it('says how many more there are and where to read them', async () => {
+    m.nextStreamExtras = [{ type: 'issues', issues: [issue, { code: 'not_saved', message: 'Not saved.' }] }];
+    await s.send('main', 'hello');
+    await flush();
+    expect(snap().ui.toast?.text).toContain('and 1 more');
+  });
+
+  it('a branch that cannot start shows why, and the message is not left behind as sent', async () => {
+    const detail = "This branch couldn't load its history, so your message wasn't sent. Try again.";
+    m.failNext('streamChat', new ApiError(503, 'branch_init_failed', detail));
+    await s.send('main', 'hello');
+    await flush();
+    expect(snap().streaming.get('main')?.error).toBe(detail);
+  });
+});
+
 describe('the context inspector', () => {
   const trace: ContextTrace = {
     messageId: 'm1', jev: 'ok', enough: true, estimatedTokens: 900, budgetTokens: 12000, embeddingFailed: false,

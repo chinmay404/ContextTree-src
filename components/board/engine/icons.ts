@@ -5,6 +5,7 @@ import {
   Unlink, GitBranch, ArrowUp, SlidersHorizontal, ChevronDown, ArrowLeft, Copy, Upload, Ellipsis, GlobeLock,
   Trash2, RotateCcw, SquareDashed, Spline, ArrowRight, BookOpen, CornerLeftUp, Mouse, Sparkles,
   Bold, Italic, Heading, List, ListOrdered, Code,
+  House,
 } from 'lucide';
 
 /** Prototype's lucide-static names mapped to lucide@0.460.0 canonical export keys (more-horizontal is Ellipsis). */
@@ -19,7 +20,7 @@ const NODES = {
   'trash-2': Trash2, 'rotate-ccw': RotateCcw,
   // welcome tour
   'square-dashed': SquareDashed, 'spline': Spline, 'arrow-right': ArrowRight, 'book-open': BookOpen,
-  'corner-left-up': CornerLeftUp, 'mouse': Mouse, 'sparkles': Sparkles,
+  'corner-left-up': CornerLeftUp, 'mouse': Mouse, 'sparkles': Sparkles, 'house': House,
   // note formatting bar
   'bold': Bold, 'italic': Italic, 'heading': Heading, 'list': List, 'list-ordered': ListOrdered, 'code': Code,
 } as const;

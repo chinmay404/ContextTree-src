@@ -108,6 +108,7 @@ export type StreamEvent =
   | { type: 'web'; results: { title?: string; url?: string }[]; query?: string }
   | { type: 'context'; embeddingFailed: boolean; agentSteps: string[] }
   | { type: 'suggest'; branch?: boolean; name?: string }
+  | { type: 'issues'; issues: { code: string; message: string }[] }
   | { type: 'error'; message: string; code?: StreamErrorCode; provider?: ProviderId } | { type: 'done' };
 
 /** What the paste box shows for a link before it is added (engine `GET /links/preview`, or built from the address alone). */
@@ -119,6 +120,8 @@ export interface ContextTrace {
   messageId: string | null; jev: string; enough: boolean | null; estimatedTokens: number; budgetTokens: number | null;
   embeddingFailed: boolean; sent: (TracePassage & { n: number })[]; dropped: (TracePassage & { reason: string })[];
   agent: { ran: boolean; failed: boolean; steps: { tool: string }[] };
+  /** What went wrong on this turn. Older traces have none. */
+  issues?: { code: string; message: string; shown: boolean }[];
 }
 
 export interface EngineApi {

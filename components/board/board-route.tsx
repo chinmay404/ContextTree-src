@@ -145,6 +145,8 @@ function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }):
 
   // replace, not push: switching boards must not stack history, so one Back from a board returns to where you opened it from (the boards home)
   const onOpenBoard = useCallback((id: string) => router.replace(`/b/${id}${q}`), [router, q]);
+  // push, not replace: Back from the boards page returns to this board
+  const onOpenHome = useCallback(() => router.push(`/boards${q}`), [router, q]);
   const onOpenSettings = useCallback(
     // Board callers pass a provider id or an engine-id prefix ("gemini", "meta-llama").
     (p?: string) => openSettings({ section: 'keys', provider: p ? (providerOf(`${p}/`) ?? (p as ProviderId)) : undefined }),
@@ -169,7 +171,7 @@ function BoardRouteInner({ boardId, mock }: { boardId: string; mock: boolean }):
     );
   } else {
     body = (
-      <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenSettings={onOpenSettings} initialAsk={initialAsk} defaultModel={preferredModel(statuses) ?? undefined} keyEpoch={keys.lastSaved ?? undefined} isModelLocked={isModelLocked} liveModels={liveModels} topRight={<AccountPill />} />
+      <Board api={api} boardId={boardId} onOpenBoard={onOpenBoard} onOpenHome={onOpenHome} onOpenSettings={onOpenSettings} initialAsk={initialAsk} defaultModel={preferredModel(statuses) ?? undefined} keyEpoch={keys.lastSaved ?? undefined} isModelLocked={isModelLocked} liveModels={liveModels} topRight={<AccountPill />} />
     );
   }
   return <LightScope>{body}</LightScope>;
