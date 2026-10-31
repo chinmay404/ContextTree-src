@@ -1,20 +1,22 @@
 # State — Context Tree
 
-_Updated: 2026-10-31 by Claude (with Chinmay) · at commit dffe89f_
+_Updated: 2026-10-31 by Claude (with Chinmay) · at commit 9c27df2_
 
 ## Where we are
-V3 is on main in both repos. The owner's latest board batch has shipped; next is whether notes should be read past 4,000 characters, then P16.
+V3 is on main in both repos, with drawing, the PWA and an iPad pass on the board. The iPad work was tested in Chromium touch emulation, so the owner's real iPad is the remaining check. Then: whether notes should be read past 4,000 characters, then P16.
 
 ## What moved
 - 2026-10-31: tree timeline and status mark (d660766), desk sources read as what the question is about (engine 3e880ac), notes keep line breaks and join piles and sets (136a110), select text → notepad or new branch (5875af8, dffe89f). Another session: context engine, inspector, visible turn errors.
+- 2026-10-31: free NIM embeddings, drawing and note pages (d0952e4), PWA (ff3073a), pinch and tour slides (6a46286), iPad gestures and sizes (4b0afe5), no text selection while the pen is on (9c27df2).
 
 ## What's live
 | Env | Running | Since |
 |---|---|---|
-| prod frontend (Vercel, contexttree.tech) | main @dffe89f pushed; auto-deploy assumed, not checked this session | 2026-10-31 |
-| prod engine (Vercel) | main @3e880ac pushed; deploy not checked this session | 2026-10-31 |
+| prod frontend (Vercel, contexttree.tech) | main @9c27df2 pushed; auto-deploy assumed, not checked when this was written | 2026-10-31 |
+| prod engine (Vercel) | main @ebe32b7 pushed; Vercel status success | 2026-10-31 |
 
 ## Not done yet
+- Production re-embed for NIM: needs the current `DATABASE_URL` in `ContextTree/.env`; meaning search stays unreliable until it runs.
 - Owner decision: read notes past `NOTE_MAX_CHARS` = 4000 (engine `app/agent/reads.py`, mirrored in `components/board/lib/note-text.ts`).
 - P16 "Read all of it" per source (contract amendment → engine → board).
 - Citations board side B1–B3; landing showcase hookup (ShowcaseApi); payments (Stripe); legal review of /privacy + /terms.
