@@ -12,7 +12,7 @@ V3 is on main in both repos, with drawing, the PWA, an iPad pass and connectors 
 ## What's live
 | Env | Running | Since |
 |---|---|---|
-| prod frontend (Vercel, contexttree.tech) | main @961c373 pushed; deploy status is in the session's report, not here | 2026-10-31 |
+| prod frontend (Vercel, contexttree.tech) | main @88697b0; Vercel status success. c01efae failed on Vercel with no reason visible outside its dashboard, built fine locally, and the retry passed | 2026-10-31 |
 | prod engine (Vercel) | main @b6a2ea8; Vercel status success, and context-tree-api.vercel.app health reports that sha | 2026-10-31 |
 
 ## Not done yet
