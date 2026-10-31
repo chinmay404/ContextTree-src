@@ -1,0 +1,29 @@
+/* The notepad of the focus view (S6): a third column on the right. The column opens at once (after the panel has left, when closing);
+   the panel slides in over it from the right and leaves the same way, quicker. */
+.pb-root [data-pb="focus"] .in:has(.notepad) { grid-template-columns: 340px minmax(0, 1fr) auto; }
+.pb-root .notepad { position: relative; width: 0; margin-left: -24px; min-height: 0; transition: width 0s linear 150ms, margin-left 0s linear 150ms; }
+.pb-root .notepad.on { width: min(340px, 30vw); margin-left: 0; transition-delay: 0s; }
+.pb-root .notepad .npad { position: absolute; inset: 0 0 0 auto; width: min(340px, 30vw); display: flex; flex-direction: column; gap: 10px; padding: 18px 16px 12px; border-radius: 28px; background: var(--pb-desk);
+  opacity: 0; transform: translateX(32px); pointer-events: none;
+  transition: transform 140ms cubic-bezier(.4, 0, 1, 1), opacity 120ms ease-in; }
+.pb-root .notepad.on .npad { opacity: 1; transform: none; pointer-events: auto; transition: transform 260ms var(--ease-out), opacity 200ms ease-out; }
+.pb-root .nph { display: flex; align-items: center; gap: 8px; }
+.pb-root .npt { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--t2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pb-root .npt .i { --s: 14px; --c: var(--t2); flex: none; }
+.pb-root .npx { width: 30px; height: 30px; border-radius: 15px; display: grid; place-items: center; flex: none; transition: background-color 120ms ease, transform 100ms var(--ease-out); }
+.pb-root .npx .i { --s: 15px; --c: var(--pb-ink); }
+@media (hover: hover) and (pointer: fine) { .pb-root .npx:hover { background: var(--pb-fill); } }
+.pb-root .npx:active { transform: scale(.94); }
+.pb-root .npx:focus-visible { outline: 2px solid var(--pb-edge-strong); outline-offset: 1px; }
+.pb-root .npad textarea.editor { flex: 1; min-height: 0; width: 100%; resize: none; border: 0; outline: none; border-radius: 18px; background: var(--pb-card); padding: 14px 16px; font-size: 14.5px; line-height: 1.55; color: var(--pb-body); cursor: text; user-select: text; -webkit-user-select: text; scrollbar-width: thin; transition: box-shadow 150ms ease; }
+.pb-root .npad textarea.editor:focus-visible { box-shadow: 0 0 0 2px var(--pb-edge-strong); }
+.pb-root .npad textarea.editor::placeholder { color: var(--t3); }
+.pb-root .npfoot { display: flex; align-items: baseline; gap: 10px; font-size: 12px; color: var(--t2); }
+.pb-root .npstate { font-weight: 600; flex: none; }
+.pb-root .nphint { color: var(--t3); min-width: 0; }
+/* the focus header's reopen button */
+.pb-root .backp[data-act="notes"][aria-pressed="true"] { background: var(--pb-ink); color: var(--pb-on-ink); }
+.pb-root .backp[data-act="notes"][aria-pressed="true"] .i { --c: var(--pb-on-ink); }
+@media (prefers-reduced-motion: reduce) {
+  .pb-root .notepad .npad, .pb-root .notepad.on .npad { transform: none; transition: opacity 120ms ease-out; }
+}

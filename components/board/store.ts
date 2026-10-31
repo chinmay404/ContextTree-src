@@ -5,6 +5,7 @@ import type {
 } from './api/types';
 import { genMessageId, newId } from './api/ids';
 import { colorOf, type CardColor } from './lib/colors';
+import { appendBlock } from './lib/selection-quote';
 import { DEFAULT_ADVANCED, DEFAULT_MODEL_KEY, MODELS, PERSONAS, TYPE_INFO } from './lib/catalog';
 import { cut, sizeOf } from './lib/format';
 import { canPlug, chatsOf, descendants, membersOf, nameOf, qNum, type Graph } from './lib/graph';
@@ -38,7 +39,9 @@ export interface UiState { selected: Id | null; dialog: DialogState | null;
   /** The right-click menu on a card (its colour row). */
   cardMenu: { x: number; y: number; cardId: Id } | null;
   /** The context inspector: what a chat's last turn read. */
-  inspector: { chatId: Id } | null }
+  inspector: { chatId: Id } | null;
+  /** The notepad panel of the focus view is open for this chat; `seq` makes every opening or addition a fresh one. */
+  notepad: { chatId: Id; seq: number } | null }
 
 /** One chat's answer in flight, or its kept error. `asked` is the question being answered (a key error re-asks it). */
 export interface StreamState { messageId: string; text: string; web: { title?: string; url?: string }[] | null; webQuery?: string; error: string | null;
@@ -75,7 +78,7 @@ export function overlayOpen(ui: UiState): boolean {
 
 const initialUi = (): UiState => ({
   selected: null, dialog: null, viewer: null, focus: null, menu: null, pasteBox: null, confirm: null, toast: null,
-  compare: null, dropping: false, webSearch: {}, tour: false, cardMenu: null, inspector: null,
+  compare: null, dropping: false, webSearch: {}, tour: false, cardMenu: null, inspector: null, notepad: null,
 });
 
 const FILE_TYPES: Record<string, [SourceType, Status]> = {
@@ -155,6 +158,7 @@ export class BoardStore {
   private probe: ViewProbe | null = null;
   private disposed = false;
   private pasteSeq = 0;
+  private notepadSeq = 0;
   private defaultModel: string;
 
   private readonly changeListeners = new Set<(c: StoreChange[]) => void>();
@@ -510,12 +514,12 @@ export class BoardStore {
     };
   }
 
-  createNote(i: { x: number; y: number; deskId: Id | null; text?: string; meta?: string }): Id {
+  createNote(i: { x: number; y: number; deskId: Id | null; text?: string; meta?: string; extra?: Partial<SourceData> }): Id {
     return this.makeNote(i);
   }
 
-  private makeNote(i: { x: number; y: number; deskId: Id | null; text?: string; meta?: string }, after?: Promise<boolean>): Id {
-    const data: SourceData = { text: i.text ?? '', meta: i.meta ?? 'Note · You' };
+  private makeNote(i: { x: number; y: number; deskId: Id | null; text?: string; meta?: string; extra?: Partial<SourceData> }, after?: Promise<boolean>): Id {
+    const data: SourceData = { text: i.text ?? '', meta: i.meta ?? 'Note · You', ...(i.extra ?? {}) };
     const card = this.blankSource('note', i.x, i.y, i.deskId, 'ready', data);
     this.create(card, () => this.api.createCard(this.boardId, {
       id: card.id, kind: 'source', sourceType: 'note', x: i.x, y: i.y, deskId: i.deskId, status: 'ready', data,
@@ -727,6 +731,14 @@ export class BoardStore {
     this.put(mergeCard(card, { fields: {}, data: { ...data } }));
     clearTimeout(d.timer);
     d.timer = setTimeout(() => { if (!this.disposed) this.flushDebounced(id); }, ms);
+  }
+
+  /** Resolves when nothing of this card is waiting to be written or in flight. */
+  async settled(id: Id): Promise<void> {
+    while (!this.disposed && (this.debounced.has(id) || this.patchQueue.has(id))) {
+      const q = this.patchQueue.get(id);
+      if (q) await q; else await new Promise<void>((r) => setTimeout(r, 40));
+    }
   }
 
   private flushDebounced(id: Id): void {
@@ -1054,8 +1066,26 @@ export class BoardStore {
   select(id: Id | null): void { if (this.ui.selected !== id) this.setUi({ selected: id }); }
   openViewer(cardId: Id, memberId: Id | null = null, anchor: DOMRect | null = null): void { this.setUi({ viewer: { cardId, memberId, anchor } }); }
   closeViewer(): void { if (this.ui.viewer) this.setUi({ viewer: null }); }
-  openFocus(id: Id): void { this.setUi({ focus: id }); }
-  closeFocus(): void { if (this.ui.focus) this.setUi({ focus: null }); }
+  openFocus(id: Id): void { this.setUi({ focus: id, notepad: this.ui.notepad?.chatId === id ? this.ui.notepad : null }); }
+  closeFocus(): void { if (this.ui.focus) this.setUi({ focus: null, notepad: null }); }
+
+  // ---- the notepad: one note per chat, on its desk ----
+
+  /** The chat's notepad: a note on its desk with `data.notepadFor` = the chat. */
+  notepadOf(chatId: Id): Card | undefined {
+    for (const c of this.cards.values()) if (c.kind === 'source' && c.sourceType === 'note' && (c.data as SourceData).notepadFor === chatId) return c;
+    return undefined;
+  }
+  openNotepad(chatId: Id): void { this.setUi({ notepad: { chatId, seq: ++this.notepadSeq } }); }
+  closeNotepad(): void { if (this.ui.notepad) this.setUi({ notepad: null }); }
+  /** Appends a block to a note's text (one normal PATCH), after a blank line; returns the new text. */
+  appendToNote(id: Id, block: string): string {
+    const c = this.cards.get(id);
+    if (!c || c.kind !== 'source') return '';
+    const text = appendBlock((c.data as SourceData).text ?? '', block);
+    this.patchDataDebounced(id, { text });   // the same path as typing in the note: one ordered stream of writes, so a pending edit can never land after the addition
+    return text;
+  }
   openCompare(id: Id): void { this.setUi({ compare: id }); }
   closeCompare(): void { if (this.ui.compare) this.setUi({ compare: null }); }
   /** The welcome tour sits above everything, so anything else that was open closes. */
@@ -1282,6 +1312,11 @@ export class BoardStore {
 
     let errored = false;
     try {
+      // Notes typed a moment ago (the notepad, a note card) are context for this question: their pending writes go out first.
+      if (this.debounced.size) {
+        for (const i of [...this.debounced.keys()]) this.flushDebounced(i);
+        await Promise.all([...this.patchQueue.values()]);
+      }
       if (!(await this.created([chatId]))) throw new Silent();
       const cur = this.cards.get(chatId);
       if (!cur || ctrl.signal.aborted) throw new Silent();

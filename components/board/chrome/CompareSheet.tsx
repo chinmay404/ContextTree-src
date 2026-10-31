@@ -95,7 +95,7 @@ export function CompareSheet(): ReactElement {
                   </div>
                   <div className="cmp-body" ref={(el) => { cols.current[idx] = el; }} onScroll={onScroll(idx)}>
                     {answer
-                      ? <div className="art"><div className="body" dangerouslySetInnerHTML={{ __html: renderMarkdown(answer.content) }} /></div>
+                      ? <div className="art" data-mid={answer.id}><div className="body" dangerouslySetInnerHTML={{ __html: renderMarkdown(answer.content) }} /></div>
                       : <div className="cmp-none">No answer yet.</div>}
                   </div>
                   <div className="cmp-foot"><button type="button" className="btn primary" onClick={() => keep(c.id)}>Keep this one</button></div>

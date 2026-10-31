@@ -28,6 +28,7 @@ import { Icon } from './Icon';
 import { useEscape } from './escape';
 import { readRows, sourceRows, type SourceRow } from './focus-rows';
 import { sourcesPhrase, webRowHTML } from '../lib/web-results';
+import { Notepad } from './Notepad';
 
 type Rect = { l: number; t: number; r: number; b: number; rad: number };
 type Web = { results: { title?: string; url?: string }[]; query?: string };
@@ -125,7 +126,7 @@ export function FocusView(): ReactElement {
     const set: HTMLElement[] = [];
     for (const el of Array.from(root.children)) {
       if (!(el instanceof HTMLElement) || el.inert) continue;
-      if (el.dataset.pb === 'focus' || el.dataset.pb === 'scrim' || el.dataset.pb === 'filein' || el.classList.contains('wrap') || el.classList.contains('pb-toast') || el.classList.contains('pb-confirm')) continue;
+      if (el.dataset.pb === 'focus' || el.dataset.pb === 'selbar' || el.dataset.pb === 'scrim' || el.dataset.pb === 'filein' || el.classList.contains('wrap') || el.classList.contains('pb-toast') || el.classList.contains('pb-confirm')) continue;
       el.inert = true; set.push(el);
     }
     return () => { set.forEach((el) => { el.inert = false; }); };
@@ -288,7 +289,7 @@ function FocusBody(p: {
 
   return (
     <>
-      <aside className="panel">
+      <aside className="panel side">
         <div>
           <div className="ph">Timeline</div>
           <FocusTimeline g={g} chatId={c.id} folded={folded} />
@@ -318,6 +319,10 @@ function FocusBody(p: {
         <div className="mtop">
           <button type="button" className="backp" data-close onClick={() => store.closeFocus()}><Icon name="arrow-left" />Board · Esc</button>
           <span style={{ flex: 1 }} />
+          {store.notepadOf(c.id) ? (
+            <button type="button" className="backp" data-act="notes" aria-pressed={snap.ui.notepad?.chatId === c.id}
+              onClick={() => (snap.ui.notepad?.chatId === c.id ? store.closeNotepad() : store.openNotepad(c.id))}><Icon name="sticky-note" />Notes</button>
+          ) : null}
           <button type="button" className="backp" data-settings onClick={openSettings}><Icon name="sliders-horizontal" />Settings</button>
           <button ref={moreRef} type="button" className="backp more" data-act="more" aria-label="More" aria-haspopup="menu" aria-expanded={menuOn} onClick={openMenu}><Icon name="more-horizontal" /></button>
         </div>
@@ -344,7 +349,7 @@ function FocusBody(p: {
               }
               const html = renderMarkdown(m.content);
               return (
-                <div key={m.id} className="amsg">
+                <div key={m.id} className="amsg" data-mid={m.id}>
                   {webRows(webMap.get(m.id))}
                   <article className="art">
                     {who(`${mi.name} answered with ${nSrc(webMap.get(m.id))}`)}
@@ -401,6 +406,7 @@ function FocusBody(p: {
             <span className="c" style={{ background: 'var(--pb-desk)' }}><Icon name="trash-2" /></span>Delete question</button>
         </div>
       </section>
+      <Notepad chat={c} />
     </>
   );
 }

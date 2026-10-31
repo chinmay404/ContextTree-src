@@ -41,7 +41,9 @@ export function BranchSheet(): ReactElement {
     const box = boxRef.current;
     if (isOpen) {
       if (!opener.current) opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      box?.querySelector<HTMLElement>(hasFirst ? '#d-first' : '#d-name')?.focus({ preventScroll: true });
+      const f = box?.querySelector<HTMLElement>(hasFirst ? '#d-first' : '#d-name');
+      f?.focus({ preventScroll: true });
+      if (f instanceof HTMLTextAreaElement) f.setSelectionRange(f.value.length, f.value.length);   // a quoted passage: the question goes after it
     } else if (opener.current) {
       const o = opener.current;
       opener.current = null;

@@ -7,8 +7,9 @@
  * `selected` / `faded`; a module whose card face depends on other UI state must call ctx.render(id) itself.
  */
 import type { Card, Id, ProviderId } from '../api/types';
-import { ancestors, chatsOf, isChat } from '../lib/graph';
+import { ancestors, chatsOf, isChat, qNum } from '../lib/graph';
 import { NOTE_MAX_CHARS, plainLines } from '../lib/note-text';
+import { quoteBlock } from '../lib/selection-quote';
 import type { BoardStore, StoreChange } from '../store';
 import { Camera, type Box } from './camera';
 import { CardView, CHAT_W, SRC_W } from './card-view';
@@ -596,6 +597,29 @@ export class BoardEngine {
     this.land(id);
     this.store.select(id);
     return id;
+  }
+
+  /**
+   * "Add to note": the passage goes into the chat's notepad as a Markdown quote. The notepad is one ordinary note on the chat's
+   * desk, made on first use, so the chat reads it as context on its next turn like any desk source (no engine change).
+   * `open`: show the notepad panel (the focus view's); the compare sheet has no panel, so it passes false.
+   */
+  addToNotepad(chatId: Id, selected: string, open = true): Id | null {
+    const chat = this.store.graph().cards.get(chatId);
+    const block = quoteBlock(selected);
+    if (!chat || chat.kind !== 'chat' || !block) return null;
+    let note = this.store.notepadOf(chatId);
+    if (!note) {
+      const name = (chat.data as { name?: string }).name || qNum(this.store.graph(), chatId);
+      const [x, y] = this.placeFor(chatId, 0, null);
+      const id = this.store.createNote({ x, y, deskId: chatId, text: '', meta: `Notes · ${name}`, extra: { notepadFor: chatId, title: `Notes · ${name}` } });
+      this.land(id);
+      note = this.store.getSnapshot().cards.get(id);
+    }
+    if (!note) return null;
+    this.store.appendToNote(note.id, block);
+    if (open) this.store.openNotepad(chatId);
+    return note.id;
   }
 
   /** Pasted text becomes a note, up to what the engine reads of a note. */

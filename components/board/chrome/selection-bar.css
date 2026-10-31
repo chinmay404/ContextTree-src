@@ -1,0 +1,9 @@
+/* The bar over a passage picked in an answer (S6): one 120 ms fade, no movement. Above the focus view (50), the compare sheet (70) and the format bar (80). */
+.pb-root .selbar { position: fixed; left: 0; top: 0; z-index: 85; display: flex; align-items: center; gap: 2px; padding: 5px; border-radius: 999px;
+  opacity: 0; pointer-events: none; transition: opacity 120ms ease-out; }
+.pb-root .selbar.on { opacity: 1; pointer-events: auto; }
+.pb-root .selbar button { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 13px 0 11px; border-radius: 16px; font-size: 13px; font-weight: 600; white-space: nowrap; transition: background-color 120ms ease, transform 100ms var(--ease-out); }
+.pb-root .selbar button .i { --s: 15px; --c: var(--pb-ink); }
+@media (hover: hover) and (pointer: fine) { .pb-root .selbar button:hover { background: var(--pb-desk); } }
+.pb-root .selbar button:active { transform: scale(.97); }
+.pb-root .selbar button:focus-visible { outline: 2px solid var(--pb-edge-strong); outline-offset: 1px; }

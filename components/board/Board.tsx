@@ -28,6 +28,7 @@ import { FormatBar } from './chrome/FormatBar';
 import { PasteBox } from './chrome/PasteBox';
 import { BrandBar } from './chrome/BrandBar';
 import { CompareSheet } from './chrome/CompareSheet';
+import { SelectionBar } from './chrome/SelectionBar';
 import { DeleteConfirm } from './chrome/DeleteConfirm';
 import { DropOverlay } from './chrome/DropOverlay';
 import { FocusView } from './chrome/FocusView';
@@ -45,6 +46,8 @@ import './chrome/materials.css'; // its rules override pebble.css and the chrome
 import './chrome/map-names.css'; // the zoomed-out map of names
 import './chrome/sets.css'; // open sets (a pile drawn as a box of sources)
 import './chrome/colors.css'; // card colours and the chat rim win over materials.css
+import './chrome/selection-bar.css';
+import './chrome/notepad.css';
 import './chrome/dark.css'; // keep last: the dark palette re-defines the tokens and tones above
 
 export interface BoardProps {
@@ -168,6 +171,7 @@ function Chrome(): ReactElement {
           <ContextInspector />
           <FocusView />
           <CompareSheet />
+          <SelectionBar />
           <DeleteConfirm />
           <Toast />
           <WelcomeTour />
