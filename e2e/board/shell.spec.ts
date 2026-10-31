@@ -8,7 +8,8 @@ test('renders the seed board: 4 chats and 8 sources, pile members hidden', async
 });
 test('soon cards show the pill and stay unread', async ({ page }) => {
   await openBoard(page);
-  for (const id of ['video', 'podcast', 'shot']) await expect(page.locator(`[data-id="${id}"] .soon-pill`)).toHaveText('Coming soon');
+  for (const id of ['podcast', 'shot']) await expect(page.locator(`[data-id="${id}"] .soon-pill`)).toHaveText('Coming soon');
+  await expect(page.locator('[data-id="video"] .soon-pill')).toHaveText('Not read yet');
   await expect(page.locator('[data-id="main"] .cfoot')).toContainText('2 sources');
 });
 test('dragging a chat carries its desk', async ({ page }) => {

@@ -24,6 +24,19 @@ describe('web results', () => {
     expect(sourcesPhrase(1, 0)).toBe('1 source');
     expect(sourcesPhrase(0, 2)).toBe('0 sources · 2 web');
   });
+  it('html: a result with a link can be kept as a source, and only an expanded row offers it', () => {
+    const r = [{ title: 'one', url: 'https://e.com/?a="1"' }, { title: 'bad', url: 'javascript:1' }, { title: 'none' }];
+    const open = webRowHTML(r, null, false);
+    expect(open.match(/data-pin=/g)).toHaveLength(1);
+    expect(open).toContain('data-pin="https://e.com/?a=&quot;1&quot;"');
+    expect(webRowHTML(r, null, true)).not.toContain('data-pin');
+  });
+  it('html: a result already kept cannot be kept twice', () => {
+    const r = [{ title: 'one', url: 'https://e.com/a' }, { title: 'two', url: 'https://e.com/b' }];
+    const open = webRowHTML(r, null, false, new Set(['https://e.com/a']));
+    expect(open.match(/data-pin="https:\/\/e\.com\/a"[^>]* disabled/g)).toHaveLength(1);
+    expect(open.match(/ disabled/g)).toHaveLength(1);
+  });
   it('html: expanded is one scroller of safe links, collapsed is one chip; everything escaped', () => {
     const r = [{ title: '<b>x</b>', url: 'https://e.com/?a="1"' }, { title: 'two', url: 'javascript:1' }];
     const open = webRowHTML(r, 'q<script>', false);

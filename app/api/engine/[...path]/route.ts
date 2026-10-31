@@ -51,8 +51,9 @@ async function handler(req: Request, ctx: Ctx): Promise<Response> {
   }
   headers.set("user-agent", "ContextTree/1.0");
 
-  // Streams and ingest hold the request open for a long time: no header timeout, only the browser's abort.
-  const isStream = path.join("/") === "chat/stream" || (path.length >= 3 && path[path.length - 1] === "ingest");
+  // Streams, ingest and pasted transcripts hold the request open for a long time: no header timeout, only the browser's abort.
+  const isStream = path.join("/") === "chat/stream"
+    || (path.length >= 3 && (path[path.length - 1] === "ingest" || path[path.length - 1] === "transcript"));
   const hasBody = req.method !== "GET" && req.method !== "HEAD" && req.body !== null;
 
   const init: RequestInit & { duplex?: "half" } = { method: req.method, headers, redirect: "manual" };

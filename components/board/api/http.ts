@@ -2,7 +2,7 @@ import { parseSse } from '@/lib/sse';
 import {
   ApiError, type ContextTrace, type Mark, type MarkCreate,
   type Board, type BoardSummary, type Card, type CardCreate, type CardPatch, type ChatRequest,
-  type Edge, type EngineApi, type Id, type LinkPreview, type Message, type ProviderId, type Reads, type StreamErrorCode, type StreamEvent,
+  type Edge, type EngineApi, type Id, type LinkPreview, type Message, type ProviderId, type Reads, type SourceData, type StreamErrorCode, type StreamEvent,
 } from './types';
 import { PROVIDER_NAME } from '../lib/catalog';
 import { urlOnlyPreview } from '../lib/link-preview';
@@ -12,6 +12,7 @@ export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 const CUT_OFF = 'The answer was cut off';
 const STALE_PROCESSING_MS = 5 * 60_000; // a source still processing this long after its last update gets another ingest
 const KICK_EVERY_MS = 60_000;           // at most one re-kick per card per minute
+const MAX_CRAWL_KICKS = 12;             // the engine's own limit on one site's slices
 
 const isProvider = (v: unknown): v is ProviderId => typeof v === 'string' && Object.prototype.hasOwnProperty.call(PROVIDER_NAME, v);
 const CODES: StreamErrorCode[] = ['missing_key', 'key_rejected', 'unsupported_model', 'key_store_unavailable'];
@@ -45,12 +46,18 @@ export class HttpEngineApi implements EngineApi {
   /**
    * The engine runs on Vercel, where work after a response is best-effort, so ingest runs inside its own request
    * (the browser keeps the function alive). Fire and forget: the board's normal poll shows the status change.
-   * Failures are swallowed; only the error type is logged.
+   * Failures are swallowed; only the error type is logged. A site crawl answers one slice at a time, still processing,
+   * and is kicked again until it is done.
    */
-  private kickIngest(boardId: Id, cardId: Id): void {
+  private kickIngest(boardId: Id, cardId: Id, kicks = 1): void {
     this.kicked.set(cardId, Date.now());
     void fetch(`${this.base}/boards/${enc(boardId)}/cards/${enc(cardId)}/ingest`, { method: 'POST' })
-      .then((r) => { void r.body?.cancel?.().catch(() => {}); })
+      .then(async (r) => {
+        if (r.status !== 200) { void r.body?.cancel?.().catch(() => {}); return; }
+        const card = await r.json().catch(() => null) as Card | null;
+        const crawling = card?.status === 'processing' && !!(card.data as SourceData | undefined)?.crawled;
+        if (crawling && kicks < MAX_CRAWL_KICKS) this.kickIngest(boardId, cardId, kicks + 1);
+      })
       .catch((e: unknown) => { console.debug('[ingest] kick failed:', e instanceof Error ? e.name : 'error'); });
   }
 
@@ -202,8 +209,14 @@ export class HttpEngineApi implements EngineApi {
     return urlOnlyPreview(url);   // route missing, engine down or a hiccup: the address alone still makes a usable preview
   }
 
-  async addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card> {
+  async addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string; crawl?: boolean }): Promise<Card> {
     return this.afterAccepted(boardId, await this.req<Card>('POST', `/boards/${enc(boardId)}/sources/link`, input));
+  }
+  pasteTranscript(boardId: Id, cardId: Id, text: string): Promise<Card> {
+    return this.req<Card>('POST', `/boards/${enc(boardId)}/cards/${enc(cardId)}/transcript`, { text });
+  }
+  readSource(boardId: Id, cardId: Id): Promise<Card> {
+    return this.req<Card>('POST', `/boards/${enc(boardId)}/cards/${enc(cardId)}/ingest`);
   }
 
   /** A 202 card still processing: start its ingest, then hand the card back as before. */

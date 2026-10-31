@@ -35,6 +35,7 @@ function Inner(p: { open: boolean; initial: string; store: BoardStore; engine: B
   const { store, engine, api } = p;
   const [text, setText] = useState(p.initial);
   const [pv, setPv] = useState<Record<string, Pv>>({});
+  const [crawl, setCrawl] = useState(false);
   const ta = useRef<HTMLTextAreaElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const parsed = useMemo(() => parsePasted(text), [text]);
@@ -87,10 +88,11 @@ function Inner(p: { open: boolean; initial: string; store: BoardStore; engine: B
     if (!engine || !list.length) return;
     const deskId = engine.selectedDesk();
     let failed = 0;
-    for (const u of list) if (!engine.addLink(u, deskId, null)) failed++;
+    const wide = crawl && list.length === 1;
+    for (const u of list) if (!engine.addLink(u, deskId, null, null, wide)) failed++;
     if (failed) store.toast("That doesn't look like a link.");
     store.closePaste();
-  }, [engine, store]);
+  }, [engine, store, crawl]);
 
   const addAll = useCallback(() => {
     if (parsed.kind === 'text') addNote(parsed.text);
@@ -99,6 +101,8 @@ function Inner(p: { open: boolean; initial: string; store: BoardStore; engine: B
 
   const canAdd = parsed.kind === 'text' || urls.some((u) => pv[u]?.state !== 'error');
   const many = urls.length > 1;
+  const one = urls.length === 1 ? pv[urls[0]] : undefined;
+  const canCrawl = !!one && one.state !== 'error' && one.data.kind === 'web';
 
   return (
     <div className="sheetbox pastebox" role="dialog" aria-modal="true" aria-label="Paste a link or text">
@@ -134,12 +138,18 @@ function Inner(p: { open: boolean; initial: string; store: BoardStore; engine: B
             <span className="tx">
               <b className="ttl">{d.title ?? d.site}</b>
               <span className="site">{d.site}{video ? ' · YouTube' : ''}</span>
-              <span className="body">{video ? 'Reading videos is coming soon. It is added as a card you can keep.' : d.description ?? (v.state === 'loading' ? 'Looking at the page…' : '')}</span>
+              <span className="body">{video ? 'Its transcript is read when you add it.' : d.description ?? (v.state === 'loading' ? 'Looking at the page…' : '')}</span>
             </span>
             <span className="add">Add</span>
           </button>
         );
       })}
+      {canCrawl && (
+        <label className="pbcrawl">
+          <input type="checkbox" data-act="pv-crawl" checked={crawl} onChange={(e) => setCrawl(e.target.checked)} />
+          Also read the pages it links to (up to 30)
+        </label>
+      )}
       <div className="pbfoot">
         <span className="pbkeys">{many ? 'Enter adds all' : 'Enter adds'} · Shift+Enter is a new line · Esc closes</span>
         <button type="button" className="btn" data-act="pb-cancel" onClick={() => store.closePaste()}>Cancel</button>

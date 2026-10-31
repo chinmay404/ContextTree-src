@@ -39,7 +39,7 @@ const FOCUSABLE = 'button:not([disabled]), textarea:not([disabled]), a[href], in
 function rowMeta(g: Graph, r: SourceRow): string {
   const c = r.card;
   if (isChat(c)) return `Answer · ${modelInfo(chatData(c).model).name}`;
-  if (c.status === 'soon') return 'Coming soon';
+  if (c.status === 'soon') return c.sourceType === 'video' ? 'Not read yet' : 'Coming soon';
   if (c.sourceType === 'pile') return `${membersOf(g, c.id).length} files`;
   const d = sourceData(c);
   if (r.how === 'wire') return `${d.meta || TYPE_INFO[c.sourceType ?? 'pdf'].label} · strung in`;
@@ -225,7 +225,7 @@ function FocusBody(p: {
   menu: { top: number; right: number } | null; menuOn: boolean;
   setMenu: (m: { top: number; right: number } | null) => void; setMenuOn: (on: boolean) => void;
 }): ReactElement {
-  const { store, props } = useBoard();
+  const { store, props, engine } = useBoard();
   const snap = useSnapshot();
   const { chat: c, g, msgs, stream, webMap, moreRef, folded, menu, menuOn, setMenu, setMenuOn } = p;
   const d = chatData(c) as ChatData;
@@ -280,11 +280,20 @@ function FocusBody(p: {
     store.openViewer(r.card.id, null, e.currentTarget.getBoundingClientRect());
   };
 
+  /** A web result's + keeps it: a link source on this chat's desk, so this chat reads all of it from now on. */
+  const keepWebResult = (e: React.MouseEvent<HTMLDivElement>): void => {
+    const pin = (e.target as Element).closest<HTMLButtonElement>('[data-pin]');
+    if (!pin || pin.disabled) return;
+    if (engine?.addLink(pin.dataset.pin!, c.id, null)) store.toast('Added to this chat\'s desk.');
+  };
+  // From the board, not the button: the row is rebuilt when the answer finishes streaming.
+  const keptUrls = new Set([...g.cards.values()].filter((s) => s.deskId === c.id).map((s) => sourceData(s).url ?? ''));
+
   const who = (text: string): ReactElement => (
     <div className="who"><span className="av" style={{ '--c': mi.color } as CSSProperties}><ModelMark model={mi} /></span>{text}</div>
   );
   const webRows = (w: Web | null | undefined): ReactElement | null => (w?.results.length
-    ? <div className="webrows" dangerouslySetInnerHTML={{ __html: webRowHTML(w.results, w.query, false) }} /> : null);
+    ? <div className="webrows" onClick={keepWebResult} dangerouslySetInnerHTML={{ __html: webRowHTML(w.results, w.query, false, keptUrls) }} /> : null);
   const nSrc = (w?: Web | null): string => sourcesPhrase(read.length, w?.results.length ?? 0);
 
   return (

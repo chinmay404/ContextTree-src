@@ -577,8 +577,8 @@ export class BoardEngine {
   }
 
   /** A link card (YouTube becomes a coming-soon video); false when `text` is not an http(s) URL. */
-  addLink(text: string, deskId: Id | null, at: [number, number] | null, into: Id | null = null): boolean {
-    const id = this.store.createSourceFromLink(text.trim(), this.placeFor(deskId, 0, at), deskId);
+  addLink(text: string, deskId: Id | null, at: [number, number] | null, into: Id | null = null, crawl = false): boolean {
+    const id = this.store.createSourceFromLink(text.trim(), this.placeFor(deskId, 0, at), deskId, crawl);
     if (!id) return false;
     this.land(id);
     if (into) this.store.makePile(id, into, at ?? [0, 0]);

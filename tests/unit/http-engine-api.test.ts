@@ -303,6 +303,53 @@ describe('ingest kicks (engine on Vercel)', () => {
     expect(ingestCalls().map((c) => c[0])).toEqual(['/api/engine/boards/b1/cards/c2/ingest']);
   });
 
+  it('addLink sends the crawl flag', async () => {
+    fetchMock.mockImplementation(async (u: string) => (String(u).endsWith('/ingest') ? jres({}, 200) : jres(processing('c9'), 202)));
+    await api.addLink('b1', { id: 'c9', url: 'https://a.b', x: 0, y: 0, crawl: true });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ crawl: true });
+  });
+
+  it('a crawl still processing is kicked again until it is done', async () => {
+    const crawling = { ...processing('c4'), data: { crawled: { pages: 3, done: false } } };
+    const answers = [crawling, crawling, { ...processing('c4'), status: 'ready', data: { crawled: { pages: 8, done: true } } }];
+    fetchMock.mockImplementation(async (u: string) => (String(u).endsWith('/ingest') ? jres(answers.shift(), 200) : jres(processing('c4'), 202)));
+    await api.addLink('b1', { id: 'c4', url: 'https://a.b', x: 0, y: 0, crawl: true });
+    await flush();
+    await flush();
+    await flush();
+    expect(ingestCalls()).toHaveLength(3);
+  });
+
+  it('kicking a crawl again stops after a limit, whatever the engine answers', async () => {
+    const crawling = { ...processing('c5'), data: { crawled: { pages: 1, done: false } } };
+    fetchMock.mockImplementation(async (u: string) => (String(u).endsWith('/ingest') ? jres(crawling, 200) : jres(processing('c5'), 202)));
+    await api.addLink('b1', { id: 'c5', url: 'https://a.b', x: 0, y: 0, crawl: true });
+    for (let i = 0; i < 30; i++) await flush();
+    expect(ingestCalls().length).toBeLessThanOrEqual(13);
+  });
+
+  it('a plain source still processing is not kicked again', async () => {
+    fetchMock.mockImplementation(async (u: string) => jres(processing('c6'), String(u).endsWith('/ingest') ? 200 : 202));
+    await api.addLink('b1', { id: 'c6', url: 'https://a.b', x: 0, y: 0 });
+    await flush();
+    await flush();
+    expect(ingestCalls()).toHaveLength(1);
+  });
+
+  it('pasteTranscript posts the text and returns the card', async () => {
+    fetchMock.mockResolvedValueOnce(jres({ id: 'v1', status: 'ready' }));
+    await expect(api.pasteTranscript('b1', 'v1', 'the words')).resolves.toMatchObject({ status: 'ready' });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/engine/boards/b1/cards/v1/transcript');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ text: 'the words' });
+  });
+
+  it('readSource waits for the ingest and returns the card', async () => {
+    fetchMock.mockResolvedValueOnce(jres({ id: 'v1', status: 'ready' }));
+    await expect(api.readSource('b1', 'v1')).resolves.toMatchObject({ status: 'ready' });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/engine/boards/b1/cards/v1/ingest');
+    expect(fetchMock.mock.calls[0][1].method).toBe('POST');
+  });
+
   it('a failing ingest call is swallowed and logs only the error type', async () => {
     const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) => vi.spyOn(console, m).mockImplementation(() => {}));
     fetchMock.mockImplementation(async (u: string) => {

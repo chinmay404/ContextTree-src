@@ -246,6 +246,21 @@ describe("engine proxy", () => {
     expect(signal!.aborted).toBe(true);
   });
 
+  it("a pasted transcript holds its request open too: it is read inside the request", async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    fetchMock.mockImplementation(async (_u: string, init: RequestInit) => {
+      signal = init.signal!;
+      await new Promise((r) => setTimeout(r, 120_000));
+      return new Response("{}", { status: 200 });
+    });
+    const p = POST(new Request("http://t/api/engine/boards/b1/cards/c1/transcript", { method: "POST" }), ctx("boards", "b1", "cards", "c1", "transcript"));
+    await vi.advanceTimersByTimeAsync(119_000);
+    expect(signal!.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect((await p).status).toBe(200);
+  });
+
   it("ingest holds its request open: no header timeout, abort follows the browser", async () => {
     vi.useFakeTimers();
     let signal: AbortSignal | undefined;

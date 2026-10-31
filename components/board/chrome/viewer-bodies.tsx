@@ -19,7 +19,7 @@ export interface ViewerBodyProps {
 }
 
 const data = (c: Card): SourceData => c.data as SourceData;
-const SOON = { video: 'Reading videos is coming soon', audio: 'Reading audio is coming soon', image: 'Reading images is coming soon' } as const;
+const SOON = { video: 'This video has not been read yet', audio: 'Reading audio is coming soon', image: 'Reading images is coming soon' } as const;
 
 function Soon({ text }: { text: string }): ReactElement { return <div className="soonbox">{text}</div>; }
 
@@ -40,9 +40,35 @@ function Passages({ card }: { card: Card }): ReactElement | null {
   );
 }
 
+/** A video's words, typed or pasted in, for when its transcript could not be fetched. */
+function PasteTranscript({ card }: { card: Card }): ReactElement {
+  const { store } = useBoard();
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async (): Promise<void> => {
+    setBusy(true);
+    try { await store.pasteTranscript(card.id, text); } finally { setBusy(false); }
+  };
+  return (
+    <div className="vtranscript">
+      <textarea className="fta" rows={6} value={text} disabled={busy} aria-label="Transcript"
+        placeholder="Paste the video's transcript here" onChange={(e) => setText(e.target.value)} />
+      <button type="button" className="btn primary" data-act="paste-transcript" disabled={busy || !text.trim()} onClick={() => void submit()}>
+        {busy ? 'Reading…' : 'Read this transcript'}
+      </button>
+    </div>
+  );
+}
+
 function VideoBody({ card }: { card: Card }): ReactElement {
+  const { store } = useBoard();
+  const [busy, setBusy] = useState(false);
   const d = data(card);
-  const dur = (d.meta ?? '').includes('·') ? (d.meta ?? '').split('·').pop()!.trim() : '';
+  const dur = (d.meta ?? '').match(/(?:\d+ h )?\d+ min|\d+:\d{2}/)?.[0] ?? '';
+  const read = async (): Promise<void> => {
+    setBusy(true);
+    try { await store.readSource(card.id); } finally { setBusy(false); }
+  };
   return (
     <>
       <div className="hero">
@@ -50,7 +76,28 @@ function VideoBody({ card }: { card: Card }): ReactElement {
         <span className="pb"><Icon name="play" /></span>
         {dur ? <span className="dur">{dur}</span> : null}
       </div>
-      <Soon text={SOON.video} />
+      {card.status === 'soon' && (
+        <>
+          <Soon text={SOON.video} />
+          <button type="button" className="btn primary vread" data-act="read-video" disabled={busy} onClick={() => void read()}>
+            {busy ? 'Reading…' : 'Read this video'}
+          </button>
+        </>
+      )}
+      {card.status === 'failed' && (
+        <>
+          <Soon text={d.error ?? "Couldn't read this video's transcript."} />
+          <PasteTranscript card={card} />
+        </>
+      )}
+      {card.status === 'ready' && (
+        <>
+          {d.summary ? <p className="vsummary">{d.summary}</p> : null}
+          {d.transcriptOrigin === 'ai' ? <p className="vnote">Transcribed by AI from the video, so words may be wrong.</p> : null}
+          <div className="sec">Moments the AI uses</div>
+          <Passages card={card} />
+        </>
+      )}
     </>
   );
 }

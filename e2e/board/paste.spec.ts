@@ -70,14 +70,36 @@ test('Enter adds a link; with nothing selected it lands loose', async ({ page })
   expect(added.desk).toBeNull();
 });
 
-test('a YouTube link shows its thumbnail and says reading is coming soon', async ({ page }) => {
+test('a single web link can also read the pages it links to', async ({ page }) => {
+  await open(page);
+  await page.keyboard.press('v');
+  await page.locator(IN).fill('https://example.com/docs/');
+  const box = page.locator(`${BOX} [data-act="pv-crawl"]`);
+  await expect(box).toBeVisible();
+  await box.check();
+  await page.locator(`${BOX} [data-act="pb-add"]`).click();
+  await expect.poll(async () => (await sources(page)).some((c) => (c.data as { crawled?: unknown }).crawled)).toBe(true);
+});
+
+test('a video or several links do not offer it', async ({ page }) => {
+  await open(page);
+  await page.keyboard.press('v');
+  await page.locator(IN).fill('https://youtu.be/abc123');
+  await expect(page.locator(`${BOX} [data-act="pv-link"]`)).toHaveAttribute('data-kind', 'video');
+  await expect(page.locator(`${BOX} [data-act="pv-crawl"]`)).toHaveCount(0);
+  await page.locator(IN).fill('https://a.example/one\nhttps://b.example/two');
+  await expect(page.locator(`${BOX} [data-act="pv-link"]`)).toHaveCount(2);
+  await expect(page.locator(`${BOX} [data-act="pv-crawl"]`)).toHaveCount(0);
+});
+
+test('a YouTube link shows its thumbnail and says its transcript will be read', async ({ page }) => {
   await open(page);
   await page.keyboard.press('v');
   await page.locator(IN).fill('https://youtu.be/abc123');
   const pv = page.locator(`${BOX} [data-act="pv-link"]`);
   await expect(pv).toHaveAttribute('data-kind', 'video');
   await expect(pv).toContainText('YouTube');
-  await expect(pv).toContainText('coming soon');
+  await expect(pv).toContainText('transcript is read');
   expect(await pv.locator('.tile').evaluate((e) => (e as HTMLElement).style.backgroundImage)).toContain('i.ytimg.com/vi/abc123/hqdefault.jpg');
   await page.keyboard.press('Enter');
   const v = (await sources(page)).find((c) => c.type === 'video');

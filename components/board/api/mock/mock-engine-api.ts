@@ -507,7 +507,30 @@ export class MockEngineApi implements EngineApi {
     return structuredClone(this.view(b, card));
   }
 
-  async addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card> {
+  async pasteTranscript(boardId: Id, cardId: Id, text: string): Promise<Card> {
+    await this.enter('pasteTranscript', [boardId, cardId, text]);
+    return this.readNow(boardId, cardId, { transcriptOrigin: 'pasted', meta: 'YouTube · pasted transcript', error: undefined });
+  }
+
+  async readSource(boardId: Id, cardId: Id): Promise<Card> {
+    await this.enter('readSource', [boardId, cardId]);
+    return this.readNow(boardId, cardId, { transcriptOrigin: 'captions', meta: 'YouTube · 18 min' });
+  }
+
+  private readNow(boardId: Id, cardId: Id, extra: Partial<SourceData>): Card {
+    const b = this.board(boardId);
+    const rec = b.cards.get(cardId);
+    if (!rec) throw new ApiError(404, 'not_found');
+    rec.card.data = {
+      ...(rec.card.data as SourceData), ...extra, summary: 'A read of the video.',
+      excerpts: [{ loc: '0:00', text: 'The video opens with its main point.', on: true }],
+    };
+    rec.card.status = 'ready';
+    this.touch(b, rec.card);
+    return structuredClone(this.view(b, rec.card));
+  }
+
+  async addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string; crawl?: boolean }): Promise<Card> {
     await this.enter('addLink', [boardId, input]);
     const b = this.board(boardId);
     const had = b.cards.get(input.id);
@@ -527,14 +550,18 @@ export class MockEngineApi implements EngineApi {
     if (yt) {
       const ytid = u.searchParams.get('v') || u.pathname.split('/').filter(Boolean).pop() || '';
       const card = this.addSource(b, {
-        id: input.id, sourceType: 'video', status: 'soon', x: input.x, y: input.y, deskId: input.deskId,
+        id: input.id, sourceType: 'video', status: 'processing', x: input.x, y: input.y, deskId: input.deskId,
         data: { url: input.url, ytid, title: 'YouTube video', meta: 'YouTube', ...desc },
       });
+      this.scheduleIngest(b, card.id, async () => (/blocked/i.test(input.url) ? null : {
+        meta: 'YouTube · 18 min', transcriptOrigin: 'captions', summary: 'A read of the video.',
+        excerpts: [{ loc: '0:00', text: 'The video opens with its main point.', on: true }],
+      }));
       return structuredClone(this.view(b, card));
     }
     const card = this.addSource(b, {
       id: input.id, sourceType: 'web', status: 'processing', x: input.x, y: input.y, deskId: input.deskId,
-      data: { url: input.url, title: cut(host + u.pathname, 40), meta: host, ...desc },
+      data: { url: input.url, title: cut(host + u.pathname, 40), meta: host, ...desc, ...(input.crawl ? { crawled: { pages: 0, done: false } } : {}) },
     });
     this.scheduleIngest(b, card.id, async () => ({
       excerpts: [{ loc: '§ 1', text: 'Page read.', on: true }], summary: `A read of ${host}.`,
@@ -547,7 +574,7 @@ export class MockEngineApi implements EngineApi {
     await this.enter('previewLink', [url]);
     const base = urlOnlyPreview(url);
     if (/blocked/i.test(base.site)) throw new ApiError(422, 'unreachable');
-    if (base.kind === 'video') return { ...base, description: 'Reading YouTube videos is coming soon.' };
+    if (base.kind === 'video') return { ...base, description: 'Its transcript is read when you add it.' };
     return { ...base, title: `A page at ${base.site}`, description: 'A short description of what the page is about.' };
   }
 

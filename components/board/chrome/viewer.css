@@ -23,3 +23,8 @@
 .pb-root .msw[aria-checked="true"] { background: var(--pb-ink); }
 .pb-root .msw[aria-checked="true"] i { transform: translateX(16px); }
 .pb-root .msw:focus-visible { outline: 2px solid var(--pb-ink); outline-offset: 2px; }
+.pb-root .vtranscript { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.pb-root .vtranscript .btn, .pb-root .vread { align-self: flex-start; }
+.pb-root .vread { margin-top: 12px; }
+.pb-root .vsummary { margin: 12px 0 0; font-size: 14px; line-height: 1.5; }
+.pb-root .vnote { margin: 8px 0 0; font-size: 12.5px; color: var(--t2); }

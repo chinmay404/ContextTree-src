@@ -318,3 +318,13 @@ Work after a response is best-effort there, so source ingest no longer runs in F
 - `kind` is `pen`, `arrow` or `highlight`; `color` is `ink`, `red` or `blue`. `points` holds at most 5,000 `[x, y]` or `[x, y, pressure]`, relative to the anchor card when there is one.
 - A mark on a deleted card is hidden with it and returns if the card is restored. A board holds at most 2,000 marks. Nothing here reaches a chat's read set.
 - Migration `012_board_marks.sql` must run before this engine deploys, and the engine before the board.
+
+## Amendment 2026-10-31: connectors
+
+- `POST /boards/{b}/sources/link` also takes `crawl` (boolean, default false). On a web link it sets `data.crawled` to `{pages: 0, done: false}`; on a video it is ignored.
+- `POST /boards/{b}/cards/{c}/ingest` on a crawl runs one slice of up to about 150 s and answers the card. While `status` is `processing` and `data.crawled` is present, the client calls again, at most 12 times. A crawl stays on the link's host and folder, or its parent folder when nothing sits below the link, follows links two deep, reads at most 30 pages and honours robots.txt for the pages it follows. A user may read 150 crawled pages a day. Passages of a crawl have `loc` such as `/guide/setup § 2`.
+- A YouTube link now starts as `processing` and is read like any other source. `data.meta` becomes `YouTube · 12 min`, `YouTube · AI transcript · 12 min` or `YouTube · pasted transcript`, and `data.transcriptOrigin` is `captions`, `ai` or `pasted`. Passages have `loc` such as `12:34`. `GET /files/{c}/passages` now answers for a video.
+- `POST .../ingest` on a video whose status is `soon` (added before videos could be read) starts reading it.
+- New: `POST /boards/{b}/cards/{c}/transcript` takes `{text}` (at most 200,000 characters), reads it inside the request and answers the card. Only a video accepts it (else 400). A call that finds an ingest running answers 202 `{status: "processing"}`.
+- A web link whose response is a PDF becomes `sourceType: "pdf"` during ingest, with its bytes stored like an upload, under the same 4 MB limit.
+- No migration. Deploy the engine before the board.

@@ -100,6 +100,57 @@ it('upload errors map to their toasts', async () => {
   expect(s.getSnapshot().cards.size).toBe(16);
 });
 
+it('a YouTube link starts being read and ends ready with its moments', async () => {
+  const id = s.createSourceFromLink('https://youtu.be/abcdefghijk', [0, 0], null)!;
+  expect(s.getSnapshot().cards.get(id)!.status).toBe('processing');
+  await new Promise((r) => setTimeout(r, 40));
+  await s.refresh();
+  expect(s.getSnapshot().cards.get(id)!.status).toBe('ready');
+  expect(data(id).excerpts?.length).toBeGreaterThan(0);
+});
+
+it('a web link can ask for the pages it leads to', async () => {
+  const id = s.createSourceFromLink('https://example.com/docs/', [0, 0], null, true)!;
+  await flush();
+  expect(calls('addLink').at(-1)!.args[1]).toMatchObject({ url: 'https://example.com/docs/', crawl: true });
+  expect(data(id).crawled).toEqual({ pages: 0, done: false });
+});
+
+it('retrying a failed crawl asks for a crawl again, and retrying a video works', async () => {
+  const web = s.createSourceFromLink('https://example.com/docs/', [0, 0], null, true)!;
+  await flush();
+  s.retrySource(web);
+  await flush();
+  expect(calls('addLink').at(-1)!.args[1]).toMatchObject({ crawl: true });
+  const video = s.createSourceFromLink('https://youtu.be/abcdefghijk', [0, 0], null)!;
+  await flush();
+  const before = calls('addLink').length;
+  s.retrySource(video);
+  await flush();
+  expect(calls('addLink').length).toBe(before + 1);
+});
+
+it('pasting a transcript reads the video and reports the result', async () => {
+  const ok = await s.pasteTranscript('video', 'the words of the talk');
+  expect(ok).toBe(true);
+  expect(calls('pasteTranscript')[0].args).toEqual(['b_seed', 'video', 'the words of the talk']);
+  expect(s.getSnapshot().cards.get('video')!.status).toBe('ready');
+  expect(data('video').meta).toContain('pasted transcript');
+});
+
+it('a refused transcript says so and keeps the card', async () => {
+  m.failNext('pasteTranscript', new ApiError(500, 'server_error'));
+  expect(await s.pasteTranscript('video', 'words')).toBe(false);
+  expect(s.getSnapshot().ui.toast!.text).toBe("Couldn't read that transcript. Try again.");
+  expect(s.getSnapshot().cards.get('video')!.status).toBe('soon');
+});
+
+it('reading an old coming-soon video starts it', async () => {
+  expect(await s.readSource('video')).toBe(true);
+  expect(calls('readSource')[0].args).toEqual(['b_seed', 'video']);
+  expect(s.getSnapshot().cards.get('video')!.status).toBe('ready');
+});
+
 it('toast expires after toastMs', async () => {
   const quick = new BoardStore(m, 'b_seed', { toastMs: 30 });
   quick.toast('hi');

@@ -144,7 +144,7 @@ test('a file that fails offers Retry and Paste text', async ({ page }) => {
   expect(await noteCount(page)).toBe(notes + 1);
 });
 
-test('pasting a YouTube link makes a coming-soon video', async ({ page }) => {
+test('pasting a YouTube link makes a video that is read', async ({ page }) => {
   await openBoard(page);
   await page.evaluate(() => window.__board!.select('main'));
   await paste(page, 'https://youtu.be/abc123');   // a paste opens the paste box with it; Enter adds
@@ -153,7 +153,8 @@ test('pasting a YouTube link makes a coming-soon video', async ({ page }) => {
   await page.waitForTimeout(500);
   const v = await page.evaluate(() => window.__board!.sources().find((c) => (c.data as { ytid?: string }).ytid === 'abc123'));
   expect(v).toBeTruthy();
-  expect([v!.sourceType, v!.status, v!.deskId]).toEqual(['video', 'soon', 'main']);
+  expect([v!.sourceType, v!.deskId]).toEqual(['video', 'main']);
+  await expect.poll(() => page.evaluate(() => window.__board!.sources().find((c) => (c.data as { ytid?: string }).ytid === 'abc123')?.status)).toBe('ready');
 });
 
 test('pasting text makes a note', async ({ page }) => {

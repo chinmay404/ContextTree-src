@@ -39,6 +39,8 @@ export interface SourceData {
   excerpts?: Excerpt[];                 // key passages; `on:false` = never sent
   url?: string;                         // web / video
   ytid?: string;                        // video
+  transcriptOrigin?: 'captions' | 'ai' | 'pasted';   // where a read video's words came from
+  crawled?: { pages: number; done: boolean };        // web link read with the pages it leads to
   fileName?: string; fileType?: string; fileSize?: number;
   table?: { columns: string[]; rows: string[][] };   // csv, first 200 rows
   error?: string;                       // when status = 'failed'
@@ -161,7 +163,11 @@ export interface EngineApi {
   createMark(boardId: Id, input: MarkCreate): Promise<Mark>;
   deleteMark(boardId: Id, markId: Id): Promise<void>;
   uploadFile(boardId: Id, input: { id: Id; file: File; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card>;
-  addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string }): Promise<Card>;
+  addLink(boardId: Id, input: { id: Id; url: string; x: number; y: number; deskId?: Id | null; desc?: string; crawl?: boolean }): Promise<Card>;
+  /** Reads a transcript the user pasted, for a video; resolves when it has been read. */
+  pasteTranscript(boardId: Id, cardId: Id, text: string): Promise<Card>;
+  /** Reads a source now and resolves when that is done (a video added before videos could be read). */
+  readSource(boardId: Id, cardId: Id): Promise<Card>;
   streamChat(req: ChatRequest, onEvent: (e: StreamEvent) => void, signal?: AbortSignal): Promise<void>;
   /** Optional: without it the board previews a link from its address alone. Throws 400 invalid / 422 unreachable for a link that cannot be opened. */
   previewLink?(url: string, signal?: AbortSignal): Promise<LinkPreview>;

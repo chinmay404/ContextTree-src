@@ -31,7 +31,7 @@ test('clicking the scrim closes the viewer', async ({ page }) => {
 
 test('soon viewers say what is coming', async ({ page }) => {
   await openBoard(page);
-  for (const [id, text] of [['video', 'Reading videos is coming soon'], ['podcast', 'Reading audio is coming soon'], ['shot', 'Reading images is coming soon']]) {
+  for (const [id, text] of [['video', 'This video has not been read yet'], ['podcast', 'Reading audio is coming soon'], ['shot', 'Reading images is coming soon']]) {
     await page.evaluate((i) => window.__board!.openViewer(i), id); await expect(page.locator('[data-pb="viewer"] .soonbox')).toHaveText(text); await page.keyboard.press('Escape');
   }
 });
@@ -114,4 +114,29 @@ test('Read by lists the chats that read it', async ({ page }) => {
   await openBoard(page); await page.evaluate(() => window.__board!.openViewer('pdf'));
   const used = page.locator('.vw .used');
   for (const q of ['Q1', 'Q1.1', 'Q1.2', 'Q1.2.1']) await expect(used.locator('.qchip', { hasText: new RegExp(`^${q.replace(/\./g, '\\.')}$`) })).toHaveCount(1);
+});
+
+const VIEWER = '[data-pb="viewer"]';
+
+test('an unread video can be read from its viewer', async ({ page }) => {
+  await openBoard(page);
+  await page.evaluate(() => window.__board!.openViewer('video'));
+  await page.locator(`${VIEWER} [data-act="read-video"]`).click();
+  await expect(page.locator(`${VIEWER} .passages button`)).toHaveCount(1);
+  await expect(page.locator(`${VIEWER} [data-act="read-video"]`)).toHaveCount(0);
+});
+
+test('a video that could not be read offers Paste transcript, and that reads it', async ({ page }) => {
+  await openBoard(page);
+  await page.evaluate(() => window.__board!.select('main'));
+  await page.keyboard.press('v');
+  await page.locator('[data-pb="paste"] textarea').fill('https://youtu.be/blocked12345');
+  await page.keyboard.press('Enter');
+  const fix = page.locator('[data-pastetranscript]');
+  await expect(fix).toBeVisible();
+  await fix.click();
+  await page.locator(`${VIEWER} textarea[aria-label="Transcript"]`).fill('The words of the whole talk.');
+  await page.locator(`${VIEWER} [data-act="paste-transcript"]`).click();
+  await expect(page.locator(`${VIEWER} .passages button`)).toHaveCount(1);
+  await expect(page.locator(`${VIEWER} .meta`)).toContainText('pasted transcript');
 });

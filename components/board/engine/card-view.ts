@@ -108,7 +108,10 @@ export class CardView {
 
   private metaOf(n: ViewNode, c: Card): string {
     const g = this.g, d = sourceData(c);
-    if (c.status === 'processing') return 'Reading…';
+    if (c.status === 'processing') {
+      const read = d.crawled?.pages ?? 0;
+      return read ? `Reading · ${read} page${read === 1 ? '' : 's'}…` : 'Reading…';
+    }
     if (c.status === 'failed') return "Couldn't read";
     let base = d.meta ?? TYPE_INFO[c.sourceType ?? 'pdf'].label;
     if (c.sourceType === 'pile') {
@@ -133,7 +136,7 @@ export class CardView {
     const port = live ? `<span class="port out ${wireCount(g, c.id) ? '' : 'free'}" data-port="src" data-tip="Drag onto a chat to connect"></span>` : '';
     const ic = (a: string, ico: string, tip: string) => `<button class="ic" data-act="${a}" data-tip="${esc(tip)}" aria-label="${esc(tip)}">${icon(ico)}</button>`;
     const tools = `<div class="tools">${set ? ic('setclose', 'layers', 'Close into a pile') : live ? ic('view', 'maximize-2', 'Open · double-click') : ''}${c.sourceType !== 'note' && st === 'ready' && !set ? ic('expand', n.open ? 'chevrons-down-up' : 'chevrons-up-down', n.open ? 'Done' : 'Excerpts and what it is for') : ''}${pile ? ic('unstack', 'ungroup', set ? 'Release every source' : 'Unpile') : ''}${ic('del', 'x', 'Remove')}</div>`;
-    const soon = st === 'soon' ? '<span class="soon-pill">Coming soon</span>' : '';
+    const soon = st === 'soon' ? `<span class="soon-pill">${c.sourceType === 'video' ? 'Not read yet' : 'Coming soon'}</span>` : '';
     const ex = d.excerpts ?? [];
     let body: string;
     if (set && st === 'ready') {
@@ -166,7 +169,7 @@ export class CardView {
       body = `<div class="sn" title="Scroll to flip through the pile">${this.tileHTML(n, c)}<div class="sx"><div class="meta">${this.metaOf(n, c)}</div><div class="ttl">${esc(frontNote ? nameOf(g, f) : fd.title ?? d.title ?? 'Pile')}</div>${line}</div></div>`;
     } else {
       const e = ex.find((x) => x.on) ?? ex[0];
-      const line = st === 'failed' ? `<div class="fix">${d.error ? `${esc(d.error)}<br>` : ''}<button data-retry>Retry</button> · <button data-pastetext>Paste text</button></div>`
+      const line = st === 'failed' ? `<div class="fix">${d.error ? `${esc(d.error)}<br>` : ''}<button data-retry>Retry</button> · ${c.sourceType === 'video' ? '<button data-pastetranscript>Paste transcript</button>' : '<button data-pastetext>Paste text</button>'}</div>`
         : c.sourceType === 'doc' ? `<div class="exr"><span>${esc(cut(d.text || 'Empty document', 90))}</span></div>`
         : e ? `<div class="exr">${e.loc ? `<span class="chipl">${esc(e.loc)}</span>` : ''}<span>${esc(e.text)}</span></div>` : '';
       const desc = live ? (d.desc ? `<div class="dsc">“${esc(d.desc)}”</div>` : n.fresh && st === 'ready' ? `<button class="ask-desc" data-act="describe">Say what it's for</button>` : '') : '';
@@ -376,6 +379,10 @@ export class CardView {
       if (m) store.setMemberOff(m.id, !sourceData(m).off);
     }));
     el.querySelector('[data-retry]')?.addEventListener('click', (e) => { e.stopPropagation(); store.retrySource(id); });
+    el.querySelector('[data-pastetranscript]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      store.openViewer(id, null, el.getBoundingClientRect());
+    });
     el.querySelector('[data-pastetext]')?.addEventListener('click', (e) => {
       e.stopPropagation();
       const nid = store.replaceWithNote(id);

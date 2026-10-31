@@ -141,7 +141,7 @@ export class BoardStore {
   private readonly patchQueue = new Map<Id, Promise<boolean>>();
   private readonly pendingEdges = new Map<Id, Promise<boolean>>();
   private readonly files = new Map<Id, File>();
-  private readonly links = new Map<Id, { url: string; desc?: string }>();
+  private readonly links = new Map<Id, { url: string; desc?: string; crawl?: boolean }>();
   private readonly intros = new Map<Id, 'single' | 'multi'>();
   private readonly debounced = new Map<Id, { data: Record<string, unknown>; tok: number; timer: ReturnType<typeof setTimeout> }>();
 
@@ -552,11 +552,12 @@ export class BoardStore {
     return card.id;
   }
 
-  createSourceFromLink(url: string, at: [number, number], deskId: Id | null): Id | null {
-    return this.makeLink(url, at, deskId);
+  /** `crawl`: a web link also reads the pages it leads to. */
+  createSourceFromLink(url: string, at: [number, number], deskId: Id | null, crawl = false): Id | null {
+    return this.makeLink(url, at, deskId, undefined, undefined, crawl);
   }
 
-  private makeLink(url: string, at: [number, number], deskId: Id | null, desc?: string, after?: Promise<boolean>): Id | null {
+  private makeLink(url: string, at: [number, number], deskId: Id | null, desc?: string, after?: Promise<boolean>, crawl = false): Id | null {
     let u: URL;
     try { u = new URL(url.trim()); } catch { return null; }
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
@@ -565,11 +566,33 @@ export class BoardStore {
     const title = cut(host + u.pathname, 40);
     const data: SourceData = yt
       ? { url, title: 'YouTube video', meta: 'YouTube', ...(desc ? { desc } : {}) }
-      : { url, title, meta: host, ...(desc ? { desc } : {}) };
-    const card = this.blankSource(yt ? 'video' : 'web', at[0], at[1], deskId, yt ? 'soon' : 'processing', data);
-    this.links.set(card.id, { url, desc });
-    this.create(card, () => this.api.addLink(this.boardId, { id: card.id, url, x: at[0], y: at[1], deskId, desc }), 'link', after);
+      : { url, title, meta: host, ...(desc ? { desc } : {}), ...(crawl ? { crawled: { pages: 0, done: false } } : {}) };
+    const card = this.blankSource(yt ? 'video' : 'web', at[0], at[1], deskId, 'processing', data);
+    const wide = crawl && !yt;
+    this.links.set(card.id, { url, desc, crawl: wide });
+    this.create(card, () => this.api.addLink(this.boardId, { id: card.id, url, x: at[0], y: at[1], deskId, desc, ...(wide ? { crawl: true } : {}) }), 'link', after);
     return card.id;
+  }
+
+  /** Reads a transcript the user pasted for a video; false when that failed (a toast says so). */
+  async pasteTranscript(id: Id, text: string): Promise<boolean> {
+    return this.readNow(() => this.api.pasteTranscript(this.boardId, id, text), "Couldn't read that transcript. Try again.");
+  }
+
+  /** Reads a video that was added before videos could be read; false when that failed (a toast says so). */
+  async readSource(id: Id): Promise<boolean> {
+    return this.readNow(() => this.api.readSource(this.boardId, id), "Couldn't read that video. Try again.");
+  }
+
+  private async readNow(call: () => Promise<unknown>, failed: string): Promise<boolean> {
+    try {
+      await call();
+    } catch {
+      this.toast(failed);
+      return false;
+    }
+    await this.refresh();
+    return true;
   }
 
   retrySource(id: Id): void {
@@ -578,14 +601,14 @@ export class BoardStore {
     const file = this.files.get(id);
     const link = this.links.get(id);
     const d = card.data as SourceData;
-    const url = link?.url ?? (card.sourceType === 'web' ? d.url : undefined);
+    const url = link?.url ?? (card.sourceType === 'web' || card.sourceType === 'video' ? d.url : undefined);
     if (!file && !url) return;
     const at: [number, number] = [card.x, card.y];
     const intro = this.intros.get(id) ?? 'single';
     const desc = d.desc;
     const del = this.removeCard(id);
     if (file) this.makeFile(file, at, card.deskId, intro, desc, del);
-    else if (url) this.makeLink(url, at, card.deskId, desc, del);
+    else if (url) this.makeLink(url, at, card.deskId, desc, del, link?.crawl ?? !!d.crawled);
   }
 
   replaceWithNote(id: Id): Id {

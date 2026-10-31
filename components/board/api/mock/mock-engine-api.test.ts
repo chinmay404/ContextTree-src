@@ -132,10 +132,10 @@ describe('MockEngineApi', () => {
     expect((bad.data as SourceData).error).toBe("Couldn't read this file.");
   });
 
-  it('links: youtube is soon with ytid; private hosts are invalid', async () => {
+  it('links: youtube is read with ytid; private hosts are invalid', async () => {
     const m = api();
     const y = await m.addLink('b_seed', { id: 'l1', url: 'https://youtu.be/abc', x: 0, y: 0 });
-    expect([y.sourceType, y.status, (y.data as SourceData).ytid, (y.data as SourceData).title]).toEqual(['video', 'soon', 'abc', 'YouTube video']);
+    expect([y.sourceType, y.status, (y.data as SourceData).ytid, (y.data as SourceData).title]).toEqual(['video', 'processing', 'abc', 'YouTube video']);
     const y2 = await m.addLink('b_seed', { id: 'l2', url: 'https://www.youtube.com/watch?v=xyz', x: 0, y: 0 });
     expect((y2.data as SourceData).ytid).toBe('xyz');
     for (const [i, u] of ['http://localhost/x', 'http://127.0.0.1/', 'http://10.0.0.1/', 'http://192.168.1.1/', 'ftp://a.com/x', 'nope'].entries()) {

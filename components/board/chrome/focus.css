@@ -29,6 +29,11 @@
 .pb-root .wscroll::-webkit-scrollbar { display: none; }
 .pb-root .wchip { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 260px; height: 30px; padding: 0 12px; border-radius: 14px;
   background: var(--pb-fill); color: var(--t1); font-size: 12.5px; line-height: 1; text-decoration: none; white-space: nowrap; box-shadow: 0 0 0 .5px var(--hairline); }
+.pb-root .wkeep { flex: none; display: inline-flex; align-items: center; gap: 2px; }
+.pb-root .wpin { flex: none; width: 26px; height: 26px; border: 0; border-radius: 13px; background: none; color: var(--t2); font-size: 15px; line-height: 1; cursor: pointer; }
+.pb-root .wpin:disabled { opacity: .35; cursor: default; }
+.pb-root .wpin:focus-visible { outline: 2px solid var(--pb-edge-strong); outline-offset: 1px; }
+@media (hover: hover) and (pointer: fine) { .pb-root .wpin:not(:disabled):hover { background: var(--pb-edge); color: var(--t1); } }
 .pb-root .wchip .i { --s: 13px; --c: var(--t2); flex: none; }
 .pb-root .wchip .wt { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 .pb-root .wchip .ws { color: var(--t3); flex: none; }

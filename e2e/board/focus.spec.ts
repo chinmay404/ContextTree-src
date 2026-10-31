@@ -22,9 +22,21 @@ test('opening a chat shows its timeline and connected sources', async ({ page })
   expect(errs).toEqual([]);
 });
 
-test('a soon source says Coming soon, and an own source opens the viewer', async ({ page }) => {
+test('a web result can be kept as a source on the chat', async ({ page }) => {
+  await openBoard(page, '?firstTokenMs=100&wordMs=5'); await openFocus(page, 'main');
+  await page.locator(`${F} .fcomp .cp`, { hasText: 'Web' }).click();
+  await page.locator(`${F} .fcomp textarea`).fill('Compare pricing pages'); await page.keyboard.press('Enter');
+  const pin = page.locator(`${F} [data-pin]`).first();
+  await expect(pin).toBeVisible();
+  await pin.click();
+  await expect(pin).toBeDisabled();
+  await expect.poll(() => page.evaluate(() => window.__board!.sources()
+    .find((c) => (c.data as { url?: string }).url === 'https://example.com/pricing')?.deskId)).toBe('main');
+});
+
+test('an unread video says so, and an own source opens the viewer', async ({ page }) => {
   await openBoard(page); await openFocus(page, 'main');
-  await expect(page.locator(`${F} .srow`, { hasText: 'Coming soon' })).toHaveCount(1);
+  await expect(page.locator(`${F} .srow`, { hasText: 'Not read yet' })).toHaveCount(1);
   await page.locator(`${F} .srow`, { hasText: 'Pricing survey 2025' }).click();
   expect((await page.evaluate(() => window.__board!.viewer()))?.cardId).toBe('pdf');
   await page.keyboard.press('Escape');

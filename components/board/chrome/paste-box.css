@@ -20,6 +20,7 @@
 .pb-root .pastebox .loading .body { color: var(--t3); }
 .pb-root .pastebox .pverr { background: var(--pb-card); box-shadow: 0 0 0 2px var(--failed-ring, #F2B8B5); }
 .pb-root .pastebox .pverr .tile .i { --c: var(--failed, #C0463F); }
+.pb-root .pastebox .pbcrawl { display: flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 13px; color: var(--t2); cursor: pointer; }
 .pb-root .pastebox .pbfoot { display: flex; align-items: center; gap: 10px; }
 .pb-root .pastebox .pbkeys { flex: 1; font-size: 12px; color: var(--t3); }
 .pb-root .pastebox .btn:disabled { opacity: .4; cursor: default; }
