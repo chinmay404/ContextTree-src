@@ -27,6 +27,12 @@ it('marks drawn zoomed out are thicker in world units, so they look the same on 
   expect(sizeFor('highlight')).toBeGreaterThan(sizeFor('pen'));
 });
 
+it('a stroke follows the pen exactly: it passes through the last point, with no rubber band', () => {
+  const path = markPath('pen', [[0, 0, .5], [40, 0, .5], [80, 0, .5]], 4);
+  const xs = [...path.matchAll(/(-?\d+(?:\.\d+)?) -?\d+(?:\.\d+)?/g)].map((m) => Number(m[1]));
+  expect(Math.max(...xs)).toBeGreaterThanOrEqual(79);
+});
+
 describe('simplify', () => {
   it('drops points on a straight run and keeps both ends', () => {
     expect(simplify(line(100), .5)).toEqual([[0, 0], [99, 0]]);

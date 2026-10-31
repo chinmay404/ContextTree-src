@@ -4,6 +4,8 @@ import type { InkPoint, Mark, MarkKind } from '../api/types';
 
 export const PEN_SIZE = 3, HIGHLIGHT_SIZE = 18, ARROW_SIZE = 3;
 const MAX_POINTS = 4000;
+/** How far a saved stroke may stray from what was drawn, in screen px: small enough not to shift when the pen lifts. */
+export const SIMPLIFY_PX = .15;
 
 export const sizeFor = (kind: MarkKind, zoom = 1): number =>
   (kind === 'highlight' ? HIGHLIGHT_SIZE : kind === 'arrow' ? ARROW_SIZE : PEN_SIZE) / Math.max(zoom, .05);
@@ -37,8 +39,9 @@ export function markPath(kind: MarkKind, points: readonly InkPoint[], size: numb
   return outlinePath(getStroke(points.map((p) => [...p]), {
     size,
     thinning: kind === 'highlight' ? 0 : .5,
-    smoothing: .5,
-    streamline: .5,
+    // No smoothing or streamline: they pull the line behind the pen, which feels like a rubber band.
+    smoothing: 0,
+    streamline: 0,
     simulatePressure: kind === 'pen' && !pressured,
     last: true,
   }));

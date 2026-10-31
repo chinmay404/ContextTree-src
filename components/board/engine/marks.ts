@@ -1,6 +1,7 @@
 /** The board's pen layer: draws marks above the cards and takes the pointer only while the pen is on. */
 import type { InkPoint, Mark } from '../api/types';
-import { chooseAnchor, hitsMark, markPath, simplify, sizeFor, touchedBy, type InkBox } from '../lib/ink';
+import { SIMPLIFY_PX, chooseAnchor, hitsMark, markPath, simplify, sizeFor, touchedBy, type InkBox } from '../lib/ink';
+import { palmGuard, pointsOf } from '../lib/pen-input';
 import { deskBounds } from './geometry';
 import type { EngineContext, MarksModule } from './types';
 
@@ -20,8 +21,9 @@ export function createMarks(ctx: EngineContext): MarksModule {
   catcher.className = 'inkcatch';
   ctx.viewport.append(catcher);
   const drawn = new Map<string, SVGPathElement>();
-  let live: { el: SVGPathElement; points: InkPoint[]; kind: Mark['kind']; size: number; id: number } | null = null;
-  let penSeen = false;
+  // The pointer in charge. `stroke` is null while it is erasing.
+  let active: { id: number; type: string; stroke: { el: SVGPathElement; points: InkPoint[]; kind: Mark['kind']; size: number } | null } | null = null;
+  let frame = 0;
 
   const boxes = (): InkBox[] => {
     const layout = ctx.layout(), out: InkBox[] = [];
@@ -48,12 +50,18 @@ export function createMarks(ctx: EngineContext): MarksModule {
     if (at) el.setAttribute('transform', `translate(${at[0]} ${at[1]})`);
   };
 
+  const stop = (): void => {
+    active?.stroke?.el.remove();
+    active = null;
+    if (frame) { cancelAnimationFrame(frame); frame = 0; }
+  };
+
   const finish = (): void => {
-    if (!live) return;
-    const { kind, size, el } = live;
-    const points = kind === 'arrow' ? [live.points[0], live.points[live.points.length - 1]] : simplify(live.points, .6 / ctx.camera.z.x);
-    el.remove();
-    live = null;
+    const stroke = active?.stroke;
+    if (!stroke) { stop(); return; }
+    const { kind, size } = stroke;
+    const points = kind === 'arrow' ? [stroke.points[0], stroke.points[stroke.points.length - 1]] : simplify(stroke.points, SIMPLIFY_PX / ctx.camera.z.x);
+    stop();
     if (points.length < 2) return;
     const all = boxes();
     const anchorId = chooseAnchor(points, all);
@@ -76,27 +84,41 @@ export function createMarks(ctx: EngineContext): MarksModule {
     e.stopPropagation();
     const draw = ctx.store.getSnapshot().ui.draw;
     if (!draw || e.button !== 0) return;
-    if (e.pointerType === 'pen') penSeen = true;
-    else if (e.pointerType === 'touch' && penSeen) return;   // a resting palm, once a stylus has been used
+    const verdict = palmGuard.down(e.pointerType, active?.type ?? null);
+    if (verdict === 'ignore') return;
+    if (verdict === 'replace') stop();   // a palm got there first: it was never a stroke
     catcher.setPointerCapture(e.pointerId);
     const [x, y] = ctx.s2w(e.clientX, e.clientY);
-    if (draw.tool === 'eraser') { erase(x, y); return; }
+    if (draw.tool === 'eraser') {
+      active = { id: e.pointerId, type: e.pointerType, stroke: null };
+      erase(x, y);
+      return;
+    }
     const el = document.createElementNS(NS, 'path');
     svg.append(el);
-    live = { el, kind: draw.tool, size: sizeFor(draw.tool, ctx.camera.z.x), id: e.pointerId, points: [e.pointerType === 'pen' ? [x, y, e.pressure] : [x, y]] };
+    active = { id: e.pointerId, type: e.pointerType, stroke: {
+      el, kind: draw.tool, size: sizeFor(draw.tool, ctx.camera.z.x), points: [e.pointerType === 'pen' ? [x, y, e.pressure] : [x, y]],
+    } };
   });
   catcher.addEventListener('pointermove', (e) => {
-    const draw = ctx.store.getSnapshot().ui.draw;
-    if (!draw || !catcher.hasPointerCapture(e.pointerId)) return;
-    const [x, y] = ctx.s2w(e.clientX, e.clientY);
-    if (draw.tool === 'eraser') { erase(x, y); return; }
-    if (!live || live.id !== e.pointerId) return;
-    live.points.push(e.pointerType === 'pen' ? [x, y, e.pressure] : [x, y]);
-    paintMark(live.el, live.kind, draw.color, live.points, live.size);
+    if (active?.id !== e.pointerId) return;
+    const points = pointsOf(e, ctx.s2w);
+    const stroke = active.stroke;
+    if (!stroke) { for (const p of points) erase(p[0], p[1]); return; }
+    stroke.points.push(...points);
+    // At most once a frame, so the line stays under the pen however fast the stylus reports.
+    frame ||= requestAnimationFrame(() => {
+      frame = 0;
+      const now = active?.stroke;
+      if (now) paintMark(now.el, now.kind, ctx.store.getSnapshot().ui.draw?.color ?? 'ink', now.points, now.size);
+    });
   });
-  const up = (e: PointerEvent): void => { if (live?.id === e.pointerId) finish(); };
-  catcher.addEventListener('pointerup', up);
-  catcher.addEventListener('pointercancel', up);
+  catcher.addEventListener('pointerup', (e) => { if (active?.id === e.pointerId) finish(); });
+  catcher.addEventListener('pointercancel', (e) => {
+    if (active?.id !== e.pointerId) return;
+    if (active.type === 'touch') stop();   // the system took a touch back: a palm, not a stroke
+    else finish();
+  });
 
   return {
     sync() {
@@ -125,6 +147,6 @@ export function createMarks(ctx: EngineContext): MarksModule {
         if (el && mark.anchorId) place(mark, el);
       }
     },
-    dispose() { svg.remove(); catcher.remove(); },
+    dispose() { stop(); svg.remove(); catcher.remove(); },
   };
 }

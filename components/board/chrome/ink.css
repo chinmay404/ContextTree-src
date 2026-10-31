@@ -36,3 +36,5 @@
 .pb-root .notepage.penon .noteink { pointer-events: auto; cursor: crosshair; }
 .pb-root .notetools { position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 24px; background: var(--pb-card); box-shadow: var(--sh-float, 0 2px 12px rgba(0, 0, 0, .12)); }
 .pb-root .vw.vw-page { width: calc(100vw - 32px); height: calc(100vh - 32px); }
+/* iPad: a long press on the page must not bring up text selection or the callout while writing. */
+.pb-root .inkcatch, .pb-root .notepage.penon { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
