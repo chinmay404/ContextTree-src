@@ -1,6 +1,7 @@
 'use client';
 /** Window-level input for adding things: drag and drop, paste, N / Q / Enter, double-click and right-click on the board. */
 import { useEffect } from 'react';
+import { attachTouchGestures, keyboardInset } from './touch-gestures';
 import { useBoard } from '../context';
 import { typing } from '../lib/util';
 import { overlayOpen } from '../store';
@@ -91,7 +92,9 @@ export function BoardInput(): null {
     };
 
     // Pointer capture retargets a card's double-click to the viewport, so engine.downOnCard() says where the press began.
+    let lastDoubleTap = -Infinity;
     const onDbl = (e: MouseEvent) => {
+      if (performance.now() - lastDoubleTap < 600) return;   // a browser may also report the double tap as this
       if (engine.downOnCard() || overlayOpen(ui())) return;
       if (document.elementFromPoint(e.clientX, e.clientY)?.closest('.card')) return;
       const [x, y] = engine.ctx.s2w(e.clientX, e.clientY);
@@ -112,6 +115,24 @@ export function BoardInput(): null {
       store.openMenu({ x: e.clientX, y: e.clientY, at: engine.ctx.s2w(e.clientX, e.clientY), fromAdd: false });
     };
 
+    const detachGestures = attachTouchGestures(viewport, {
+      active: () => !covered() && !ui().draw && !overlayOpen(ui()),
+      hold(cardId, x, y) {
+        if (cardId) store.openCardMenu(x, y, cardId);
+        else store.openMenu({ x, y, at: engine.ctx.s2w(x, y), fromAdd: false });
+      },
+      doubleTap(x, y) {
+        lastDoubleTap = performance.now();
+        const [wx, wy] = engine.ctx.s2w(x, y);
+        engine.spawnNote(wx - 106, wy - 30);
+      },
+    });
+    // The keyboard shrinks the visual viewport, not the layout: the bars and sheets move up by what it covers.
+    const view = window.visualViewport;
+    const onViewport = () => engine.ctx.root.style.setProperty('--kb', `${keyboardInset(window.innerHeight, view)}px`);
+    view?.addEventListener('resize', onViewport);
+    view?.addEventListener('scroll', onViewport);
+
     window.addEventListener('dragenter', onEnter);
     window.addEventListener('dragleave', onLeave);
     window.addEventListener('dragover', onOver);
@@ -121,6 +142,9 @@ export function BoardInput(): null {
     viewport.addEventListener('dblclick', onDbl);
     viewport.addEventListener('contextmenu', onContext);
     return () => {
+      detachGestures();
+      view?.removeEventListener('resize', onViewport);
+      view?.removeEventListener('scroll', onViewport);
       window.removeEventListener('dragenter', onEnter);
       window.removeEventListener('dragleave', onLeave);
       window.removeEventListener('dragover', onOver);

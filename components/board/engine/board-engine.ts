@@ -461,8 +461,8 @@ export class BoardEngine {
   private bindTips(root: HTMLElement): void {
     const tip = this.tip;
     root.querySelectorAll<HTMLElement>('[data-tip]').forEach((b) => {
-      b.addEventListener('pointerenter', () => {
-        if (this.ctx.modules.strings.isLive()) return;
+      b.addEventListener('pointerenter', (e) => {
+        if (e.pointerType === 'touch' || this.ctx.modules.strings.isLive()) return;   // a finger has no hover: a tip would stay stuck
         if (this.tipTimer) clearTimeout(this.tipTimer);
         const show = () => {
           if (!b.isConnected) return;

@@ -1,0 +1,44 @@
+/* Tablets. A finger needs a bigger target than a cursor, and there is no hover. */
+
+/* The on-screen keyboard must not cover what is being typed in. --kb is set from the visual viewport. */
+.pb-root [data-pb="chatbar"] { bottom: calc(16px + var(--kb, 0px)); }
+
+.pb-root [data-pb="focus"] { bottom: var(--kb, 0px); }
+
+/* Too narrow for the chat bar between the tools and the zoom: it takes a row of its own above them. */
+@media (max-width: 1000px) {
+  .pb-root [data-pb="chatbar"] { bottom: calc(84px + var(--kb, 0px)); width: min(640px, calc(100vw - 32px)); }
+  .pb-root .drawbar { bottom: 152px; }
+}
+
+/* Sheets fit the space really available: Safari's bars and the keyboard both take some. */
+@supports (height: 100dvh) {
+  .pb-root .dlg { max-height: calc(100dvh - 40px - var(--kb, 0px)); }
+  .pb-root .vw { height: min(760px, calc(100dvh - 40px - var(--kb, 0px))); }
+  .pb-root .vw.vw-page { height: calc(100dvh - 32px - var(--kb, 0px)); }
+  .pb-root .sheetbox.cmp { height: min(760px, calc(100dvh - 40px)); }
+}
+
+.pb-root .pb-vp { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+.pb-root .cbody, .pb-root .note-in .n { -webkit-touch-callout: default; touch-action: pan-y; }
+
+@media (pointer: coarse) {
+  /* iPad Safari zooms the whole page when a field under 16px takes focus. */
+  .pb-root input, .pb-root textarea, .pb-root select { font-size: max(16px, 1em); }
+
+  /* The chrome is at least 44px. */
+  .pb-root [data-pb="chatbar"] .cb-send, .pb-root [data-pb="zoom"] button, .pb-root [data-pb="brand"] .lg,
+  .pb-root .inkbtn, .pb-root .vclose { min-width: 44px; min-height: 44px; }
+  .pb-root .inkdot { width: 30px; height: 30px; border-radius: 15px; }
+
+  /* Bigger buttons, with the gaps and padding they no longer need taken out. */
+  .pb-root [data-pb="zoom"] { gap: 0; padding: 6px; }
+
+  /* Card controls scale with the board, so they keep a large invisible target at any zoom. */
+  .pb-root .card .ic, .pb-root .card .apill, .pb-root .wk { position: relative; }
+  .pb-root .card .ic::after, .pb-root .card .apill::after, .pb-root .wk::after { content: ''; position: absolute; inset: -12px; }
+  .pb-root .port[data-port]::before { inset: -14px -18px; }
+
+  /* What a mouse shows on hover is simply there. */
+  .pb-root .setm .sm-x { opacity: 1; }
+}
